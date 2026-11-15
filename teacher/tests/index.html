@@ -1,437 +1,870 @@
 
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
 
 <head>
 
-<meta charset="UTF-8">
+<meta charset="utf-8">
 
 <meta
   name="viewport"
   content="width=device-width,initial-scale=1"
 >
 
-<title>テスト管理 - テスト成績システム</title>
+<title>
+  テスト管理
+</title>
 
 <link
   rel="stylesheet"
-  href="/css/common.css"
+  href="css/style.css"
 >
 
-<style>
-
-.main {
-  max-width:1200px;
-  margin:0 auto;
-  padding:25px;
-}
-
-.toolbar {
-  display:flex;
-  flex-wrap:wrap;
-  gap:10px;
-  margin-bottom:15px;
-}
-
-.table-wrap {
-  overflow:auto;
-  background:#fff;
-  border:1px solid #d5dbe0;
-}
-
-table {
-  width:100%;
-  border-collapse:collapse;
-  min-width:900px;
-}
-
-th,
-td {
-  padding:10px;
-  border-bottom:1px solid #e1e5e8;
-  text-align:left;
-}
-
-th {
-  background:#f3f5f7;
-}
-
-.actions {
-  display:flex;
-  gap:6px;
-  flex-wrap:wrap;
-}
-
-.empty {
-  padding:40px;
-  text-align:center;
-  color:#777;
-}
-
-</style>
 </head>
 
 
 <body>
 
-<header class="topbar">
 
-  <div class="system-name">
-    テスト成績システム
-  </div>
+<div class="app">
 
-  <div class="topbar-space"></div>
 
-  <span id="teacherName">-</span>
+<aside class="side">
 
-  <button
-    id="logoutButton"
-    class="logout-button"
-    type="button"
-  >
-    ログアウト
-  </button>
+<h2>
+テスト管理
+</h2>
 
-</header>
+
+<a href="teacher.html">
+ダッシュボード
+</a>
+
+
+<a href="teacher-students.html">
+生徒管理
+</a>
+
+
+<a href="teacher-qr.html">
+QR発行
+</a>
+
+
+<a
+  class="active"
+  href="teacher-tests.html"
+>
+テスト管理
+</a>
+
+
+<a href="teacher-answers-upload.html">
+答案アップロード
+</a>
+
+
+<a href="teacher-marking.html">
+採点
+</a>
+
+</aside>
 
 
 <main class="main">
 
-  <h1>
-    テスト管理
-  </h1>
+
+<div class="top">
+
+<h1>
+テスト管理
+</h1>
+
+</div>
 
 
-  <div class="toolbar">
+<!-- =====================================================
+     新規テスト
+====================================================== -->
 
-    <button
-      id="newButton"
-      class="btn btn-primary"
-      type="button"
-    >
-      新しいテスト
-    </button>
-
-    <button
-      id="refreshButton"
-      class="btn"
-      type="button"
-    >
-      更新
-    </button>
-
-  </div>
+<div class="card">
 
 
-  <div class="table-wrap">
+<div class="form-row">
 
-    <table>
+<label>
+テスト名
+</label>
 
-      <thead>
 
-        <tr>
-          <th>テスト名</th>
-          <th>教科</th>
-          <th>学年</th>
-          <th>公開</th>
-          <th>操作</th>
-        </tr>
+<input
+  id="testName"
+  type="text"
+>
 
-      </thead>
+</div>
 
-      <tbody id="testBody">
 
-        <tr>
-          <td
-            colspan="5"
-            class="empty"
-          >
-            読み込み中...
-          </td>
-        </tr>
+<div class="form-row">
 
-      </tbody>
+<label>
+教科
+</label>
 
-    </table>
 
-  </div>
+<input
+  id="subject"
+  type="text"
+>
+
+</div>
+
+
+<div class="form-row">
+
+<label>
+学年
+</label>
+
+
+<input
+  id="grade"
+  type="text"
+>
+
+</div>
+
+
+<button
+  class="primary"
+  id="createButton"
+  type="button"
+>
+新しいテストを作成
+</button>
+
+
+</div>
+
+
+<!-- =====================================================
+     状態
+====================================================== -->
+
+<p
+  id="message"
+  class="small"
+></p>
+
+
+<!-- =====================================================
+     テスト一覧
+====================================================== -->
+
+<table class="table">
+
+<thead>
+
+<tr>
+
+<th>
+テスト
+</th>
+
+
+<th>
+教科
+</th>
+
+
+<th>
+学年
+</th>
+
+
+<th>
+操作
+</th>
+
+</tr>
+
+</thead>
+
+
+<tbody id="rows">
+
+<tr>
+
+<td
+  colspan="4"
+>
+読み込み中...
+</td>
+
+</tr>
+
+</tbody>
+
+</table>
+
 
 </main>
 
+</div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="/js/config.js"></script>
-<script src="/js/auth.js"></script>
+
+<!-- =====================================================
+     Supabase
+====================================================== -->
+
+<script
+  src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+></script>
+
+
+<script src="js/config.js"></script>
+
+
+<script src="js/auth.js"></script>
 
 
 <script>
 
-(async function () {
+"use strict";
 
-  const profile =
-    await requireTeacher();
 
-  if (!profile) {
-    return;
+/* =========================================================
+   Supabase
+========================================================= */
+
+/*
+ * auth.js が正常に読み込まれていれば
+ * window.SB が存在する。
+ *
+ * 存在しない場合はAPP_CONFIGから
+ * このページ自身で接続する。
+ */
+
+let DB =
+  window.SB ||
+  null;
+
+
+if (
+  !DB &&
+  window.APP_CONFIG &&
+  window.supabase
+) {
+
+  const url =
+    window.APP_CONFIG.SUPABASE_URL;
+
+
+  const key =
+    window.APP_CONFIG.SUPABASE_ANON_KEY;
+
+
+  if (
+    url &&
+    key
+  ) {
+
+    DB =
+      window.supabase.createClient(
+        url,
+        key
+      );
+
   }
 
+}
 
+
+/* =========================================================
+   DOM
+========================================================= */
+
+const rows =
   document.getElementById(
-    "teacherName"
-  ).textContent =
-    profile.name || "先生";
-
-
-  document.getElementById(
-    "logoutButton"
-  ).addEventListener(
-    "click",
-    logout
+    "rows"
   );
 
 
-  const body =
-    document.getElementById(
-      "testBody"
+const message =
+  document.getElementById(
+    "message"
+  );
+
+
+const createButton =
+  document.getElementById(
+    "createButton"
+  );
+
+
+/* =========================================================
+   STATE
+========================================================= */
+
+let currentUser =
+  null;
+
+
+/* =========================================================
+   START
+========================================================= */
+
+document.addEventListener(
+  "DOMContentLoaded",
+  initialize
+);
+
+
+async function initialize() {
+
+  try {
+
+    if (!DB) {
+
+      throw new Error(
+        "Supabaseに接続できません。js/config.jsを確認してください。"
+      );
+
+    }
+
+
+    /*
+     * auth.jsのrequireRoleには依存しない。
+     */
+
+    await checkLogin();
+
+
+    await loadTests();
+
+
+    setupEvents();
+
+
+  } catch (error) {
+
+    console.error(
+      "teacher-tests:",
+      error
     );
 
 
-  async function loadTests() {
+    showMessage(
+      error.message ||
+      "テスト管理を読み込めませんでした。",
+      true
+    );
 
-    body.innerHTML = `
+  }
+
+}
+
+
+/* =========================================================
+   LOGIN
+========================================================= */
+
+async function checkLogin() {
+
+  const {
+    data,
+    error
+  } =
+    await DB.auth.getUser();
+
+
+  if (error) {
+
+    throw new Error(
+      `ログイン確認に失敗しました: ${error.message}`
+    );
+
+  }
+
+
+  if (!data?.user) {
+
+    location.href =
+      "login.html";
+
+    return;
+
+  }
+
+
+  currentUser =
+    data.user;
+
+
+  /*
+   * 先生・管理者だけ許可。
+   */
+
+  const {
+    data: profile,
+    error: profileError
+  } =
+    await DB
+      .from(
+        "profiles"
+      )
+      .select(
+        "role,name"
+      )
+      .eq(
+        "id",
+        currentUser.id
+      )
+      .maybeSingle();
+
+
+  if (profileError) {
+
+    throw new Error(
+      `プロフィール取得に失敗しました: ${profileError.message}`
+    );
+
+  }
+
+
+  if (
+    !profile ||
+    (
+      profile.role !== "teacher" &&
+      profile.role !== "admin"
+    )
+  ) {
+
+    location.href =
+      "login.html";
+
+    return;
+
+  }
+
+}
+
+
+/* =========================================================
+   EVENTS
+========================================================= */
+
+function setupEvents() {
+
+  createButton.addEventListener(
+    "click",
+    createTest
+  );
+
+}
+
+
+/* =========================================================
+   LOAD TESTS
+========================================================= */
+
+async function loadTests() {
+
+  rows.innerHTML = `
+
+    <tr>
+
+      <td colspan="4">
+        読み込み中...
+      </td>
+
+    </tr>
+
+  `;
+
+
+  const {
+    data,
+    error
+  } =
+    await DB
+      .from(
+        "tests"
+      )
+      .select(
+        `
+        id,
+        name,
+        subject,
+        grade,
+        class_name,
+        created_at
+        `
+      )
+      .order(
+        "created_at",
+        {
+          ascending:
+            false
+        }
+      );
+
+
+  if (error) {
+
+    throw new Error(
+      `テスト一覧取得エラー: ${error.message}`
+    );
+
+  }
+
+
+  renderTests(
+    data ||
+    []
+  );
+
+}
+
+
+/* =========================================================
+   RENDER
+========================================================= */
+
+function renderTests(
+  tests
+) {
+
+  rows.innerHTML =
+    "";
+
+
+  if (!tests.length) {
+
+    rows.innerHTML = `
 
       <tr>
-        <td colspan="5" class="empty">
-          読み込み中...
+
+        <td colspan="4">
+          テストがありません。
         </td>
+
       </tr>
 
     `;
+
+    return;
+
+  }
+
+
+  tests.forEach(
+    test => {
+
+      const tr =
+        document.createElement(
+          "tr"
+        );
+
+
+      /*
+       * HTML文字列ではなく
+       * textContentを使用。
+       */
+
+      const name =
+        document.createElement(
+          "td"
+        );
+
+
+      name.textContent =
+        test.name ||
+        "";
+
+
+      const subject =
+        document.createElement(
+          "td"
+        );
+
+
+      subject.textContent =
+        test.subject ||
+        "";
+
+
+      const grade =
+        document.createElement(
+          "td"
+        );
+
+
+      grade.textContent =
+        test.grade ||
+        "";
+
+
+      const actions =
+        document.createElement(
+          "td"
+        );
+
+
+      /*
+       * 枠設定
+       */
+
+      const layout =
+        document.createElement(
+          "a"
+        );
+
+
+      layout.href =
+        `teacher-test-layout.html?test=${encodeURIComponent(
+          test.id
+        )}`;
+
+
+      layout.textContent =
+        "解答・枠設定";
+
+
+      layout.style.marginRight =
+        "10px";
+
+
+      /*
+       * 配点設定
+       *
+       * 新しい別ファイルを必須にせず、
+       * 枠設定画面内の配点設定へ進める。
+       */
+
+      const points =
+        document.createElement(
+          "a"
+        );
+
+
+      points.href =
+        `teacher-test-layout.html?test=${encodeURIComponent(
+          test.id
+        )}&points=1`;
+
+
+      points.textContent =
+        "配点設定";
+
+
+      points.style.marginRight =
+        "10px";
+
+
+      /*
+       * 採点
+       */
+
+      const marking =
+        document.createElement(
+          "a"
+        );
+
+
+      marking.href =
+        `teacher-marking.html?test=${encodeURIComponent(
+          test.id
+        )}`;
+
+
+      marking.textContent =
+        "採点";
+
+
+      actions.append(
+        layout,
+        points,
+        marking
+      );
+
+
+      tr.append(
+        name,
+        subject,
+        grade,
+        actions
+      );
+
+
+      rows.appendChild(
+        tr
+      );
+
+    }
+  );
+
+}
+
+
+/* =========================================================
+   CREATE TEST
+========================================================= */
+
+async function createTest() {
+
+  const name =
+    document
+      .getElementById(
+        "testName"
+      )
+      .value
+      .trim();
+
+
+  const subject =
+    document
+      .getElementById(
+        "subject"
+      )
+      .value
+      .trim();
+
+
+  const grade =
+    document
+      .getElementById(
+        "grade"
+      )
+      .value
+      .trim();
+
+
+  if (!name) {
+
+    showMessage(
+      "テスト名を入力してください。",
+      true
+    );
+
+    return;
+
+  }
+
+
+  createButton.disabled =
+    true;
+
+
+  createButton.textContent =
+    "作成中...";
+
+
+  try {
+
+    const insertData = {
+
+      name,
+
+      subject:
+        subject ||
+        null,
+
+      grade:
+        grade ||
+        null,
+
+      created_by:
+        currentUser.id
+
+    };
 
 
     const {
       data,
       error
     } =
-      await supabaseClient
-        .from("tests")
-        .select(`
-          id,
-          name,
-          subject,
-          grade,
-          results_published,
-          created_at
-        `)
-        .order(
-          "created_at",
-          {
-            ascending:false
-          }
-        );
+      await DB
+        .from(
+          "tests"
+        )
+        .insert(
+          insertData
+        )
+        .select(
+          "id"
+        )
+        .single();
 
 
     if (error) {
 
-      body.innerHTML = `
-
-        <tr>
-          <td colspan="5" class="empty">
-            ${escapeHtml(error.message)}
-          </td>
-        </tr>
-
-      `;
-
-      return;
+      throw new Error(
+        `テスト作成エラー: ${error.message}`
+      );
 
     }
 
 
-    if (!data?.length) {
+    /*
+     * 作成後は既存の
+     * teacher-test-layout.htmlへ。
+     */
 
-      body.innerHTML = `
+    location.href =
+      `teacher-test-layout.html?test=${encodeURIComponent(
+        data.id
+      )}`;
 
-        <tr>
-          <td colspan="5" class="empty">
-            テストがありません。
-          </td>
-        </tr>
+  } catch (error) {
 
-      `;
-
-      return;
-
-    }
-
-
-    body.innerHTML =
-      data.map(
-        test => `
-
-          <tr>
-
-            <td>
-              ${escapeHtml(test.name)}
-            </td>
-
-            <td>
-              ${escapeHtml(test.subject || "-")}
-            </td>
-
-            <td>
-              ${escapeHtml(test.grade || "-")}
-            </td>
-
-            <td>
-              ${
-                test.results_published
-                  ? "公開中"
-                  : "非公開"
-              }
-            </td>
-
-            <td>
-
-              <div class="actions">
-
-                <button
-                  type="button"
-                  class="btn"
-                  data-edit="${test.id}"
-                >
-                  編集
-                </button>
-
-                <button
-                  type="button"
-                  class="btn"
-                  data-pages="${test.id}"
-                >
-                  解答用紙
-                </button>
-
-                <button
-                  type="button"
-                  class="btn"
-                  data-publish="${test.id}"
-                >
-                  公開設定
-                </button>
-
-              </div>
-
-            </td>
-
-          </tr>
-
-        `
-      ).join("");
+    console.error(
+      error
+    );
 
 
-    body
-      .querySelectorAll("[data-edit]")
-      .forEach(
-        button => {
-
-          button.addEventListener(
-            "click",
-            () => {
-
-              location.href =
-                `/teacher/tests/edit?id=${encodeURIComponent(
-                  button.dataset.edit
-                )}`;
-
-            }
-          );
-
-        }
-      );
+    showMessage(
+      error.message ||
+      "テストを作成できませんでした。",
+      true
+    );
 
 
-    body
-      .querySelectorAll("[data-pages]")
-      .forEach(
-        button => {
-
-          button.addEventListener(
-            "click",
-            () => {
-
-              location.href =
-                `/teacher/tests/pages?test=${encodeURIComponent(
-                  button.dataset.pages
-                )}`;
-
-            }
-          );
-
-        }
-      );
+    createButton.disabled =
+      false;
 
 
-    body
-      .querySelectorAll("[data-publish]")
-      .forEach(
-        button => {
-
-          button.addEventListener(
-            "click",
-            () => {
-
-              location.href =
-                `/teacher/tests/publish?test=${encodeURIComponent(
-                  button.dataset.publish
-                )}`;
-
-            }
-          );
-
-        }
-      );
+    createButton.textContent =
+      "新しいテストを作成";
 
   }
 
-
-  document.getElementById(
-    "newButton"
-  ).addEventListener(
-    "click",
-    () => {
-
-      location.href =
-        "/teacher/tests/edit";
-
-    }
-  );
+}
 
 
-  document.getElementById(
-    "refreshButton"
-  ).addEventListener(
-    "click",
-    loadTests
-  );
+/* =========================================================
+   MESSAGE
+========================================================= */
+
+function showMessage(
+  text,
+  error = false
+) {
+
+  message.textContent =
+    text;
 
 
-  function escapeHtml(value) {
+  message.style.color =
+    error
+      ? "#b42318"
+      : "#333";
 
-    return String(value ?? "")
-      .replaceAll("&","&amp;")
-      .replaceAll("<","&lt;")
-      .replaceAll(">","&gt;")
-      .replaceAll('"',"&quot;")
-      .replaceAll("'","&#039;");
-
-  }
-
-
-  await loadTests();
-
-})();
+}
 
 </script>
 
+
 </body>
+
 </html>

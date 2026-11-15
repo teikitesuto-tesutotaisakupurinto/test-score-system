@@ -3,62 +3,38 @@
    テスト成績システム
    js/auth.js 完全版
 
-   URLはすべてClean URLを使用。
-
-   実ファイル
+   役割
    ---------------------------------------------------------
-   /login.html
-   /teacher/index.html
-   /teacher/tests/index.html
-   /teacher/tests/edit.html
-   /teacher/tests/pages.html
-   /teacher/tests/publish.html
-   /teacher/answers/upload.html
-   /teacher/answers/matched.html
-   /teacher/answers/regions.html
-   /teacher/marking/index.html
-   /teacher/marking/mark.html
-   /teacher/results/summary.html
-   /student/tests/index.html
-   /student/answer.html
+   ・Supabaseセッション取得
+   ・ログインユーザー取得
+   ・プロフィール取得
+   ・Teacher / Admin / Student判定
+   ・ページアクセス制御
+   ・ログイン後の自動振り分け
+   ・確実なログアウト
+   ・Clean URL管理
 
    URL
    ---------------------------------------------------------
    /login
+
    /teacher
    /teacher/tests
    /teacher/tests/edit?id=UUID
    /teacher/tests/pages?test=UUID
    /teacher/tests/publish?test=UUID
+
    /teacher/answers/upload
    /teacher/answers/matched
    /teacher/answers/regions
+
    /teacher/marking
    /teacher/marking/mark?answer=UUID
+
    /teacher/results/summary
+
    /student/tests
    /student/answer
-
-
-   認証
-   ---------------------------------------------------------
-   Supabase Auth
-       ↓
-   get_my_profile()
-       ↓
-   profiles
-       ↓
-   role
-
-   teacher/admin
-       ↓
-   /teacher
-
-   student
-       ↓
-   students.auth_user_id
-       ↓
-   /student/tests
 ========================================================= */
 
 (function () {
@@ -70,7 +46,7 @@
      ROUTES
   ======================================================= */
 
-  window.APP_ROUTES = {
+  const APP_ROUTES = {
 
     login:
       "/login",
@@ -117,32 +93,41 @@
   };
 
 
+  /*
+    他のJSから使用できるようにする
+  */
+
+  window.APP_ROUTES =
+    APP_ROUTES;
+
+
   /* =======================================================
-     Supabase Client
+     SUPABASE
   ======================================================= */
 
   function getClient() {
 
     if (
-      !window.supabaseClient
+      window.supabaseClient
     ) {
 
-      console.error(
-        "supabaseClientが初期化されていません。"
-      );
-
-      return null;
+      return window.supabaseClient;
 
     }
 
 
-    return window.supabaseClient;
+    console.error(
+      "supabaseClientが初期化されていません。"
+    );
+
+
+    return null;
 
   }
 
 
   /* =======================================================
-     Session
+     SESSION
   ======================================================= */
 
   window.getSession =
@@ -175,6 +160,7 @@
           error
         );
 
+
         return null;
 
       }
@@ -189,7 +175,7 @@
 
 
   /* =======================================================
-     Auth User
+     AUTH USER
   ======================================================= */
 
   window.getAuthUser =
@@ -215,7 +201,7 @@
 
 
   /* =======================================================
-     Profile
+     PROFILE
   ======================================================= */
 
   window.getProfile =
@@ -239,11 +225,18 @@
       if (!client) {
 
         throw new Error(
-          "Supabaseが初期化されていません。"
+          "Supabaseの設定を読み込めませんでした。"
         );
 
       }
 
+
+      /*
+        public.get_my_profile()
+
+        現在のログインユーザーから
+        profilesを取得する。
+      */
 
       const {
         data,
@@ -270,6 +263,12 @@
       }
 
 
+      /*
+        RPCが
+        配列 / 単一オブジェクト
+        のどちらでも対応。
+      */
+
       const profile =
         Array.isArray(data)
           ? data[0]
@@ -279,7 +278,7 @@
       if (!profile) {
 
         throw new Error(
-          "ログインユーザーの権限情報が登録されていません。"
+          "ログインユーザーのプロフィールが見つかりません。"
         );
 
       }
@@ -290,8 +289,8 @@
           profile.role ||
           ""
         )
-          .toLowerCase()
-          .trim();
+          .trim()
+          .toLowerCase();
 
 
       if (
@@ -336,7 +335,7 @@
 
 
   /* =======================================================
-     Student
+     STUDENT PROFILE
   ======================================================= */
 
   window.getStudentProfile =
@@ -360,7 +359,7 @@
       if (!client) {
 
         throw new Error(
-          "Supabaseが初期化されていません。"
+          "Supabaseの設定を読み込めませんでした。"
         );
 
       }
@@ -371,7 +370,9 @@
         error
       } =
         await client
-          .from("students")
+          .from(
+            "students"
+          )
           .select(`
             id,
             student_no,
@@ -380,6 +381,7 @@
             class_name,
             class_id,
             auth_user_id,
+            qr_token,
             active,
             created_at,
             updated_at
@@ -394,7 +396,7 @@
       if (error) {
 
         console.error(
-          "students:",
+          "getStudentProfile:",
           error
         );
 
@@ -412,7 +414,7 @@
 
 
   /* =======================================================
-     Current Role
+     CURRENT ROLE
   ======================================================= */
 
   window.getCurrentRole =
@@ -429,7 +431,7 @@
 
 
   /* =======================================================
-     Require Auth
+     REQUIRE AUTH
   ======================================================= */
 
   window.requireAuth =
@@ -442,8 +444,9 @@
       if (!session) {
 
         window.location.replace(
-          window.APP_ROUTES.login
+          APP_ROUTES.login
         );
+
 
         return null;
 
@@ -456,7 +459,7 @@
 
 
   /* =======================================================
-     Require Teacher
+     REQUIRE TEACHER
   ======================================================= */
 
   window.requireTeacher =
@@ -469,8 +472,9 @@
       if (!session) {
 
         window.location.replace(
-          window.APP_ROUTES.login
+          APP_ROUTES.login
         );
+
 
         return null;
 
@@ -493,9 +497,8 @@
         );
 
 
-        window.location.replace(
-          window.APP_ROUTES.login
-        );
+        await forceLocalLogout();
+
 
         return null;
 
@@ -508,8 +511,9 @@
       ) {
 
         window.location.replace(
-          window.APP_ROUTES.studentTests
+          APP_ROUTES.studentTests
         );
+
 
         return null;
 
@@ -522,7 +526,7 @@
 
 
   /* =======================================================
-     Require Student
+     REQUIRE STUDENT
   ======================================================= */
 
   window.requireStudent =
@@ -535,8 +539,9 @@
       if (!session) {
 
         window.location.replace(
-          window.APP_ROUTES.login
+          APP_ROUTES.login
         );
+
 
         return null;
 
@@ -559,9 +564,8 @@
         );
 
 
-        window.location.replace(
-          window.APP_ROUTES.login
-        );
+        await forceLocalLogout();
+
 
         return null;
 
@@ -573,16 +577,34 @@
       ) {
 
         window.location.replace(
-          window.APP_ROUTES.teacher
+          APP_ROUTES.teacher
         );
+
 
         return null;
 
       }
 
 
-      const student =
-        await window.getStudentProfile();
+      let student;
+
+
+      try {
+
+        student =
+          await window.getStudentProfile();
+
+      } catch (error) {
+
+        console.error(
+          "requireStudent student:",
+          error
+        );
+
+
+        return null;
+
+      }
 
 
       if (!student) {
@@ -590,6 +612,10 @@
         alert(
           "このアカウントは生徒マスターに紐付いていません。"
         );
+
+
+        await window.logout();
+
 
         return null;
 
@@ -604,7 +630,9 @@
           "この生徒アカウントは現在利用できません。"
         );
 
+
         await window.logout();
+
 
         return null;
 
@@ -623,7 +651,7 @@
 
 
   /* =======================================================
-     Login
+     LOGIN
   ======================================================= */
 
   window.login =
@@ -647,9 +675,9 @@
 
       const cleanEmail =
         String(
-          email || ""
-        )
-          .trim();
+          email ||
+          ""
+        ).trim();
 
 
       if (!cleanEmail) {
@@ -708,7 +736,7 @@
 
 
   /* =======================================================
-     Login後遷移
+     REDIRECT AFTER LOGIN
   ======================================================= */
 
   window.redirectAfterLogin =
@@ -720,9 +748,12 @@
 
       if (!session) {
 
-        throw new Error(
-          "ログインセッションを取得できませんでした。"
+        window.location.replace(
+          APP_ROUTES.login
         );
+
+
+        return;
 
       }
 
@@ -731,19 +762,28 @@
         await window.getProfile();
 
 
+      /*
+        Teacher / Admin
+      */
+
       if (
         profile.role === "teacher" ||
         profile.role === "admin"
       ) {
 
         window.location.replace(
-          window.APP_ROUTES.teacher
+          APP_ROUTES.teacher
         );
+
 
         return;
 
       }
 
+
+      /*
+        Student
+      */
 
       if (
         profile.role === "student"
@@ -774,8 +814,9 @@
 
 
         window.location.replace(
-          window.APP_ROUTES.studentTests
+          APP_ROUTES.studentTests
         );
+
 
         return;
 
@@ -790,29 +831,56 @@
 
 
   /* =======================================================
-     Logout
+     LOCAL AUTH CLEANUP
   ======================================================= */
 
-  window.logout =
-    async function () {
+  async function clearAuthStorage() {
 
-      const client =
-        getClient();
+    /*
+      localStorage
+    */
+
+    try {
+
+      const keys =
+        [];
 
 
-      if (client) {
+      for (
+        let i = 0;
+        i < localStorage.length;
+        i++
+      ) {
 
-        try {
+        const key =
+          localStorage.key(
+            i
+          );
 
-          await client
-            .auth
-            .signOut();
 
-        } catch (error) {
+        if (!key) {
+          continue;
+        }
 
-          console.error(
-            "logout:",
-            error
+
+        /*
+          Supabase v2の認証キー
+          sb-xxxx-auth-token
+
+          旧構成なども考慮。
+        */
+
+        if (
+          key.includes(
+            "auth-token"
+          ) ||
+          key.startsWith(
+            "sb-"
+          )
+        ) {
+
+          keys.push(
+            key
           );
 
         }
@@ -820,15 +888,165 @@
       }
 
 
-      window.location.replace(
-        window.APP_ROUTES.login
+      for (
+        const key
+        of keys
+      ) {
+
+        try {
+
+          localStorage.removeItem(
+            key
+          );
+
+        } catch (_) {}
+
+      }
+
+    } catch (error) {
+
+      console.error(
+        "localStorage cleanup:",
+        error
       );
+
+    }
+
+
+    /*
+      sessionStorage
+    */
+
+    try {
+
+      sessionStorage.clear();
+
+    } catch (error) {
+
+      console.error(
+        "sessionStorage cleanup:",
+        error
+      );
+
+    }
+
+  }
+
+
+  /* =======================================================
+     FORCE LOCAL LOGOUT
+  ======================================================= */
+
+  async function forceLocalLogout() {
+
+    await clearAuthStorage();
+
+
+    window.location.replace(
+      APP_ROUTES.login
+    );
+
+  }
+
+
+  /* =======================================================
+     LOGOUT
+     
+     重要
+     -------------------------------------------------------
+     1. Supabase signOut
+     2. 認証Storage削除
+     3. loginへreplace
+  ======================================================= */
+
+  window.logout =
+    async function () {
+
+      /*
+        二重クリック防止
+      */
+
+      if (
+        window.__LOGGING_OUT__
+      ) {
+
+        return;
+
+      }
+
+
+      window.__LOGGING_OUT__ =
+        true;
+
+
+      try {
+
+        const client =
+          getClient();
+
+
+        if (client) {
+
+          try {
+
+            /*
+              Supabaseセッションを破棄
+            */
+
+            const {
+              error
+            } =
+              await client
+                .auth
+                .signOut();
+
+
+            if (error) {
+
+              console.error(
+                "Supabase signOut:",
+                error
+              );
+
+            }
+
+          } catch (error) {
+
+            console.error(
+              "Supabase logout:",
+              error
+            );
+
+          }
+
+        }
+
+      } finally {
+
+        /*
+          Supabase signOutが失敗しても
+          ローカル認証情報を消す。
+        */
+
+        await clearAuthStorage();
+
+
+        /*
+          戻るボタンで保護ページへ
+          戻りにくくする。
+        */
+
+        window.location.replace(
+          APP_ROUTES.login
+        );
+
+      }
 
     };
 
 
   /* =======================================================
-     URL Helper
+     URL PARAMETER
   ======================================================= */
 
   window.getUrlParam =
@@ -850,7 +1068,7 @@
 
 
   /* =======================================================
-     Require URL Parameter
+     REQUIRED URL PARAMETER
   ======================================================= */
 
   window.requireUrlParam =
@@ -879,7 +1097,19 @@
 
 
   /* =======================================================
-     Auth State
+     CURRENT PATH
+  ======================================================= */
+
+  window.getCurrentPath =
+    function () {
+
+      return window.location.pathname;
+
+    };
+
+
+  /* =======================================================
+     AUTH STATE LISTENER
   ======================================================= */
 
   const client =
@@ -890,7 +1120,14 @@
 
     client.auth
       .onAuthStateChange(
-        event => {
+        (
+          event
+        ) => {
+
+          /*
+            ログアウト済みなら
+            ログイン画面へ。
+          */
 
           if (
             event ===
@@ -898,6 +1135,8 @@
           ) {
 
             if (
+              window.location.pathname !==
+                APP_ROUTES.login &&
               !window.location.pathname
                 .startsWith(
                   "/login"
@@ -905,7 +1144,7 @@
             ) {
 
               window.location.replace(
-                window.APP_ROUTES.login
+                APP_ROUTES.login
               );
 
             }
@@ -916,5 +1155,6 @@
       );
 
   }
+
 
 })();

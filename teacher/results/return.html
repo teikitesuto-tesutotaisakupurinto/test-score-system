@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>
+    答案返却 - テスト成績システム
+  </title>
+
+  <link
+    rel="stylesheet"
+    href="/css/common.css"
+  >
+
+  <link
+    rel="stylesheet"
+    href="/css/answer-return.css"
+  >
+
+</head>
+
+
+<body>
+
+
+<header class="topbar">
+
+  <div class="system-name">
+    テスト成績システム
+  </div>
+
+
+  <div class="topbar-space"></div>
+
+
+  <span id="teacherName">
+    -
+  </span>
+
+
+  <button
+    id="logoutButton"
+    class="logout-button"
+    type="button"
+  >
+    ログアウト
+  </button>
+
+</header>
+
+
+
+<div class="teacher-layout">
+
+
+  <aside class="sidebar">
+
+    <div class="sidebar-title">
+      成績
+    </div>
+
+
+    <a
+      href="/teacher/results/summary"
+      class="menu-link"
+    >
+      結果総括表
+    </a>
+
+
+    <a
+      href="/teacher/results/students"
+      class="menu-link"
+    >
+      生徒別成績
+    </a>
+
+
+    <a
+      href="/teacher/results/questions"
+      class="menu-link"
+    >
+      設問別分析
+    </a>
+
+
+    <a
+      href="/teacher/results/return"
+      class="menu-link active"
+    >
+      答案返却
+    </a>
+
+  </aside>
+
+
+
+  <main class="main-content">
+
+
+    <div class="page-header">
+
+      <h1>
+        採点済み答案返却
+      </h1>
+
+    </div>
+
+
+
+    <div class="card">
+
+
+      <div class="form-group">
+
+        <label for="testSelect">
+          テスト
+        </label>
+
+
+        <select
+          id="testSelect"
+        >
+
+          <option value="">
+            テストを選択してください
+          </option>
+
+        </select>
+
+      </div>
+
+
+
+      <div
+        class="form-group"
+      >
+
+        <label for="studentSelect">
+          生徒
+        </label>
+
+
+        <select
+          id="studentSelect"
+          disabled
+        >
+
+          <option value="">
+            先にテストを選択してください
+          </option>
+
+        </select>
+
+      </div>
+
+
+
+      <div
+        class="return-actions"
+      >
+
+        <button
+          id="printButton"
+          class="btn btn-primary"
+          type="button"
+          disabled
+        >
+          印刷
+        </button>
+
+
+        <button
+          id="pdfButton"
+          class="btn"
+          type="button"
+          disabled
+        >
+          PDF保存
+        </button>
+
+      </div>
+
+
+    </div>
+
+
+
+    <div
+      id="returnPreview"
+      class="card return-preview"
+      style="display:none;"
+    >
+    </div>
+
+
+  </main>
+
+</div>
+
+
+
+<script
+  src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+></script>
+
+
+<script
+  src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"
+></script>
+
+
+<script src="/js/config.js"></script>
+
+<script src="/js/auth.js"></script>
+
+<script src="/js/teacher/answer-return.js"></script>
+
+
+</body>
+
+</html>

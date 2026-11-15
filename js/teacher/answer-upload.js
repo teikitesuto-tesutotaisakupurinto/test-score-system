@@ -1,16 +1,45 @@
+/* =========================================================
+   テスト成績システム
+   答案アップロード 完全版
+
+   対応:
+   JPG / JPEG / PNG / WEBP / GIF / BMP
+   PDF
+   ZIP
+
+   基本構造:
+
+   入力ファイル
+      ↓
+   file-parser
+      ↓
+   ページ画像
+      ↓
+   QR探索
+      ↓
+   QRがあるページ = 新しい答案
+      ↓
+   QRがない後続ページ = 直前の答案
+      ↓
+   answer_sheets
+      ↓
+   answer_sheet_pages
+========================================================= */
+
+
 (function () {
 
   "use strict";
 
 
-  let uploadTests = [];
+  let tests = [];
 
 
   /* =====================================================
      初期化
   ===================================================== */
 
-  async function initializeAnswerUpload() {
+  async function initialize() {
 
     const profile =
       await getProfile();
@@ -54,7 +83,7 @@
 
 
   /* =====================================================
-     テスト一覧
+     テスト
   ===================================================== */
 
   async function loadTests() {
@@ -70,8 +99,7 @@
           name,
           subject,
           grade,
-          class_name,
-          status
+          class_name
         `)
         .order(
           "created_at",
@@ -83,23 +111,19 @@
 
     if (error) {
 
-      console.error(
-        error
-      );
-
+      console.error(error);
 
       showMessage(
         "テスト一覧を取得できませんでした。",
         true
       );
 
-
       return;
 
     }
 
 
-    uploadTests =
+    tests =
       data || [];
 
 
@@ -116,7 +140,7 @@
       </option>
 
       ${
-        uploadTests
+        tests
           .map(
             test => `
 
@@ -129,12 +153,6 @@
                 ${
                   test.subject
                     ? ` / ${escapeHtml(test.subject)}`
-                    : ""
-                }
-
-                ${
-                  test.grade
-                    ? ` / ${escapeHtml(test.grade)}`
                     : ""
                 }
 
@@ -151,7 +169,7 @@
 
 
   /* =====================================================
-     アップロード開始
+     アップロード
   ===================================================== */
 
   document
@@ -234,14 +252,13 @@
 
 
           showMessage(
-            "すべてのファイルの処理が完了しました。"
+            "答案の処理が完了しました。"
           );
 
 
         } catch (error) {
 
           console.error(
-            "答案アップロード:",
             error
           );
 
@@ -267,7 +284,7 @@
 
 
   /* =====================================================
-     入力ファイル
+     1ファイル
   ===================================================== */
 
   async function processInputFile(
@@ -285,19 +302,8 @@
 
       setRowStatus(
         row,
-        "ファイル解析中..."
+        "解析中..."
       );
-
-
-      if (
-        !window.TEST_SCORE_FILES
-      ) {
-
-        throw new Error(
-          "共通ファイル処理エンジンが読み込まれていません。"
-        );
-
-      }
 
 
       const pages =
@@ -313,7 +319,7 @@
       ) {
 
         throw new Error(
-          `${file.name}からページを取得できませんでした。`
+          "ページを取得できませんでした。"
         );
 
       }
@@ -326,177 +332,39 @@
 
 
       /*
-        1つの入力ファイルを
-        1つのanswer_sheetとして扱う。
-
-        ZIPの場合はZIP全体を1答案とする。
-        複数答案ZIPはファイル単位で
-        分けてアップロードする方式を基本とする。
+        ページをQR単位で答案に分割
       */
 
-      const answerSheet =
-        await createAnswerSheet(
-          testId,
-          file.name
+      const groups =
+        await groupPagesByQr(
+          pages
         );
 
 
-      let qrValue =
-        null;
+      setRowStatus(
+        row,
+        `${groups.length}答案を検出`
+      );
 
-
-      /*
-        ページ処理
-      */
 
       for (
-        let index = 0;
-        index < pages.length;
-        index++
+        const group
+        of groups
       ) {
 
-        const page =
-          pages[index];
-
-
-        const pageNo =
-          index + 1;
-
-
-        const storagePath =
-          `${testId}/${answerSheet.id}/page-${String(pageNo).padStart(3, "0")}.png`;
-
-
-        /*
-          Storage
-        */
-
-        const {
-          error:
-            uploadError
-        } =
-          await supabaseClient
-            .storage
-            .from(
-              "answer-files"
-            )
-            .upload(
-              storagePath,
-              page.blob,
-              {
-
-                contentType:
-                  "image/png",
-
-                upsert:
-                  true
-
-              }
-            );
-
-
-        if (uploadError) {
-
-          throw uploadError;
-
-        }
-
-
-        /*
-          answer_sheet_pages
-        */
-
-        await saveAnswerPage({
-
-          answerSheetId:
-            answerSheet.id,
-
-          pageNo,
-
-          storagePath,
-
-          originalName:
-            page.name ||
-            file.name,
-
-          fileType:
-            "image/png",
-
-          width:
-            page.width,
-
-          height:
-            page.height
-
-        });
-
-
-        /*
-          QR
-        */
-
-        if (!qrValue) {
-
-          setRowStatus(
-            row,
-            `${pageNo}/${pages.length}ページ QR確認中...`
-          );
-
-
-          qrValue =
-            await readQRCode(
-              page.blob
-            );
-
-        }
-
-
-        setRowStatus(
-          row,
-          `${pageNo}/${pages.length}ページ処理済み`
+        await saveAnswerGroup(
+          testId,
+          group,
+          row
         );
 
       }
 
 
-      /*
-        QRが見つかった
-      */
-
-      if (qrValue) {
-
-        const matched =
-          await matchAnswerByQr(
-            answerSheet.id,
-            qrValue
-          );
-
-
-        if (matched) {
-
-          setRowStatus(
-            row,
-            `QR紐付け完了：${matched.studentNo} ${matched.name}`
-          );
-
-        } else {
-
-          setRowStatus(
-            row,
-            "QR読取済み・生徒未登録",
-            true
-          );
-
-        }
-
-      } else {
-
-        setRowStatus(
-          row,
-          "QR未読取 → 未紐付け"
-        );
-
-      }
+      setRowStatus(
+        row,
+        `${groups.length}答案登録完了`
+      );
 
 
     } catch (error) {
@@ -519,12 +387,324 @@
 
 
   /* =====================================================
+     QR単位でページをグループ化
+  ===================================================== */
+
+  async function groupPagesByQr(
+    pages
+  ) {
+
+    const groups = [];
+
+    let currentGroup =
+      null;
+
+
+    for (
+      const page
+      of pages
+    ) {
+
+      const qr =
+        await readQRCode(
+          page.blob
+        );
+
+
+      /*
+        QRが見つかった
+        → 新しい答案
+      */
+
+      if (qr) {
+
+        currentGroup = {
+
+          qrValue:
+            qr,
+
+          pages: []
+
+        };
+
+
+        groups.push(
+          currentGroup
+        );
+
+      }
+
+
+      /*
+        QRがない最初のページ
+        → 答案を特定できない
+      */
+
+      if (!currentGroup) {
+
+        currentGroup = {
+
+          qrValue:
+            null,
+
+          pages: []
+
+        };
+
+
+        groups.push(
+          currentGroup
+        );
+
+      }
+
+
+      /*
+        現在の答案にページ追加
+      */
+
+      currentGroup.pages.push(
+        page
+      );
+
+    }
+
+
+    return groups;
+
+  }
+
+
+  /* =====================================================
+     答案グループ保存
+  ===================================================== */
+
+  async function saveAnswerGroup(
+    testId,
+    group,
+    row
+  ) {
+
+    const student =
+      group.qrValue
+        ? await findStudentByQr(
+            group.qrValue
+          )
+        : null;
+
+
+    /*
+      answer_sheets
+    */
+
+    const answer =
+      await createAnswerSheet(
+        testId,
+        student,
+        group.qrValue
+      );
+
+
+    /*
+      ページ保存
+    */
+
+    for (
+      let i = 0;
+      i < group.pages.length;
+      i++
+    ) {
+
+      const page =
+        group.pages[i];
+
+
+      const pageNo =
+        i + 1;
+
+
+      const path =
+        `${testId}/${answer.id}/page-${String(pageNo).padStart(3, "0")}.png`;
+
+
+      const {
+        error:
+          uploadError
+      } =
+        await supabaseClient
+          .storage
+          .from(
+            "answer-files"
+          )
+          .upload(
+            path,
+            page.blob,
+            {
+
+              contentType:
+                "image/png",
+
+              upsert:
+                true
+
+            }
+          );
+
+
+      if (uploadError) {
+
+        throw uploadError;
+
+      }
+
+
+      await saveAnswerPage({
+
+        answerSheetId:
+          answer.id,
+
+        pageNo,
+
+        storagePath:
+          path,
+
+        originalName:
+          page.name ||
+          "page",
+
+        fileType:
+          "image/png",
+
+        width:
+          page.width,
+
+        height:
+          page.height
+
+      });
+
+    }
+
+
+    /*
+      QRから生徒を特定
+    */
+
+    if (student) {
+
+      await updateAnswerStudent(
+        answer.id,
+        student.id,
+        group.qrValue
+      );
+
+    }
+
+
+    if (row) {
+
+      const label =
+        student
+          ? `${student.student_no} ${student.name}`
+          : "未紐付け";
+
+
+      addDetailStatus(
+        row,
+        label
+      );
+
+    }
+
+  }
+
+
+  /* =====================================================
+     生徒検索
+  ===================================================== */
+
+  async function findStudentByQr(
+    qrValue
+  ) {
+
+    const prefix =
+      "STUDENT:";
+
+
+    if (
+      !qrValue.startsWith(
+        prefix
+      )
+    ) {
+
+      return null;
+
+    }
+
+
+    const studentNo =
+      qrValue
+        .substring(
+          prefix.length
+        )
+        .trim();
+
+
+    if (
+      !/^\d{6}$/.test(
+        studentNo
+      )
+    ) {
+
+      return null;
+
+    }
+
+
+    const {
+      data,
+      error
+    } =
+    await supabaseClient
+      .from(
+        "students"
+      )
+      .select(`
+        id,
+        student_no,
+        name
+      `)
+      .eq(
+        "student_no",
+        studentNo
+      )
+      .eq(
+        "active",
+        true
+      )
+      .maybeSingle();
+
+
+    if (error) {
+
+      throw error;
+
+    }
+
+
+    return data || null;
+
+  }
+
+
+  /* =====================================================
      answer_sheets
   ===================================================== */
 
   async function createAnswerSheet(
     testId,
-    originalName
+    student,
+    qrValue
   ) {
 
     const session =
@@ -553,11 +733,21 @@
           test_id:
             testId,
 
+          student_id:
+            student?.id ||
+            null,
+
           original_file_path:
             null,
 
+          qr_value:
+            qrValue ||
+            null,
+
           status:
-            "unmatched",
+            student
+              ? "matched"
+              : "unmatched",
 
           uploaded_by:
             session.user.id
@@ -646,6 +836,50 @@
 
 
   /* =====================================================
+     生徒紐付け
+  ===================================================== */
+
+  async function updateAnswerStudent(
+    answerId,
+    studentId,
+    qrValue
+  ) {
+
+    const {
+      error
+    } =
+      await supabaseClient
+        .from(
+          "answer_sheets"
+        )
+        .update({
+
+          student_id:
+            studentId,
+
+          qr_value:
+            qrValue,
+
+          status:
+            "matched"
+
+        })
+        .eq(
+          "id",
+          answerId
+        );
+
+
+    if (error) {
+
+      throw error;
+
+    }
+
+  }
+
+
+  /* =====================================================
      QR読み取り
   ===================================================== */
 
@@ -658,11 +892,6 @@
       "undefined"
     ) {
 
-      console.warn(
-        "jsQRが読み込まれていません。"
-      );
-
-
       return null;
 
     }
@@ -673,14 +902,6 @@
         blob
       );
 
-
-    /*
-      大きすぎる画像は
-      QR読み取り用に縮小する。
-
-      元画像はStorageに
-      そのまま保存済み。
-    */
 
     const maxSize =
       3000;
@@ -753,10 +974,6 @@
     );
 
 
-    /*
-      通常読み取り
-    */
-
     const imageData =
       context.getImageData(
         0,
@@ -766,7 +983,7 @@
       );
 
 
-    let result =
+    const result =
       jsQR(
         imageData.data,
         imageData.width,
@@ -778,7 +995,7 @@
       );
 
 
-    if (result) {
+    if (result?.data) {
 
       return result.data;
 
@@ -786,94 +1003,8 @@
 
 
     /*
-      グレースケール＋二値化
-      の簡易再試行
+      簡易二値化して再試行
     */
-
-    const processed =
-      preprocessForQr(
-        canvas
-      );
-
-
-    const processedData =
-      processed
-        .getContext(
-          "2d",
-          {
-            willReadFrequently:
-              true
-          }
-        )
-        .getImageData(
-          0,
-          0,
-          processed.width,
-          processed.height
-        );
-
-
-    result =
-      jsQR(
-        processedData.data,
-        processedData.width,
-        processedData.height,
-        {
-          inversionAttempts:
-            "attemptBoth"
-        }
-      );
-
-
-    return result?.data ||
-      null;
-
-  }
-
-
-  /* =====================================================
-     QR前処理
-  ===================================================== */
-
-  function preprocessForQr(
-    sourceCanvas
-  ) {
-
-    const canvas =
-      document.createElement(
-        "canvas"
-      );
-
-
-    canvas.width =
-      sourceCanvas.width;
-
-
-    canvas.height =
-      sourceCanvas.height;
-
-
-    const context =
-      canvas.getContext(
-        "2d"
-      );
-
-
-    context.drawImage(
-      sourceCanvas,
-      0,
-      0
-    );
-
-
-    const imageData =
-      context.getImageData(
-        0,
-        0,
-        canvas.width,
-        canvas.height
-      );
-
 
     const data =
       imageData.data;
@@ -887,11 +1018,9 @@
 
       const gray =
         Math.round(
-          (
-            data[i] * 0.299 +
-            data[i + 1] * 0.587 +
-            data[i + 2] * 0.114
-          )
+          data[i] * 0.299 +
+          data[i + 1] * 0.587 +
+          data[i + 2] * 0.114
         );
 
 
@@ -913,152 +1042,26 @@
     }
 
 
-    context.putImageData(
-      imageData,
-      0,
-      0
-    );
+    const retry =
+      jsQR(
+        data,
+        width,
+        height,
+        {
+          inversionAttempts:
+            "attemptBoth"
+        }
+      );
 
 
-    return canvas;
-
-  }
-
-
-  /* =====================================================
-     QR → 生徒
-  ===================================================== */
-
-  async function matchAnswerByQr(
-    answerSheetId,
-    qrValue
-  ) {
-
-    const prefix =
-      "STUDENT:";
-
-
-    if (
-      !qrValue ||
-      !qrValue.startsWith(
-        prefix
-      )
-    ) {
-
-      return null;
-
-    }
-
-
-    const studentNo =
-      qrValue
-        .substring(
-          prefix.length
-        )
-        .trim();
-
-
-    /*
-      6桁固定
-    */
-
-    if (
-      !/^\d{6}$/.test(
-        studentNo
-      )
-    ) {
-
-      return null;
-
-    }
-
-
-    const {
-      data: student,
-      error
-    } =
-      await supabaseClient
-        .from(
-          "students"
-        )
-        .select(`
-          id,
-          student_no,
-          name
-        `)
-        .eq(
-          "student_no",
-          studentNo
-        )
-        .eq(
-          "active",
-          true
-        )
-        .maybeSingle();
-
-
-    if (error) {
-
-      throw error;
-
-    }
-
-
-    if (!student) {
-
-      return null;
-
-    }
-
-
-    const {
-      error:
-        updateError
-    } =
-      await supabaseClient
-        .from(
-          "answer_sheets"
-        )
-        .update({
-
-          student_id:
-            student.id,
-
-          qr_value:
-            qrValue,
-
-          status:
-            "matched"
-
-        })
-        .eq(
-          "id",
-          answerSheetId
-        );
-
-
-    if (updateError) {
-
-      throw updateError;
-
-    }
-
-
-    return {
-
-      studentNo:
-        student.student_no,
-
-      name:
-        student.name
-
-    };
+    return retry?.data ||
+      null;
 
   }
 
 
   /* =====================================================
-     画像
+     Image
   ===================================================== */
 
   function loadImage(
@@ -1173,6 +1176,17 @@
         待機中
       </span>
 
+
+      <div
+        class="upload-detail"
+        style="
+          margin-top:5px;
+          font-size:12px;
+          color:#666;
+        "
+      >
+      </div>
+
     `;
 
 
@@ -1213,6 +1227,41 @@
       error
         ? "#c62828"
         : "#16834b";
+
+  }
+
+
+  function addDetailStatus(
+    row,
+    text
+  ) {
+
+    const detail =
+      row.querySelector(
+        ".upload-detail"
+      );
+
+
+    if (!detail) {
+
+      return;
+
+    }
+
+
+    const item =
+      document.createElement(
+        "div"
+      );
+
+
+    item.textContent =
+      text;
+
+
+    detail.appendChild(
+      item
+    );
 
   }
 
@@ -1307,6 +1356,6 @@
      START
   ===================================================== */
 
-  initializeAnswerUpload();
+  initialize();
 
 })();

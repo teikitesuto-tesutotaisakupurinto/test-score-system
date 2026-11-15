@@ -1,7 +1,30 @@
+/* =========================================================
+   テスト成績システム
+   共通ファイル解析
+
+   対応:
+   JPG
+   JPEG
+   PNG
+   WEBP
+   GIF
+   BMP
+   PDF
+   ZIP
+
+   出力はすべて
+   「ページ画像」
+   に統一する。
+========================================================= */
+
 (function () {
 
   "use strict";
 
+
+  /* =======================================================
+     対応形式
+  ======================================================= */
 
   const IMAGE_EXTENSIONS = [
 
@@ -16,21 +39,31 @@
 
 
   const PDF_EXTENSIONS = [
+
     "pdf"
+
   ];
 
 
   const ZIP_EXTENSIONS = [
+
     "zip"
+
   ];
 
+
+  /* =======================================================
+     拡張子
+  ======================================================= */
 
   function getExtension(
     filename
   ) {
 
     const clean =
-      String(filename)
+      String(
+        filename || ""
+      )
         .split("?")[0]
         .toLowerCase();
 
@@ -53,13 +86,20 @@
   }
 
 
+  /* =======================================================
+     判定
+  ======================================================= */
+
   function isImage(
     filename
   ) {
 
-    return IMAGE_EXTENSIONS.includes(
-      getExtension(filename)
-    );
+    return IMAGE_EXTENSIONS
+      .includes(
+        getExtension(
+          filename
+        )
+      );
 
   }
 
@@ -68,9 +108,12 @@
     filename
   ) {
 
-    return PDF_EXTENSIONS.includes(
-      getExtension(filename)
-    );
+    return PDF_EXTENSIONS
+      .includes(
+        getExtension(
+          filename
+        )
+      );
 
   }
 
@@ -79,9 +122,12 @@
     filename
   ) {
 
-    return ZIP_EXTENSIONS.includes(
-      getExtension(filename)
-    );
+    return ZIP_EXTENSIONS
+      .includes(
+        getExtension(
+          filename
+        )
+      );
 
   }
 
@@ -99,90 +145,23 @@
   }
 
 
-  async function imageToPng(
-    blob
-  ) {
-
-    const image =
-      await loadImage(
-        blob
-      );
-
-
-    const canvas =
-      document.createElement(
-        "canvas"
-      );
-
-
-    canvas.width =
-      image.naturalWidth;
-
-
-    canvas.height =
-      image.naturalHeight;
-
-
-    const context =
-      canvas.getContext(
-        "2d"
-      );
-
-
-    /*
-      白背景にしておく。
-      GIF/WebP/BMP等の透明背景問題を
-      答案画像側で防ぐ。
-    */
-
-    context.fillStyle =
-      "#ffffff";
-
-
-    context.fillRect(
-      0,
-      0,
-      canvas.width,
-      canvas.height
-    );
-
-
-    context.drawImage(
-      image,
-      0,
-      0
-    );
-
-
-    const png =
-      await canvasToPng(
-        canvas
-      );
-
-
-    return {
-
-      blob:
-        png,
-
-      width:
-        canvas.width,
-
-      height:
-        canvas.height
-
-    };
-
-  }
-
+  /* =======================================================
+     画像
+  ======================================================= */
 
   async function parseImage(
     file
   ) {
 
-    const result =
-      await imageToPng(
+    const image =
+      await loadImage(
         file
+      );
+
+
+    const png =
+      await imageToPng(
+        image
       );
 
 
@@ -200,13 +179,13 @@
           1,
 
         blob:
-          result.blob,
+          png,
 
         width:
-          result.width,
+          image.naturalWidth,
 
         height:
-          result.height
+          image.naturalHeight
 
       }
 
@@ -215,9 +194,24 @@
   }
 
 
+  /* =======================================================
+     PDF
+  ======================================================= */
+
   async function parsePdf(
     file
   ) {
+
+    if (
+      !window.TEST_SCORE_PDF
+    ) {
+
+      throw new Error(
+        "PDF処理エンジンが読み込まれていません。"
+      );
+
+    }
+
 
     const pages =
       await window.TEST_SCORE_PDF
@@ -254,6 +248,10 @@
   }
 
 
+  /* =======================================================
+     ZIP
+  ======================================================= */
+
   async function parseZip(
     file
   ) {
@@ -279,6 +277,10 @@
     const entries = [];
 
 
+    /*
+      ZIP内を取得
+    */
+
     for (
       const [
         path,
@@ -289,6 +291,10 @@
       )
     ) {
 
+      /*
+        フォルダ除外
+      */
+
       if (
         entry.dir
       ) {
@@ -297,6 +303,10 @@
 
       }
 
+
+      /*
+        対応ファイルだけ
+      */
 
       if (
         !isImage(path) &&
@@ -330,6 +340,25 @@
     }
 
 
+    /*
+      何もない
+    */
+
+    if (
+      !entries.length
+    ) {
+
+      throw new Error(
+        "ZIP内に対応ファイルがありません。"
+      );
+
+    }
+
+
+    /*
+      ファイル名順
+    */
+
     entries.sort(
       (a, b) =>
         a.path.localeCompare(
@@ -346,14 +375,23 @@
     const result = [];
 
 
-    let sequence =
+    let pageSequence =
       1;
 
+
+    /*
+      ZIP内部ファイル処理
+    */
 
     for (
       const entry
       of entries
     ) {
+
+
+      /*
+        PDF
+      */
 
       if (
         isPdf(
@@ -386,7 +424,7 @@
               entry.path,
 
             pageNo:
-              sequence++,
+              pageSequence++,
 
             blob:
               page.blob,
@@ -401,40 +439,52 @@
 
         }
 
-      } else {
 
-        const image =
-          await imageToPng(
-            entry.blob
-          );
-
-
-        result.push({
-
-          type:
-            "zip-image",
-
-          name:
-            entry.name,
-
-          sourcePath:
-            entry.path,
-
-          pageNo:
-            sequence++,
-
-          blob:
-            image.blob,
-
-          width:
-            image.width,
-
-          height:
-            image.height
-
-        });
+        continue;
 
       }
+
+
+      /*
+        画像
+      */
+
+      const image =
+        await loadImage(
+          entry.blob
+        );
+
+
+      const png =
+        await imageToPng(
+          image
+        );
+
+
+      result.push({
+
+        type:
+          "zip-image",
+
+        name:
+          entry.name,
+
+        sourcePath:
+          entry.path,
+
+        pageNo:
+          pageSequence++,
+
+        blob:
+          png,
+
+        width:
+          image.naturalWidth,
+
+        height:
+          image.naturalHeight
+
+      });
 
     }
 
@@ -443,6 +493,10 @@
 
   }
 
+
+  /* =======================================================
+     ファイル解析
+  ======================================================= */
 
   async function parseFile(
     file
@@ -494,6 +548,68 @@
   }
 
 
+  /* =======================================================
+     Image → PNG
+  ======================================================= */
+
+  async function imageToPng(
+    image
+  ) {
+
+    const canvas =
+      document.createElement(
+        "canvas"
+      );
+
+
+    canvas.width =
+      image.naturalWidth;
+
+
+    canvas.height =
+      image.naturalHeight;
+
+
+    const context =
+      canvas.getContext(
+        "2d"
+      );
+
+
+    /*
+      背景を白に統一
+    */
+
+    context.fillStyle =
+      "#ffffff";
+
+
+    context.fillRect(
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
+
+
+    context.drawImage(
+      image,
+      0,
+      0
+    );
+
+
+    return await canvasToPng(
+      canvas
+    );
+
+  }
+
+
+  /* =======================================================
+     Blob → Image
+  ======================================================= */
+
   function loadImage(
     blob
   ) {
@@ -521,6 +637,7 @@
               url
             );
 
+
             resolve(
               image
             );
@@ -534,6 +651,7 @@
             URL.revokeObjectURL(
               url
             );
+
 
             reject(
               new Error(
@@ -552,6 +670,10 @@
 
   }
 
+
+  /* =======================================================
+     Canvas → PNG
+  ======================================================= */
 
   function canvasToPng(
     canvas
@@ -593,11 +715,17 @@
   }
 
 
+  /* =======================================================
+     ファイル名安全化
+  ======================================================= */
+
   function sanitizeFileName(
     filename
   ) {
 
-    return String(filename)
+    return String(
+      filename || ""
+    )
       .replace(
         /[^a-zA-Z0-9._-]/g,
         "_"
@@ -605,6 +733,10 @@
 
   }
 
+
+  /* =======================================================
+     公開
+  ======================================================= */
 
   window.TEST_SCORE_FILES = {
 
@@ -629,5 +761,6 @@
     sanitizeFileName
 
   };
+
 
 })();

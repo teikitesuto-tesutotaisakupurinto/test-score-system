@@ -20,6 +20,91 @@
   href="css/style.css"
 >
 
+<style>
+
+/*
+  既存style.cssのレイアウトは変更しない。
+  答案アップロード専用の最小限の追加だけ。
+*/
+
+.upload-files {
+  margin-top: 12px;
+}
+
+.upload-file {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+
+  padding: 9px 10px;
+
+  border-bottom: 1px solid #e6e9ed;
+
+  background: #fff;
+}
+
+.upload-file-name {
+  min-width: 0;
+
+  overflow: hidden;
+
+  text-overflow: ellipsis;
+
+  white-space: nowrap;
+}
+
+.upload-progress {
+  margin-top: 12px;
+}
+
+.upload-progress-bar {
+  width: 0;
+  height: 7px;
+
+  background: #1d4ed8;
+
+  transition: width .2s;
+}
+
+.upload-progress-track {
+  height: 7px;
+
+  overflow: hidden;
+
+  background: #e5e7eb;
+}
+
+.upload-status {
+  margin-top: 10px;
+
+  white-space: pre-line;
+}
+
+.upload-result {
+  margin-top: 12px;
+
+  padding: 10px;
+
+  background: #f5f6f7;
+
+  border: 1px solid #dfe4ea;
+
+  border-radius: 6px;
+
+  white-space: pre-line;
+}
+
+.upload-result.error {
+  color: #b42318;
+}
+
+.upload-result.success {
+  color: #175b2c;
+}
+
+</style>
+
 </head>
 
 
@@ -30,7 +115,7 @@
 
 
   <!-- ===================================================
-       SIDE
+       元のサイドバー構造を維持
   ==================================================== -->
 
   <aside class="side">
@@ -40,7 +125,9 @@
     </h2>
 
 
-    <a href="teacher.html">
+    <a
+      href="teacher.html"
+    >
       ダッシュボード
     </a>
 
@@ -53,12 +140,16 @@
     </a>
 
 
-    <a href="teacher-answers-unmatched.html">
+    <a
+      href="teacher-answers-unmatched.html"
+    >
       未紐付け
     </a>
 
 
-    <a href="teacher-marking.html">
+    <a
+      href="teacher-marking.html"
+    >
       採点
     </a>
 
@@ -66,51 +157,34 @@
 
 
   <!-- ===================================================
-       MAIN
+       元のmain構造を維持
   ==================================================== -->
 
   <main class="main">
 
 
-    <div class="top">
+    <h1>
+      答案アップロード
+    </h1>
 
-      <div>
-
-        <h1>
-          答案アップロード
-        </h1>
-
-        <p class="small muted">
-          生徒の答案をアップロードします。
-        </p>
-
-      </div>
-
-
-      <button
-        id="logoutButton"
-        type="button"
-      >
-        ログアウト
-      </button>
-
-    </div>
-
-
-    <!-- =================================================
-         TEST
-    ================================================== -->
 
     <div class="card">
 
+
+      <!-- ===============================================
+           TEST
+      ================================================ -->
+
       <div class="form-row">
 
-        <label for="test">
+        <label>
           テスト
         </label>
 
 
-        <select id="test">
+        <select
+          id="test"
+        >
 
           <option value="">
             テストを選択してください
@@ -127,12 +201,14 @@
 
       <div class="form-row">
 
-        <label for="answerType">
+        <label>
           答案種類
         </label>
 
 
-        <select id="answerType">
+        <select
+          id="answerType"
+        >
 
           <option value="student">
             生徒答案
@@ -154,7 +230,7 @@
 
       <div class="form-row">
 
-        <label for="files">
+        <label>
           ファイル
         </label>
 
@@ -171,38 +247,37 @@
 
       <p class="small muted">
 
-        PDF / JPG / JPEG / PNG / WEBP / ZIPに対応しています。
+        PDF / JPG / JPEG / PNG / WEBP / ZIP
 
         <br>
 
-        ZIPの場合は内部の対応ファイルを展開して処理します。
+        PDFはページ単位、ZIPは内部の対応ファイルを展開して処理します。
 
       </p>
 
 
       <!-- ===============================================
-           FILE LIST
+           SELECTED FILES
       ================================================ -->
 
       <div
         id="fileList"
-        class="card hidden"
-        style="margin-top:12px"
+        class="upload-files hidden"
       ></div>
 
 
       <!-- ===============================================
-           ACTIONS
+           ACTION
       ================================================ -->
 
       <div class="actions">
 
         <button
-          id="upload"
           class="primary"
+          id="upload"
           type="button"
         >
-          アップロードして処理
+          アップロード
         </button>
 
 
@@ -222,27 +297,16 @@
 
       <div
         id="progressArea"
-        class="hidden"
-        style="margin-top:14px"
+        class="upload-progress hidden"
       >
 
         <div
-          style="
-            height:8px;
-            background:#e5e7eb;
-            border-radius:4px;
-            overflow:hidden;
-          "
+          class="upload-progress-track"
         >
 
           <div
             id="progressBar"
-            style="
-              width:0;
-              height:100%;
-              background:#1d4ed8;
-              transition:width .2s;
-            "
+            class="upload-progress-bar"
           ></div>
 
         </div>
@@ -259,11 +323,12 @@
 
 
       <!-- ===============================================
-           MESSAGE
+           STATUS
       ================================================ -->
 
       <p
         id="msg"
+        class="upload-status"
       ></p>
 
 
@@ -272,18 +337,17 @@
       ================================================ -->
 
       <div
-        id="resultList"
-        class="hidden"
-        style="margin-top:12px"
+        id="result"
+        class="upload-result hidden"
       ></div>
 
 
     </div>
 
 
-    <!-- =================================================
+    <!-- ===============================================
          SPEC
-    ================================================== -->
+    ================================================ -->
 
     <div class="card">
 
@@ -310,23 +374,15 @@
 
         <br>
 
-        ・生徒答案はQRを読み取り、生徒を自動特定します。
+        ・生徒答案はQR読み取り後に生徒紐付けを行います。
 
         <br>
 
-        ・QR枠が設定されている場合は、その枠を優先して読み取ります。
+        ・解答用紙・模範解答は模範解答Storageへ保存します。
 
         <br>
 
-        ・QR枠がない場合はページ全体からQRを探索します。
-
-        <br>
-
-        ・答案ページはanswer_sheet_pagesへページ単位で保存します。
-
-        <br>
-
-        ・ページ対応にはpage_noを使用します。
+        ・答案ページと解答用紙ページはpage_noで対応します。
 
         <br>
 
@@ -377,32 +433,14 @@
 
 
 /* =========================================================
-   SUPABASE
-========================================================= */
-
-const db =
-  window.SB ||
-  window.supabaseClient;
-
-
-if (!db) {
-
-  throw new Error(
-    "Supabaseクライアントが初期化されていません。"
-  );
-
-}
-
-
-/* =========================================================
    STATE
 ========================================================= */
 
 let selectedFiles = [];
 
-let currentLayout = null;
+let layout = null;
 
-let currentStudents = [];
+let students = [];
 
 
 /* =========================================================
@@ -445,15 +483,15 @@ const clearButton =
   );
 
 
-const message =
+const msg =
   document.getElementById(
     "msg"
   );
 
 
-const resultList =
+const result =
   document.getElementById(
-    "resultList"
+    "result"
   );
 
 
@@ -479,36 +517,122 @@ const progressText =
    INIT
 ========================================================= */
 
-async function init() {
+requireRole(
+  "teacher"
+).then(
+  load
+);
+
+
+/* =========================================================
+   LOAD
+========================================================= */
+
+async function load() {
 
   try {
 
-    await requireRole(
-      "teacher"
-    );
-
-
-    setupEvents();
-
-
     await loadTests();
 
+    setupEvents();
 
   } catch (error) {
 
     console.error(
-      "init:",
       error
     );
 
 
-    showMessage(
+    showError(
       error.message ||
-      "初期化に失敗しました。",
-      true
+      "読み込みに失敗しました。"
     );
 
   }
+
+}
+
+
+/* =========================================================
+   TESTS
+========================================================= */
+
+async function loadTests() {
+
+  const {
+    data,
+    error
+  } =
+    await SB
+      .from(
+        "tests"
+      )
+      .select(
+        `
+        id,
+        name,
+        subject,
+        grade,
+        created_at
+        `
+      )
+      .order(
+        "created_at",
+        {
+          ascending:
+            false
+        }
+      );
+
+
+  if (error) {
+
+    throw error;
+
+  }
+
+
+  testSelect.innerHTML = `
+
+    <option value="">
+      テストを選択してください
+    </option>
+
+  `;
+
+
+  (
+    data || []
+  ).forEach(
+    test => {
+
+      const option =
+        document.createElement(
+          "option"
+        );
+
+
+      option.value =
+        test.id;
+
+
+      option.textContent =
+        [
+          test.name,
+          test.subject
+        ]
+          .filter(Boolean)
+          .join(
+            " / "
+          );
+
+
+      testSelect.appendChild(
+        option
+      );
+
+    }
+  );
 
 }
 
@@ -570,83 +694,6 @@ function setupEvents() {
 
 
 /* =========================================================
-   TESTS
-========================================================= */
-
-async function loadTests() {
-
-  const {
-    data,
-    error
-  } =
-    await db
-      .from(
-        "tests"
-      )
-      .select(
-        "id,name,subject,grade,created_at"
-      )
-      .order(
-        "created_at",
-        {
-          ascending:
-            false
-        }
-      );
-
-
-  if (error) {
-
-    throw error;
-
-  }
-
-
-  testSelect.innerHTML = `
-
-    <option value="">
-      テストを選択してください
-    </option>
-
-  `;
-
-
-  for (
-    const test
-    of data || []
-  ) {
-
-    const option =
-      document.createElement(
-        "option"
-      );
-
-
-    option.value =
-      test.id;
-
-
-    option.textContent =
-      [
-        test.name,
-        test.subject
-      ]
-        .filter(Boolean)
-        .join(
-          " / "
-        );
-
-
-    testSelect.appendChild(
-      option
-    );
-
-  }
-
-}
-
-
-/* =========================================================
    FILES
 ========================================================= */
 
@@ -671,7 +718,7 @@ function addFiles(
     )
   ) {
 
-    const extension =
+    const ext =
       getExtension(
         file.name
       );
@@ -679,13 +726,12 @@ function addFiles(
 
     if (
       !allowed.includes(
-        extension
+        ext
       )
     ) {
 
-      showMessage(
-        `${file.name} は対応していない形式です。`,
-        true
+      showError(
+        `${file.name} は対応していない形式です。`
       );
 
       continue;
@@ -693,7 +739,7 @@ function addFiles(
     }
 
 
-    const duplicate =
+    const exists =
       selectedFiles.some(
         item =>
           item.name ===
@@ -705,7 +751,7 @@ function addFiles(
       );
 
 
-    if (!duplicate) {
+    if (!exists) {
 
       selectedFiles.push(
         file
@@ -720,6 +766,10 @@ function addFiles(
 
 }
 
+
+/* =========================================================
+   FILE LIST
+========================================================= */
 
 function renderFiles() {
 
@@ -758,30 +808,18 @@ function renderFiles() {
         );
 
 
-      row.style.display =
-        "flex";
-
-
-      row.style.justifyContent =
-        "space-between";
-
-
-      row.style.alignItems =
-        "center";
-
-
-      row.style.padding =
-        "8px 0";
-
-
-      row.style.borderBottom =
-        "1px solid #e6e9ed";
+      row.className =
+        "upload-file";
 
 
       const name =
         document.createElement(
           "span"
         );
+
+
+      name.className =
+        "upload-file-name";
 
 
       name.textContent =
@@ -839,7 +877,7 @@ function renderFiles() {
 
 
 /* =========================================================
-   MAIN PROCESS
+   MAIN
 ========================================================= */
 
 async function processUploads() {
@@ -850,9 +888,8 @@ async function processUploads() {
 
   if (!testId) {
 
-    showMessage(
-      "テストを選択してください。",
-      true
+    showError(
+      "テストを選択してください。"
     );
 
     return;
@@ -862,9 +899,8 @@ async function processUploads() {
 
   if (!selectedFiles.length) {
 
-    showMessage(
-      "ファイルを選択してください。",
-      true
+    showError(
+      "ファイルを選択してください。"
     );
 
     return;
@@ -882,11 +918,7 @@ async function processUploads() {
       true;
 
 
-    resultList.innerHTML =
-      "";
-
-
-    resultList.classList.add(
+    result.classList.add(
       "hidden"
     );
 
@@ -902,23 +934,18 @@ async function processUploads() {
     );
 
 
-    /*
-      生徒答案の場合だけ
-      レイアウトと生徒一覧を取得。
-    */
-
     if (
       answerType.value ===
       "student"
     ) {
 
-      currentLayout =
+      layout =
         await loadLayout(
           testId
         );
 
 
-      currentStudents =
+      students =
         await loadStudents();
 
     }
@@ -929,13 +956,13 @@ async function processUploads() {
       "model"
     ) {
 
-      await processModelAnswers(
+      await processModel(
         testId
       );
 
     } else {
 
-      await processStudentAnswers(
+      await processStudent(
         testId
       );
 
@@ -948,9 +975,8 @@ async function processUploads() {
     );
 
 
-    showMessage(
-      "答案の処理が完了しました。",
-      false
+    showSuccess(
+      "アップロードと処理が完了しました。"
     );
 
 
@@ -960,19 +986,17 @@ async function processUploads() {
 
     renderFiles();
 
-
   } catch (error) {
 
     console.error(
-      "processUploads:",
+      "UPLOAD ERROR",
       error
     );
 
 
-    showMessage(
+    showError(
       error.message ||
-      "答案処理に失敗しました。",
-      true
+      "アップロード処理に失敗しました。"
     );
 
   } finally {
@@ -997,21 +1021,18 @@ async function loadLayout(
   testId
 ) {
 
-  /*
-    test_pages
-  */
-
   const {
     data:
       pages,
     error:
       pageError
   } =
-    await db
+    await SB
       .from(
         "test_pages"
       )
-      .select(`
+      .select(
+        `
         id,
         test_id,
         page_no,
@@ -1019,7 +1040,8 @@ async function loadLayout(
         width_px,
         height_px,
         original_name
-      `)
+        `
+      )
       .eq(
         "test_id",
         testId
@@ -1041,10 +1063,8 @@ async function loadLayout(
 
 
   /*
-    layout_boxes
-
     source_page_idは
-    一切取得しない。
+    絶対に取得しない。
   */
 
   const {
@@ -1053,11 +1073,12 @@ async function loadLayout(
     error:
       boxError
   } =
-    await db
+    await SB
       .from(
         "layout_boxes"
       )
-      .select(`
+      .select(
+        `
         id,
         test_id,
         page_no,
@@ -1067,15 +1088,16 @@ async function loadLayout(
         y,
         width,
         height,
-        points,
         question_id,
+        points,
         parent_box_id,
         major_no,
         minor_no,
         box_role,
         sort_order,
         subtotal_group
-      `)
+        `
+      )
       .eq(
         "test_id",
         testId
@@ -1126,17 +1148,19 @@ async function loadStudents() {
     data,
     error
   } =
-    await db
+    await SB
       .from(
         "students"
       )
-      .select(`
+      .select(
+        `
         id,
         student_no,
         name,
         qr_token,
         active
-      `)
+        `
+      )
       .eq(
         "active",
         true
@@ -1145,7 +1169,38 @@ async function loadStudents() {
 
   if (error) {
 
-    throw error;
+    /*
+      qr_token列がない環境では
+      生徒番号だけ取得。
+    */
+
+    const fallback =
+      await SB
+        .from(
+          "students"
+        )
+        .select(
+          `
+          id,
+          student_no,
+          name,
+          active
+          `
+        )
+        .eq(
+          "active",
+          true
+        );
+
+
+    if (fallback.error) {
+
+      throw fallback.error;
+
+    }
+
+
+    return fallback.data || [];
 
   }
 
@@ -1156,10 +1211,10 @@ async function loadStudents() {
 
 
 /* =========================================================
-   STUDENT ANSWERS
+   STUDENT PROCESS
 ========================================================= */
 
-async function processStudentAnswers(
+async function processStudent(
   testId
 ) {
 
@@ -1178,7 +1233,7 @@ async function processStudentAnswers(
         selectedFiles.length *
         100
       ),
-      `${file.name} をページ化しています...`
+      `${file.name} を処理しています...`
     );
 
 
@@ -1190,26 +1245,18 @@ async function processStudentAnswers(
 
     if (!pages.length) {
 
-      addResult(
-        file.name,
-        "ページを取得できませんでした。",
-        true
+      throw new Error(
+        `${file.name} からページを取得できませんでした。`
       );
-
-      continue;
 
     }
 
 
     /*
-      QRを全ページから探す。
+      QR
     */
 
     let qrValue =
-      null;
-
-
-    let qrPageNo =
       null;
 
 
@@ -1223,45 +1270,34 @@ async function processStudentAnswers(
         pages[i];
 
 
-      const pageNo =
-        i + 1;
-
-
       const pageLayout =
         getPageLayout(
-          currentLayout,
-          pageNo
+          i + 1
         );
 
 
       qrValue =
-        readQrFromPage(
+        readQr(
           page,
           pageLayout
         );
 
 
       if (qrValue) {
-
-        qrPageNo =
-          pageNo;
-
         break;
-
       }
 
     }
 
 
     /*
-      生徒検索
+      生徒
     */
 
     const student =
       qrValue
         ? findStudent(
-            qrValue,
-            currentStudents
+            qrValue
           )
         : null;
 
@@ -1275,74 +1311,7 @@ async function processStudentAnswers(
 
 
     /*
-      1ページ目
-    */
-
-    const firstPath =
-      buildAnswerPath(
-        testId,
-        answerId,
-        1
-      );
-
-
-    await uploadAnswerPage(
-      firstPath,
-      pages[0]
-    );
-
-
-    /*
-      answer_sheets
-
-      現在のDBで確定している
-      カラムだけ使用。
-    */
-
-    const {
-      error:
-        sheetError
-    } =
-      await db
-        .from(
-          "answer_sheets"
-        )
-        .insert({
-
-          id:
-            answerId,
-
-          test_id:
-            testId,
-
-          student_id:
-            student?.id ||
-            null,
-
-          qr_token:
-            qrValue ||
-            null,
-
-          file_path:
-            firstPath,
-
-          status:
-            student
-              ? "matched"
-              : "unmatched"
-
-        });
-
-
-    if (sheetError) {
-
-      throw sheetError;
-
-    }
-
-
-    /*
-      全ページ
+      全ページ保存
     */
 
     for (
@@ -1367,27 +1336,87 @@ async function processStudentAnswers(
         );
 
 
-      if (
-        pageNo !== 1
-      ) {
+      await uploadPage(
+        path,
+        page
+      );
 
-        await uploadAnswerPage(
-          path,
-          page
-        );
-
-      }
+    }
 
 
-      /*
-        answer_sheet_pages
-      */
+    /*
+      answer_sheets
+    */
+
+    const {
+      error:
+        sheetError
+    } =
+      await SB
+        .from(
+          "answer_sheets"
+        )
+        .insert({
+
+          id:
+            answerId,
+
+          test_id:
+            testId,
+
+          student_id:
+            student?.id ||
+            null,
+
+          qr_token:
+            qrValue ||
+            null,
+
+          file_path:
+            buildAnswerPath(
+              testId,
+              answerId,
+              1
+            ),
+
+          status:
+            student
+              ? "matched"
+              : "unmatched"
+
+        });
+
+
+    if (sheetError) {
+
+      throw sheetError;
+
+    }
+
+
+    /*
+      answer_sheet_pages
+    */
+
+    for (
+      let i = 0;
+      i < pages.length;
+      i++
+    ) {
+
+      const page =
+        pages[i];
+
+
+      const pageNo =
+        i + 1;
+
 
       const {
         error:
           pageError
       } =
-        await db
+        await SB
           .from(
             "answer_sheet_pages"
           )
@@ -1401,7 +1430,11 @@ async function processStudentAnswers(
                 pageNo,
 
               file_path:
-                path,
+                buildAnswerPath(
+                  testId,
+                  answerId,
+                  pageNo
+                ),
 
               width_px:
                 page.width,
@@ -1424,19 +1457,9 @@ async function processStudentAnswers(
       }
 
 
-      /*
-        設問IDが実際に
-        設定されている小問だけ
-        answer_regionsへ登録。
-      */
-
-      await createAnswerRegions(
+      await createRegions(
         answerId,
-        pageNo,
-        getPageLayout(
-          currentLayout,
-          pageNo
-        )
+        pageNo
       );
 
     }
@@ -1449,24 +1472,21 @@ async function processStudentAnswers(
     if (student) {
 
       addResult(
-        file.name,
-        `生徒紐付け完了: ${student.student_no} ${student.name} / QR: ${qrValue}`,
+        `${file.name}: ${student.student_no} ${student.name} に自動紐付けしました。`,
         false
       );
 
     } else if (qrValue) {
 
       addResult(
-        file.name,
-        `QRは読み取れましたが、生徒を特定できませんでした: ${qrValue}`,
+        `${file.name}: QR「${qrValue}」は読み取りましたが、生徒を特定できませんでした。`,
         true
       );
 
     } else {
 
       addResult(
-        file.name,
-        "QRコードを読み取れませんでした。未紐付けで登録しました。",
+        `${file.name}: QRを読み取れなかったため未紐付けです。`,
         true
       );
 
@@ -1474,16 +1494,6 @@ async function processStudentAnswers(
 
 
     completed++;
-
-
-    setProgress(
-      Math.round(
-        completed /
-        selectedFiles.length *
-        100
-      ),
-      `${completed}/${selectedFiles.length} 件処理完了`
-    );
 
   }
 
@@ -1494,22 +1504,25 @@ async function processStudentAnswers(
    ANSWER REGIONS
 ========================================================= */
 
-async function createAnswerRegions(
-  answerSheetId,
-  pageNo,
-  pageLayout
+async function createRegions(
+  answerId,
+  pageNo
 ) {
 
+  const pageLayout =
+    getPageLayout(
+      pageNo
+    );
+
+
   if (!pageLayout) {
-
     return;
-
   }
 
 
   /*
-    小問枠で、
-    question_idが既にあるものだけ。
+    question_idが実際にある
+    小問だけ。
   */
 
   const rows =
@@ -1524,7 +1537,7 @@ async function createAnswerRegions(
         box => ({
 
           answer_sheet_id:
-            answerSheetId,
+            answerId,
 
           question_id:
             box.question_id,
@@ -1557,30 +1570,22 @@ async function createAnswerRegions(
 
 
   if (!rows.length) {
-
     return;
-
   }
 
-
-  /*
-    同じ答案を再処理しても
-    重複エラーになりにくいよう、
-    既存分をページ単位で削除。
-  */
 
   const {
     error:
       deleteError
   } =
-    await db
+    await SB
       .from(
         "answer_regions"
       )
       .delete()
       .eq(
         "answer_sheet_id",
-        answerSheetId
+        answerId
       )
       .eq(
         "page_no",
@@ -1599,7 +1604,7 @@ async function createAnswerRegions(
     error:
       insertError
   } =
-    await db
+    await SB
       .from(
         "answer_regions"
       )
@@ -1618,17 +1623,55 @@ async function createAnswerRegions(
 
 
 /* =========================================================
+   PAGE LAYOUT
+========================================================= */
+
+function getPageLayout(
+  pageNo
+) {
+
+  if (!layout) {
+    return null;
+  }
+
+
+  return {
+
+    page:
+      layout.pages.find(
+        page =>
+          Number(
+            page.page_no
+          ) ===
+          Number(
+            pageNo
+          )
+      ) || null,
+
+    boxes:
+      layout.boxes.filter(
+        box =>
+          Number(
+            box.page_no
+          ) ===
+          Number(
+            pageNo
+          )
+      )
+
+  };
+
+}
+
+
+/* =========================================================
    QR
 ========================================================= */
 
-function readQrFromPage(
+function readQr(
   page,
   pageLayout
 ) {
-
-  /*
-    QR枠を最優先。
-  */
 
   const qrBoxes =
     (
@@ -1642,6 +1685,10 @@ function readQrFromPage(
           "qr"
     );
 
+
+  /*
+    QR枠優先
+  */
 
   for (
     const box
@@ -1676,7 +1723,7 @@ function readQrFromPage(
 
   /*
     QR枠がなければ
-    ページ全体。
+    ページ全体
   */
 
   const result =
@@ -1693,10 +1740,6 @@ function readQrFromPage(
 
 }
 
-
-/* =========================================================
-   QR DECODE
-========================================================= */
 
 function decodeQr(
   canvas
@@ -1759,13 +1802,9 @@ function normalizeQr(
     ).trim();
 
 
-  /*
-    JSON形式
-  */
-
   try {
 
-    const data =
+    const json =
       JSON.parse(
         text
       );
@@ -1782,14 +1821,12 @@ function normalizeQr(
     ) {
 
       if (
-        data[key] !==
-        undefined &&
-        data[key] !==
-        null
+        json[key] !==
+        undefined
       ) {
 
         return String(
-          data[key]
+          json[key]
         ).trim();
 
       }
@@ -1798,10 +1835,6 @@ function normalizeQr(
 
   } catch (_) {}
 
-
-  /*
-    URL形式
-  */
 
   try {
 
@@ -1849,18 +1882,17 @@ function normalizeQr(
 ========================================================= */
 
 function findStudent(
-  qrValue,
-  students
+  qrValue
 ) {
 
-  const normalized =
+  const value =
     normalizeStudentValue(
       qrValue
     );
 
 
   /*
-    QR token完全一致
+    QR token
   */
 
   let student =
@@ -1869,19 +1901,17 @@ function findStudent(
         normalizeStudentValue(
           item.qr_token
         ) ===
-        normalized
+        value
     );
 
 
   if (student) {
-
     return student;
-
   }
 
 
   /*
-    生徒番号完全一致
+    生徒番号
   */
 
   student =
@@ -1890,29 +1920,27 @@ function findStudent(
         normalizeStudentValue(
           item.student_no
         ) ===
-        normalized
+        value
     );
 
 
   if (student) {
-
     return student;
-
   }
 
 
   /*
-    数字なら先頭0を無視。
+    数字なら先頭0を無視
   */
 
   if (
     /^\d+$/.test(
-      normalized
+      value
     )
   ) {
 
-    const value =
-      normalized.replace(
+    const normalized =
+      value.replace(
         /^0+/,
         ""
       );
@@ -1927,21 +1955,19 @@ function findStudent(
             /^0+/,
             ""
           ) ===
-          value
+          normalized
       );
 
 
     if (student) {
-
       return student;
-
     }
 
   }
 
 
   /*
-    UUIDとしてstudent.id
+    UUID
   */
 
   student =
@@ -1980,10 +2006,10 @@ function normalizeStudentValue(
 
 
 /* =========================================================
-   MODEL ANSWERS
+   MODEL ANSWER
 ========================================================= */
 
-async function processModelAnswers(
+async function processModel(
   testId
 ) {
 
@@ -2033,7 +2059,7 @@ async function processModelAnswers(
       const {
         error
       } =
-        await db
+        await SB
           .storage
           .from(
             "model-answers"
@@ -2081,57 +2107,6 @@ async function processModelAnswers(
 
 
 /* =========================================================
-   PAGE LAYOUT
-========================================================= */
-
-function getPageLayout(
-  layout,
-  pageNo
-) {
-
-  if (!layout) {
-
-    return null;
-
-  }
-
-
-  return {
-
-    page:
-      (
-        layout.pages ||
-        []
-      ).find(
-        page =>
-          Number(
-            page.page_no
-          ) ===
-          Number(
-            pageNo
-          )
-      ) || null,
-
-    boxes:
-      (
-        layout.boxes ||
-        []
-      ).filter(
-        box =>
-          Number(
-            box.page_no
-          ) ===
-          Number(
-            pageNo
-          )
-      )
-
-  };
-
-}
-
-
-/* =========================================================
    FILE EXPANSION
 ========================================================= */
 
@@ -2139,14 +2114,14 @@ async function expandFile(
   file
 ) {
 
-  const extension =
+  const ext =
     getExtension(
       file.name
     );
 
 
   if (
-    extension ===
+    ext ===
     "zip"
   ) {
 
@@ -2158,7 +2133,7 @@ async function expandFile(
 
 
   if (
-    extension ===
+    ext ===
     "pdf"
   ) {
 
@@ -2197,8 +2172,8 @@ async function expandZip(
       zip.files
     )
       .filter(
-        entry =>
-          !entry.dir
+        item =>
+          !item.dir
       )
       .sort(
         (
@@ -2216,7 +2191,7 @@ async function expandZip(
       );
 
 
-  const pages =
+  const result =
     [];
 
 
@@ -2225,14 +2200,14 @@ async function expandZip(
     of entries
   ) {
 
-    const extension =
+    const ext =
       getExtension(
         entry.name
       );
 
 
     if (
-      extension ===
+      ext ===
       "pdf"
     ) {
 
@@ -2253,14 +2228,10 @@ async function expandZip(
         );
 
 
-      const pdfPages =
-        await pdfToPages(
+      result.push(
+        ...await pdfToPages(
           pdfFile
-        );
-
-
-      pages.push(
-        ...pdfPages
+        )
       );
 
 
@@ -2276,7 +2247,7 @@ async function expandZip(
         "png",
         "webp"
       ].includes(
-        extension
+        ext
       )
     ) {
 
@@ -2292,15 +2263,15 @@ async function expandZip(
           entry.name,
           {
             type:
-              extension ===
+              ext ===
               "jpg"
                 ? "image/jpeg"
-                : `image/${extension}`
+                : `image/${ext}`
           }
         );
 
 
-      pages.push(
+      result.push(
         await imageToPage(
           imageFile
         )
@@ -2311,7 +2282,7 @@ async function expandZip(
   }
 
 
-  return pages;
+  return result;
 
 }
 
@@ -2337,7 +2308,7 @@ async function pdfToPages(
       .promise;
 
 
-  const pages =
+  const result =
     [];
 
 
@@ -2412,7 +2383,7 @@ async function pdfToPages(
       .promise;
 
 
-    pages.push({
+    result.push({
 
       canvas,
 
@@ -2427,7 +2398,7 @@ async function pdfToPages(
   }
 
 
-  return pages;
+  return result;
 
 }
 
@@ -2503,10 +2474,10 @@ async function imageToPage(
 
 
 /* =========================================================
-   UPLOAD PAGE
+   STORAGE
 ========================================================= */
 
-async function uploadAnswerPage(
+async function uploadPage(
   path,
   page
 ) {
@@ -2520,7 +2491,7 @@ async function uploadAnswerPage(
   const {
     error
   } =
-    await db
+    await SB
       .storage
       .from(
         "answers"
@@ -2531,9 +2502,6 @@ async function uploadAnswerPage(
         {
           contentType:
             "image/png",
-
-          cacheControl:
-            "3600",
 
           upsert:
             true
@@ -2761,7 +2729,7 @@ function loadImage(
         () =>
           reject(
             new Error(
-              "画像の読み込みに失敗しました。"
+              "画像を読み込めませんでした。"
             )
           );
 
@@ -2779,53 +2747,61 @@ function loadImage(
    UI
 ========================================================= */
 
-function showMessage(
-  text,
-  isError
+function showError(
+  text
 ) {
 
-  message.textContent =
-    text || "";
+  msg.className =
+    "error";
 
 
-  message.className =
-    isError
-      ? "error"
-      : "";
+  msg.textContent =
+    text;
+
+}
+
+
+function showSuccess(
+  text
+) {
+
+  msg.className =
+    "";
+
+
+  msg.textContent =
+    text;
 
 }
 
 
 function addResult(
-  fileName,
   text,
-  isError
+  error
 ) {
 
-  resultList.classList.remove(
+  result.classList.remove(
     "hidden"
   );
 
 
-  const row =
-    document.createElement(
-      "p"
+  const current =
+    result.textContent;
+
+
+  result.textContent =
+    current
+      ? `${current}\n${text}`
+      : text;
+
+
+  if (error) {
+
+    result.classList.add(
+      "error"
     );
 
-
-  row.className =
-    isError
-      ? "error small"
-      : "small";
-
-
-  row.textContent =
-    `${fileName}: ${text}`;
-
-
-  resultList.appendChild(
-    row
-  );
+  }
 
 }
 
@@ -2857,6 +2833,43 @@ function setProgress(
   progressText.textContent =
     text ||
     `${safe}%`;
+
+}
+
+
+function clearFiles() {
+
+  selectedFiles =
+    [];
+
+
+  renderFiles();
+
+
+  result.textContent =
+    "";
+
+
+  result.classList.add(
+    "hidden"
+  );
+
+
+  progressArea.classList.add(
+    "hidden"
+  );
+
+
+  progressBar.style.width =
+    "0";
+
+
+  progressText.textContent =
+    "待機中";
+
+
+  msg.textContent =
+    "";
 
 }
 
@@ -2897,15 +2910,14 @@ function formatBytes(
 
   if (
     bytes <
-    1024 * 1024
+    1024 *
+    1024
   ) {
 
     return `${(
       bytes /
       1024
-    ).toFixed(
-      1
-    )} KB`;
+    ).toFixed(1)} KB`;
 
   }
 
@@ -2914,61 +2926,9 @@ function formatBytes(
     bytes /
     1024 /
     1024
-  ).toFixed(
-    1
-  )} MB`;
+  ).toFixed(1)} MB`;
 
 }
-
-
-/* =========================================================
-   CLEAR
-========================================================= */
-
-function clearFiles() {
-
-  selectedFiles =
-    [];
-
-
-  renderFiles();
-
-
-  resultList.innerHTML =
-    "";
-
-
-  resultList.classList.add(
-    "hidden"
-  );
-
-
-  progressArea.classList.add(
-    "hidden"
-  );
-
-
-  progressBar.style.width =
-    "0";
-
-
-  progressText.textContent =
-    "待機中";
-
-
-  showMessage(
-    "",
-    false
-  );
-
-}
-
-
-/* =========================================================
-   START
-========================================================= */
-
-init();
 
 </script>
 

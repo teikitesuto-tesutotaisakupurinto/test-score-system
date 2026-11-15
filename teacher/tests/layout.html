@@ -1,32 +1,279 @@
-<!DOCTYPE html>
+
+<!doctype html>
 <html lang="ja">
 
 <head>
 
-  <meta charset="UTF-8">
+<meta charset="utf-8">
 
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
-  >
+<meta
+  name="viewport"
+  content="width=device-width,initial-scale=1"
+>
 
-  <title>
-    枠設定 - テスト成績システム
-  </title>
+<title>
+  解答用紙・枠設定 - テスト成績システム
+</title>
 
-  <link
-    rel="stylesheet"
-    href="/css/common.css"
-  >
+<link
+  rel="stylesheet"
+  href="/css/common.css"
+>
 
-  <link
-    rel="stylesheet"
-    href="/css/layout-editor.css"
-  >
+<style>
+
+.layout-main {
+  max-width: 1500px;
+  margin: 0 auto;
+  padding: 22px;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 15px;
+}
+
+.status {
+  padding: 10px 12px;
+  margin-bottom: 15px;
+
+  background: #f5f6f7;
+
+  border: 1px solid #d5dbe0;
+
+  font-size: 13px;
+}
+
+.status.error {
+  color: #b42318;
+}
+
+.layout-info {
+  display: none;
+
+  margin-bottom: 15px;
+  padding: 15px;
+
+  background: #fff;
+
+  border: 1px solid #d0d6dc;
+}
+
+.layout-info.show {
+  display: block;
+}
+
+.layout-name {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.layout-meta {
+  margin-top: 5px;
+  color: #666;
+  font-size: 13px;
+}
+
+.workspace {
+  display: grid;
+
+  grid-template-columns:
+    minmax(0, 1fr)
+    320px;
+
+  gap: 15px;
+}
+
+.canvas-panel {
+  min-width: 0;
+
+  background: #fff;
+
+  border: 1px solid #d0d6dc;
+
+  padding: 14px;
+}
+
+.canvas-wrap {
+  position: relative;
+
+  overflow: auto;
+
+  min-height: 500px;
+
+  background: #e7ebef;
+
+  border: 1px solid #cbd2d8;
+}
+
+.canvas-image {
+  display: block;
+
+  max-width: none;
+
+  user-select: none;
+
+  -webkit-user-drag: none;
+}
+
+.draw-layer {
+  position: absolute;
+
+  inset: 0;
+
+  cursor: crosshair;
+}
+
+.layout-box {
+  position: absolute;
+
+  border: 2px solid #1769aa;
+
+  background: rgba(
+    23,
+    105,
+    170,
+    .12
+  );
+
+  pointer-events: none;
+}
+
+.layout-box.qr {
+  border-color: #333;
+
+  background: rgba(
+    0,
+    0,
+    0,
+    .08
+  );
+}
+
+.layout-box-label {
+  position: absolute;
+
+  left: 2px;
+  top: 2px;
+
+  padding: 2px 5px;
+
+  background: #fff;
+
+  color: #222;
+
+  font-size: 11px;
+
+  font-weight: 700;
+
+  white-space: nowrap;
+}
+
+.side-panel {
+  background: #fff;
+
+  border: 1px solid #d0d6dc;
+
+  padding: 14px;
+}
+
+.mode-buttons {
+  display: flex;
+
+  flex-wrap: wrap;
+
+  gap: 6px;
+
+  margin-bottom: 14px;
+}
+
+.box-list {
+  margin-top: 10px;
+}
+
+.box-item {
+  display: flex;
+
+  justify-content: space-between;
+
+  align-items: center;
+
+  gap: 8px;
+
+  padding: 9px 0;
+
+  border-bottom: 1px solid #e5e7e9;
+}
+
+.box-item-info {
+  min-width: 0;
+}
+
+.box-item-title {
+  font-size: 13px;
+
+  font-weight: 700;
+}
+
+.box-item-meta {
+  margin-top: 3px;
+
+  color: #666;
+
+  font-size: 11px;
+}
+
+.empty {
+  padding: 40px 10px;
+
+  text-align: center;
+
+  color: #777;
+}
+
+.next-area {
+  margin-top: 15px;
+
+  padding-top: 15px;
+
+  border-top: 1px solid #d0d6dc;
+}
+
+.next-area p {
+  margin: 0 0 8px;
+
+  color: #666;
+
+  font-size: 12px;
+}
+
+
+@media (max-width: 1000px) {
+
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+
+}
+
+
+@media (max-width: 600px) {
+
+  .layout-main {
+    padding: 14px;
+  }
+
+}
+
+</style>
 
 </head>
 
+
 <body>
+
 
 <header class="topbar">
 
@@ -34,15 +281,19 @@
     テスト成績システム
   </div>
 
+
   <div class="topbar-space"></div>
+
 
   <span id="teacherName">
     -
   </span>
 
+
   <button
     id="logoutButton"
     class="logout-button"
+    type="button"
   >
     ログアウト
   </button>
@@ -50,139 +301,213 @@
 </header>
 
 
-<div class="teacher-layout">
+<main class="layout-main">
 
-  <aside class="sidebar">
 
-    <div class="sidebar-title">
-      テスト設定
-    </div>
+  <div class="page-header">
 
-    <a
-      id="pagesLink"
-      href="#"
-      class="menu-link"
-    >
-      解答用紙登録
-    </a>
+    <h1>
+      解答用紙・枠設定
+    </h1>
 
-    <a
-      id="layoutLink"
-      href="#"
-      class="menu-link active"
-    >
-      枠設定
-    </a>
+  </div>
+
+
+  <!-- =================================================
+       操作
+  ================================================== -->
+
+  <div class="toolbar">
 
     <a
-      id="questionsLink"
-      href="#"
-      class="menu-link"
+      href="/teacher/tests"
+      class="btn"
     >
-      問題設定
+      テスト一覧へ戻る
     </a>
+
+
+    <button
+      id="saveButton"
+      class="btn btn-primary"
+      type="button"
+    >
+      枠設定を保存
+    </button>
+
 
     <a
-      id="modelAnswerLink"
+      id="pointsButton"
+      class="btn"
       href="#"
-      class="menu-link"
     >
-      模範解答
+      次へ：配点設定
     </a>
 
-  </aside>
+  </div>
 
 
-  <main class="main-content">
+  <!-- =================================================
+       状態
+  ================================================== -->
 
-    <div class="page-header">
+  <div
+    id="status"
+    class="status"
+  >
+    テスト情報を読み込んでいます...
+  </div>
 
-      <h1>
-        解答登録・枠設定
-      </h1>
 
+  <!-- =================================================
+       テスト情報
+  ================================================== -->
+
+  <section
+    id="layoutInfo"
+    class="layout-info"
+  >
+
+    <div
+      id="layoutName"
+      class="layout-name"
+    >
+      -
     </div>
 
 
     <div
-      id="testInformation"
-      class="card"
+      id="layoutMeta"
+      class="layout-meta"
     >
-      読み込み中...
+      -
     </div>
 
+  </section>
 
-    <div class="card">
 
-      <div
-        class="layout-toolbar"
-      >
+  <!-- =================================================
+       作業領域
+  ================================================== -->
+
+  <div class="workspace">
+
+
+    <!-- ===============================================
+         画像
+    ================================================ -->
+
+    <section class="canvas-panel">
+
+
+      <div class="mode-buttons">
 
         <button
-          id="answerBoxButton"
+          id="questionModeButton"
           class="btn btn-primary"
+          type="button"
         >
           解答欄
         </button>
 
 
         <button
-          id="qrBoxButton"
+          id="qrModeButton"
           class="btn"
+          type="button"
         >
-          QRコードシール欄
+          QR欄
         </button>
 
 
-        <button
-          id="studentNoBoxButton"
+        <label
           class="btn"
+          for="imageFile"
         >
-          生徒番号欄
-        </button>
+          解答用紙画像を選択
+        </label>
 
-
-        <button
-          id="nameBoxButton"
-          class="btn"
+        <input
+          id="imageFile"
+          type="file"
+          accept="image/*"
+          hidden
         >
-          氏名欄
-        </button>
-
-
-        <button
-          id="saveButton"
-          class="btn btn-success"
-        >
-          枠設定を保存
-        </button>
 
       </div>
 
-    </div>
-
-
-    <div class="layout-editor">
 
       <div
-        id="sheetCanvas"
-        class="sheet-canvas"
+        id="canvasWrap"
+        class="canvas-wrap"
       >
 
-        <div
-          id="sheetMessage"
-          class="sheet-message"
-        >
-          解答用紙を読み込み中...
+        <div class="empty">
+
+          解答用紙画像を選択してください。
+
         </div>
 
       </div>
 
-    </div>
 
-  </main>
+    </section>
 
-</div>
+
+    <!-- ===============================================
+         枠一覧
+    ================================================ -->
+
+    <aside class="side-panel">
+
+
+      <h2>
+        設定枠
+      </h2>
+
+
+      <p>
+        画像上をドラッグして枠を作成します。
+      </p>
+
+
+      <div
+        id="boxList"
+        class="box-list"
+      >
+
+        <div class="empty">
+          枠がありません。
+        </div>
+
+      </div>
+
+
+      <div class="next-area">
+
+        <p>
+          枠設定が完了したら、配点設定へ進みます。
+        </p>
+
+
+        <a
+          id="sidePointsButton"
+          class="btn btn-primary"
+          href="#"
+        >
+          配点設定へ
+        </a>
+
+      </div>
+
+
+    </aside>
+
+
+  </div>
+
+
+</main>
 
 
 <script
@@ -193,7 +518,1254 @@
 
 <script src="/js/auth.js"></script>
 
-<script src="/js/teacher/test-layout.js"></script>
+
+<script>
+
+"use strict";
+
+
+let DB =
+  window.SB ||
+  window.supabaseClient;
+
+
+let testId = null;
+
+let mode =
+  "question";
+
+let boxes = [];
+
+let image = null;
+
+let imageNaturalWidth = 0;
+
+let imageNaturalHeight = 0;
+
+let drawing = false;
+
+let startPoint = null;
+
+
+const statusElement =
+  document.getElementById(
+    "status"
+  );
+
+const canvasWrap =
+  document.getElementById(
+    "canvasWrap"
+  );
+
+const boxList =
+  document.getElementById(
+    "boxList"
+  );
+
+const imageFile =
+  document.getElementById(
+    "imageFile"
+  );
+
+
+/* =====================================================
+   INIT
+===================================================== */
+
+(async function () {
+
+  try {
+
+    if (!DB) {
+
+      throw new Error(
+        "Supabase接続がありません。"
+      );
+
+    }
+
+
+    const result =
+      await requireRole(
+        "teacher"
+      );
+
+
+    const profile =
+      result?.profile ||
+      result ||
+      {};
+
+
+    document.getElementById(
+      "teacherName"
+    ).textContent =
+      profile.name ||
+      "先生";
+
+
+    const params =
+      new URLSearchParams(
+        location.search
+      );
+
+
+    testId =
+      params.get(
+        "test"
+      );
+
+
+    if (!testId) {
+
+      throw new Error(
+        "テストIDがありません。"
+      );
+
+    }
+
+
+    setLinks();
+
+    setupEvents();
+
+    await loadTest();
+
+    await loadBoxes();
+
+
+  } catch (error) {
+
+    showError(
+      error.message ||
+      "枠設定を読み込めませんでした。"
+    );
+
+  }
+
+})();
+
+
+/* =====================================================
+   LINKS
+===================================================== */
+
+function setLinks() {
+
+  const url =
+    `/teacher/tests/points?test=${encodeURIComponent(
+      testId
+    )}`;
+
+
+  document.getElementById(
+    "pointsButton"
+  ).href =
+    url;
+
+
+  document.getElementById(
+    "sidePointsButton"
+  ).href =
+    url;
+
+}
+
+
+/* =====================================================
+   EVENTS
+===================================================== */
+
+function setupEvents() {
+
+  document.getElementById(
+    "questionModeButton"
+  ).addEventListener(
+    "click",
+    () => {
+
+      mode =
+        "question";
+
+
+      document
+        .getElementById(
+          "questionModeButton"
+        )
+        .classList.add(
+          "btn-primary"
+        );
+
+
+      document
+        .getElementById(
+          "qrModeButton"
+        )
+        .classList.remove(
+          "btn-primary"
+        );
+
+
+      setStatus(
+        "解答欄モードです。画像上をドラッグしてください。"
+      );
+
+    }
+  );
+
+
+  document.getElementById(
+    "qrModeButton"
+  ).addEventListener(
+    "click",
+    () => {
+
+      mode =
+        "qr";
+
+
+      document
+        .getElementById(
+          "qrModeButton"
+        )
+        .classList.add(
+          "btn-primary"
+        );
+
+
+      document
+        .getElementById(
+          "questionModeButton"
+        )
+        .classList.remove(
+          "btn-primary"
+        );
+
+
+      setStatus(
+        "QR欄モードです。画像上をドラッグしてください。"
+      );
+
+    }
+  );
+
+
+  imageFile.addEventListener(
+    "change",
+    handleImage
+  );
+
+
+  document.getElementById(
+    "saveButton"
+  ).addEventListener(
+    "click",
+    saveBoxes
+  );
+
+
+  document
+    .getElementById(
+      "logoutButton"
+    )
+    ?.addEventListener(
+      "click",
+      async () => {
+
+        if (
+          typeof logout ===
+          "function"
+        ) {
+
+          await logout();
+
+          return;
+
+        }
+
+
+        if (
+          typeof signOut ===
+          "function"
+        ) {
+
+          await signOut();
+
+        }
+
+      }
+    );
+
+}
+
+
+/* =====================================================
+   TEST
+===================================================== */
+
+async function loadTest() {
+
+  const {
+    data,
+    error
+  } =
+    await DB
+      .from(
+        "tests"
+      )
+      .select(
+        `
+        id,
+        name,
+        subject,
+        grade,
+        class_name
+        `
+      )
+      .eq(
+        "id",
+        testId
+      )
+      .single();
+
+
+  if (error) {
+
+    throw error;
+
+  }
+
+
+  document.getElementById(
+    "layoutInfo"
+  ).classList.add(
+    "show"
+  );
+
+
+  document.getElementById(
+    "layoutName"
+  ).textContent =
+    data.name;
+
+
+  document.getElementById(
+    "layoutMeta"
+  ).textContent =
+    [
+      data.subject,
+      data.grade,
+      data.class_name
+    ]
+      .filter(Boolean)
+      .join(
+        " / "
+      );
+
+
+  setStatus(
+    "テスト情報を読み込みました。"
+  );
+
+}
+
+
+/* =====================================================
+   EXISTING BOXES
+===================================================== */
+
+async function loadBoxes() {
+
+  const {
+    data,
+    error
+  } =
+    await DB
+      .from(
+        "layout_boxes"
+      )
+      .select(
+        `
+        id,
+        test_id,
+        page_no,
+        box_type,
+        label,
+        x,
+        y,
+        width,
+        height,
+        question_id,
+        points,
+        sort_order
+        `
+      )
+      .eq(
+        "test_id",
+        testId
+      )
+      .order(
+        "page_no",
+        {
+          ascending:
+            true
+        }
+      )
+      .order(
+        "sort_order",
+        {
+          ascending:
+            true
+        }
+      );
+
+
+  if (error) {
+
+    throw error;
+
+  }
+
+
+  boxes =
+    data ||
+    [];
+
+
+  renderBoxList();
+
+
+  setStatus(
+    `${boxes.length}個の枠を読み込みました。`
+  );
+
+}
+
+
+/* =====================================================
+   IMAGE
+===================================================== */
+
+function handleImage(
+  event
+) {
+
+  const file =
+    event.target.files[0];
+
+
+  if (!file) {
+
+    return;
+
+  }
+
+
+  if (
+    !file.type.startsWith(
+      "image/"
+    )
+  ) {
+
+    showError(
+      "現在の枠設定画面では画像ファイルを使用してください。"
+    );
+
+    return;
+
+  }
+
+
+  const url =
+    URL.createObjectURL(
+      file
+    );
+
+
+  canvasWrap.innerHTML = "";
+
+
+  image =
+    document.createElement(
+      "img"
+    );
+
+
+  image.className =
+    "canvas-image";
+
+
+  image.src =
+    url;
+
+
+  image.draggable =
+    false;
+
+
+  canvasWrap.appendChild(
+    image
+  );
+
+
+  image.onload =
+    () => {
+
+      imageNaturalWidth =
+        image.naturalWidth;
+
+
+      imageNaturalHeight =
+        image.naturalHeight;
+
+
+      const drawLayer =
+        document.createElement(
+          "div"
+        );
+
+
+      drawLayer.className =
+        "draw-layer";
+
+
+      canvasWrap.appendChild(
+        drawLayer
+      );
+
+
+      setupDrawing(
+        drawLayer
+      );
+
+
+      renderBoxes();
+
+
+      setStatus(
+        "画像を読み込みました。枠を設定できます。"
+      );
+
+    };
+
+}
+
+
+/* =====================================================
+   DRAW
+===================================================== */
+
+function setupDrawing(
+  layer
+) {
+
+  layer.onmousedown =
+    event => {
+
+      if (!image) {
+
+        return;
+
+      }
+
+
+      const rect =
+        image.getBoundingClientRect();
+
+
+      drawing =
+        true;
+
+
+      startPoint = {
+
+        x:
+          event.clientX -
+          rect.left,
+
+        y:
+          event.clientY -
+          rect.top
+
+      };
+
+    };
+
+
+  layer.onmouseup =
+    event => {
+
+      if (
+        !drawing ||
+        !startPoint
+      ) {
+
+        return;
+
+      }
+
+
+      const rect =
+        image.getBoundingClientRect();
+
+
+      const endX =
+        event.clientX -
+        rect.left;
+
+
+      const endY =
+        event.clientY -
+        rect.top;
+
+
+      const scaleX =
+        imageNaturalWidth /
+        image.clientWidth;
+
+
+      const scaleY =
+        imageNaturalHeight /
+        image.clientHeight;
+
+
+      const x =
+        Math.min(
+          startPoint.x,
+          endX
+        ) *
+        scaleX;
+
+
+      const y =
+        Math.min(
+          startPoint.y,
+          endY
+        ) *
+        scaleY;
+
+
+      const width =
+        Math.abs(
+          endX -
+          startPoint.x
+        ) *
+        scaleX;
+
+
+      const height =
+        Math.abs(
+          endY -
+          startPoint.y
+        ) *
+        scaleY;
+
+
+      drawing =
+        false;
+
+
+      startPoint =
+        null;
+
+
+      if (
+        width < 10 ||
+        height < 10
+      ) {
+
+        return;
+
+      }
+
+
+      const isQr =
+        mode ===
+        "qr";
+
+
+      const questionCount =
+        boxes.filter(
+          box =>
+            box.box_type !==
+            "qr"
+        ).length;
+
+
+      boxes.push({
+
+        id:
+          null,
+
+        test_id:
+          testId,
+
+        page_no:
+          1,
+
+        box_type:
+          isQr
+            ? "qr"
+            : "answer",
+
+        label:
+          isQr
+            ? "QR"
+            : `問${
+                questionCount +
+                1
+              }`,
+
+        x,
+
+        y,
+
+        width,
+
+        height,
+
+        question_id:
+          isQr
+            ? null
+            : crypto.randomUUID(),
+
+        points:
+          0,
+
+        sort_order:
+          boxes.length +
+          1
+
+      });
+
+
+      renderBoxes();
+
+
+      setStatus(
+        "枠を追加しました。"
+      );
+
+    };
+
+
+  layer.onmouseleave =
+    () => {
+
+      drawing =
+        false;
+
+      startPoint =
+        null;
+
+    };
+
+}
+
+
+/* =====================================================
+   RENDER BOXES
+===================================================== */
+
+function renderBoxes() {
+
+  if (image) {
+
+    canvasWrap
+      .querySelectorAll(
+        ".layout-box"
+      )
+      .forEach(
+        element =>
+          element.remove()
+      );
+
+
+    const scaleX =
+      image.clientWidth /
+      imageNaturalWidth;
+
+
+    const scaleY =
+      image.clientHeight /
+      imageNaturalHeight;
+
+
+    boxes.forEach(
+      box => {
+
+        const element =
+          document.createElement(
+            "div"
+          );
+
+
+        element.className =
+          "layout-box";
+
+
+        if (
+          box.box_type ===
+          "qr"
+        ) {
+
+          element.classList.add(
+            "qr"
+          );
+
+        }
+
+
+        element.style.left =
+          `${box.x * scaleX}px`;
+
+
+        element.style.top =
+          `${box.y * scaleY}px`;
+
+
+        element.style.width =
+          `${box.width * scaleX}px`;
+
+
+        element.style.height =
+          `${box.height * scaleY}px`;
+
+
+        const label =
+          document.createElement(
+            "span"
+          );
+
+
+        label.className =
+          "layout-box-label";
+
+
+        label.textContent =
+          box.label ||
+          "枠";
+
+
+        element.appendChild(
+          label
+        );
+
+
+        canvasWrap.appendChild(
+          element
+        );
+
+      }
+    );
+
+  }
+
+
+  renderBoxList();
+
+}
+
+
+/* =====================================================
+   BOX LIST
+===================================================== */
+
+function renderBoxList() {
+
+  boxList.innerHTML =
+    "";
+
+
+  if (!boxes.length) {
+
+    boxList.innerHTML = `
+
+      <div class="empty">
+        枠がありません。
+      </div>
+
+    `;
+
+    return;
+
+  }
+
+
+  boxes.forEach(
+    (
+      box,
+      index
+    ) => {
+
+      const item =
+        document.createElement(
+          "div"
+        );
+
+
+      item.className =
+        "box-item";
+
+
+      const info =
+        document.createElement(
+          "div"
+        );
+
+
+      info.className =
+        "box-item-info";
+
+
+      const title =
+        document.createElement(
+          "div"
+        );
+
+
+      title.className =
+        "box-item-title";
+
+
+      title.textContent =
+        box.label ||
+        `枠${index + 1}`;
+
+
+      const meta =
+        document.createElement(
+          "div"
+        );
+
+
+      meta.className =
+        "box-item-meta";
+
+
+      meta.textContent =
+        box.box_type ===
+          "qr"
+          ? "QR欄"
+          : `解答欄 / ${formatPoints(
+              box.points
+            )}点`;
+
+
+      info.append(
+        title,
+        meta
+      );
+
+
+      const remove =
+        document.createElement(
+          "button"
+        );
+
+
+      remove.type =
+        "button";
+
+
+      remove.className =
+        "btn";
+
+
+      remove.textContent =
+        "削除";
+
+
+      remove.addEventListener(
+        "click",
+        () => {
+
+          boxes.splice(
+            index,
+            1
+          );
+
+
+          renderBoxes();
+
+        }
+      );
+
+
+      item.append(
+        info,
+        remove
+      );
+
+
+      boxList.appendChild(
+        item
+      );
+
+    }
+  );
+
+}
+
+
+/* =====================================================
+   SAVE
+===================================================== */
+
+async function saveBoxes() {
+
+  if (!boxes.length) {
+
+    showError(
+      "保存する枠がありません。"
+    );
+
+    return;
+
+  }
+
+
+  const saveButton =
+    document.getElementById(
+      "saveButton"
+    );
+
+
+  saveButton.disabled =
+    true;
+
+
+  saveButton.textContent =
+    "保存中...";
+
+
+  try {
+
+    /*
+     * 既存枠を削除。
+     */
+
+    const {
+      error:
+        deleteError
+    } =
+      await DB
+        .from(
+          "layout_boxes"
+        )
+        .delete()
+        .eq(
+          "test_id",
+          testId
+        );
+
+
+    if (deleteError) {
+
+      throw deleteError;
+
+    }
+
+
+    /*
+     * 新しい枠。
+     */
+
+    const rows =
+      boxes.map(
+        (
+          box,
+          index
+        ) => ({
+
+          test_id:
+            testId,
+
+          page_no:
+            box.page_no ||
+            1,
+
+          box_type:
+            box.box_type,
+
+          label:
+            box.label,
+
+          x:
+            box.x,
+
+          y:
+            box.y,
+
+          width:
+            box.width,
+
+          height:
+            box.height,
+
+          question_id:
+            box.box_type ===
+              "qr"
+              ? null
+              : box.question_id,
+
+          /*
+           * 配点はここでは
+           * 0で保存。
+           *
+           * 次の
+           * /teacher/tests/points
+           * で設定する。
+           */
+
+          points:
+            Number(
+              box.points
+            ) || 0,
+
+          sort_order:
+            index + 1
+
+        })
+      );
+
+
+    const {
+      data,
+      error
+    } =
+      await DB
+        .from(
+          "layout_boxes"
+        )
+        .insert(
+          rows
+        )
+        .select();
+
+
+    if (error) {
+
+      throw error;
+
+    }
+
+
+    boxes =
+      data ||
+      [];
+
+
+    renderBoxes();
+
+
+    setStatus(
+      "枠設定を保存しました。配点設定へ進めます。"
+    );
+
+
+    /*
+     * 自動で配点設定へ。
+     */
+
+    window.location.href =
+      `/teacher/tests/points?test=${encodeURIComponent(
+        testId
+      )}`;
+
+
+  } catch (error) {
+
+    showError(
+      `枠設定の保存に失敗しました: ${
+        error.message
+      }`
+    );
+
+
+  } finally {
+
+    saveButton.disabled =
+      false;
+
+
+    saveButton.textContent =
+      "枠設定を保存";
+
+  }
+
+}
+
+
+/* =====================================================
+   HELPERS
+===================================================== */
+
+function setStatus(
+  message
+) {
+
+  statusElement.textContent =
+    message;
+
+
+  statusElement.classList.remove(
+    "error"
+  );
+
+}
+
+
+function showError(
+  message
+) {
+
+  statusElement.textContent =
+    message;
+
+
+  statusElement.classList.add(
+    "error"
+  );
+
+}
+
+
+function formatPoints(
+  value
+) {
+
+  const number =
+    Number(
+      value
+    );
+
+
+  if (
+    !Number.isFinite(
+      number
+    )
+  ) {
+
+    return "0";
+
+  }
+
+
+  return Number.isInteger(
+    number
+  )
+    ? String(
+        number
+      )
+    : number.toFixed(
+        1
+      );
+
+}
+
+</script>
+
 
 </body>
 

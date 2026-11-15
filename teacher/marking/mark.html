@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 
@@ -11,7 +12,7 @@
   >
 
   <title>
-    デジタル採点 - テスト成績システム
+    採点 - テスト成績システム
   </title>
 
   <link
@@ -19,10 +20,202 @@
     href="/css/common.css"
   >
 
-  <link
-    rel="stylesheet"
-    href="/css/marking.css"
-  >
+  <style>
+
+    .marking-main {
+      max-width: 1500px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+
+    .toolbar select {
+      height: 40px;
+      min-width: 240px;
+      padding: 0 10px;
+    }
+
+    .toolbar button {
+      height: 40px;
+    }
+
+    .status {
+      padding: 10px 12px;
+      margin-bottom: 15px;
+      border: 1px solid #d5dbe0;
+      background: #f5f6f7;
+      font-size: 13px;
+    }
+
+    .marking-layout {
+      display: grid;
+      grid-template-columns: 320px minmax(0, 1fr);
+      gap: 15px;
+    }
+
+    .question-list {
+      background: #fff;
+      border: 1px solid #d5dbe0;
+      max-height: calc(100vh - 160px);
+      overflow: auto;
+    }
+
+    .question-item {
+      padding: 12px;
+      border-bottom: 1px solid #e3e6e8;
+      cursor: pointer;
+    }
+
+    .question-item:hover {
+      background: #f6f7f8;
+    }
+
+    .question-item.selected {
+      background: #eef4fb;
+      border-left: 4px solid #2468a8;
+    }
+
+    .question-title {
+      font-weight: 700;
+      margin-bottom: 5px;
+    }
+
+    .question-score {
+      font-size: 12px;
+      color: #666;
+    }
+
+    .question-status {
+      margin-top: 5px;
+      font-size: 12px;
+    }
+
+    .answer-viewer {
+      min-width: 0;
+      background: #dfe3e8;
+      padding: 20px;
+      overflow: auto;
+    }
+
+    .answer-card {
+      max-width: 1000px;
+      margin: 0 auto;
+      background: #fff;
+      border: 1px solid #d0d6dc;
+    }
+
+    .answer-header {
+      padding: 12px 15px;
+      border-bottom: 1px solid #d5dbe0;
+      background: #fff;
+    }
+
+    .answer-header-title {
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .answer-header-meta {
+      margin-top: 4px;
+      color: #666;
+      font-size: 12px;
+    }
+
+    .region-image-wrap {
+      padding: 20px;
+      text-align: center;
+      background: #fff;
+    }
+
+    .region-image {
+      display: block;
+      max-width: 100%;
+      width: auto;
+      height: auto;
+      margin: 0 auto;
+    }
+
+    .mark-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 12px;
+      border-top: 1px solid #d5dbe0;
+      background: #f7f8f9;
+    }
+
+    .mark-button {
+      min-width: 52px;
+      height: 40px;
+      padding: 0 12px;
+      border: 1px solid #bfc6cc;
+      background: #fff;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .mark-button.active {
+      border-color: #333;
+      background: #e9ecef;
+    }
+
+    .score-area {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      padding: 12px;
+      border-top: 1px solid #d5dbe0;
+      background: #fff;
+    }
+
+    .score-input {
+      width: 110px;
+      height: 40px;
+      padding: 0 10px;
+      font-size: 16px;
+    }
+
+    .warning {
+      display: none;
+      padding: 10px;
+      margin: 0 12px 12px;
+      border: 1px solid #efc2bc;
+      background: #fff4f2;
+      color: #b42318;
+      font-size: 13px;
+    }
+
+    .warning.show {
+      display: block;
+    }
+
+    .empty {
+      padding: 50px;
+      text-align: center;
+      color: #777;
+    }
+
+    @media(max-width:900px) {
+
+      .marking-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .question-list {
+        max-height: 300px;
+      }
+
+    }
+
+  </style>
 
 </head>
 
@@ -30,474 +223,93 @@
 <body>
 
 
-<div class="marking-page">
+<header class="topbar">
+
+  <div class="system-name">
+    テスト成績システム
+  </div>
+
+  <div class="topbar-space"></div>
+
+  <span id="teacherName">
+    -
+  </span>
+
+  <button
+    id="logoutButton"
+    class="logout-button"
+    type="button"
+  >
+    ログアウト
+  </button>
+
+</header>
 
 
-  <!-- =====================================================
-       上部ツールバー
-  ====================================================== -->
-
-  <header class="marking-toolbar">
+<main class="marking-main">
 
 
-    <!-- 1段目 -->
+  <div class="toolbar">
 
-    <div class="marking-toolbar-row">
+    <select id="answerSelect">
 
+      <option value="">
+        答案を選択してください
+      </option>
 
-      <!-- 問題移動 -->
-
-      <div class="toolbar-group">
-
-        <button
-          id="previousQuestion"
-          class="mark-tool"
-          type="button"
-        >
-          ← 前
-        </button>
+    </select>
 
 
-        <button
-          id="nextQuestion"
-          class="mark-tool"
-          type="button"
-        >
-          次 →
-        </button>
+    <button
+      id="saveButton"
+      class="btn btn-primary"
+      type="button"
+    >
+      採点を保存
+    </button>
 
+  </div>
+
+
+  <div
+    id="status"
+    class="status"
+  >
+    答案を選択してください。
+  </div>
+
+
+  <div class="marking-layout">
+
+
+    <aside
+      id="questionList"
+      class="question-list"
+    >
+
+      <div class="empty">
+        答案を選択してください。
       </div>
-
-
-      <!-- 選択 -->
-
-      <div class="toolbar-group">
-
-        <button
-          class="mark-tool active"
-          data-tool="select"
-          type="button"
-        >
-          選択
-        </button>
-
-      </div>
-
-
-      <!-- 採点記号 -->
-
-      <div class="toolbar-group">
-
-        <button
-          class="mark-tool"
-          data-tool="circle"
-          type="button"
-        >
-          ○
-        </button>
-
-
-        <button
-          class="mark-tool"
-          data-tool="x"
-          type="button"
-        >
-          ×
-        </button>
-
-
-        <button
-          class="mark-tool"
-          data-tool="triangle"
-          type="button"
-        >
-          △
-        </button>
-
-
-        <button
-          class="mark-tool"
-          data-tool="double"
-          type="button"
-        >
-          ◎
-        </button>
-
-      </div>
-
-
-      <!-- 点数 -->
-
-      <div class="toolbar-group">
-
-
-        <button
-          class="mark-tool"
-          data-tool="number"
-          type="button"
-        >
-          数字
-        </button>
-
-
-        <input
-          id="scoreInput"
-          type="number"
-          min="0"
-          step="0.5"
-          inputmode="decimal"
-          placeholder="点数"
-          autocomplete="off"
-        >
-
-
-        <button
-          id="scoreApply"
-          class="mark-tool"
-          type="button"
-        >
-          点数確定
-        </button>
-
-      </div>
-
-
-      <!-- テキスト -->
-
-      <div class="toolbar-group">
-
-
-        <button
-          class="mark-tool"
-          data-tool="text"
-          type="button"
-        >
-          テキスト
-        </button>
-
-
-        <input
-          id="markText"
-          type="text"
-          placeholder="入力"
-          autocomplete="off"
-        >
-
-      </div>
-
-
-      <!-- 描画 -->
-
-      <div class="toolbar-group">
-
-        <button
-          class="mark-tool"
-          data-tool="pen"
-          type="button"
-        >
-          描画
-        </button>
-
-      </div>
-
-
-      <!-- 色 -->
-
-      <div class="toolbar-group">
-
-        <label
-          class="toolbar-label"
-          for="markColor"
-        >
-          色
-        </label>
-
-
-        <input
-          id="markColor"
-          type="color"
-          value="#e53935"
-        >
-
-      </div>
-
-
-      <!-- サイズ -->
-
-      <div class="toolbar-group">
-
-        <label
-          class="toolbar-label"
-          for="markSize"
-        >
-          サイズ
-        </label>
-
-
-        <input
-          id="markSize"
-          type="number"
-          value="42"
-          min="10"
-          max="150"
-          step="1"
-        >
-
-      </div>
-
-
-      <!-- ショートカット -->
-
-      <div class="toolbar-group shortcut-help">
-
-        <strong>
-          L
-        </strong>
-
-        <span>
-          ○
-        </span>
-
-        <strong>
-          K
-        </strong>
-
-        <span>
-          ×
-        </span>
-
-        <span>
-          数字
-        </span>
-
-        <span>
-          Enter
-        </span>
-
-      </div>
-
-
-    </div>
-
-
-    <!-- 2段目 -->
-
-    <div class="marking-toolbar-row">
-
-
-      <button
-        id="zoomOut"
-        class="mark-tool"
-        type="button"
-      >
-        −
-      </button>
-
-
-      <span
-        id="zoomValue"
-        class="zoom-value"
-      >
-        100%
-      </span>
-
-
-      <button
-        id="zoomIn"
-        class="mark-tool"
-        type="button"
-      >
-        ＋
-      </button>
-
-
-      <button
-        id="fitScreen"
-        class="mark-tool"
-        type="button"
-      >
-        全体表示
-      </button>
-
-
-      <span
-        class="toolbar-separator"
-      >
-      </span>
-
-
-      <span
-        id="questionInfo"
-        class="question-info"
-      >
-        -
-      </span>
-
-
-      <span
-        id="pointInfo"
-        class="point-info"
-      >
-        -
-      </span>
-
-
-      <span
-        id="markingProgress"
-        class="marking-progress"
-      >
-        0 / 0
-      </span>
-
-
-    </div>
-
-
-  </header>
-
-
-
-  <!-- =====================================================
-       採点本体
-  ====================================================== -->
-
-  <main class="marking-content">
-
-
-    <!-- 左：模範解答 -->
-
-    <aside class="model-pane">
-
-
-      <div class="model-title">
-        模範解答
-      </div>
-
-
-      <div
-        id="modelAnswer"
-        class="model-image"
-      >
-        読み込み中...
-      </div>
-
 
     </aside>
 
 
+    <section
+      id="answerViewer"
+      class="answer-viewer"
+    >
 
-    <!-- 右：答案2列 -->
-
-    <section class="answer-area">
-
-
-      <div
-        id="answerGrid"
-        class="answer-grid"
-      >
-        読み込み中...
+      <div class="empty">
+        答案を選択してください。
       </div>
-
 
     </section>
 
 
-  </main>
+  </div>
 
 
-
-  <!-- =====================================================
-       下部
-  ====================================================== -->
-
-  <footer class="marking-footer">
-
-
-    <div
-      class="quick-score-group"
-    >
-
-
-      <button
-        class="footer-score"
-        data-score="0"
-        type="button"
-      >
-        0
-      </button>
-
-
-      <button
-        class="footer-score"
-        data-score="1"
-        type="button"
-      >
-        1
-      </button>
-
-
-      <button
-        class="footer-score"
-        data-score="2"
-        type="button"
-      >
-        2
-      </button>
-
-
-      <button
-        class="footer-score"
-        data-score="3"
-        type="button"
-      >
-        3
-      </button>
-
-
-      <button
-        class="footer-score"
-        data-score="4"
-        type="button"
-      >
-        4
-      </button>
-
-
-      <button
-        class="footer-score"
-        data-score="5"
-        type="button"
-      >
-        5
-      </button>
-
-
-    </div>
-
-
-    <button
-      id="nextUnmarked"
-      class="btn btn-primary"
-      type="button"
-    >
-      次の未採点
-    </button>
-
-
-    <button
-      id="exitMarking"
-      class="btn"
-      type="button"
-    >
-      採点終了
-    </button>
-
-
-  </footer>
-
-
-</div>
-
+</main>
 
 
 <script

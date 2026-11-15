@@ -1,97 +1,129 @@
 
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
 
 <head>
-<meta charset="UTF-8">
+
+<meta charset="utf-8">
 
 <meta
   name="viewport"
-  content="width=device-width, initial-scale=1.0"
+  content="width=device-width,initial-scale=1"
 >
 
-<title>教師ホーム - テスト成績システム</title>
+<title>
+  先生ダッシュボード - テスト成績システム
+</title>
 
-<link rel="stylesheet" href="/css/common.css">
+<link
+  rel="stylesheet"
+  href="/css/common.css"
+>
 
 <style>
 
-.main {
-  max-width:1200px;
-  margin:0 auto;
-  padding:25px;
+.dashboard-main {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 22px;
 }
 
-.header {
-  margin-bottom:25px;
-}
+.dashboard-grid {
+  display: grid;
 
-.header h1 {
-  margin:0;
-  font-size:24px;
-}
-
-.header p {
-  margin:8px 0 0;
-  color:#666;
-  font-size:13px;
-}
-
-.grid {
-  display:grid;
   grid-template-columns:
-    repeat(3,minmax(0,1fr));
-  gap:15px;
+    repeat(
+      3,
+      minmax(0, 1fr)
+    );
+
+  gap: 14px;
 }
 
-.card {
-  display:block;
-  padding:20px;
-  background:#fff;
-  border:1px solid #d5dbe0;
-  border-radius:5px;
-  color:#222;
-  text-decoration:none;
+.dashboard-card {
+  display: block;
+
+  padding: 20px;
+
+  background: #fff;
+
+  border: 1px solid #d0d6dc;
+
+  border-radius: 6px;
+
+  color: inherit;
+
+  text-decoration: none;
 }
 
-.card:hover {
-  border-color:#777;
+.dashboard-card:hover {
+  background: #f7f9fb;
 }
 
-.card-title {
-  font-size:17px;
-  font-weight:700;
-  margin-bottom:8px;
+.dashboard-card h2 {
+  margin:
+    0
+    0
+    8px;
+
+  font-size: 17px;
 }
 
-.card-description {
-  color:#666;
-  font-size:13px;
-  line-height:1.7;
+.dashboard-card p {
+  margin: 0;
+
+  color: #666;
+
+  font-size: 13px;
+
+  line-height: 1.7;
 }
 
-@media(max-width:900px) {
-  .grid {
+.dashboard-card .link {
+  display: inline-block;
+
+  margin-top: 14px;
+
+  color: #1769aa;
+
+  font-size: 13px;
+
+  font-weight: 700;
+}
+
+
+@media (max-width: 900px) {
+
+  .dashboard-grid {
     grid-template-columns:
-      repeat(2,minmax(0,1fr));
+      repeat(
+        2,
+        minmax(0, 1fr)
+      );
   }
+
 }
 
-@media(max-width:600px) {
-  .main {
-    padding:15px;
+
+@media (max-width: 600px) {
+
+  .dashboard-main {
+    padding: 14px;
   }
 
-  .grid {
-    grid-template-columns:1fr;
+  .dashboard-grid {
+    grid-template-columns: 1fr;
   }
+
 }
 
 </style>
+
 </head>
 
 
 <body>
+
 
 <header class="topbar">
 
@@ -99,9 +131,14 @@
     テスト成績システム
   </div>
 
+
   <div class="topbar-space"></div>
 
-  <span id="teacherName">-</span>
+
+  <span id="teacherName">
+    -
+  </span>
+
 
   <button
     id="logoutButton"
@@ -114,149 +151,262 @@
 </header>
 
 
-<main class="main">
+<main class="dashboard-main">
 
-  <section class="header">
+
+  <div class="page-header">
 
     <h1>
-      教師ホーム
+      先生ダッシュボード
     </h1>
 
-    <p>
-      テスト・答案・採点・成績を管理します。
-    </p>
-
-  </section>
+  </div>
 
 
-  <section class="grid">
+  <div class="dashboard-grid">
+
+
+    <!-- =================================================
+         テスト管理
+    ================================================== -->
 
     <a
-      class="card"
+      class="dashboard-card"
       href="/teacher/tests"
     >
-      <div class="card-title">
+
+      <h2>
         テスト管理
-      </div>
-      <div class="card-description">
-        テストの作成・編集を行います。
-      </div>
+      </h2>
+
+      <p>
+        テスト作成、解答用紙、枠設定、配点設定を管理します。
+      </p>
+
+      <span class="link">
+        テスト管理へ
+      </span>
+
     </a>
 
 
+    <!-- =================================================
+         生徒QR
+    ================================================== -->
+
     <a
-      class="card"
-      href="/teacher/tests/pages"
+      class="dashboard-card"
+      href="/teacher/students/qr"
     >
-      <div class="card-title">
-        解答用紙・枠設定
-      </div>
-      <div class="card-description">
-        解答用紙を登録し、設問ごとの解答欄と配点を設定します。
-      </div>
+
+      <h2>
+        生徒QR発行
+      </h2>
+
+      <p>
+        生徒番号から答案紐付け用QRを一括発行・印刷します。
+      </p>
+
+      <span class="link">
+        QR発行へ
+      </span>
+
     </a>
 
 
-    <a
-      class="card"
-      href="/teacher/tests/publish"
-    >
-      <div class="card-title">
-        成績・答案公開
-      </div>
-      <div class="card-description">
-        生徒への公開・非公開を切り替えます。
-      </div>
-    </a>
-
+    <!-- =================================================
+         答案アップロード
+    ================================================== -->
 
     <a
-      class="card"
+      class="dashboard-card"
       href="/teacher/answers/upload"
     >
-      <div class="card-title">
+
+      <h2>
         答案アップロード
-      </div>
-      <div class="card-description">
-        PDF・画像・ZIPの答案をアップロードします。
-      </div>
+      </h2>
+
+      <p>
+        PDF・画像・ZIPの答案をアップロードし、QRで生徒を自動紐付けします。
+      </p>
+
+      <span class="link">
+        答案アップロードへ
+      </span>
+
     </a>
 
 
-    <a
-      class="card"
-      href="/teacher/answers/matched"
-    >
-      <div class="card-title">
-        答案確認・紐付け
-      </div>
-      <div class="card-description">
-        QRによる自動紐付けと未紐付け答案を確認します。
-      </div>
-    </a>
-
+    <!-- =================================================
+         採点
+    ================================================== -->
 
     <a
-      class="card"
+      class="dashboard-card"
       href="/teacher/marking"
     >
-      <div class="card-title">
+
+      <h2>
         採点
-      </div>
-      <div class="card-description">
-        自動クロップされた解答欄を採点します。
-      </div>
+      </h2>
+
+      <p>
+        テスト全体を設問ごとに全生徒採点します。
+      </p>
+
+      <span class="link">
+        採点へ
+      </span>
+
     </a>
 
+
+    <!-- =================================================
+         生徒管理
+    ================================================== -->
 
     <a
-      class="card"
-      href="/teacher/results/summary"
+      class="dashboard-card"
+      href="/teacher/students"
     >
-      <div class="card-title">
-        結果総括表
-      </div>
-      <div class="card-description">
-        生徒番号・氏名・各設問点・合計・平均・順位を確認します。
-      </div>
+
+      <h2>
+        生徒管理
+      </h2>
+
+      <p>
+        生徒番号、氏名、在籍状態などを管理します。
+      </p>
+
+      <span class="link">
+        生徒管理へ
+      </span>
+
     </a>
 
-  </section>
+
+    <!-- =================================================
+         成績
+    ================================================== -->
+
+    <a
+      class="dashboard-card"
+      href="/teacher/results/summary"
+    >
+
+      <h2>
+        成績・返却
+      </h2>
+
+      <p>
+        成績、偏差値、順位、公開・返却状態を確認します。
+      </p>
+
+      <span class="link">
+        成績・返却へ
+      </span>
+
+    </a>
+
+
+  </div>
+
 
 </main>
 
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script
+  src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+></script>
+
+
 <script src="/js/config.js"></script>
+
 <script src="/js/auth.js"></script>
+
 
 <script>
 
+"use strict";
+
+
 (async function () {
 
-  const profile =
-    await requireTeacher();
+  try {
 
-  if (!profile) {
-    return;
+    const result =
+      await requireRole(
+        "teacher"
+      );
+
+
+    const profile =
+      result?.profile ||
+      result ||
+      {};
+
+
+    const teacherName =
+      document.getElementById(
+        "teacherName"
+      );
+
+
+    if (teacherName) {
+
+      teacherName.textContent =
+        profile.name ||
+        "先生";
+
+    }
+
+  } catch (error) {
+
+    console.error(
+      error
+    );
+
   }
-
-  document.getElementById(
-    "teacherName"
-  ).textContent =
-    profile.name || "先生";
-
-
-  document.getElementById(
-    "logoutButton"
-  ).addEventListener(
-    "click",
-    logout
-  );
 
 })();
 
+
+document
+  .getElementById(
+    "logoutButton"
+  )
+  ?.addEventListener(
+    "click",
+    async () => {
+
+      if (
+        typeof logout ===
+        "function"
+      ) {
+
+        await logout();
+
+        return;
+
+      }
+
+
+      if (
+        typeof signOut ===
+        "function"
+      ) {
+
+        await signOut();
+
+      }
+
+    }
+  );
+
 </script>
 
+
 </body>
+
 </html>

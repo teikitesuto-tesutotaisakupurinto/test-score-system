@@ -4,21 +4,21 @@
 
 <head>
 
-<meta charset="utf-8">
+  <meta charset="utf-8">
 
-<meta
-  name="viewport"
-  content="width=device-width,initial-scale=1"
->
+  <meta
+    name="viewport"
+    content="width=device-width,initial-scale=1"
+  >
 
-<title>
-  答案アップロード - テスト成績システム
-</title>
+  <title>
+    答案アップロード - テスト成績システム
+  </title>
 
-<link
-  rel="stylesheet"
-  href="/css/style.css"
->
+  <link
+    rel="stylesheet"
+    href="/css/common.css"
+  >
 
 </head>
 
@@ -27,7 +27,7 @@
 
 
 <!-- =====================================================
-     共通ヘッダー
+     共通上部バー
 ====================================================== -->
 
 <header class="topbar">
@@ -36,14 +36,11 @@
     テスト成績システム
   </div>
 
-
   <div class="topbar-space"></div>
-
 
   <span id="teacherName">
     -
   </span>
-
 
   <button
     id="logoutButton"
@@ -57,200 +54,282 @@
 
 
 <!-- =====================================================
-     MAIN
+     先生レイアウト
 ====================================================== -->
 
-<main class="main">
+<div class="teacher-layout">
 
 
-  <div class="top">
+  <!-- ===================================================
+       サイドバー
+  ==================================================== -->
 
-    <div>
+  <aside class="sidebar">
+
+    <div class="sidebar-title">
+      メニュー
+    </div>
+
+
+    <a
+      class="menu-link"
+      href="/teacher"
+    >
+      ダッシュボード
+    </a>
+
+
+    <a
+      class="menu-link"
+      href="/teacher/students"
+    >
+      生徒管理
+    </a>
+
+
+    <a
+      class="menu-link"
+      href="/teacher/qr"
+    >
+      QR発行
+    </a>
+
+
+    <a
+      class="menu-link"
+      href="/teacher/tests"
+    >
+      テスト管理
+    </a>
+
+
+    <div class="sidebar-title">
+      答案
+    </div>
+
+
+    <a
+      class="menu-link active"
+      href="/teacher/answers/upload"
+    >
+      答案アップロード
+    </a>
+
+
+    <a
+      class="menu-link"
+      href="/teacher/answers/matched"
+    >
+      答案一覧
+    </a>
+
+
+    <a
+      class="menu-link"
+      href="/teacher/marking"
+    >
+      デジタル採点
+    </a>
+
+
+    <div class="sidebar-title">
+      成績
+    </div>
+
+
+    <a
+      class="menu-link"
+      href="/teacher/results/summary"
+    >
+      成績・返却
+    </a>
+
+  </aside>
+
+
+  <!-- ===================================================
+       メイン
+  ==================================================== -->
+
+  <main class="main-content">
+
+
+    <div class="page-header">
 
       <h1>
         答案アップロード
       </h1>
 
-      <p class="small muted">
-        生徒の答案をアップロードします。
-        PDF、JPEG、JPG、PNG、WEBP、ZIPに対応しています。
-      </p>
-
-    </div>
-
-  </div>
-
-
-  <!-- ===================================================
-       UPLOAD CARD
-  ==================================================== -->
-
-  <div class="card">
-
-
-    <!-- テスト -->
-
-    <div class="form-row">
-
-      <label for="test">
-        テスト
-      </label>
-
-
-      <select id="test">
-
-        <option value="">
-          テストを選択してください
-        </option>
-
-      </select>
-
     </div>
 
 
-    <!-- 答案種類 -->
+    <!-- =================================================
+         アップロード
+    ================================================== -->
 
-    <div class="form-row">
-
-      <label for="answerType">
-        答案種類
-      </label>
+    <div class="card">
 
 
-      <select id="answerType">
+      <div class="form-group">
 
-        <option value="student">
-          生徒答案
-        </option>
-
-
-        <option value="model">
-          解答用紙・模範解答
-        </option>
-
-      </select>
-
-    </div>
+        <label for="test">
+          テスト
+        </label>
 
 
-    <!-- ファイル -->
+        <select id="test">
 
-    <div class="form-row">
+          <option value="">
+            テストを選択してください
+          </option>
 
-      <label for="files">
-        ファイル
-      </label>
-
-
-      <input
-        id="files"
-        type="file"
-        multiple
-        accept=".pdf,.jpg,.jpeg,.png,.webp,.zip"
-      >
-
-    </div>
-
-
-    <p class="small muted">
-
-      PDFはページ単位で処理します。
-
-      <br>
-
-      JPEG / JPG / PNG / WEBPは画像答案として処理します。
-
-      <br>
-
-      ZIPは内部の対応ファイルを展開して処理します。
-
-    </p>
-
-
-    <!-- ファイル一覧 -->
-
-    <div
-      id="fileList"
-      class="file-list"
-      hidden
-    ></div>
-
-
-    <!-- 操作 -->
-
-    <div class="actions">
-
-      <button
-        id="uploadButton"
-        type="button"
-        class="primary"
-      >
-        アップロード
-      </button>
-
-
-      <button
-        id="clearButton"
-        type="button"
-      >
-        クリア
-      </button>
-
-    </div>
-
-
-    <!-- 進捗 -->
-
-    <div
-      id="progressArea"
-      hidden
-    >
-
-      <div class="progress-track">
-
-        <div
-          id="progressBar"
-          class="progress-bar"
-        ></div>
+        </select>
 
       </div>
 
 
-      <p
-        id="progressText"
-        class="small muted"
-      >
-        待機中
+      <div class="form-group">
+
+        <label for="answerType">
+          答案種類
+        </label>
+
+
+        <select id="answerType">
+
+          <option value="student">
+            生徒答案
+          </option>
+
+          <option value="model">
+            解答用紙・模範解答
+          </option>
+
+        </select>
+
+      </div>
+
+
+      <div class="form-group">
+
+        <label for="files">
+          ファイル
+        </label>
+
+
+        <input
+          id="files"
+          type="file"
+          multiple
+          accept=".pdf,.jpg,.jpeg,.png,.webp,.zip"
+        >
+
+      </div>
+
+
+      <p class="small muted">
+
+        PDF / JPG / JPEG / PNG / WEBP / ZIP
+
+        <br>
+
+        PDFはページ単位で処理します。
+
+        <br>
+
+        ZIPの場合は内部の対応ファイルを展開して処理します。
+
       </p>
+
+
+      <!-- 選択ファイル -->
+
+      <div
+        id="fileList"
+        hidden
+      ></div>
+
+
+      <!-- 操作 -->
+
+      <div class="quick-actions">
+
+        <button
+          id="uploadButton"
+          type="button"
+          class="quick-button primary"
+        >
+          アップロード
+        </button>
+
+
+        <button
+          id="clearButton"
+          type="button"
+          class="quick-button"
+        >
+          クリア
+        </button>
+
+      </div>
+
+
+      <!-- 進捗 -->
+
+      <div
+        id="progressArea"
+        hidden
+      >
+
+        <div
+          class="progress-track"
+        >
+
+          <div
+            id="progressBar"
+            class="progress-bar"
+          ></div>
+
+        </div>
+
+
+        <p
+          id="progressText"
+          class="small muted"
+        >
+          待機中
+        </p>
+
+      </div>
+
+
+      <!-- メッセージ -->
+
+      <p
+        id="message"
+        class="small"
+        aria-live="polite"
+      ></p>
+
+
+      <!-- 結果 -->
+
+      <div
+        id="result"
+        hidden
+      ></div>
+
 
     </div>
 
 
-    <!-- メッセージ -->
+  </main>
 
-    <p
-      id="message"
-      class="message"
-      aria-live="polite"
-    ></p>
-
-
-    <!-- 結果 -->
-
-    <div
-      id="result"
-      hidden
-    ></div>
-
-
-  </div>
-
-
-</main>
+</div>
 
 
 <!-- =====================================================
-     LIBRARIES
+     ライブラリ
 ====================================================== -->
 
 <script
@@ -273,14 +352,14 @@
 ></script>
 
 
-<!-- 共通 -->
+<!-- 共通JS -->
 
 <script src="/js/config.js"></script>
 
 <script src="/js/auth.js"></script>
 
 
-<!-- 答案アップロード -->
+<!-- 答案アップロードJS -->
 
 <script src="/js/teacher/answers-upload.js"></script>
 

@@ -2,7 +2,16 @@
    テスト成績システム
    デジタル採点 完全版
 
+
+   URL
+
+   /teacher/marking/mark
+      ?test=TEST_ID
+      &box=LAYOUT_BOX_ID
+
+
    採点単位
+
    answer_sheets
         ↓
    answer_regions
@@ -10,845 +19,955 @@
    layout_box_id
         ↓
    scores
-        ↓
+
+
+   採点記号
+
    mark_objects
 
 
-   キーボード
-   L       → ○
-   K       → ×
-   数字    → 点数入力
-   Enter   → 点数確定
+   キー
+
+   L
+   ↓
+   ○
+   ↓
+   満点
 
 
-   点数ルール
-   --------------------------------
-   配点 5点の場合
+   K
+   ↓
+   ×
+   ↓
+   0点
 
-   0～4   → 保存可能
-   5以上  → 警告・保存不可
+
+   数字
+   ↓
+   点数入力
+
+
+   Enter
+   ↓
+   点数確定
+
+
+   数字による点数
+
+   配点未満
+   → 保存可能
+
+   配点以上
+   → 警告
+   → 保存しない
+
+
+   ○による満点
+
+   ○は満点記号なので
+   配点と同じ点数を例外的に保存する。
 
 
    表示
-   --------------------------------
-   左   → 模範解答
-   右   → 生徒答案2列
 
+   左
+   → 模範解答
 
-   採点後
-   --------------------------------
-   保存成功
-      ↓
-   次の未採点答案へ自動移動
+   右
+   → 生徒答案2列
 ========================================================= */
 
 
 /* =========================================================
-   IIFE
+   URL
 ========================================================= */
 
-(function () {
+const markingParams =
+  new URLSearchParams(
+    window.location.search
+  );
 
-  "use strict";
+
+const testId =
+  markingParams.get(
+    "test"
+  );
 
 
-  /* =======================================================
-     URL
-  ======================================================= */
+const boxId =
+  markingParams.get(
+    "box"
+  );
 
-  const params =
-    new URLSearchParams(
-      window.location.search
+
+/* =========================================================
+   状態
+========================================================= */
+
+let currentTest =
+  null;
+
+
+let currentBox =
+  null;
+
+
+let markingBoxes =
+  [];
+
+
+let currentBoxIndex =
+  -1;
+
+
+let answers =
+  [];
+
+
+let selectedCard =
+  null;
+
+
+let activeTool =
+  "select";
+
+
+let zoom =
+  1;
+
+
+let scoreInputValue =
+  "";
+
+
+/* =========================================================
+   初期化
+========================================================= */
+
+async function initializeMarking() {
+
+  const profile =
+    await getProfile();
+
+
+  if (!profile) {
+
+    window.location.replace(
+      "/login"
+    );
+
+    return;
+
+  }
+
+
+  if (
+    profile.role !== "teacher" &&
+    profile.role !== "admin"
+  ) {
+
+    window.location.replace(
+      "/student/dashboard"
+    );
+
+    return;
+
+  }
+
+
+  if (
+    !testId ||
+    !boxId
+  ) {
+
+    alert(
+      "採点対象が指定されていません。"
     );
 
 
-  const testId =
-    params.get("test");
-
-
-  const boxId =
-    params.get("box");
-
-
-  /* =======================================================
-     状態
-  ======================================================= */
-
-  let currentTest =
-    null;
-
-
-  let currentBox =
-    null;
-
-
-  let answers =
-    [];
-
-
-  let selectedCard =
-    null;
-
-
-  let activeTool =
-    "select";
-
-
-  let zoom =
-    1;
-
-
-  /*
-    数字キー入力中の点数
-  */
-
-  let scoreInputValue =
-    "";
-
-
-  /* =======================================================
-     初期化
-  ======================================================= */
-
-  async function initialize() {
-
-    const profile =
-      await getProfile();
-
-
-    if (!profile) {
-
-      window.location.replace(
-        "/login"
-      );
-
-      return;
-
-    }
-
-
-    if (
-      profile.role !== "teacher" &&
-      profile.role !== "admin"
-    ) {
-
-      window.location.replace(
-        "/student/dashboard"
-      );
-
-      return;
-
-    }
-
-
-    if (
-      !testId ||
-      !boxId
-    ) {
-
-      alert(
-        "採点対象が指定されていません。"
-      );
-
-
-      window.location.replace(
-        "/teacher/marking"
-      );
-
-
-      return;
-
-    }
-
-
-    try {
-
-      await loadTest();
-
-      await loadBox();
-
-      await loadAnswers();
-
-      await loadModelAnswer();
-
-      setupToolbar();
-
-      setupKeyboard();
-
-      updateProgress();
-
-    } catch (error) {
-
-      console.error(
-        "採点画面初期化:",
-        error
-      );
-
-
-      alert(
-        error.message ||
-        "採点画面を読み込めませんでした。"
-      );
-
-    }
-
-  }
-
-
-  /* =======================================================
-     テスト取得
-  ======================================================= */
-
-  async function loadTest() {
-
-    const {
-      data,
-      error
-    } =
-      await supabaseClient
-        .from("tests")
-        .select(`
-          id,
-          name,
-          subject,
-          grade,
-          class_name,
-          max_score,
-          status
-        `)
-        .eq(
-          "id",
-          testId
-        )
-        .maybeSingle();
-
-
-    if (error) {
-
-      throw error;
-
-    }
-
-
-    if (!data) {
-
-      throw new Error(
-        "テストが見つかりません。"
-      );
-
-    }
-
-
-    currentTest =
-      data;
-
-  }
-
-
-  /* =======================================================
-     解答欄取得
-  ======================================================= */
-
-  async function loadBox() {
-
-    const {
-      data,
-      error
-    } =
-      await supabaseClient
-        .from("layout_boxes")
-        .select(`
-          id,
-          test_id,
-          page_no,
-          box_type,
-          label,
-          x,
-          y,
-          width,
-          height,
-          points
-        `)
-        .eq(
-          "id",
-          boxId
-        )
-        .eq(
-          "test_id",
-          testId
-        )
-        .eq(
-          "box_type",
-          "answer"
-        )
-        .maybeSingle();
-
-
-    if (error) {
-
-      throw error;
-
-    }
-
-
-    if (!data) {
-
-      throw new Error(
-        "指定された解答欄が見つかりません。"
-      );
-
-    }
-
-
-    currentBox =
-      data;
-
-
-    document.getElementById(
-      "questionInfo"
-    ).textContent =
-      data.label ||
-      "解答欄";
-
-
-    document.getElementById(
-      "pointInfo"
-    ).textContent =
-
-      data.points === null ||
-      data.points === undefined
-
-        ? "配点未設定"
-
-        : `設定点数：${data.points}点`;
-
-  }
-
-
-  /* =======================================================
-     答案取得
-  ======================================================= */
-
-  async function loadAnswers() {
-
-    const {
-      data,
-      error
-    } =
-      await supabaseClient
-        .from("answer_sheets")
-        .select(`
-          id,
-          student_id,
-          status,
-          created_at,
-          students(
-            student_no,
-            name
-          )
-        `)
-        .eq(
-          "test_id",
-          testId
-        )
-        .neq(
-          "status",
-          "unmatched"
-        )
-        .order(
-          "created_at",
-          {
-            ascending: true
-          }
-        );
-
-
-    if (error) {
-
-      throw error;
-
-    }
-
-
-    answers =
-      data || [];
-
-
-    const answerIds =
-      answers.map(
-        answer =>
-          answer.id
-      );
-
-
-    /*
-      答案なし
-    */
-
-    if (!answerIds.length) {
-
-      renderAnswers();
-
-      return;
-
-    }
-
-
-    /*
-      現在の解答欄に対応する
-      answer_regions
-    */
-
-    const {
-      data:
-        regions,
-      error:
-        regionError
-    } =
-      await supabaseClient
-        .from("answer_regions")
-        .select(`
-          id,
-          answer_sheet_id,
-          layout_box_id,
-          image_path,
-          page_no,
-          width,
-          height
-        `)
-        .in(
-          "answer_sheet_id",
-          answerIds
-        )
-        .eq(
-          "layout_box_id",
-          boxId
-        );
-
-
-    if (regionError) {
-
-      throw regionError;
-
-    }
-
-
-    const regionMap =
-      new Map();
-
-
-    (
-      regions || []
-    ).forEach(
-      region => {
-
-        regionMap.set(
-          region.answer_sheet_id,
-          region
-        );
-
-      }
+    window.location.replace(
+      "/teacher/marking"
     );
 
 
-    answers =
-      answers.map(
-        answer => ({
+    return;
 
-          ...answer,
+  }
 
-          region:
-            regionMap.get(
-              answer.id
-            ) || null
 
-        })
+  try {
+
+    await loadTest();
+
+    await loadMarkingBoxes();
+
+    await loadBox();
+
+    await loadAnswers();
+
+    await loadModelAnswer();
+
+    setupToolbar();
+
+    setupKeyboard();
+
+    updateProgress();
+
+    updateQuestionNavigation();
+
+  } catch (error) {
+
+    console.error(
+      "採点初期化エラー:",
+      error
+    );
+
+
+    alert(
+      error.message ||
+      "採点画面を読み込めませんでした。"
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   テスト
+========================================================= */
+
+async function loadTest() {
+
+  const {
+    data,
+    error
+  } =
+    await supabaseClient
+      .from("tests")
+      .select(`
+        id,
+        name,
+        subject,
+        grade,
+        class_name,
+        max_score,
+        status
+      `)
+      .eq(
+        "id",
+        testId
+      )
+      .maybeSingle();
+
+
+  if (error) {
+
+    throw error;
+
+  }
+
+
+  if (!data) {
+
+    throw new Error(
+      "テストが見つかりません。"
+    );
+
+  }
+
+
+  currentTest =
+    data;
+
+}
+
+
+/* =========================================================
+   採点対象の解答欄一覧
+========================================================= */
+
+async function loadMarkingBoxes() {
+
+  const {
+    data,
+    error
+  } =
+    await supabaseClient
+      .from("layout_boxes")
+      .select(`
+        id,
+        test_id,
+        page_no,
+        box_type,
+        label,
+        x,
+        y,
+        width,
+        height,
+        points
+      `)
+      .eq(
+        "test_id",
+        testId
+      )
+      .eq(
+        "box_type",
+        "answer"
+      )
+      .order(
+        "page_no",
+        {
+          ascending: true
+        }
+      )
+      .order(
+        "y",
+        {
+          ascending: true
+        }
+      )
+      .order(
+        "x",
+        {
+          ascending: true
+        }
       );
 
+
+  if (error) {
+
+    throw error;
+
+  }
+
+
+  markingBoxes =
+    data || [];
+
+
+  currentBoxIndex =
+    markingBoxes.findIndex(
+      box =>
+        box.id ===
+        boxId
+    );
+
+
+  if (
+    currentBoxIndex < 0
+  ) {
+
+    throw new Error(
+      "現在の解答欄が見つかりません。"
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   現在の解答欄
+========================================================= */
+
+async function loadBox() {
+
+  const {
+    data,
+    error
+  } =
+    await supabaseClient
+      .from("layout_boxes")
+      .select(`
+        id,
+        test_id,
+        page_no,
+        box_type,
+        label,
+        x,
+        y,
+        width,
+        height,
+        points
+      `)
+      .eq(
+        "id",
+        boxId
+      )
+      .eq(
+        "test_id",
+        testId
+      )
+      .eq(
+        "box_type",
+        "answer"
+      )
+      .maybeSingle();
+
+
+  if (error) {
+
+    throw error;
+
+  }
+
+
+  if (!data) {
+
+    throw new Error(
+      "指定された解答欄が見つかりません。"
+    );
+
+  }
+
+
+  currentBox =
+    data;
+
+
+  document.getElementById(
+    "questionInfo"
+  ).textContent =
+    data.label ||
+    `解答欄 ${currentBoxIndex + 1}`;
+
+
+  document.getElementById(
+    "pointInfo"
+  ).textContent =
+
+    data.points === null ||
+    data.points === undefined
+
+      ? "配点未設定"
+
+      : `設定点数：${data.points}点`;
+
+}
+
+
+/* =========================================================
+   答案取得
+========================================================= */
+
+async function loadAnswers() {
+
+  const {
+    data,
+    error
+  } =
+    await supabaseClient
+      .from("answer_sheets")
+      .select(`
+        id,
+        student_id,
+        status,
+        created_at,
+        students(
+          student_no,
+          name
+        )
+      `)
+      .eq(
+        "test_id",
+        testId
+      )
+      .neq(
+        "status",
+        "unmatched"
+      )
+      .order(
+        "created_at",
+        {
+          ascending: true
+        }
+      );
+
+
+  if (error) {
+
+    throw error;
+
+  }
+
+
+  answers =
+    data || [];
+
+
+  if (!answers.length) {
 
     renderAnswers();
 
+    return;
+
   }
 
 
-  /* =======================================================
-     答案表示
-  ======================================================= */
-
-  function renderAnswers() {
-
-    const grid =
-      document.getElementById(
-        "answerGrid"
-      );
-
-
-    if (!answers.length) {
-
-      grid.innerHTML = `
-
-        <div class="no-answer">
-
-          採点対象の答案がありません。
-
-        </div>
-
-      `;
-
-
-      return;
-
-    }
-
-
-    grid.innerHTML =
-      answers
-        .map(
-          answer =>
-            createAnswerCard(
-              answer
-            )
-        )
-        .join("");
-
-
-    /*
-      画像・既存採点・既存記号
-    */
-
-    answers.forEach(
-      async answer => {
-
-        await loadRegionImage(
-          answer
-        );
-
-
-        await loadScore(
-          answer
-        );
-
-
-        await loadMarks(
-          answer
-        );
-
-      }
+  const answerIds =
+    answers.map(
+      answer =>
+        answer.id
     );
 
 
-    setupAnswerEvents();
+  /*
+    この解答欄の
+    answer_regionsだけ取得
+  */
+
+  const {
+    data:
+      regions,
+    error:
+      regionError
+  } =
+    await supabaseClient
+      .from(
+        "answer_regions"
+      )
+      .select(`
+        id,
+        answer_sheet_id,
+        layout_box_id,
+        image_path,
+        page_no,
+        width,
+        height
+      `)
+      .in(
+        "answer_sheet_id",
+        answerIds
+      )
+      .eq(
+        "layout_box_id",
+        boxId
+      );
+
+
+  if (regionError) {
+
+    throw regionError;
 
   }
 
 
-  /* =======================================================
-     答案カード
-  ======================================================= */
+  const regionMap =
+    new Map();
 
-  function createAnswerCard(
-    answer
-  ) {
 
-    return `
+  (
+    regions || []
+  ).forEach(
+    region => {
 
-      <article
-        class="answer-card"
-        data-answer-id="${escapeHtml(
-          answer.id
-        )}"
+      regionMap.set(
+        region.answer_sheet_id,
+        region
+      );
+
+    }
+  );
+
+
+  answers =
+    answers.map(
+      answer => ({
+
+        ...answer,
+
+        region:
+          regionMap.get(
+            answer.id
+          ) || null
+
+      })
+    );
+
+
+  renderAnswers();
+
+}
+
+
+/* =========================================================
+   答案カード表示
+========================================================= */
+
+function renderAnswers() {
+
+  const grid =
+    document.getElementById(
+      "answerGrid"
+    );
+
+
+  if (!answers.length) {
+
+    grid.innerHTML = `
+
+      <div
+        class="no-answer"
       >
-
-
-        <div
-          class="answer-header"
-        >
-
-          <span>
-
-            ${escapeHtml(
-              answer.students?.student_no ||
-              ""
-            )}
-
-            -
-
-            ${escapeHtml(
-              answer.students?.name ||
-              "未紐付け"
-            )}
-
-          </span>
-
-
-          <span
-            class="answer-status"
-          >
-            未採点
-          </span>
-
-        </div>
-
-
-
-        <div
-          class="answer-stage"
-        >
-
-          ${
-            answer.region
-
-              ? `
-
-                <img
-                  class="answer-image"
-                  alt="生徒答案"
-                >
-
-                <canvas
-                  class="answer-canvas"
-                ></canvas>
-
-              `
-
-              :
-
-              `
-
-                <div
-                  style="
-                    padding:30px;
-                    color:#999;
-                    text-align:center;
-                  "
-                >
-                  切り出し未作成
-                </div>
-
-              `
-
-          }
-
-        </div>
-
-
-
-        <div
-          class="answer-score-bar"
-        >
-
-          ${[
-            0,
-            1,
-            2,
-            3,
-            4,
-            5
-          ]
-            .map(
-              score => `
-
-                <button
-                  class="answer-score"
-                  data-score="${score}"
-                  type="button"
-                >
-                  ${score}
-                </button>
-
-              `
-            )
-            .join("")}
-
-        </div>
-
-
-      </article>
+        採点対象の答案がありません。
+      </div>
 
     `;
 
+
+    return;
+
   }
 
 
-  /* =======================================================
-     切り出し画像
-  ======================================================= */
-
-  async function loadRegionImage(
-    answer
-  ) {
-
-    if (
-      !answer.region
-    ) {
-
-      return;
-
-    }
+  grid.innerHTML =
+    answers
+      .map(
+        answer =>
+          createAnswerCard(
+            answer
+          )
+      )
+      .join("");
 
 
-    const {
-      data,
-      error
-    } =
-      await supabaseClient
-        .storage
-        .from(
-          "student-answers"
-        )
-        .createSignedUrl(
-          answer.region.image_path,
-          3600
-        );
+  setupAnswerEvents();
 
 
-    if (error) {
+  /*
+    非同期で画像等を取得
+  */
 
-      console.error(
-        "答案領域画像:",
-        error
+  answers.forEach(
+    async answer => {
+
+      await loadRegionImage(
+        answer
       );
 
-
-      return;
-
-    }
-
-
-    if (
-      !data?.signedUrl
-    ) {
-
-      return;
-
-    }
-
-
-    const card =
-      document.querySelector(
-        `[data-answer-id="${answer.id}"]`
+      await loadScore(
+        answer
       );
 
-
-    if (!card) {
-
-      return;
-
-    }
-
-
-    const image =
-      card.querySelector(
-        ".answer-image"
+      await loadMarks(
+        answer
       );
 
-
-    const canvas =
-      card.querySelector(
-        ".answer-canvas"
-      );
-
-
-    if (!image) {
-
-      return;
-
     }
+  );
+
+}
 
 
-    image.src =
-      data.signedUrl;
+/* =========================================================
+   答案カード
+========================================================= */
+
+function createAnswerCard(
+  answer
+) {
+
+  const studentNo =
+    answer.students?.student_no ||
+    "";
 
 
-    image.onload =
-      () => {
+  const studentName =
+    answer.students?.name ||
+    "未紐付け";
 
-        if (!canvas) {
 
-          return;
+  return `
 
+    <article
+      class="answer-card"
+      data-answer-id="${escapeHtml(
+        answer.id
+      )}"
+    >
+
+
+      <div
+        class="answer-header"
+      >
+
+        <span>
+
+          ${escapeHtml(
+            studentNo
+          )}
+
+          -
+
+          ${escapeHtml(
+            studentName
+          )}
+
+        </span>
+
+
+        <span
+          class="answer-status"
+        >
+          未採点
+        </span>
+
+      </div>
+
+
+      <div
+        class="answer-stage"
+      >
+
+        ${
+          answer.region
+
+            ? `
+
+              <img
+                class="answer-image"
+                alt="生徒答案"
+              >
+
+
+              <canvas
+                class="answer-canvas"
+              ></canvas>
+
+            `
+
+            :
+
+            `
+
+              <div
+                style="
+                  padding:30px;
+                  color:#999;
+                  text-align:center;
+                "
+              >
+                答案領域未作成
+              </div>
+
+            `
         }
 
-
-        canvas.width =
-          image.clientWidth;
+      </div>
 
 
-        canvas.height =
-          image.clientHeight;
+      <div
+        class="answer-score-bar"
+      >
 
-      };
+        ${[
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+          .map(
+            score => `
+
+              <button
+                class="answer-score"
+                data-score="${score}"
+                type="button"
+              >
+                ${score}
+              </button>
+
+            `
+          )
+          .join("")}
+
+      </div>
+
+
+    </article>
+
+  `;
+
+}
+
+
+/* =========================================================
+   答案領域画像
+========================================================= */
+
+async function loadRegionImage(
+  answer
+) {
+
+  if (
+    !answer.region
+  ) {
+
+    return;
 
   }
 
 
-  /* =======================================================
-     既存採点
-  ======================================================= */
+  const {
+    data,
+    error
+  } =
+    await supabaseClient
+      .storage
+      .from(
+        "student-answers"
+      )
+      .createSignedUrl(
+        answer.region.image_path,
+        3600
+      );
 
-  async function loadScore(
-    answer
+
+  if (error) {
+
+    console.error(
+      "答案領域画像:",
+      error
+    );
+
+
+    return;
+
+  }
+
+
+  if (
+    !data?.signedUrl
   ) {
 
-    const {
-      data,
+    return;
+
+  }
+
+
+  const card =
+    document.querySelector(
+      `[data-answer-id="${answer.id}"]`
+    );
+
+
+  if (!card) {
+
+    return;
+
+  }
+
+
+  const image =
+    card.querySelector(
+      ".answer-image"
+    );
+
+
+  const canvas =
+    card.querySelector(
+      ".answer-canvas"
+    );
+
+
+  if (!image) {
+
+    return;
+
+  }
+
+
+  image.src =
+    data.signedUrl;
+
+
+  image.onload =
+    () => {
+
+      if (!canvas) {
+
+        return;
+
+      }
+
+
+      canvas.width =
+        image.clientWidth;
+
+
+      canvas.height =
+        image.clientHeight;
+
+    };
+
+}
+
+
+/* =========================================================
+   既存点数
+========================================================= */
+
+async function loadScore(
+  answer
+) {
+
+  const {
+    data,
+    error
+  } =
+    await supabaseClient
+      .from(
+        "scores"
+      )
+      .select(`
+        score,
+        status
+      `)
+      .eq(
+        "answer_sheet_id",
+        answer.id
+      )
+      .eq(
+        "layout_box_id",
+        boxId
+      )
+      .maybeSingle();
+
+
+  if (error) {
+
+    console.error(
+      "既存点数:",
       error
-    } =
-      await supabaseClient
-        .from(
-          "scores"
-        )
-        .select(`
-          score,
-          status
-        `)
-        .eq(
-          "answer_sheet_id",
-          answer.id
-        )
-        .eq(
-          "layout_box_id",
-          boxId
-        )
-        .maybeSingle();
+    );
 
 
-    if (error) {
+    return;
 
-      console.error(
-        "既存採点:",
-        error
-      );
+  }
 
 
-      return;
+  if (
+    !data ||
+    data.status !==
+    "marked"
+  ) {
 
-    }
+    return;
 
-
-    if (
-      !data ||
-      data.status !==
-      "marked"
-    ) {
-
-      return;
-
-    }
+  }
 
 
-    const card =
-      document.querySelector(
-        `[data-answer-id="${answer.id}"]`
-      );
+  const card =
+    document.querySelector(
+      `[data-answer-id="${answer.id}"]`
+    );
 
 
-    if (!card) {
-
-      return;
-
-    }
-
+  if (card) {
 
     markDone(
       card,
@@ -857,233 +976,1612 @@
 
   }
 
+}
 
-  /* =======================================================
-     既存記号
-  ======================================================= */
 
-  async function loadMarks(
-    answer
-  ) {
+/* =========================================================
+   既存採点記号
+========================================================= */
 
-    const {
-      data,
+async function loadMarks(
+  answer
+) {
+
+  const {
+    data,
+    error
+  } =
+    await supabaseClient
+      .from(
+        "mark_objects"
+      )
+      .select(`
+        object_type,
+        text_value,
+        color,
+        font_size,
+        stroke_width,
+        x,
+        y,
+        width,
+        height,
+        points
+      `)
+      .eq(
+        "answer_sheet_id",
+        answer.id
+      )
+      .eq(
+        "layout_box_id",
+        boxId
+      )
+      .order(
+        "created_at",
+        {
+          ascending: true
+        }
+      );
+
+
+  if (error) {
+
+    console.error(
+      "既存記号:",
       error
-    } =
-      await supabaseClient
-        .from(
-          "mark_objects"
-        )
-        .select(`
-          object_type,
-          text_value,
-          color,
-          font_size,
-          stroke_width,
-          x,
-          y,
-          width,
-          height,
-          points
-        `)
-        .eq(
-          "answer_sheet_id",
-          answer.id
-        )
-        .eq(
-          "layout_box_id",
-          boxId
-        )
-        .order(
-          "created_at",
-          {
-            ascending: true
-          }
-        );
-
-
-    if (error) {
-
-      console.error(
-        "既存記号:",
-        error
-      );
-
-
-      return;
-
-    }
-
-
-    const card =
-      document.querySelector(
-        `[data-answer-id="${answer.id}"]`
-      );
-
-
-    if (!card) {
-
-      return;
-
-    }
-
-
-    (
-      data || []
-    ).forEach(
-      mark =>
-        drawStoredMark(
-          card,
-          mark
-        )
     );
+
+
+    return;
 
   }
 
 
-  /* =======================================================
-     答案イベント
-  ======================================================= */
+  const card =
+    document.querySelector(
+      `[data-answer-id="${answer.id}"]`
+    );
 
-  function setupAnswerEvents() {
 
-    document
-      .querySelectorAll(
-        ".answer-card"
+  if (!card) {
+
+    return;
+
+  }
+
+
+  (
+    data || []
+  ).forEach(
+    mark =>
+      drawStoredMark(
+        card,
+        mark
       )
-      .forEach(
-        card => {
+  );
 
-          card.addEventListener(
-            "click",
-            event => {
-
-              /*
-                点数ボタンなら
-                カードクリック処理をしない
-              */
-
-              if (
-                event.target.closest(
-                  ".answer-score"
-                )
-              ) {
-
-                return;
-
-              }
+}
 
 
-              selectCard(
-                card
-              );
+/* =========================================================
+   答案イベント
+========================================================= */
+
+function setupAnswerEvents() {
+
+  document
+    .querySelectorAll(
+      ".answer-card"
+    )
+    .forEach(
+      card => {
+
+        /*
+          カードクリック
+        */
+
+        card.addEventListener(
+          "click",
+          event => {
+
+            if (
+              event.target.closest(
+                ".answer-score"
+              )
+            ) {
+
+              return;
+
+            }
 
 
-              handleTool(
-                card
+            selectCard(
+              card
+            );
+
+
+            handleTool(
+              card
+            );
+
+          }
+        );
+
+
+        /*
+          クイック点数
+        */
+
+        card
+          .querySelectorAll(
+            ".answer-score"
+          )
+          .forEach(
+            button => {
+
+              button.addEventListener(
+                "click",
+                async event => {
+
+                  event.stopPropagation();
+
+
+                  selectCard(
+                    card
+                  );
+
+
+                  await setScore(
+                    card,
+                    Number(
+                      button.dataset.score
+                    )
+                  );
+
+                }
               );
 
             }
           );
 
+      }
+    );
 
-          card
-            .querySelectorAll(
-              ".answer-score"
-            )
-            .forEach(
-              button => {
-
-                button.addEventListener(
-                  "click",
-                  async event => {
-
-                    event.stopPropagation();
+}
 
 
-                    selectCard(
-                      card
-                    );
+/* =========================================================
+   点数保存
+========================================================= */
+
+async function setScore(
+  card,
+  score,
+  options = {}
+) {
+
+  score =
+    Number(
+      score
+    );
 
 
-                    const score =
-                      Number(
-                        button.dataset.score
-                      );
+  /*
+    数値
+  */
+
+  if (
+    !Number.isFinite(
+      score
+    )
+  ) {
+
+    alert(
+      "正しい点数を入力してください。"
+    );
 
 
-                    await setScore(
-                      card,
-                      score
-                    );
-
-                  }
-                );
-
-              }
-            );
-
-        }
-      );
+    return false;
 
   }
 
 
-  /* =======================================================
-     点数保存
-  ======================================================= */
+  /*
+    0未満
+  */
 
-  async function setScore(
-    card,
-    score
+  if (
+    score < 0
   ) {
 
-    /*
-      数値
-    */
+    alert(
+      "0点未満は設定できません。"
+    );
 
-    score =
-      Number(
-        score
+
+    return false;
+
+  }
+
+
+  const max =
+    Number(
+      currentBox?.points
+    );
+
+
+  /*
+    通常の数字入力
+    配点以上は禁止
+  */
+
+  if (
+    Number.isFinite(max) &&
+    !options.fullMark &&
+    score >= max
+  ) {
+
+    alert(
+      `設定点数は ${max}点です。\n\n${max}点以上は設定できません。`
+    );
+
+
+    return false;
+
+  }
+
+
+  /*
+    ○による満点
+  */
+
+  if (
+    Number.isFinite(max) &&
+    options.fullMark
+  ) {
+
+    if (
+      score !== max
+    ) {
+
+      alert(
+        `満点は ${max}点です。`
       );
 
 
+      return false;
+
+    }
+
+  }
+
+
+  const session =
+    await getSession();
+
+
+  if (!session) {
+
+    window.location.replace(
+      "/login"
+    );
+
+
+    return false;
+
+  }
+
+
+  const answerId =
+    card.dataset.answerId;
+
+
+  /*
+    保存
+  */
+
+  const {
+    error
+  } =
+    await supabaseClient
+      .from(
+        "scores"
+      )
+      .upsert(
+        {
+
+          answer_sheet_id:
+            answerId,
+
+          question_id:
+            null,
+
+          layout_box_id:
+            boxId,
+
+          score,
+
+          status:
+            "marked",
+
+          marked_by:
+            session.user.id,
+
+          marked_at:
+            new Date()
+              .toISOString()
+
+        },
+        {
+
+          onConflict:
+            "answer_sheet_id,layout_box_id"
+
+        }
+      );
+
+
+  if (error) {
+
+    console.error(
+      "採点保存:",
+      error
+    );
+
+
+    alert(
+      error.message ||
+      "採点結果を保存できませんでした。"
+    );
+
+
+    return false;
+
+  }
+
+
+  markDone(
+    card,
+    score
+  );
+
+
+  await updateAnswerStatus(
+    answerId
+  );
+
+
+  updateProgress();
+
+
+  clearScoreInput();
+
+
+  /*
+    保存成功後だけ次へ
+  */
+
+  focusNext(
+    card
+  );
+
+
+  return true;
+
+}
+
+
+/* =========================================================
+   答案状態
+========================================================= */
+
+async function updateAnswerStatus(
+  answerId
+) {
+
+  const {
+    error
+  } =
+    await supabaseClient
+      .from(
+        "answer_sheets"
+      )
+      .update({
+
+        status:
+          "marking"
+
+      })
+      .eq(
+        "id",
+        answerId
+      );
+
+
+  if (error) {
+
+    console.error(
+      "答案状態更新:",
+      error
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   採点済み
+========================================================= */
+
+function markDone(
+  card,
+  score
+) {
+
+  card.classList.add(
+    "done"
+  );
+
+
+  const status =
+    card.querySelector(
+      ".answer-status"
+    );
+
+
+  if (status) {
+
+    status.textContent =
+      `${score}点`;
+
+  }
+
+}
+
+
+/* =========================================================
+   選択
+========================================================= */
+
+function selectCard(
+  card
+) {
+
+  document
+    .querySelectorAll(
+      ".answer-card"
+    )
+    .forEach(
+      item =>
+        item.classList.remove(
+          "selected"
+        )
+    );
+
+
+  card.classList.add(
+    "selected"
+  );
+
+
+  selectedCard =
+    card;
+
+}
+
+
+/* =========================================================
+   次の未採点
+========================================================= */
+
+function focusNext(
+  current
+) {
+
+  const cards =
+    [
+      ...
+      document.querySelectorAll(
+        ".answer-card"
+      )
+    ];
+
+
+  const index =
+    cards.indexOf(
+      current
+    );
+
+
+  /*
+    現在より後
+  */
+
+  for (
+    let i = index + 1;
+    i < cards.length;
+    i++
+  ) {
+
     if (
-      !Number.isFinite(
-        score
+      !cards[i].classList.contains(
+        "done"
       )
     ) {
 
-      alert(
-        "正しい点数を入力してください。"
+      selectCard(
+        cards[i]
       );
 
 
-      return false;
+      cards[i].scrollIntoView({
+
+        behavior:
+          "smooth",
+
+        block:
+          "center"
+
+      });
+
+
+      return;
 
     }
 
+  }
 
-    /*
-      0未満禁止
-    */
+
+  /*
+    先頭から
+  */
+
+  for (
+    let i = 0;
+    i < index;
+    i++
+  ) {
 
     if (
-      score < 0
+      !cards[i].classList.contains(
+        "done"
+      )
     ) {
 
-      alert(
-        "0点未満は設定できません。"
+      selectCard(
+        cards[i]
       );
 
 
-      return false;
+      cards[i].scrollIntoView({
+
+        behavior:
+          "smooth",
+
+        block:
+          "center"
+
+      });
+
+
+      return;
 
     }
 
+  }
+
+
+  /*
+    全員終了
+  */
+
+  alert(
+    "この解答欄の採点が完了しました。"
+  );
+
+}
+
+
+/* =========================================================
+   最初の未採点
+========================================================= */
+
+function selectFirst() {
+
+  const card =
+    document.querySelector(
+      ".answer-card:not(.done)"
+    );
+
+
+  if (card) {
+
+    selectCard(
+      card
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   ツールバー
+========================================================= */
+
+function setupToolbar() {
+
+  /*
+    ツール選択
+  */
+
+  document
+    .querySelectorAll(
+      "[data-tool]"
+    )
+    .forEach(
+      button => {
+
+        button.addEventListener(
+          "click",
+          () => {
+
+            document
+              .querySelectorAll(
+                "[data-tool]"
+              )
+              .forEach(
+                item =>
+                  item.classList.remove(
+                    "active"
+                  )
+              );
+
+
+            button.classList.add(
+              "active"
+            );
+
+
+            activeTool =
+              button.dataset.tool;
+
+
+            if (
+              activeTool ===
+              "number"
+            ) {
+
+              const input =
+                document.getElementById(
+                  "scoreInput"
+                );
+
+
+              if (input) {
+
+                input.focus();
+
+              }
+
+            }
+
+          }
+        );
+
+      }
+    );
+
+
+  /*
+    クイック点数
+  */
+
+  document
+    .querySelectorAll(
+      ".footer-score"
+    )
+    .forEach(
+      button => {
+
+        button.addEventListener(
+          "click",
+          async () => {
+
+            if (!selectedCard) {
+
+              selectFirst();
+
+              return;
+
+            }
+
+
+            await setScore(
+              selectedCard,
+              Number(
+                button.dataset.score
+              )
+            );
+
+          }
+        );
+
+      }
+    );
+
+
+  /*
+    点数確定
+  */
+
+  document
+    .getElementById(
+      "scoreApply"
+    )
+    .addEventListener(
+      "click",
+      async () => {
+
+        await applyScoreInput();
+
+      }
+    );
+
+
+  /*
+    次の未採点
+  */
+
+  document
+    .getElementById(
+      "nextUnmarked"
+    )
+    .addEventListener(
+      "click",
+      () => {
+
+        if (!selectedCard) {
+
+          selectFirst();
+
+          return;
+
+        }
+
+
+        focusNext(
+          selectedCard
+        );
+
+      }
+    );
+
+
+  /*
+    前の解答欄
+  */
+
+  document
+    .getElementById(
+      "previousQuestion"
+    )
+    .addEventListener(
+      "click",
+      () => {
+
+        openPreviousBox();
+
+      }
+    );
+
+
+  /*
+    次の解答欄
+  */
+
+  document
+    .getElementById(
+      "nextQuestion"
+    )
+    .addEventListener(
+      "click",
+      () => {
+
+        openNextBox();
+
+      }
+    );
+
+
+  /*
+    採点終了
+  */
+
+  document
+    .getElementById(
+      "exitMarking"
+    )
+    .addEventListener(
+      "click",
+      () => {
+
+        window.location.href =
+          `/teacher/marking/select?test=${encodeURIComponent(testId)}`;
+
+      }
+    );
+
+
+  /*
+    ズーム
+  */
+
+  document
+    .getElementById(
+      "zoomIn"
+    )
+    .addEventListener(
+      "click",
+      () => {
+
+        zoom =
+          Math.min(
+            2,
+            zoom + 0.1
+          );
+
+
+        applyZoom();
+
+      }
+    );
+
+
+  document
+    .getElementById(
+      "zoomOut"
+    )
+    .addEventListener(
+      "click",
+      () => {
+
+        zoom =
+          Math.max(
+            0.5,
+            zoom - 0.1
+          );
+
+
+        applyZoom();
+
+      }
+    );
+
+
+  document
+    .getElementById(
+      "fitScreen"
+    )
+    .addEventListener(
+      "click",
+      () => {
+
+        zoom =
+          1;
+
+
+        applyZoom();
+
+      }
+    );
+
+}
+
+
+/* =========================================================
+   前の解答欄
+========================================================= */
+
+function openPreviousBox() {
+
+  if (
+    currentBoxIndex <= 0
+  ) {
+
+    return;
+
+  }
+
+
+  const box =
+    markingBoxes[
+      currentBoxIndex - 1
+    ];
+
+
+  if (!box) {
+
+    return;
+
+  }
+
+
+  openBox(
+    box
+  );
+
+}
+
+
+/* =========================================================
+   次の解答欄
+========================================================= */
+
+function openNextBox() {
+
+  if (
+    currentBoxIndex < 0
+  ) {
+
+    return;
+
+  }
+
+
+  if (
+    currentBoxIndex >=
+    markingBoxes.length - 1
+  ) {
+
+    return;
+
+  }
+
+
+  const box =
+    markingBoxes[
+      currentBoxIndex + 1
+    ];
+
+
+  if (!box) {
+
+    return;
+
+  }
+
+
+  openBox(
+    box
+  );
+
+}
+
+
+/* =========================================================
+   解答欄へ移動
+========================================================= */
+
+function openBox(
+  box
+) {
+
+  window.location.href =
+    `/teacher/marking/mark?test=${encodeURIComponent(testId)}&box=${encodeURIComponent(box.id)}`;
+
+}
+
+
+/* =========================================================
+   ナビゲーション状態
+========================================================= */
+
+function updateQuestionNavigation() {
+
+  const previous =
+    document.getElementById(
+      "previousQuestion"
+    );
+
+
+  const next =
+    document.getElementById(
+      "nextQuestion"
+    );
+
+
+  if (
+    !previous ||
+    !next
+  ) {
+
+    return;
+
+  }
+
+
+  previous.disabled =
+    currentBoxIndex <= 0;
+
+
+  next.disabled =
+    currentBoxIndex < 0 ||
+    currentBoxIndex >=
+      markingBoxes.length - 1;
+
+}
+
+
+/* =========================================================
+   点数入力
+========================================================= */
+
+async function applyScoreInput() {
+
+  if (!selectedCard) {
+
+    selectFirst();
+
+  }
+
+
+  if (!selectedCard) {
+
+    alert(
+      "答案を選択してください。"
+    );
+
+
+    return;
+
+  }
+
+
+  const input =
+    document.getElementById(
+      "scoreInput"
+    );
+
+
+  if (!input) {
+
+    return;
+
+  }
+
+
+  const value =
+    input.value.trim();
+
+
+  if (!value) {
+
+    alert(
+      "点数を入力してください。"
+    );
+
+
+    return;
+
+  }
+
+
+  const score =
+    Number(
+      value
+    );
+
+
+  if (
+    !Number.isFinite(
+      score
+    )
+  ) {
+
+    alert(
+      "正しい点数を入力してください。"
+    );
+
+
+    return;
+
+  }
+
+
+  /*
+    通常の部分点
+  */
+
+  const saved =
+    await setScore(
+      selectedCard,
+      score,
+      {
+        fullMark:
+          false
+      }
+    );
+
+
+  if (saved) {
+
+    clearScoreInput();
+
+  }
+
+}
+
+
+/* =========================================================
+   点数入力クリア
+========================================================= */
+
+function clearScoreInput() {
+
+  const input =
+    document.getElementById(
+      "scoreInput"
+    );
+
+
+  if (input) {
+
+    input.value =
+      "";
+
+  }
+
+
+  scoreInputValue =
+    "";
+
+}
+
+
+/* =========================================================
+   キーボード
+========================================================= */
+
+function setupKeyboard() {
+
+  document.addEventListener(
+    "keydown",
+    async event => {
+
+      const tag =
+        event.target.tagName;
+
+
+      /*
+        SELECT/TEXTAREA
+      */
+
+      if (
+        tag === "SELECT" ||
+        tag === "TEXTAREA"
+      ) {
+
+        return;
+
+      }
+
+
+      /*
+        通常INPUT
+
+        scoreInputだけは
+        数字キー処理を許可
+      */
+
+      if (
+        tag === "INPUT" &&
+        event.target.id !==
+          "scoreInput"
+      ) {
+
+        /*
+          markTextなどを
+          入力しているときは
+          L/Kを奪わない
+        */
+
+        return;
+
+      }
+
+
+      /*
+        ===============================================
+        L → ○ → 満点
+        ===============================================
+      */
+
+      if (
+        event.key.toLowerCase() ===
+        "l"
+      ) {
+
+        event.preventDefault();
+
+
+        if (!selectedCard) {
+
+          selectFirst();
+
+        }
+
+
+        if (!selectedCard) {
+
+          return;
+
+        }
+
+
+        const max =
+          Number(
+            currentBox?.points
+          );
+
+
+        if (
+          !Number.isFinite(max)
+        ) {
+
+          alert(
+            "この解答欄には配点が設定されていません。"
+          );
+
+
+          return;
+
+        }
+
+
+        /*
+          ○
+        */
+
+        drawSymbol(
+          selectedCard,
+          "○"
+        );
+
+
+        await saveMark(
+          selectedCard,
+          "circle"
+        );
+
+
+        /*
+          ○ = 満点
+        */
+
+        await setScore(
+          selectedCard,
+          max,
+          {
+            fullMark:
+              true
+          }
+        );
+
+
+        return;
+
+      }
+
+
+      /*
+        ===============================================
+        K → × → 0点
+        ===============================================
+      */
+
+      if (
+        event.key.toLowerCase() ===
+        "k"
+      ) {
+
+        event.preventDefault();
+
+
+        if (!selectedCard) {
+
+          selectFirst();
+
+        }
+
+
+        if (!selectedCard) {
+
+          return;
+
+        }
+
+
+        drawSymbol(
+          selectedCard,
+          "×"
+        );
+
+
+        await saveMark(
+          selectedCard,
+          "x"
+        );
+
+
+        await setScore(
+          selectedCard,
+          0
+        );
+
+
+        return;
+
+      }
+
+
+      /*
+        ===============================================
+        数字キー
+        ===============================================
+      */
+
+      if (
+        /^[0-9]$/.test(
+          event.key
+        )
+      ) {
+
+        event.preventDefault();
+
+
+        const input =
+          document.getElementById(
+            "scoreInput"
+          );
+
+
+        if (!input) {
+
+          return;
+
+        }
+
+
+        /*
+          先頭0を整理
+        */
+
+        if (
+          input.value ===
+          "0"
+        ) {
+
+          input.value =
+            event.key;
+
+        } else {
+
+          input.value +=
+            event.key;
+
+        }
+
+
+        scoreInputValue =
+          input.value;
+
+
+        /*
+          まだ保存しない。
+          Enterで確定。
+        */
+
+        return;
+
+      }
+
+
+      /*
+        ===============================================
+        Backspace
+        ===============================================
+      */
+
+      if (
+        event.key ===
+        "Backspace"
+      ) {
+
+        if (
+          event.target.id !==
+          "scoreInput"
+        ) {
+
+          event.preventDefault();
+
+
+          const input =
+            document.getElementById(
+              "scoreInput"
+            );
+
+
+          if (input) {
+
+            input.value =
+              input.value.slice(
+                0,
+                -1
+              );
+
+
+            scoreInputValue =
+              input.value;
+
+          }
+
+        }
+
+
+        return;
+
+      }
+
+
+      /*
+        ===============================================
+        Enter
+        ===============================================
+      */
+
+      if (
+        event.key ===
+        "Enter"
+      ) {
+
+        /*
+          点数欄に入力がある場合
+        */
+
+        if (
+          scoreInputValue ||
+          document.activeElement?.id ===
+            "scoreInput"
+        ) {
+
+          event.preventDefault();
+
+
+          await applyScoreInput();
+
+
+          return;
+
+        }
+
+      }
+
+
+      /*
+        ===============================================
+        Escape
+        ===============================================
+      */
+
+      if (
+        event.key ===
+        "Escape"
+      ) {
+
+        clearScoreInput();
+
+        return;
+
+      }
+
+    }
+  );
+
+
+  /*
+    scoreInput直接入力
+  */
+
+  const scoreInput =
+    document.getElementById(
+      "scoreInput"
+    );
+
+
+  if (scoreInput) {
+
+    scoreInput.addEventListener(
+      "input",
+      () => {
+
+        scoreInputValue =
+          scoreInput.value;
+
+      }
+    );
+
+
+    scoreInput.addEventListener(
+      "keydown",
+      async event => {
+
+        if (
+          event.key ===
+          "Enter"
+        ) {
+
+          event.preventDefault();
+
+
+          await applyScoreInput();
+
+        }
+
+      }
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   ツール処理
+========================================================= */
+
+function handleTool(
+  card
+) {
+
+  /*
+    選択
+  */
+
+  if (
+    activeTool ===
+    "select"
+  ) {
+
+    return;
+
+  }
+
+
+  /*
+    ○
+  */
+
+  if (
+    activeTool ===
+    "circle"
+  ) {
+
+    drawSymbol(
+      card,
+      "○"
+    );
+
+
+    saveMark(
+      card,
+      "circle"
+    );
+
 
     /*
-      配点
+      ツールから○を押した場合も
+      満点にする
     */
 
     const max =
@@ -1092,716 +2590,79 @@
       );
 
 
-    /*
-      ユーザー指定:
-
-      設定点数以上
-      ↓
-      警告
-      ↓
-      保存しない
-    */
-
     if (
-      Number.isFinite(max) &&
-      score >= max
+      Number.isFinite(max)
     ) {
 
-      alert(
-        `設定点数は ${max}点です。\n\n${max}点以上は設定できません。`
+      setScore(
+        card,
+        max,
+        {
+          fullMark:
+            true
+        }
       );
-
-
-      return false;
 
     }
 
 
-    /*
-      ログイン確認
-    */
+    return;
 
-    const session =
-      await getSession();
+  }
 
 
-    if (!session) {
+  /*
+    ×
+  */
 
-      window.location.replace(
-        "/login"
-      );
+  if (
+    activeTool ===
+    "x"
+  ) {
 
-
-      return false;
-
-    }
-
-
-    const answerId =
-      card.dataset.answerId;
-
-
-    /*
-      保存
-    */
-
-    const {
-      error
-    } =
-      await supabaseClient
-        .from(
-          "scores"
-        )
-        .upsert(
-          {
-
-            answer_sheet_id:
-              answerId,
-
-            question_id:
-              null,
-
-            layout_box_id:
-              boxId,
-
-            score:
-
-              score,
-
-            status:
-              "marked",
-
-            marked_by:
-              session.user.id,
-
-            marked_at:
-              new Date()
-                .toISOString()
-
-          },
-          {
-
-            onConflict:
-              "answer_sheet_id,layout_box_id"
-
-          }
-        );
-
-
-    if (error) {
-
-      console.error(
-        "採点保存:",
-        error
-      );
-
-
-      alert(
-        error.message ||
-        "採点結果を保存できませんでした。"
-      );
-
-
-      return false;
-
-    }
-
-
-    /*
-      表示
-    */
-
-    markDone(
+    drawSymbol(
       card,
-      score
+      "×"
     );
 
 
-    /*
-      答案状態
-    */
-
-    await updateAnswerStatus(
-      answerId
+    saveMark(
+      card,
+      "x"
     );
 
 
-    /*
-      進捗
-    */
-
-    updateProgress();
-
-
-    /*
-      入力欄クリア
-    */
-
-    clearScoreInput();
-
-
-    /*
-      即次へ
-    */
-
-    focusNext(
-      card
+    setScore(
+      card,
+      0
     );
 
 
-    return true;
+    return;
 
   }
 
 
-  /* =======================================================
-     答案状態
-  ======================================================= */
+  /*
+    △
+  */
 
-  async function updateAnswerStatus(
-    answerId
+  if (
+    activeTool ===
+    "triangle"
   ) {
 
-    const {
-      error
-    } =
-      await supabaseClient
-        .from(
-          "answer_sheets"
-        )
-        .update({
-
-          status:
-            "marking"
-
-        })
-        .eq(
-          "id",
-          answerId
-        );
-
-
-    if (error) {
-
-      console.error(
-        "答案状態更新:",
-        error
-      );
-
-    }
-
-  }
-
-
-  /* =======================================================
-     採点済み表示
-  ======================================================= */
-
-  function markDone(
-    card,
-    score
-  ) {
-
-    card.classList.add(
-      "done"
+    drawSymbol(
+      card,
+      "△"
     );
 
 
-    const status =
-      card.querySelector(
-        ".answer-status"
-      );
-
-
-    if (status) {
-
-      status.textContent =
-        `${score}点`;
-
-    }
-
-  }
-
-
-  /* =======================================================
-     カード選択
-  ======================================================= */
-
-  function selectCard(
-    card
-  ) {
-
-    document
-      .querySelectorAll(
-        ".answer-card"
-      )
-      .forEach(
-        item =>
-          item.classList.remove(
-            "selected"
-          )
-      );
-
-
-    card.classList.add(
-      "selected"
+    saveMark(
+      card,
+      "triangle"
     );
 
-
-    selectedCard =
-      card;
-
-  }
-
-
-  /* =======================================================
-     次の未採点
-  ======================================================= */
-
-  function focusNext(
-    current
-  ) {
-
-    const cards =
-      [
-        ...
-        document.querySelectorAll(
-          ".answer-card"
-        )
-      ];
-
-
-    const index =
-      cards.indexOf(
-        current
-      );
-
-
-    /*
-      現在より後
-    */
-
-    for (
-      let i = index + 1;
-      i < cards.length;
-      i++
-    ) {
-
-      if (
-        !cards[i].classList.contains(
-          "done"
-        )
-      ) {
-
-        selectCard(
-          cards[i]
-        );
-
-
-        cards[i].scrollIntoView({
-
-          behavior:
-            "smooth",
-
-          block:
-            "center"
-
-        });
-
-
-        return;
-
-      }
-
-    }
-
-
-    /*
-      先頭から
-    */
-
-    for (
-      let i = 0;
-      i < index;
-      i++
-    ) {
-
-      if (
-        !cards[i].classList.contains(
-          "done"
-        )
-      ) {
-
-        selectCard(
-          cards[i]
-        );
-
-
-        cards[i].scrollIntoView({
-
-          behavior:
-            "smooth",
-
-          block:
-            "center"
-
-        });
-
-
-        return;
-
-      }
-
-    }
-
-
-    /*
-      全部採点済み
-    */
-
-    alert(
-      "この解答欄の採点が完了しました。"
-    );
-
-  }
-
-
-  /* =======================================================
-     最初の未採点
-  ======================================================= */
-
-  function selectFirst() {
-
-    const card =
-      document.querySelector(
-        ".answer-card:not(.done)"
-      );
-
-
-    if (card) {
-
-      selectCard(
-        card
-      );
-
-    }
-
-  }
-
-
-  /* =======================================================
-     ツールバー
-  ======================================================= */
-
-  function setupToolbar() {
-
-    /*
-      ツール
-    */
-
-    document
-      .querySelectorAll(
-        "[data-tool]"
-      )
-      .forEach(
-        button => {
-
-          button.addEventListener(
-            "click",
-            () => {
-
-              document
-                .querySelectorAll(
-                  "[data-tool]"
-                )
-                .forEach(
-                  item =>
-                    item.classList.remove(
-                      "active"
-                    )
-                );
-
-
-              button.classList.add(
-                "active"
-              );
-
-
-              activeTool =
-                button.dataset.tool;
-
-            }
-          );
-
-        }
-      );
-
-
-    /*
-      クイック点数
-    */
-
-    document
-      .querySelectorAll(
-        ".footer-score"
-      )
-      .forEach(
-        button => {
-
-          button.addEventListener(
-            "click",
-            async () => {
-
-              if (!selectedCard) {
-
-                selectFirst();
-
-                return;
-
-              }
-
-
-              await setScore(
-                selectedCard,
-                Number(
-                  button.dataset.score
-                )
-              );
-
-            }
-          );
-
-        }
-      );
-
-
-    /*
-      点数確定
-    */
-
-    document
-      .getElementById(
-        "scoreApply"
-      )
-      .addEventListener(
-        "click",
-        async () => {
-
-          await applyScoreInput();
-
-        }
-      );
-
-
-    /*
-      次の未採点
-    */
-
-    document
-      .getElementById(
-        "nextUnmarked"
-      )
-      .addEventListener(
-        "click",
-        () => {
-
-          if (!selectedCard) {
-
-            selectFirst();
-
-            return;
-
-          }
-
-
-          focusNext(
-            selectedCard
-          );
-
-        }
-      );
-
-
-    /*
-      終了
-    */
-
-    document
-      .getElementById(
-        "exitMarking"
-      )
-      .addEventListener(
-        "click",
-        () => {
-
-          window.location.href =
-            `/teacher/marking/select?test=${encodeURIComponent(testId)}`;
-
-        }
-      );
-
-
-    /*
-      ズーム
-    */
-
-    document
-      .getElementById(
-        "zoomIn"
-      )
-      .addEventListener(
-        "click",
-        () => {
-
-          zoom =
-            Math.min(
-              2,
-              zoom + 0.1
-            );
-
-
-          applyZoom();
-
-        }
-      );
-
-
-    document
-      .getElementById(
-        "zoomOut"
-      )
-      .addEventListener(
-        "click",
-        () => {
-
-          zoom =
-            Math.max(
-              0.5,
-              zoom - 0.1
-            );
-
-
-          applyZoom();
-
-        }
-      );
-
-
-    document
-      .getElementById(
-        "fitScreen"
-      )
-      .addEventListener(
-        "click",
-        () => {
-
-          zoom =
-            1;
-
-
-          applyZoom();
-
-        }
-      );
-
-  }
-
-
-  /* =======================================================
-     点数入力
-  ======================================================= */
-
-  async function applyScoreInput() {
-
-    if (!selectedCard) {
-
-      selectFirst();
-
-
-      if (!selectedCard) {
-
-        alert(
-          "答案を選択してください。"
-        );
-
-
-        return;
-
-      }
-
-    }
-
-
-    const input =
-      document.getElementById(
-        "scoreInput"
-      );
-
-
-    const value =
-      input.value.trim();
-
-
-    if (!value) {
-
-      alert(
-        "点数を入力してください。"
-      );
-
-
-      return;
-
-    }
-
-
-    const score =
-      Number(
-        value
-      );
-
-
-    if (
-      !Number.isFinite(
-        score
-      )
-    ) {
-
-      alert(
-        "正しい点数を入力してください。"
-      );
-
-
-      return;
-
-    }
-
-
-    const saved =
-      await setScore(
-        selectedCard,
-        score
-      );
-
-
-    if (saved) {
-
-      input.value =
-        "";
-
-
-      scoreInputValue =
-        "";
-
-    }
-
-  }
-
-
-  /* =======================================================
-     点数入力欄クリア
-  ======================================================= */
-
-  function clearScoreInput() {
 
     const input =
       document.getElementById(
@@ -1814,1141 +2675,665 @@
       input.value =
         "";
 
+      input.focus();
+
     }
 
 
-    scoreInputValue =
-      "";
+    return;
 
   }
 
 
-  /* =======================================================
-     キーボード
-  ======================================================= */
-
-  function setupKeyboard() {
-
-    document.addEventListener(
-      "keydown",
-      async event => {
-
-        const tag =
-          event.target.tagName;
-
-
-        /*
-          実際の入力欄を操作している場合
-          ショートカットを奪わない
-        */
-
-        if (
-          tag === "TEXTAREA" ||
-          tag === "SELECT"
-        ) {
-
-          return;
-
-        }
-
-
-        /*
-          テキスト入力欄は
-          数字キー入力の対象外
-        */
-
-        if (
-          tag === "INPUT" &&
-          event.target.id !==
-            "scoreInput"
-        ) {
-
-          return;
-
-        }
-
-
-        /*
-          -------------------------------------------------
-          L → ○
-          -------------------------------------------------
-        */
-
-        if (
-          event.key.toLowerCase() ===
-          "l"
-        ) {
-
-          event.preventDefault();
-
-
-          if (!selectedCard) {
-
-            selectFirst();
-
-          }
-
-
-          if (
-            selectedCard
-          ) {
-
-            drawSymbol(
-              selectedCard,
-              "○"
-            );
-
-
-            await saveMark(
-              selectedCard,
-              "circle"
-            );
-
-          }
-
-
-          return;
-
-        }
-
-
-        /*
-          -------------------------------------------------
-          K → ×
-          -------------------------------------------------
-        */
-
-        if (
-          event.key.toLowerCase() ===
-          "k"
-        ) {
-
-          event.preventDefault();
-
-
-          if (!selectedCard) {
-
-            selectFirst();
-
-          }
-
-
-          if (
-            selectedCard
-          ) {
-
-            drawSymbol(
-              selectedCard,
-              "×"
-            );
-
-
-            await saveMark(
-              selectedCard,
-              "x"
-            );
-
-
-            /*
-              × = 0点
-            */
-
-            await setScore(
-              selectedCard,
-              0
-            );
-
-          }
-
-
-          return;
-
-        }
-
-
-        /*
-          -------------------------------------------------
-          数字キー
-          -------------------------------------------------
-
-          例:
-
-          1
-          2
-
-          ↓
-
-          12
-
-          Enter
-
-          ↓
-
-          12点確定
-        */
-
-        if (
-          /^[0-9]$/.test(
-            event.key
-          )
-        ) {
-
-          event.preventDefault();
-
-
-          /*
-            scoreInputへ追加
-          */
-
-          const input =
-            document.getElementById(
-              "scoreInput"
-            );
-
-
-          if (!input) {
-
-            return;
-
-          }
-
-
-          /*
-            先頭0を整理
-          */
-
-          if (
-            input.value === "0"
-          ) {
-
-            input.value =
-              event.key;
-
-          } else {
-
-            input.value +=
-              event.key;
-
-          }
-
-
-          scoreInputValue =
-            input.value;
-
-
-          /*
-            数字入力だけでは
-            まだ採点確定しない。
-
-            Enterで確定。
-          */
-
-          return;
-
-        }
-
-
-        /*
-          -------------------------------------------------
-          Backspace
-          -------------------------------------------------
-        */
-
-        if (
-          event.key ===
-          "Backspace"
-        ) {
-
-          /*
-            scoreInputがフォーカスされていない
-            ときだけ独自処理
-          */
-
-          if (
-            event.target.id !==
-            "scoreInput"
-          ) {
-
-            event.preventDefault();
-
-
-            const input =
-              document.getElementById(
-                "scoreInput"
-              );
-
-
-            if (input) {
-
-              input.value =
-                input.value.slice(
-                  0,
-                  -1
-                );
-
-
-              scoreInputValue =
-                input.value;
-
-            }
-
-          }
-
-
-          return;
-
-        }
-
-
-        /*
-          -------------------------------------------------
-          Enter → 点数確定
-          -------------------------------------------------
-        */
-
-        if (
-          event.key ===
-          "Enter"
-        ) {
-
-          /*
-            scoreInput自体に
-            フォーカスがある場合も処理
-          */
-
-          if (
-            document.activeElement?.id ===
-            "scoreInput" ||
-            scoreInputValue
-          ) {
-
-            event.preventDefault();
-
-
-            await applyScoreInput();
-
-          }
-
-          return;
-
-        }
-
-
-        /*
-          -------------------------------------------------
-          Escape
-          -------------------------------------------------
-        */
-
-        if (
-          event.key ===
-          "Escape"
-        ) {
-
-          clearScoreInput();
-
-          return;
-
-        }
-
-      }
+  /*
+    ◎
+  */
+
+  if (
+    activeTool ===
+    "double"
+  ) {
+
+    drawSymbol(
+      card,
+      "◎"
     );
 
 
-    /*
-      scoreInput直接入力にも対応
-    */
+    saveMark(
+      card,
+      "double_circle"
+    );
 
-    const scoreInput =
+
+    return;
+
+  }
+
+
+  /*
+    数字
+  */
+
+  if (
+    activeTool ===
+    "number"
+  ) {
+
+    const input =
       document.getElementById(
         "scoreInput"
       );
 
 
-    if (scoreInput) {
+    if (input) {
 
-      scoreInput.addEventListener(
-        "input",
-        () => {
+      input.focus();
 
-          scoreInputValue =
-            scoreInput.value;
-
-        }
-      );
-
-
-      scoreInput.addEventListener(
-        "keydown",
-        async event => {
-
-          if (
-            event.key ===
-            "Enter"
-          ) {
-
-            event.preventDefault();
-
-
-            await applyScoreInput();
-
-          }
-
-        }
-      );
+      input.select();
 
     }
+
+
+    return;
 
   }
 
 
-  /* =======================================================
-     ツール処理
-  ======================================================= */
+  /*
+    テキスト
+  */
 
-  function handleTool(
-    card
+  if (
+    activeTool ===
+    "text"
   ) {
 
-    if (
-      activeTool ===
-      "select"
-    ) {
-
-      return;
-
-    }
+    drawText(
+      card
+    );
 
 
-    /*
-      ○
-    */
-
-    if (
-      activeTool ===
-      "circle"
-    ) {
-
-      drawSymbol(
-        card,
-        "○"
-      );
-
-
-      saveMark(
-        card,
-        "circle"
-      );
-
-
-      return;
-
-    }
-
-
-    /*
-      ×
-    */
-
-    if (
-      activeTool ===
-      "x"
-    ) {
-
-      drawSymbol(
-        card,
-        "×"
-      );
-
-
-      saveMark(
-        card,
-        "x"
-      );
-
-
-      setScore(
-        card,
-        0
-      );
-
-
-      return;
-
-    }
-
-
-    /*
-      △
-    */
-
-    if (
-      activeTool ===
-      "triangle"
-    ) {
-
-      drawSymbol(
-        card,
-        "△"
-      );
-
-
-      saveMark(
-        card,
-        "triangle"
-      );
-
-
-      return;
-
-    }
-
-
-    /*
-      ◎
-    */
-
-    if (
-      activeTool ===
-      "double"
-    ) {
-
-      drawSymbol(
-        card,
-        "◎"
-      );
-
-
-      saveMark(
-        card,
-        "double_circle"
-      );
-
-
-      return;
-
-    }
-
-
-    /*
-      数字
-    */
-
-    if (
-      activeTool ===
-      "number"
-    ) {
-
-      const input =
-        document.getElementById(
-          "scoreInput"
-        );
-
-
-      if (input) {
-
-        input.focus();
-
-      }
-
-
-      return;
-
-    }
-
-
-    /*
-      テキスト
-    */
-
-    if (
-      activeTool ===
-      "text"
-    ) {
-
-      drawText(
-        card
-      );
-
-
-      return;
-
-    }
-
-
-    /*
-      描画
-    */
-
-    if (
-      activeTool ===
-      "pen"
-    ) {
-
-      enablePen(
-        card
-      );
-
-    }
+    return;
 
   }
 
 
-  /* =======================================================
-     ○ × △ ◎
-  ======================================================= */
+  /*
+    描画
+  */
 
-  function drawSymbol(
-    card,
-    symbol
+  if (
+    activeTool ===
+    "pen"
   ) {
 
-    const canvas =
-      card.querySelector(
-        ".answer-canvas"
-      );
+    enablePen(
+      card
+    );
 
+  }
 
-    if (!canvas) {
+}
 
-      return;
 
-    }
+/* =========================================================
+   記号描画
+========================================================= */
 
+function drawSymbol(
+  card,
+  symbol
+) {
 
-    const context =
-      canvas.getContext(
-        "2d"
-      );
+  const canvas =
+    card.querySelector(
+      ".answer-canvas"
+    );
 
 
-    const color =
-      document.getElementById(
-        "markColor"
-      ).value;
+  if (!canvas) {
 
-
-    const size =
-      Number(
-        document.getElementById(
-          "markSize"
-        ).value
-      ) || 42;
-
-
-    context.strokeStyle =
-      color;
-
-
-    context.fillStyle =
-      color;
-
-
-    context.lineWidth =
-      3;
-
-
-    const x =
-      canvas.width / 2;
-
-
-    const y =
-      canvas.height / 2;
-
-
-    /*
-      ○
-    */
-
-    if (
-      symbol ===
-      "○"
-    ) {
-
-      context.beginPath();
-
-
-      context.arc(
-        x,
-        y,
-        size / 2,
-        0,
-        Math.PI * 2
-      );
-
-
-      context.stroke();
-
-
-      return;
-
-    }
-
-
-    /*
-      ×
-    */
-
-    if (
-      symbol ===
-      "×"
-    ) {
-
-      context.beginPath();
-
-
-      context.moveTo(
-        x - size / 2,
-        y - size / 2
-      );
-
-
-      context.lineTo(
-        x + size / 2,
-        y + size / 2
-      );
-
-
-      context.moveTo(
-        x + size / 2,
-        y - size / 2
-      );
-
-
-      context.lineTo(
-        x - size / 2,
-        y + size / 2
-      );
-
-
-      context.stroke();
-
-
-      return;
-
-    }
-
-
-    /*
-      △
-    */
-
-    if (
-      symbol ===
-      "△"
-    ) {
-
-      context.beginPath();
-
-
-      context.moveTo(
-        x,
-        y - size / 2
-      );
-
-
-      context.lineTo(
-        x - size / 2,
-        y + size / 2
-      );
-
-
-      context.lineTo(
-        x + size / 2,
-        y + size / 2
-      );
-
-
-      context.closePath();
-
-
-      context.stroke();
-
-
-      return;
-
-    }
-
-
-    /*
-      ◎
-    */
-
-    if (
-      symbol ===
-      "◎"
-    ) {
-
-      context.font =
-        `${size}px Arial`;
-
-
-      context.fillText(
-        "◎",
-        x - size / 2,
-        y + size / 2
-      );
-
-    }
+    return;
 
   }
 
 
-  /* =======================================================
-     mark_objects保存
-  ======================================================= */
+  const context =
+    canvas.getContext(
+      "2d"
+    );
 
-  async function saveMark(
-    card,
-    objectType
+
+  const color =
+    document.getElementById(
+      "markColor"
+    ).value;
+
+
+  const size =
+    Number(
+      document.getElementById(
+        "markSize"
+      ).value
+    ) || 42;
+
+
+  context.strokeStyle =
+    color;
+
+
+  context.fillStyle =
+    color;
+
+
+  context.lineWidth =
+    3;
+
+
+  const x =
+    canvas.width / 2;
+
+
+  const y =
+    canvas.height / 2;
+
+
+  /*
+    ○
+  */
+
+  if (
+    symbol ===
+    "○"
   ) {
 
-    const session =
-      await getSession();
+    context.beginPath();
 
 
-    if (!session) {
-
-      return;
-
-    }
-
-
-    const color =
-      document.getElementById(
-        "markColor"
-      ).value;
+    context.arc(
+      x,
+      y,
+      size / 2,
+      0,
+      Math.PI * 2
+    );
 
 
-    const size =
-      Number(
-        document.getElementById(
-          "markSize"
-        ).value
-      ) || 42;
+    context.stroke();
 
 
-    const {
-      error
-    } =
-      await supabaseClient
-        .from(
-          "mark_objects"
-        )
-        .insert({
-
-          answer_sheet_id:
-            card.dataset.answerId,
-
-          question_id:
-            null,
-
-          layout_box_id:
-            boxId,
-
-          object_type:
-            objectType,
-
-          text_value:
-            null,
-
-          color,
-
-          font_size:
-            size,
-
-          stroke_width:
-            3,
-
-          x:
-            0,
-
-          y:
-            0,
-
-          width:
-            null,
-
-          height:
-            null,
-
-          points:
-            null,
-
-          created_by:
-            session.user.id
-
-        });
-
-
-    if (error) {
-
-      console.error(
-        "記号保存エラー:",
-        error
-      );
-
-    }
+    return;
 
   }
 
 
-  /* =======================================================
-     テキスト
-  ======================================================= */
+  /*
+    ×
+  */
 
-  function drawText(
-    card
+  if (
+    symbol ===
+    "×"
   ) {
 
-    const input =
-      document.getElementById(
-        "markText"
-      );
+    context.beginPath();
 
 
-    const text =
-      input.value.trim();
+    context.moveTo(
+      x - size / 2,
+      y - size / 2
+    );
 
 
-    if (!text) {
-
-      alert(
-        "テキストを入力してください。"
-      );
-
-
-      return;
-
-    }
+    context.lineTo(
+      x + size / 2,
+      y + size / 2
+    );
 
 
-    const canvas =
-      card.querySelector(
-        ".answer-canvas"
-      );
+    context.moveTo(
+      x + size / 2,
+      y - size / 2
+    );
 
 
-    if (!canvas) {
-
-      return;
-
-    }
-
-
-    const context =
-      canvas.getContext(
-        "2d"
-      );
+    context.lineTo(
+      x - size / 2,
+      y + size / 2
+    );
 
 
-    const color =
-      document.getElementById(
-        "markColor"
-      ).value;
+    context.stroke();
 
 
-    const size =
-      Number(
-        document.getElementById(
-          "markSize"
-        ).value
-      ) || 42;
+    return;
+
+  }
 
 
-    context.fillStyle =
-      color;
+  /*
+    △
+  */
 
+  if (
+    symbol ===
+    "△"
+  ) {
+
+    context.beginPath();
+
+
+    context.moveTo(
+      x,
+      y - size / 2
+    );
+
+
+    context.lineTo(
+      x - size / 2,
+      y + size / 2
+    );
+
+
+    context.lineTo(
+      x + size / 2,
+      y + size / 2
+    );
+
+
+    context.closePath();
+
+
+    context.stroke();
+
+
+    return;
+
+  }
+
+
+  /*
+    ◎
+  */
+
+  if (
+    symbol ===
+    "◎"
+  ) {
 
     context.font =
       `${size}px Arial`;
 
 
     context.fillText(
-      text,
-      10,
-      Math.max(
-        size,
-        20
-      )
-    );
-
-
-    saveTextMark(
-      card,
-      text,
-      color,
-      size
+      "◎",
+      x - size / 2,
+      y + size / 2
     );
 
   }
 
+}
 
-  async function saveTextMark(
+
+/* =========================================================
+   mark_objects保存
+========================================================= */
+
+async function saveMark(
+  card,
+  objectType
+) {
+
+  const session =
+    await getSession();
+
+
+  if (!session) {
+
+    return;
+
+  }
+
+
+  const color =
+    document.getElementById(
+      "markColor"
+    ).value;
+
+
+  const size =
+    Number(
+      document.getElementById(
+        "markSize"
+      ).value
+    ) || 42;
+
+
+  /*
+    記号の位置
+    現在は中央
+  */
+
+  const canvas =
+    card.querySelector(
+      ".answer-canvas"
+    );
+
+
+  const x =
+    canvas
+      ? canvas.width / 2
+      : 0;
+
+
+  const y =
+    canvas
+      ? canvas.height / 2
+      : 0;
+
+
+  const {
+    error
+  } =
+    await supabaseClient
+      .from(
+        "mark_objects"
+      )
+      .insert({
+
+        answer_sheet_id:
+          card.dataset.answerId,
+
+        question_id:
+          null,
+
+        layout_box_id:
+          boxId,
+
+        object_type:
+          objectType,
+
+        text_value:
+          null,
+
+        color,
+
+        font_size:
+          size,
+
+        stroke_width:
+          3,
+
+        x,
+
+        y,
+
+        width:
+          null,
+
+        height:
+          null,
+
+        points:
+          null,
+
+        created_by:
+          session.user.id
+
+      });
+
+
+  if (error) {
+
+    console.error(
+      "記号保存:",
+      error
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   テキスト
+========================================================= */
+
+function drawText(
+  card
+) {
+
+  const input =
+    document.getElementById(
+      "markText"
+    );
+
+
+  const text =
+    input.value.trim();
+
+
+  if (!text) {
+
+    alert(
+      "テキストを入力してください。"
+    );
+
+
+    return;
+
+  }
+
+
+  const canvas =
+    card.querySelector(
+      ".answer-canvas"
+    );
+
+
+  if (!canvas) {
+
+    return;
+
+  }
+
+
+  const context =
+    canvas.getContext(
+      "2d"
+    );
+
+
+  const color =
+    document.getElementById(
+      "markColor"
+    ).value;
+
+
+  const size =
+    Number(
+      document.getElementById(
+        "markSize"
+      ).value
+    ) || 42;
+
+
+  const x =
+    10;
+
+
+  const y =
+    Math.max(
+      size,
+      20
+    );
+
+
+  context.fillStyle =
+    color;
+
+
+  context.font =
+    `${size}px Arial`;
+
+
+  context.fillText(
+    text,
+    x,
+    y
+  );
+
+
+  saveTextMark(
     card,
     text,
     color,
-    size
-  ) {
+    size,
+    x,
+    y
+  );
 
-    const session =
-      await getSession();
-
-
-    if (!session) {
-
-      return;
-
-    }
+}
 
 
-    const {
-      error
-    } =
-      await supabaseClient
-        .from(
-          "mark_objects"
-        )
-        .insert({
+/* =========================================================
+   テキスト保存
+========================================================= */
 
-          answer_sheet_id:
-            card.dataset.answerId,
+async function saveTextMark(
+  card,
+  text,
+  color,
+  size,
+  x,
+  y
+) {
 
-          question_id:
-            null,
-
-          layout_box_id:
-            boxId,
-
-          object_type:
-            "text",
-
-          text_value:
-            text,
-
-          color,
-
-          font_size:
-            size,
-
-          stroke_width:
-            3,
-
-          x:
-            10,
-
-          y:
-            size,
-
-          width:
-            null,
-
-          height:
-            null,
-
-          points:
-            null,
-
-          created_by:
-            session.user.id
-
-        });
+  const session =
+    await getSession();
 
 
-    if (error) {
+  if (!session) {
 
-      console.error(
-        "テキスト保存:",
-        error
-      );
-
-    }
+    return;
 
   }
 
 
-  /* =======================================================
-     ペン
-  ======================================================= */
+  const {
+    error
+  } =
+    await supabaseClient
+      .from(
+        "mark_objects"
+      )
+      .insert({
 
-  function enablePen(
-    card
-  ) {
+        answer_sheet_id:
+          card.dataset.answerId,
 
-    const canvas =
-      card.querySelector(
-        ".answer-canvas"
-      );
+        question_id:
+          null,
 
+        layout_box_id:
+          boxId,
 
-    if (!canvas) {
+        object_type:
+          "text",
 
-      return;
+        text_value:
+          text,
 
-    }
+        color,
 
+        font_size:
+          size,
 
-    canvas.style.pointerEvents =
-      "auto";
+        stroke_width:
+          3,
 
+        x,
 
-    const context =
-      canvas.getContext(
-        "2d"
-      );
+        y,
 
+        width:
+          null,
 
-    let drawing =
-      false;
+        height:
+          null,
 
+        points:
+          null,
 
-    let points = [];
+        created_by:
+          session.user.id
 
-
-    canvas.onpointerdown =
-      event => {
-
-        drawing =
-          true;
-
-
-        points = [
-
-          {
-
-            x:
-              event.offsetX,
-
-            y:
-              event.offsetY
-
-          }
-
-        ];
+      });
 
 
-        context.beginPath();
+  if (error) {
+
+    console.error(
+      "テキスト保存:",
+      error
+    );
+
+  }
+
+}
 
 
-        context.moveTo(
-          event.offsetX,
-          event.offsetY
-        );
+/* =========================================================
+   ペン
+========================================================= */
 
-      };
+function enablePen(
+  card
+) {
 
-
-    canvas.onpointermove =
-      event => {
-
-        if (!drawing) {
-
-          return;
-
-        }
+  const canvas =
+    card.querySelector(
+      ".answer-canvas"
+    );
 
 
-        const point = {
+  if (!canvas) {
+
+    return;
+
+  }
+
+
+  canvas.style.pointerEvents =
+    "auto";
+
+
+  const context =
+    canvas.getContext(
+      "2d"
+    );
+
+
+  let drawing =
+    false;
+
+
+  let points =
+    [];
+
+
+  canvas.onpointerdown =
+    event => {
+
+      drawing =
+        true;
+
+
+      points = [
+
+        {
 
           x:
             event.offsetX,
@@ -2956,684 +3341,715 @@
           y:
             event.offsetY
 
-        };
-
-
-        points.push(
-          point
-        );
-
-
-        context.strokeStyle =
-          document.getElementById(
-            "markColor"
-          ).value;
-
-
-        context.lineWidth =
-          3;
-
-
-        context.lineTo(
-          point.x,
-          point.y
-        );
-
-
-        context.stroke();
-
-      };
-
-
-    canvas.onpointerup =
-      async () => {
-
-        if (!drawing) {
-
-          return;
-
         }
 
+      ];
 
-        drawing =
-          false;
-
-
-        canvas.style.pointerEvents =
-          "none";
-
-
-        await savePenMark(
-          card,
-          points
-        );
-
-      };
-
-
-    canvas.onpointerleave =
-      async () => {
-
-        if (!drawing) {
-
-          return;
-
-        }
-
-
-        drawing =
-          false;
-
-
-        canvas.style.pointerEvents =
-          "none";
-
-
-        await savePenMark(
-          card,
-          points
-        );
-
-      };
-
-  }
-
-
-  async function savePenMark(
-    card,
-    points
-  ) {
-
-    const session =
-      await getSession();
-
-
-    if (!session) {
-
-      return;
-
-    }
-
-
-    if (
-      !points ||
-      !points.length
-    ) {
-
-      return;
-
-    }
-
-
-    const {
-      error
-    } =
-      await supabaseClient
-        .from(
-          "mark_objects"
-        )
-        .insert({
-
-          answer_sheet_id:
-            card.dataset.answerId,
-
-          question_id:
-            null,
-
-          layout_box_id:
-            boxId,
-
-          object_type:
-            "pen",
-
-          text_value:
-            null,
-
-          color:
-            document.getElementById(
-              "markColor"
-            ).value,
-
-          font_size:
-            null,
-
-          stroke_width:
-            3,
-
-          x:
-            0,
-
-          y:
-            0,
-
-          width:
-            null,
-
-          height:
-            null,
-
-          points,
-
-          created_by:
-            session.user.id
-
-        });
-
-
-    if (error) {
-
-      console.error(
-        "ペン保存:",
-        error
-      );
-
-    }
-
-  }
-
-
-  /* =======================================================
-     保存済み記号描画
-  ======================================================= */
-
-  function drawStoredMark(
-    card,
-    mark
-  ) {
-
-    const canvas =
-      card.querySelector(
-        ".answer-canvas"
-      );
-
-
-    if (!canvas) {
-
-      return;
-
-    }
-
-
-    const context =
-      canvas.getContext(
-        "2d"
-      );
-
-
-    const color =
-      mark.color ||
-      "#e53935";
-
-
-    const size =
-      Number(
-        mark.font_size
-      ) || 42;
-
-
-    context.strokeStyle =
-      color;
-
-
-    context.fillStyle =
-      color;
-
-
-    context.lineWidth =
-      Number(
-        mark.stroke_width
-      ) || 3;
-
-
-    const x =
-      Number(
-        mark.x
-      ) ||
-      canvas.width / 2;
-
-
-    const y =
-      Number(
-        mark.y
-      ) ||
-      canvas.height / 2;
-
-
-    /*
-      ○
-    */
-
-    if (
-      mark.object_type ===
-      "circle"
-    ) {
-
-      context.beginPath();
-
-
-      context.arc(
-        x,
-        y,
-        size / 2,
-        0,
-        Math.PI * 2
-      );
-
-
-      context.stroke();
-
-
-      return;
-
-    }
-
-
-    /*
-      ×
-    */
-
-    if (
-      mark.object_type ===
-      "x"
-    ) {
 
       context.beginPath();
 
 
       context.moveTo(
-        x - size / 2,
-        y - size / 2
+        event.offsetX,
+        event.offsetY
       );
 
-
-      context.lineTo(
-        x + size / 2,
-        y + size / 2
-      );
+    };
 
 
-      context.moveTo(
-        x + size / 2,
-        y - size / 2
-      );
+  canvas.onpointermove =
+    event => {
 
-
-      context.lineTo(
-        x - size / 2,
-        y + size / 2
-      );
-
-
-      context.stroke();
-
-
-      return;
-
-    }
-
-
-    /*
-      △
-    */
-
-    if (
-      mark.object_type ===
-      "triangle"
-    ) {
-
-      context.beginPath();
-
-
-      context.moveTo(
-        x,
-        y - size / 2
-      );
-
-
-      context.lineTo(
-        x - size / 2,
-        y + size / 2
-      );
-
-
-      context.lineTo(
-        x + size / 2,
-        y + size / 2
-      );
-
-
-      context.closePath();
-
-
-      context.stroke();
-
-
-      return;
-
-    }
-
-
-    /*
-      ◎
-    */
-
-    if (
-      mark.object_type ===
-      "double_circle"
-    ) {
-
-      context.font =
-        `${size}px Arial`;
-
-
-      context.fillText(
-        "◎",
-        x,
-        y
-      );
-
-
-      return;
-
-    }
-
-
-    /*
-      テキスト
-    */
-
-    if (
-      mark.object_type ===
-      "text"
-    ) {
-
-      context.font =
-        `${size}px Arial`;
-
-
-      context.fillText(
-        mark.text_value ||
-        "",
-        x,
-        y
-      );
-
-
-      return;
-
-    }
-
-
-    /*
-      描画
-    */
-
-    if (
-      mark.object_type ===
-      "pen"
-    ) {
-
-      const points =
-        Array.isArray(
-          mark.points
-        )
-          ? mark.points
-          : [];
-
-
-      if (!points.length) {
+      if (!drawing) {
 
         return;
 
       }
 
 
-      context.beginPath();
+      const point = {
+
+        x:
+          event.offsetX,
+
+        y:
+          event.offsetY
+
+      };
 
 
-      points.forEach(
-        (
-          point,
-          index
-        ) => {
+      points.push(
+        point
+      );
 
-          if (
-            index === 0
-          ) {
 
-            context.moveTo(
-              point.x,
-              point.y
-            );
+      context.strokeStyle =
+        document.getElementById(
+          "markColor"
+        ).value;
 
-          } else {
 
-            context.lineTo(
-              point.x,
-              point.y
-            );
+      context.lineWidth =
+        3;
 
-          }
 
-        }
+      context.lineTo(
+        point.x,
+        point.y
       );
 
 
       context.stroke();
 
+    };
+
+
+  canvas.onpointerup =
+    async () => {
+
+      await finishPen();
+
+    };
+
+
+  canvas.onpointerleave =
+    async () => {
+
+      if (drawing) {
+
+        await finishPen();
+
+      }
+
+    };
+
+
+  async function finishPen() {
+
+    if (!drawing) {
+
+      return;
+
     }
+
+
+    drawing =
+      false;
+
+
+    canvas.style.pointerEvents =
+      "none";
+
+
+    if (!points.length) {
+
+      return;
+
+    }
+
+
+    await savePenMark(
+      card,
+      points
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   ペン保存
+========================================================= */
+
+async function savePenMark(
+  card,
+  points
+) {
+
+  const session =
+    await getSession();
+
+
+  if (!session) {
+
+    return;
 
   }
 
 
-  /* =======================================================
-     模範解答
-  ======================================================= */
+  const {
+    error
+  } =
+    await supabaseClient
+      .from(
+        "mark_objects"
+      )
+      .insert({
 
-  async function loadModelAnswer() {
+        answer_sheet_id:
+          card.dataset.answerId,
 
-    const {
-      data,
+        question_id:
+          null,
+
+        layout_box_id:
+          boxId,
+
+        object_type:
+          "pen",
+
+        text_value:
+          null,
+
+        color:
+          document.getElementById(
+            "markColor"
+          ).value,
+
+        font_size:
+          null,
+
+        stroke_width:
+          3,
+
+        x:
+          0,
+
+        y:
+          0,
+
+        width:
+          null,
+
+        height:
+          null,
+
+        points,
+
+        created_by:
+          session.user.id
+
+      });
+
+
+  if (error) {
+
+    console.error(
+      "ペン保存:",
       error
-    } =
-      await supabaseClient
-        .from(
-          "test_pages"
-        )
-        .select(
-          "image_path"
-        )
-        .eq(
-          "test_id",
-          testId
-        )
-        .eq(
-          "page_no",
-          999
-        )
-        .maybeSingle();
+    );
+
+  }
+
+}
 
 
-    if (error) {
+/* =========================================================
+   保存済み記号描画
+========================================================= */
 
-      console.error(
-        "模範解答:",
-        error
-      );
+function drawStoredMark(
+  card,
+  mark
+) {
 
+  const canvas =
+    card.querySelector(
+      ".answer-canvas"
+    );
+
+
+  if (!canvas) {
+
+    return;
+
+  }
+
+
+  const context =
+    canvas.getContext(
+      "2d"
+    );
+
+
+  const color =
+    mark.color ||
+    "#e53935";
+
+
+  const size =
+    Number(
+      mark.font_size
+    ) || 42;
+
+
+  context.strokeStyle =
+    color;
+
+
+  context.fillStyle =
+    color;
+
+
+  context.lineWidth =
+    Number(
+      mark.stroke_width
+    ) || 3;
+
+
+  const x =
+    Number(
+      mark.x
+    ) ||
+    canvas.width / 2;
+
+
+  const y =
+    Number(
+      mark.y
+    ) ||
+    canvas.height / 2;
+
+
+  /*
+    ○
+  */
+
+  if (
+    mark.object_type ===
+    "circle"
+  ) {
+
+    context.beginPath();
+
+
+    context.arc(
+      x,
+      y,
+      size / 2,
+      0,
+      Math.PI * 2
+    );
+
+
+    context.stroke();
+
+
+    return;
+
+  }
+
+
+  /*
+    ×
+  */
+
+  if (
+    mark.object_type ===
+    "x"
+  ) {
+
+    context.beginPath();
+
+
+    context.moveTo(
+      x - size / 2,
+      y - size / 2
+    );
+
+
+    context.lineTo(
+      x + size / 2,
+      y + size / 2
+    );
+
+
+    context.moveTo(
+      x + size / 2,
+      y - size / 2
+    );
+
+
+    context.lineTo(
+      x - size / 2,
+      y + size / 2
+    );
+
+
+    context.stroke();
+
+
+    return;
+
+  }
+
+
+  /*
+    △
+  */
+
+  if (
+    mark.object_type ===
+    "triangle"
+  ) {
+
+    context.beginPath();
+
+
+    context.moveTo(
+      x,
+      y - size / 2
+    );
+
+
+    context.lineTo(
+      x - size / 2,
+      y + size / 2
+    );
+
+
+    context.lineTo(
+      x + size / 2,
+      y + size / 2
+    );
+
+
+    context.closePath();
+
+
+    context.stroke();
+
+
+    return;
+
+  }
+
+
+  /*
+    ◎
+  */
+
+  if (
+    mark.object_type ===
+    "double_circle"
+  ) {
+
+    context.font =
+      `${size}px Arial`;
+
+
+    context.fillText(
+      "◎",
+      x,
+      y
+    );
+
+
+    return;
+
+  }
+
+
+  /*
+    テキスト
+  */
+
+  if (
+    mark.object_type ===
+    "text"
+  ) {
+
+    context.font =
+      `${size}px Arial`;
+
+
+    context.fillText(
+      mark.text_value ||
+      "",
+      x,
+      y
+    );
+
+
+    return;
+
+  }
+
+
+  /*
+    ペン
+  */
+
+  if (
+    mark.object_type ===
+    "pen"
+  ) {
+
+    const points =
+      Array.isArray(
+        mark.points
+      )
+        ? mark.points
+        : [];
+
+
+    if (!points.length) {
 
       return;
 
     }
 
 
-    if (
-      !data?.image_path
-    ) {
-
-      document.getElementById(
-        "modelAnswer"
-      ).textContent =
-        "模範解答未登録";
+    context.beginPath();
 
 
-      return;
+    points.forEach(
+      (
+        point,
+        index
+      ) => {
 
-    }
+        if (
+          index === 0
+        ) {
+
+          context.moveTo(
+            point.x,
+            point.y
+          );
+
+        } else {
+
+          context.lineTo(
+            point.x,
+            point.y
+          );
+
+        }
+
+      }
+    );
 
 
-    const {
-      data:
-        signed,
-      error:
-        signedError
-    } =
-      await supabaseClient
-        .storage
-        .from(
-          "model-answers"
-        )
-        .createSignedUrl(
-          data.image_path,
-          3600
-        );
+    context.stroke();
+
+  }
+
+}
 
 
-    if (signedError) {
+/* =========================================================
+   模範解答
+========================================================= */
 
-      console.error(
-        signedError
-      );
+async function loadModelAnswer() {
+
+  /*
+    現在のDB仕様では
+    page_no = 999 を模範解答として使用。
+  */
+
+  const {
+    data,
+    error
+  } =
+    await supabaseClient
+      .from(
+        "test_pages"
+      )
+      .select(
+        "image_path"
+      )
+      .eq(
+        "test_id",
+        testId
+      )
+      .eq(
+        "page_no",
+        999
+      )
+      .maybeSingle();
 
 
-      return;
+  if (error) {
 
-    }
+    console.error(
+      "模範解答取得:",
+      error
+    );
 
+
+    return;
+
+  }
+
+
+  if (
+    !data?.image_path
+  ) {
 
     document.getElementById(
       "modelAnswer"
-    ).innerHTML = `
+    ).textContent =
+      "模範解答未登録";
 
-      <img
-        src="${escapeHtml(
-          signed.signedUrl
-        )}"
-        alt="模範解答"
-      >
 
-    `;
+    return;
 
   }
 
 
-  /* =======================================================
-     ズーム
-  ======================================================= */
-
-  function applyZoom() {
-
-    document.getElementById(
-      "zoomValue"
-    ).textContent =
-      `${Math.round(
-        zoom * 100
-      )}%`;
-
-
-    document
-      .querySelectorAll(
-        ".answer-card"
+  const {
+    data:
+      signed,
+    error:
+      signedError
+  } =
+    await supabaseClient
+      .storage
+      .from(
+        "model-answers"
       )
-      .forEach(
-        card => {
-
-          card.style.transform =
-            `scale(${zoom})`;
-
-
-          card.style.transformOrigin =
-            "top left";
-
-        }
+      .createSignedUrl(
+        data.image_path,
+        3600
       );
 
-  }
+
+  if (signedError) {
+
+    console.error(
+      signedError
+    );
 
 
-  /* =======================================================
-     進捗
-  ======================================================= */
-
-  function updateProgress() {
-
-    const total =
-      document.querySelectorAll(
-        ".answer-card"
-      ).length;
-
-
-    const done =
-      document.querySelectorAll(
-        ".answer-card.done"
-      ).length;
-
-
-    document.getElementById(
-      "markingProgress"
-    ).textContent =
-      `${done} / ${total}`;
+    return;
 
   }
 
 
-  /* =======================================================
-     HTML escape
-  ======================================================= */
+  document.getElementById(
+    "modelAnswer"
+  ).innerHTML = `
 
-  function escapeHtml(
-    value
+    <img
+      src="${escapeHtml(
+        signed.signedUrl
+      )}"
+      alt="模範解答"
+    >
+
+  `;
+
+}
+
+
+/* =========================================================
+   ズーム
+========================================================= */
+
+function applyZoom() {
+
+  document.getElementById(
+    "zoomValue"
+  ).textContent =
+    `${Math.round(
+      zoom * 100
+    )}%`;
+
+
+  document
+    .querySelectorAll(
+      ".answer-card"
+    )
+    .forEach(
+      card => {
+
+        card.style.transform =
+          `scale(${zoom})`;
+
+
+        card.style.transformOrigin =
+          "top left";
+
+      }
+    );
+
+}
+
+
+/* =========================================================
+   進捗
+========================================================= */
+
+function updateProgress() {
+
+  const total =
+    document.querySelectorAll(
+      ".answer-card"
+    ).length;
+
+
+  const done =
+    document.querySelectorAll(
+      ".answer-card.done"
+    ).length;
+
+
+  document.getElementById(
+    "markingProgress"
+  ).textContent =
+    `${done} / ${total}`;
+
+}
+
+
+/* =========================================================
+   HTML escape
+========================================================= */
+
+function escapeHtml(
+  value
+) {
+
+  if (
+    value === null ||
+    value === undefined
   ) {
 
-    if (
-      value === null ||
-      value === undefined
-    ) {
-
-      return "";
-
-    }
-
-
-    return String(value)
-      .replaceAll(
-        "&",
-        "&amp;"
-      )
-      .replaceAll(
-        "<",
-        "&lt;"
-      )
-      .replaceAll(
-        ">",
-        "&gt;"
-      )
-      .replaceAll(
-        '"',
-        "&quot;"
-      )
-      .replaceAll(
-        "'",
-        "&#039;"
-      );
+    return "";
 
   }
 
 
-  /* =======================================================
-     START
-  ======================================================= */
+  return String(value)
+    .replaceAll(
+      "&",
+      "&amp;"
+    )
+    .replaceAll(
+      "<",
+      "&lt;"
+    )
+    .replaceAll(
+      ">",
+      "&gt;"
+    )
+    .replaceAll(
+      '"',
+      "&quot;"
+    )
+    .replaceAll(
+      "'",
+      "&#039;"
+    );
 
-  initialize();
+}
 
-})();
+
+/* =========================================================
+   START
+========================================================= */
+
+initializeMarking();

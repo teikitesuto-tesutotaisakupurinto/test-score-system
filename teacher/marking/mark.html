@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 
@@ -20,223 +21,222 @@
 <style>
 
 .marking-main {
-  max-width:1500px;
-  margin:0 auto;
-  padding:22px;
+  max-width: 1500px;
+  margin: 0 auto;
+  padding: 22px;
 }
 
 .toolbar {
-  display:flex;
-  flex-wrap:wrap;
-  gap:10px;
-  align-items:center;
-  margin-bottom:15px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 15px;
 }
 
 .status {
-  padding:10px 12px;
-  margin-bottom:15px;
-  background:#f5f6f7;
-  border:1px solid #d5dbe0;
-  font-size:13px;
+  padding: 10px 12px;
+  margin-bottom: 15px;
+  background: #f5f6f7;
+  border: 1px solid #d5dbe0;
+  font-size: 13px;
 }
 
-.progress-area {
-  display:none;
-  margin-bottom:15px;
-  padding:14px;
-  background:#fff;
-  border:1px solid #d0d6dc;
+.progress {
+  display: none;
+  margin-bottom: 15px;
+  padding: 14px;
+  background: #fff;
+  border: 1px solid #d0d6dc;
 }
 
-.progress-area.show {
-  display:block;
+.progress.show {
+  display: block;
 }
 
 .progress-track {
-  height:8px;
-  background:#e1e5e8;
-  overflow:hidden;
-  border-radius:4px;
+  height: 8px;
+  background: #e1e5e8;
+  border-radius: 4px;
+  overflow: hidden;
 }
 
 .progress-bar {
-  height:100%;
-  width:0;
-  background:#1769aa;
-  transition:width .2s;
+  height: 100%;
+  width: 0;
+  background: #1769aa;
+  transition: width .2s;
 }
 
 .progress-text {
-  margin-top:7px;
-  color:#666;
-  font-size:12px;
+  margin-top: 7px;
+  font-size: 12px;
+  color: #666;
 }
 
 .question-header {
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  flex-wrap:wrap;
-  gap:12px;
-  padding:15px;
-  margin-bottom:15px;
-  background:#fff;
-  border:1px solid #d0d6dc;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 15px;
+  padding: 15px;
+  background: #fff;
+  border: 1px solid #d0d6dc;
 }
 
 .question-title {
-  font-size:20px;
-  font-weight:700;
+  font-size: 20px;
+  font-weight: 700;
 }
 
 .question-meta {
-  margin-top:5px;
-  color:#666;
-  font-size:13px;
+  margin-top: 5px;
+  color: #666;
+  font-size: 13px;
 }
 
-.question-navigation {
-  display:flex;
-  gap:8px;
+.navigation {
+  display: flex;
+  gap: 8px;
 }
 
 .answer-table-wrap {
-  overflow-x:auto;
-  background:#fff;
-  border:1px solid #d0d6dc;
+  overflow-x: auto;
+  background: #fff;
+  border: 1px solid #d0d6dc;
 }
 
 .answer-table {
-  width:100%;
-  border-collapse:collapse;
-  min-width:1050px;
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 1050px;
 }
 
 .answer-table th,
 .answer-table td {
-  border:1px solid #d0d6dc;
-  padding:9px;
-  vertical-align:top;
-  font-size:13px;
+  border: 1px solid #d0d6dc;
+  padding: 9px;
+  vertical-align: top;
+  font-size: 13px;
 }
 
 .answer-table th {
-  background:#f3f5f7;
+  background: #f3f5f7;
+  white-space: nowrap;
 }
 
 .student-cell {
-  width:150px;
-  min-width:150px;
+  width: 150px;
+  min-width: 150px;
 }
 
 .student-no {
-  font-weight:700;
+  font-weight: 700;
 }
 
 .student-name {
-  margin-top:4px;
-  color:#555;
+  margin-top: 4px;
+  color: #555;
 }
 
 .answer-cell {
-  width:500px;
-  min-width:500px;
+  width: 520px;
+  min-width: 520px;
 }
 
 .answer-viewer {
-  position:relative;
-  overflow:hidden;
-  width:100%;
-  min-height:150px;
-  background:#f7f8f9;
-  border:1px solid #e0e3e6;
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  min-height: 160px;
+  background: #f7f8f9;
+  border: 1px solid #dfe3e6;
 }
 
 .answer-viewer img {
-  position:absolute;
-  max-width:none;
-  max-height:none;
-  margin:0;
-  user-select:none;
-  -webkit-user-drag:none;
+  position: absolute;
+  max-width: none;
+  max-height: none;
+  margin: 0;
 }
 
-.answer-missing {
-  padding:35px 10px;
-  text-align:center;
-  color:#888;
+.answer-error {
+  padding: 40px 10px;
+  text-align: center;
+  color: #b42318;
 }
 
 .score-cell {
-  width:150px;
-  min-width:150px;
-  text-align:center;
+  width: 150px;
+  min-width: 150px;
+  text-align: center;
 }
 
 .score-input {
-  width:90px;
-  height:40px;
-  padding:0 8px;
-  font-size:17px;
-  text-align:center;
+  width: 90px;
+  height: 40px;
+  padding: 0 8px;
+  font-size: 17px;
+  text-align: center;
 }
 
 .score-save {
-  margin-top:7px;
+  margin-top: 7px;
 }
 
 .score-state {
-  margin-top:7px;
-  font-size:12px;
-  color:#666;
+  margin-top: 7px;
+  font-size: 12px;
+  color: #666;
 }
 
 .score-state.marked {
-  color:#1769aa;
-  font-weight:700;
+  color: #1769aa;
+  font-weight: 700;
 }
 
 .score-state.error {
-  color:#b42318;
+  color: #b42318;
 }
 
 .warning {
-  display:none;
-  margin-top:7px;
-  padding:7px;
-  color:#b42318;
-  background:#fff4f2;
-  border:1px solid #efc2bc;
-  font-size:12px;
+  display: none;
+  margin-top: 7px;
+  padding: 7px;
+  color: #b42318;
+  background: #fff4f2;
+  border: 1px solid #efc2bc;
+  font-size: 12px;
 }
 
 .warning.show {
-  display:block;
+  display: block;
 }
 
 .complete {
-  display:none;
-  margin-top:15px;
-  padding:18px;
-  background:#fff;
-  border:1px solid #d0d6dc;
+  display: none;
+  margin-top: 15px;
+  padding: 18px;
+  background: #fff;
+  border: 1px solid #d0d6dc;
 }
 
 .complete.show {
-  display:block;
+  display: block;
 }
 
 .complete-title {
-  font-weight:700;
-  font-size:18px;
-  margin-bottom:8px;
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 8px;
 }
 
 .empty {
-  padding:50px;
-  text-align:center;
-  color:#777;
+  padding: 50px;
+  text-align: center;
+  color: #777;
 }
 
 </style>
@@ -297,13 +297,13 @@ type="button"
 id="status"
 class="status"
 >
-読み込み中...
+初期化しています...
 </div>
 
 
 <div
-id="progressArea"
-class="progress-area"
+id="progress"
+class="progress"
 >
 
 <div
@@ -312,7 +312,6 @@ class="progress-text"
 >
 -
 </div>
-
 
 <div class="progress-track">
 
@@ -326,9 +325,7 @@ class="progress-bar"
 </div>
 
 
-<div
-class="question-header"
->
+<div class="question-header">
 
 <div>
 
@@ -349,16 +346,16 @@ class="question-meta"
 </div>
 
 
-<div class="question-navigation">
+<div class="navigation">
 
 <button
 id="previousButton"
 class="btn"
 type="button"
+disabled
 >
 前の問題
 </button>
-
 
 <button
 id="nextButton"
@@ -386,7 +383,7 @@ class="answer-table-wrap"
 
 
 <div
-id="completeArea"
+id="complete"
 class="complete"
 >
 
@@ -395,7 +392,7 @@ class="complete"
 </div>
 
 <div>
-成績・偏差値・順位の処理がすべて完了するまで公開しません。
+成績・偏差値・順位の処理が完了するまで公開しません。
 </div>
 
 </div>
@@ -412,8 +409,2308 @@ src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
 
 <script src="/js/auth.js"></script>
 
-<script src="/js/teacher/marking.js"></script>
 
+<script>
+
+(function () {
+
+"use strict";
+
+
+/* =====================================================
+   DB
+===================================================== */
+
+const DB =
+  window.SB ||
+  window.supabaseClient ||
+  window.sb;
+
+
+if (!DB) {
+
+  showFatal(
+    "Supabase接続が初期化されていません。js/config.js を確認してください。"
+  );
+
+  return;
+
+}
+
+
+/* =====================================================
+   STATE
+===================================================== */
+
+let testId = null;
+
+let test = null;
+
+let answers = [];
+
+let students = new Map();
+
+let pages = new Map();
+
+let questions = [];
+
+let scores = [];
+
+let questionIndex = 0;
+
+let saving = false;
+
+
+/* =====================================================
+   DOM
+===================================================== */
+
+const teacherName =
+  document.getElementById(
+    "teacherName"
+  );
+
+const status =
+  document.getElementById(
+    "status"
+  );
+
+const answerTableWrap =
+  document.getElementById(
+    "answerTableWrap"
+  );
+
+const questionTitle =
+  document.getElementById(
+    "questionTitle"
+  );
+
+const questionMeta =
+  document.getElementById(
+    "questionMeta"
+  );
+
+const previousButton =
+  document.getElementById(
+    "previousButton"
+  );
+
+const nextButton =
+  document.getElementById(
+    "nextButton"
+  );
+
+const refreshButton =
+  document.getElementById(
+    "refreshButton"
+  );
+
+const progress =
+  document.getElementById(
+    "progress"
+  );
+
+const progressBar =
+  document.getElementById(
+    "progressBar"
+  );
+
+const progressText =
+  document.getElementById(
+    "progressText"
+  );
+
+const complete =
+  document.getElementById(
+    "complete"
+  );
+
+
+/* =====================================================
+   INIT
+===================================================== */
+
+document.addEventListener(
+  "DOMContentLoaded",
+  init
+);
+
+
+async function init() {
+
+try {
+
+setStatus(
+"ログイン状態を確認しています..."
+);
+
+
+/* -----------------------------------------------------
+   AUTH
+----------------------------------------------------- */
+
+if (
+typeof window.requireRole ===
+"function"
+) {
+
+const result =
+await window.requireRole(
+"teacher"
+);
+
+
+if (!result) {
+
+return;
+
+}
+
+
+const profile =
+result.profile ||
+result;
+
+
+if (teacherName) {
+
+teacherName.textContent =
+profile.name ||
+"先生";
+
+}
+
+}
+
+
+/* -----------------------------------------------------
+   URL
+----------------------------------------------------- */
+
+const params =
+new URLSearchParams(
+location.search
+);
+
+
+testId =
+params.get(
+"test"
+);
+
+
+if (!testId) {
+
+throw new Error(
+"テストIDがありません。採点一覧から「採点開始」を押してください。"
+);
+
+}
+
+
+/* -----------------------------------------------------
+   EVENTS
+----------------------------------------------------- */
+
+setupEvents();
+
+
+/* -----------------------------------------------------
+   LOAD
+----------------------------------------------------- */
+
+await loadEverything();
+
+
+} catch (error) {
+
+console.error(
+"MARKING ERROR:",
+error
+);
+
+
+showFatal(
+error.message ||
+"採点画面の読み込みに失敗しました。"
+);
+
+}
+
+}
+
+
+/* =====================================================
+   EVENTS
+===================================================== */
+
+function setupEvents() {
+
+
+previousButton.addEventListener(
+"click",
+async () => {
+
+if (
+questionIndex <= 0
+) {
+
+return;
+
+}
+
+questionIndex--;
+
+await renderQuestion();
+
+}
+);
+
+
+nextButton.addEventListener(
+"click",
+nextQuestion
+);
+
+
+refreshButton.addEventListener(
+"click",
+async () => {
+
+try {
+
+await loadEverything();
+
+} catch (error) {
+
+showFatal(
+error.message ||
+"更新に失敗しました。"
+);
+
+}
+
+}
+);
+
+
+document
+.getElementById(
+"logoutButton"
+)
+?.addEventListener(
+"click",
+async () => {
+
+if (
+typeof window.signOut ===
+"function"
+) {
+
+await window.signOut();
+
+}
+
+}
+);
+
+}
+
+
+/* =====================================================
+   LOAD EVERYTHING
+===================================================== */
+
+async function loadEverything() {
+
+setStatus(
+"テスト情報を取得しています..."
+);
+
+
+/* -----------------------------------------------------
+   TEST
+----------------------------------------------------- */
+
+const {
+data: testData,
+error: testError
+} =
+await DB
+.from(
+"tests"
+)
+.select(
+`
+id,
+name,
+subject,
+grade,
+class_name
+`
+)
+.eq(
+"id",
+testId
+)
+.maybeSingle();
+
+
+if (testError) {
+
+throw new Error(
+`テスト取得エラー: ${testError.message}`
+);
+
+}
+
+
+if (!testData) {
+
+throw new Error(
+"指定されたテストが見つかりません。"
+);
+
+}
+
+
+test =
+testData;
+
+
+/* -----------------------------------------------------
+   ANSWERS
+----------------------------------------------------- */
+
+setStatus(
+"答案を取得しています..."
+);
+
+
+const {
+data: answerData,
+error: answerError
+} =
+await DB
+.from(
+"answer_sheets"
+)
+.select(
+`
+id,
+test_id,
+student_id,
+page_count,
+qr_value,
+status,
+uploaded_at
+`
+)
+.eq(
+"test_id",
+testId
+)
+.order(
+"uploaded_at",
+{
+ascending:true
+}
+);
+
+
+if (answerError) {
+
+throw new Error(
+`答案取得エラー: ${answerError.message}`
+);
+
+}
+
+
+answers =
+answerData || [];
+
+
+if (!answers.length) {
+
+throw new Error(
+`「${test.name}」には答案が登録されていません。`
+);
+
+}
+
+
+/* -----------------------------------------------------
+   STUDENTS
+----------------------------------------------------- */
+
+setStatus(
+"生徒情報を取得しています..."
+);
+
+
+await loadStudents();
+
+
+/* -----------------------------------------------------
+   PAGES
+----------------------------------------------------- */
+
+setStatus(
+"答案画像情報を取得しています..."
+);
+
+
+await loadPages();
+
+
+/* -----------------------------------------------------
+   LAYOUT
+----------------------------------------------------- */
+
+setStatus(
+"採点枠を取得しています..."
+);
+
+
+const {
+data: boxData,
+error: boxError
+} =
+await DB
+.from(
+"layout_boxes"
+)
+.select(
+`
+id,
+test_id,
+page_no,
+box_type,
+label,
+x,
+y,
+width,
+height,
+question_id,
+points,
+created_at
+`
+)
+.eq(
+"test_id",
+testId
+)
+.order(
+"page_no",
+{
+ascending:true
+}
+)
+.order(
+"created_at",
+{
+ascending:true
+}
+);
+
+
+if (boxError) {
+
+throw new Error(
+`採点枠取得エラー: ${boxError.message}`
+);
+
+}
+
+
+/* -----------------------------------------------------
+   QUESTION
+----------------------------------------------------- */
+
+questions =
+(boxData || [])
+.filter(
+box => {
+
+const type =
+String(
+box.box_type ||
+""
+)
+.toLowerCase()
+.trim();
+
+
+return (
+type === "answer" &&
+Boolean(
+box.question_id
+)
+);
+
+}
+)
+.map(
+box => ({
+
+id:
+box.id,
+
+label:
+box.label ||
+"設問",
+
+pageNo:
+Number(
+box.page_no
+),
+
+x:
+Number(
+box.x
+) || 0,
+
+y:
+Number(
+box.y
+) || 0,
+
+width:
+Number(
+box.width
+) || 1,
+
+height:
+Number(
+box.height
+) || 1,
+
+questionId:
+box.question_id,
+
+points:
+Number(
+box.points
+) || 0
+
+})
+);
+
+
+if (!questions.length) {
+
+throw new Error(
+"採点対象の設問がありません。layout_boxes の box_type=answer / question_id を確認してください。"
+);
+
+}
+
+
+/* -----------------------------------------------------
+   SCORES
+----------------------------------------------------- */
+
+setStatus(
+"既存の採点結果を取得しています..."
+);
+
+
+await loadScores();
+
+
+questionIndex =
+0;
+
+
+progress.classList.add(
+"show"
+);
+
+
+await renderQuestion();
+
+
+setStatus(
+`${test.name} / 答案${answers.length}件 / ${questions.length}問`
+);
+
+}
+
+
+/* =====================================================
+   STUDENTS
+===================================================== */
+
+async function loadStudents() {
+
+students =
+new Map();
+
+
+const ids =
+[
+...new Set(
+answers
+.map(
+answer =>
+answer.student_id
+)
+.filter(Boolean)
+)
+];
+
+
+if (!ids.length) {
+
+return;
+
+}
+
+
+const {
+data,
+error
+} =
+await DB
+.from(
+"students"
+)
+.select(
+`
+id,
+student_no,
+name
+`
+)
+.in(
+"id",
+ids
+);
+
+
+if (error) {
+
+throw new Error(
+`生徒情報取得エラー: ${error.message}`
+);
+
+}
+
+
+for (
+const student
+of data || []
+) {
+
+students.set(
+student.id,
+student
+);
+
+}
+
+}
+
+
+/* =====================================================
+   PAGES
+===================================================== */
+
+async function loadPages() {
+
+pages =
+new Map();
+
+
+const ids =
+answers.map(
+answer =>
+answer.id
+);
+
+
+const {
+data,
+error
+} =
+await DB
+.from(
+"answer_sheet_pages"
+)
+.select(
+`
+answer_sheet_id,
+page_no,
+file_path,
+file_type,
+original_name,
+width_px,
+height_px
+`
+)
+.in(
+"answer_sheet_id",
+ids
+)
+.order(
+"page_no",
+{
+ascending:true
+}
+);
+
+
+if (error) {
+
+throw new Error(
+`答案ページ取得エラー: ${error.message}`
+);
+
+}
+
+
+for (
+const page
+of data || []
+) {
+
+if (
+!pages.has(
+page.answer_sheet_id
+)
+) {
+
+pages.set(
+page.answer_sheet_id,
+[]
+);
+
+}
+
+
+pages
+.get(
+page.answer_sheet_id
+)
+.push(
+page
+);
+
+}
+
+}
+
+
+/* =====================================================
+   SCORES
+===================================================== */
+
+async function loadScores() {
+
+scores =
+[];
+
+
+const ids =
+answers.map(
+answer =>
+answer.id
+);
+
+
+const {
+data,
+error
+} =
+await DB
+.from(
+"scores"
+)
+.select(
+`
+id,
+answer_sheet_id,
+layout_box_id,
+question_id,
+score,
+status,
+marked_at
+`
+)
+.in(
+"answer_sheet_id",
+ids
+);
+
+
+if (error) {
+
+throw new Error(
+`採点結果取得エラー: ${error.message}`
+);
+
+}
+
+
+scores =
+data || [];
+
+}
+
+
+/* =====================================================
+   RENDER QUESTION
+===================================================== */
+
+async function renderQuestion() {
+
+const question =
+questions[
+questionIndex
+];
+
+
+if (!question) {
+
+return;
+
+}
+
+
+questionTitle.textContent =
+question.label;
+
+
+questionMeta.textContent =
+`${test.name} / 配点 ${format(
+question.points
+)}点 / 問題 ${
+questionIndex + 1
+} / ${
+questions.length
+}`;
+
+
+previousButton.disabled =
+questionIndex <= 0;
+
+
+nextButton.textContent =
+questionIndex >=
+questions.length - 1
+? "採点完了確認"
+: "次の問題";
+
+
+answerTableWrap.innerHTML = `
+
+<div class="empty">
+答案を読み込んでいます...
+</div>
+
+`;
+
+
+const table =
+document.createElement(
+"table"
+);
+
+
+table.className =
+"answer-table";
+
+
+table.innerHTML = `
+
+<thead>
+
+<tr>
+
+<th class="student-cell">
+生徒
+</th>
+
+<th class="answer-cell">
+答案
+</th>
+
+<th class="score-cell">
+得点
+</th>
+
+<th>
+状態
+</th>
+
+</tr>
+
+</thead>
+
+<tbody></tbody>
+
+`;
+
+
+const tbody =
+table.querySelector(
+"tbody"
+);
+
+
+for (
+const answer
+of answers
+) {
+
+tbody.appendChild(
+await createRow(
+answer,
+question
+)
+);
+
+}
+
+
+answerTableWrap.innerHTML =
+"";
+
+
+answerTableWrap.appendChild(
+table
+);
+
+
+updateProgress();
+
+}
+
+
+/* =====================================================
+   ROW
+===================================================== */
+
+async function createRow(
+answer,
+question
+) {
+
+const row =
+document.createElement(
+"tr"
+);
+
+
+/* STUDENT */
+
+const studentCell =
+document.createElement(
+"td"
+);
+
+
+studentCell.className =
+"student-cell";
+
+
+const student =
+students.get(
+answer.student_id
+);
+
+
+const no =
+document.createElement(
+"div"
+);
+
+
+no.className =
+"student-no";
+
+
+no.textContent =
+student?.student_no ||
+"未紐付け";
+
+
+const name =
+document.createElement(
+"div"
+);
+
+
+name.className =
+"student-name";
+
+
+name.textContent =
+student?.name ||
+"";
+
+
+studentCell.append(
+no,
+name
+);
+
+
+/* ANSWER */
+
+const answerCell =
+document.createElement(
+"td"
+);
+
+
+answerCell.className =
+"answer-cell";
+
+
+try {
+
+answerCell.appendChild(
+await createViewer(
+answer,
+question
+)
+);
+
+} catch (error) {
+
+const errorBox =
+document.createElement(
+"div"
+);
+
+
+errorBox.className =
+"answer-error";
+
+
+errorBox.textContent =
+error.message;
+
+
+answerCell.appendChild(
+errorBox
+);
+
+}
+
+
+/* SCORE */
+
+const scoreCell =
+document.createElement(
+"td"
+);
+
+
+scoreCell.className =
+"score-cell";
+
+
+const existing =
+findScore(
+answer.id,
+question.id
+);
+
+
+const input =
+document.createElement(
+"input"
+);
+
+
+input.type =
+"number";
+
+input.step =
+"0.1";
+
+input.min =
+"0";
+
+input.max =
+String(
+question.points
+);
+
+input.className =
+"score-input";
+
+input.value =
+existing
+? existing.score
+: "";
+
+
+const save =
+document.createElement(
+"button"
+);
+
+
+save.type =
+"button";
+
+save.className =
+"btn btn-primary score-save";
+
+save.textContent =
+"保存";
+
+
+const state =
+document.createElement(
+"div"
+);
+
+
+state.className =
+"score-state";
+
+
+state.textContent =
+existing &&
+existing.status ===
+"marked"
+? "採点済み"
+: "未採点";
+
+
+if (
+existing &&
+existing.status ===
+"marked"
+) {
+
+state.classList.add(
+"marked"
+);
+
+}
+
+
+const warning =
+document.createElement(
+"div"
+);
+
+
+warning.className =
+"warning";
+
+
+input.addEventListener(
+"input",
+() => {
+
+validate(
+input,
+warning,
+question.points
+);
+
+}
+);
+
+
+save.addEventListener(
+"click",
+async () => {
+
+await saveScore(
+answer,
+question,
+input,
+warning,
+state
+);
+
+}
+);
+
+
+scoreCell.append(
+input,
+document.createElement("br"),
+save,
+state,
+warning
+);
+
+
+/* STATUS */
+
+const statusCell =
+document.createElement(
+"td"
+);
+
+
+if (
+existing &&
+existing.status ===
+"marked"
+) {
+
+statusCell.textContent =
+"採点済み";
+
+statusCell.style.color =
+"#1769aa";
+
+} else {
+
+statusCell.textContent =
+"未採点";
+
+statusCell.style.color =
+"#b42318";
+
+}
+
+
+row.append(
+studentCell,
+answerCell,
+scoreCell,
+statusCell
+);
+
+
+return row;
+
+}
+
+
+/* =====================================================
+   VIEWER
+===================================================== */
+
+async function createViewer(
+answer,
+question
+) {
+
+const list =
+pages.get(
+answer.id
+) ||
+[];
+
+
+const page =
+list.find(
+item =>
+Number(
+item.page_no
+) ===
+Number(
+question.pageNo
+)
+);
+
+
+if (!page) {
+
+throw new Error(
+`答案ページ ${question.pageNo} がありません。`
+);
+
+}
+
+
+const {
+data,
+error
+} =
+await DB
+.storage
+.from(
+"answer-files"
+)
+.createSignedUrl(
+page.file_path,
+600
+);
+
+
+if (error) {
+
+throw new Error(
+`答案画像取得エラー: ${error.message}`
+);
+
+}
+
+
+if (!data?.signedUrl) {
+
+throw new Error(
+"答案画像URLを取得できませんでした。"
+);
+
+}
+
+
+const viewer =
+document.createElement(
+"div"
+);
+
+
+viewer.className =
+"answer-viewer";
+
+
+const image =
+document.createElement(
+"img"
+);
+
+
+image.src =
+data.signedUrl;
+
+image.alt =
+"答案";
+
+image.draggable =
+false;
+
+
+await waitImage(
+image
+);
+
+
+const pageWidth =
+Number(
+page.width_px
+) ||
+image.naturalWidth;
+
+
+const pageHeight =
+Number(
+page.height_px
+) ||
+image.naturalHeight;
+
+
+const scaleX =
+image.naturalWidth /
+pageWidth;
+
+
+const scaleY =
+image.naturalHeight /
+pageHeight;
+
+
+const x =
+Number(
+question.x
+) ||
+0;
+
+
+const y =
+Number(
+question.y
+) ||
+0;
+
+
+const width =
+Math.max(
+1,
+Number(
+question.width
+) ||
+1
+);
+
+
+const height =
+Math.max(
+1,
+Number(
+question.height
+) ||
+1
+);
+
+
+const cropWidth =
+width *
+scaleX;
+
+
+const cropHeight =
+height *
+scaleY;
+
+
+const displayWidth =
+Math.min(
+500,
+Math.max(
+350,
+cropWidth
+)
+);
+
+
+const displayScale =
+displayWidth /
+cropWidth;
+
+
+viewer.style.height =
+`${Math.max(
+150,
+cropHeight *
+displayScale
+)}px`;
+
+
+image.style.width =
+`${image.naturalWidth *
+displayScale}px`;
+
+
+image.style.height =
+`${image.naturalHeight *
+displayScale}px`;
+
+
+image.style.left =
+`${-x *
+scaleX *
+displayScale}px`;
+
+
+image.style.top =
+`${-y *
+scaleY *
+displayScale}px`;
+
+
+viewer.appendChild(
+image
+);
+
+
+return viewer;
+
+}
+
+
+/* =====================================================
+   SAVE SCORE
+===================================================== */
+
+async function saveScore(
+answer,
+question,
+input,
+warning,
+state
+) {
+
+if (saving) {
+
+return;
+
+}
+
+
+const value =
+Number(
+input.value
+);
+
+
+if (
+input.value === ""
+) {
+
+showWarning(
+warning,
+"点数を入力してください。"
+);
+
+return;
+
+}
+
+
+if (
+!Number.isFinite(
+value
+)
+) {
+
+showWarning(
+warning,
+"点数が不正です。"
+);
+
+return;
+
+}
+
+
+if (
+value < 0 ||
+value > question.points
+) {
+
+showWarning(
+warning,
+`0〜${question.points}点で入力してください。`
+);
+
+return;
+
+}
+
+
+saving =
+true;
+
+
+try {
+
+const {
+data: existing,
+error: findError
+} =
+await DB
+.from(
+"scores"
+)
+.select(
+"id"
+)
+.eq(
+"answer_sheet_id",
+answer.id
+)
+.eq(
+"layout_box_id",
+question.id
+)
+.maybeSingle();
+
+
+if (findError) {
+
+throw new Error(
+`既存採点確認エラー: ${findError.message}`
+);
+
+}
+
+
+if (existing?.id) {
+
+const {
+error
+} =
+await DB
+.from(
+"scores"
+)
+.update({
+
+question_id:
+question.questionId,
+
+score:
+value,
+
+status:
+"marked",
+
+marked_at:
+new Date().toISOString()
+
+})
+.eq(
+"id",
+existing.id
+);
+
+
+if (error) {
+
+throw new Error(
+`採点更新エラー: ${error.message}`
+);
+
+}
+
+
+updateScore(
+existing.id,
+answer.id,
+question,
+value
+);
+
+} else {
+
+const {
+data,
+error
+} =
+await DB
+.from(
+"scores"
+)
+.insert({
+
+answer_sheet_id:
+answer.id,
+
+layout_box_id:
+question.id,
+
+question_id:
+question.questionId,
+
+score:
+value,
+
+status:
+"marked",
+
+marked_at:
+new Date().toISOString()
+
+})
+.select(
+"id"
+)
+.single();
+
+
+if (error) {
+
+throw new Error(
+`採点登録エラー: ${error.message}`
+);
+
+}
+
+
+updateScore(
+data.id,
+answer.id,
+question,
+value
+);
+
+}
+
+
+warning.classList.remove(
+"show"
+);
+
+
+state.textContent =
+"採点済み";
+
+
+state.className =
+"score-state marked";
+
+
+updateProgress();
+
+
+showStatus(
+`${getStudentLabel(
+answer
+)} / ${question.label} を保存しました。`
+);
+
+
+} catch (error) {
+
+console.error(
+error
+);
+
+
+showWarning(
+warning,
+error.message ||
+"採点保存に失敗しました。"
+);
+
+
+state.textContent =
+"保存失敗";
+
+
+state.className =
+"score-state error";
+
+
+} finally {
+
+saving =
+false;
+
+}
+
+}
+
+
+/* =====================================================
+   UPDATE LOCAL SCORE
+===================================================== */
+
+function updateScore(
+id,
+answerId,
+question,
+value
+) {
+
+const old =
+findScore(
+answerId,
+question.id
+);
+
+
+if (old) {
+
+old.id =
+id;
+
+old.score =
+value;
+
+old.status =
+"marked";
+
+return;
+
+}
+
+
+scores.push({
+
+id,
+
+answer_sheet_id:
+answerId,
+
+layout_box_id:
+question.id,
+
+question_id:
+question.questionId,
+
+score:
+value,
+
+status:
+"marked"
+
+});
+
+}
+
+
+/* =====================================================
+   NEXT
+===================================================== */
+
+async function nextQuestion() {
+
+const question =
+questions[
+questionIndex
+];
+
+
+if (
+!isQuestionComplete(
+question
+)
+) {
+
+const ok =
+confirm(
+"この問題には未採点の答案があります。このまま次へ進みますか？"
+);
+
+
+if (!ok) {
+
+return;
+
+}
+
+}
+
+
+if (
+questionIndex >=
+questions.length - 1
+) {
+
+finish();
+
+return;
+
+}
+
+
+questionIndex++;
+
+await renderQuestion();
+
+}
+
+
+/* =====================================================
+   FINISH
+===================================================== */
+
+function finish() {
+
+const all =
+questions.every(
+question =>
+isQuestionComplete(
+question
+)
+);
+
+
+if (!all) {
+
+const remain =
+questions.filter(
+question =>
+!isQuestionComplete(
+question
+)
+).length;
+
+
+showStatus(
+`まだ未採点があります。残り ${remain} 問です。`,
+true
+);
+
+return;
+
+}
+
+
+complete.classList.add(
+"show"
+);
+
+
+showStatus(
+"全答案・全設問の採点が完了しました。成績処理待ちです。"
+);
+
+
+updateProgress();
+
+
+nextButton.disabled =
+true;
+
+
+/*
+ * 絶対にここでは公開しない。
+ * answer_sheets.statusもmarkedに変更しない。
+ */
+
+}
+
+
+/* =====================================================
+   QUESTION COMPLETE
+===================================================== */
+
+function isQuestionComplete(
+question
+) {
+
+return answers.every(
+answer => {
+
+const score =
+findScore(
+answer.id,
+question.id
+);
+
+
+return Boolean(
+score &&
+score.status ===
+"marked"
+);
+
+}
+);
+
+}
+
+
+/* =====================================================
+   FIND SCORE
+===================================================== */
+
+function findScore(
+answerId,
+questionId
+) {
+
+return scores.find(
+score =>
+score.answer_sheet_id ===
+answerId &&
+score.layout_box_id ===
+questionId
+) || null;
+
+}
+
+
+/* =====================================================
+   PROGRESS
+===================================================== */
+
+function updateProgress() {
+
+const total =
+answers.length *
+questions.length;
+
+
+let done =
+0;
+
+
+for (
+const answer
+of answers
+) {
+
+for (
+const question
+of questions
+) {
+
+const score =
+findScore(
+answer.id,
+question.id
+);
+
+
+if (
+score &&
+score.status ===
+"marked"
+) {
+
+done++;
+
+}
+
+}
+
+}
+
+
+const percent =
+total
+? Math.round(
+done /
+total *
+100
+)
+: 0;
+
+
+progressBar.style.width =
+`${percent}%`;
+
+
+progressText.textContent =
+`${done} / ${total} 設問答案を採点済み (${percent}%)`;
+
+}
+
+
+/* =====================================================
+   VALIDATE
+===================================================== */
+
+function validate(
+input,
+warning,
+max
+) {
+
+if (
+input.value === ""
+) {
+
+warning.classList.remove(
+"show"
+);
+
+return;
+
+}
+
+
+const value =
+Number(
+input.value
+);
+
+
+if (
+!Number.isFinite(
+value
+) ||
+value < 0 ||
+value > max
+) {
+
+showWarning(
+warning,
+`0〜${max}点で入力してください。`
+);
+
+return;
+
+}
+
+
+warning.classList.remove(
+"show"
+);
+
+}
+
+
+/* =====================================================
+   WAIT IMAGE
+===================================================== */
+
+function waitImage(
+image
+) {
+
+return new Promise(
+(
+resolve,
+reject
+) => {
+
+if (
+image.complete &&
+image.naturalWidth > 0
+) {
+
+resolve();
+
+return;
+
+}
+
+
+image.onload =
+resolve;
+
+
+image.onerror =
+() =>
+reject(
+new Error(
+"答案画像を読み込めませんでした。"
+)
+);
+
+}
+);
+
+
+/* =====================================================
+   HELPERS
+===================================================== */
+
+function showWarning(
+element,
+message
+) {
+
+element.textContent =
+message;
+
+element.classList.add(
+"show"
+);
+
+}
+
+
+function getStudentLabel(
+answer
+) {
+
+const student =
+students.get(
+answer.student_id
+);
+
+
+return student
+? `${student.student_no || ""} / ${student.name || ""}`
+: "未紐付け";
+
+}
+
+
+function format(
+value
+) {
+
+const n =
+Number(
+value
+);
+
+
+if (
+!Number.isFinite(
+n
+)
+) {
+
+return "0";
+
+}
+
+
+return Number.isInteger(
+n
+)
+? String(n)
+: n.toFixed(1);
+
+}
+
+
+function setStatus(
+message,
+error = false
+) {
+
+status.textContent =
+message;
+
+status.style.color =
+error
+? "#b42318"
+: "#333";
+
+}
+
+
+function showFatal(
+message
+) {
+
+setStatus(
+message,
+true
+);
+
+
+answerTableWrap.innerHTML = `
+
+<div class="empty">
+
+${escapeHtml(
+message
+)}
+
+<br><br>
+
+<a
+href="/teacher/marking"
+class="btn"
+>
+採点一覧へ戻る
+</a>
+
+</div>
+
+`;
+
+}
+
+
+function escapeHtml(
+value
+) {
+
+return String(
+value ??
+""
+)
+.replaceAll(
+"&",
+"&amp;"
+)
+.replaceAll(
+"<",
+"&lt;"
+)
+.replaceAll(
+">",
+"&gt;"
+)
+.replaceAll(
+'"',
+"&quot;"
+)
+.replaceAll(
+"'",
+"&#039;"
+);
+
+}
+
+})();
+
+</script>
 
 </body>
 

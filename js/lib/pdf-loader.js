@@ -1,53 +1,98 @@
+/* =========================================================
+   テスト成績システム
+   PDF Loader
+
+   PDF.jsを固定バージョンでロードする。
+
+   実際のPDF.js本体はCDNから読み込む。
+========================================================= */
+
 (function () {
 
   "use strict";
 
 
+  /*
+    使用するPDF.jsバージョンを固定
+  */
+
   const PDFJS_VERSION =
     "4.10.38";
 
+
+  /*
+    PDF.js本体
+  */
 
   const PDFJS_URL =
     `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/build/pdf.mjs`;
 
 
+  /*
+    PDF.js Worker
+  */
+
   const PDFJS_WORKER_URL =
     `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/build/pdf.worker.mjs`;
 
 
-  let pdfjsPromise =
+  /*
+    ロード済みPromise
+  */
+
+  let loadingPromise =
     null;
 
 
   /*
-    PDF.jsを1回だけロード
+    PDF.jsロード
   */
 
   async function loadPdfJs() {
 
-    if (window.TEST_SCORE_PDFJS) {
+
+    /*
+      すでにロード済み
+    */
+
+    if (
+      window.TEST_SCORE_PDFJS
+    ) {
 
       return window.TEST_SCORE_PDFJS;
 
     }
 
 
-    if (pdfjsPromise) {
+    /*
+      読み込み中
+    */
 
-      return pdfjsPromise;
+    if (
+      loadingPromise
+    ) {
+
+      return loadingPromise;
 
     }
 
 
-    pdfjsPromise =
+    loadingPromise =
       import(
         PDFJS_URL
       )
       .then(
         pdfjsLib => {
 
-          pdfjsLib.GlobalWorkerOptions.workerSrc =
-            PDFJS_WORKER_URL;
+
+          /*
+            Worker設定
+          */
+
+          pdfjsLib
+            .GlobalWorkerOptions
+            .workerSrc =
+              PDFJS_WORKER_URL;
 
 
           window.TEST_SCORE_PDFJS =
@@ -61,8 +106,15 @@
       .catch(
         error => {
 
-          pdfjsPromise =
+          console.error(
+            "PDF.js load error:",
+            error
+          );
+
+
+          loadingPromise =
             null;
+
 
           throw new Error(
             "PDF.jsの読み込みに失敗しました。"
@@ -72,13 +124,13 @@
       );
 
 
-    return pdfjsPromise;
+    return loadingPromise;
 
   }
 
 
   /*
-    Blob / File → PDF
+    PDFを読み込む
   */
 
   async function loadPdf(
@@ -93,18 +145,23 @@
       await blob.arrayBuffer();
 
 
-    return await pdfjsLib
-      .getDocument({
+    const loadingTask =
+      pdfjsLib.getDocument({
+
         data:
           buffer
-      })
+
+      });
+
+
+    return await loadingTask
       .promise;
 
   }
 
 
   /*
-    PDF 1ページ → PNG Blob
+    PDFの1ページを画像化
   */
 
   async function renderPdfPage(
@@ -149,6 +206,22 @@
       );
 
 
+    /*
+      白背景
+    */
+
+    context.fillStyle =
+      "#ffffff";
+
+
+    context.fillRect(
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
+
+
     await page.render({
 
       canvasContext:
@@ -181,7 +254,7 @@
 
 
   /*
-    PDF全部 → ページ配列
+    PDF全部をページ配列にする
   */
 
   async function pdfToPages(
@@ -199,22 +272,23 @@
 
 
     for (
-      let pageNo = 1;
-      pageNo <= pdf.numPages;
-      pageNo++
+      let pageNumber = 1;
+      pageNumber <= pdf.numPages;
+      pageNumber++
     ) {
 
       const page =
         await renderPdfPage(
           pdf,
-          pageNo,
+          pageNumber,
           scale
         );
 
 
       pages.push({
 
-        pageNo,
+        pageNo:
+          pageNumber,
 
         blob:
           page.blob,
@@ -235,6 +309,10 @@
   }
 
 
+  /*
+    Canvas → PNG
+  */
+
   function canvasToPng(
     canvas
   ) {
@@ -252,7 +330,7 @@
 
               reject(
                 new Error(
-                  "CanvasをPNGへ変換できませんでした。"
+                  "CanvasからPNGを生成できませんでした。"
                 )
               );
 
@@ -275,6 +353,10 @@
   }
 
 
+  /*
+    グローバル公開
+  */
+
   window.TEST_SCORE_PDF = {
 
     loadPdf,
@@ -287,5 +369,6 @@
       PDFJS_VERSION
 
   };
+
 
 })();

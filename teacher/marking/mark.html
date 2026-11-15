@@ -29,13 +29,8 @@
 
 <body>
 
-
 <div class="marking-page">
 
-
-  <!-- =====================================================
-       上部ツールバー
-  ====================================================== -->
 
   <header class="marking-toolbar">
 
@@ -107,6 +102,32 @@
         </button>
 
 
+        <input
+          id="scoreInput"
+          type="number"
+          min="0"
+          step="0.5"
+          placeholder="点数"
+          style="
+            width:75px;
+            height:32px;
+          "
+        >
+
+
+        <button
+          id="scoreApply"
+          class="mark-tool"
+          type="button"
+        >
+          点数確定
+        </button>
+
+      </div>
+
+
+      <div class="toolbar-group">
+
         <button
           class="mark-tool"
           data-tool="text"
@@ -115,6 +136,21 @@
           テキスト
         </button>
 
+
+        <input
+          id="markText"
+          type="text"
+          placeholder="入力"
+          style="
+            width:140px;
+            height:32px;
+          "
+        >
+
+      </div>
+
+
+      <div class="toolbar-group">
 
         <button
           class="mark-tool"
@@ -157,18 +193,6 @@
           min="10"
           max="150"
           style="width:65px;"
-        >
-
-      </div>
-
-
-      <div class="toolbar-group">
-
-        <input
-          id="markText"
-          type="text"
-          placeholder="テキスト"
-          style="width:150px;"
         >
 
       </div>
@@ -266,18 +290,10 @@
   </header>
 
 
-
-  <!-- =====================================================
-       本体
-  ====================================================== -->
-
   <main class="marking-content">
 
 
-    <!-- 左：模範解答 -->
-
     <aside class="model-pane">
-
 
       <div class="model-title">
         模範解答
@@ -288,30 +304,20 @@
         id="modelAnswer"
         class="model-image"
       >
-
         読み込み中...
-
       </div>
-
 
     </aside>
 
 
-
-    <!-- 右：答案 -->
-
     <section class="answer-area">
-
 
       <div
         id="answerGrid"
         class="answer-grid"
       >
-
         読み込み中...
-
       </div>
-
 
     </section>
 
@@ -319,15 +325,11 @@
   </main>
 
 
-
-  <!-- =====================================================
-       下部
-  ====================================================== -->
-
   <footer class="marking-footer">
 
 
     <button
+      id="quick0"
       class="footer-score"
       data-score="0"
       type="button"
@@ -337,6 +339,7 @@
 
 
     <button
+      id="quick1"
       class="footer-score"
       data-score="1"
       type="button"
@@ -346,6 +349,7 @@
 
 
     <button
+      id="quick2"
       class="footer-score"
       data-score="2"
       type="button"
@@ -355,6 +359,7 @@
 
 
     <button
+      id="quick3"
       class="footer-score"
       data-score="3"
       type="button"
@@ -364,6 +369,7 @@
 
 
     <button
+      id="quick4"
       class="footer-score"
       data-score="4"
       type="button"
@@ -373,6 +379,7 @@
 
 
     <button
+      id="quick5"
       class="footer-score"
       data-score="5"
       type="button"
@@ -405,7 +412,6 @@
 </div>
 
 
-
 <script
   src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
 ></script>
@@ -416,7 +422,5 @@
 
 <script src="/js/teacher/marking.js"></script>
 
-
 </body>
-
 </html>

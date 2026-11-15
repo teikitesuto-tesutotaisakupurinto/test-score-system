@@ -1,0 +1,383 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>
+    成績・答案公開 - テスト成績システム
+  </title>
+
+  <link
+    rel="stylesheet"
+    href="/css/common.css"
+  >
+
+  <style>
+
+    .publish-main {
+
+      max-width: 1000px;
+
+      margin: 0 auto;
+
+      padding: 25px;
+
+    }
+
+
+    .publish-card {
+
+      background: #fff;
+
+      border:
+        1px solid #d5dbe0;
+
+      padding: 20px;
+
+      margin-bottom: 15px;
+
+    }
+
+
+    .publish-card h1 {
+
+      margin:
+        0 0 8px;
+
+      font-size: 24px;
+
+    }
+
+
+    .publish-description {
+
+      margin: 0;
+
+      color: #666;
+
+      font-size: 13px;
+
+      line-height: 1.7;
+
+    }
+
+
+    .test-label {
+
+      display: block;
+
+      margin-bottom: 7px;
+
+      font-size: 13px;
+
+      font-weight: 700;
+
+    }
+
+
+    #testSelect {
+
+      width: 100%;
+
+      height: 44px;
+
+      padding:
+        0 10px;
+
+      border:
+        1px solid #c8ced4;
+
+      border-radius: 4px;
+
+      background: #fff;
+
+      font-size: 14px;
+
+    }
+
+
+    .publish-status {
+
+      margin-top: 15px;
+
+      padding: 12px;
+
+      border:
+        1px solid #d5dbe0;
+
+      background: #f5f6f7;
+
+      font-size: 13px;
+
+      line-height: 1.7;
+
+    }
+
+
+    .publish-status.public {
+
+      border-color:
+        #b7d9c0;
+
+      background:
+        #edf8ef;
+
+    }
+
+
+    .publish-status.private {
+
+      border-color:
+        #efc2bc;
+
+      background:
+        #fff4f2;
+
+    }
+
+
+    .publish-actions {
+
+      display: flex;
+
+      flex-wrap: wrap;
+
+      gap: 10px;
+
+      margin-top: 15px;
+
+    }
+
+
+    .publish-actions button {
+
+      min-width: 160px;
+
+      height: 42px;
+
+    }
+
+
+    .publish-note {
+
+      margin-top: 15px;
+
+      padding: 10px;
+
+      background: #f7f8f9;
+
+      border:
+        1px solid #e1e5e8;
+
+      color: #666;
+
+      font-size: 12px;
+
+      line-height: 1.7;
+
+    }
+
+
+    @media (
+      max-width: 600px
+    ) {
+
+      .publish-main {
+
+        padding: 15px;
+
+      }
+
+
+      .publish-actions {
+
+        flex-direction: column;
+
+      }
+
+
+      .publish-actions button {
+
+        width: 100%;
+
+      }
+
+    }
+
+  </style>
+
+</head>
+
+
+<body>
+
+
+<header class="topbar">
+
+
+  <div class="system-name">
+    テスト成績システム
+  </div>
+
+
+  <div class="topbar-space"></div>
+
+
+  <span id="teacherName">
+    -
+  </span>
+
+
+  <button
+    id="logoutButton"
+    class="logout-button"
+    type="button"
+  >
+    ログアウト
+  </button>
+
+
+</header>
+
+
+
+<main
+  class="publish-main"
+>
+
+
+  <section
+    class="publish-card"
+  >
+
+    <h1>
+      成績・答案公開
+    </h1>
+
+
+    <p
+      class="publish-description"
+    >
+      公開したテストだけ、生徒本人が成績・答案を閲覧できます。
+      公開・非公開はこの画面からいつでも変更できます。
+    </p>
+
+  </section>
+
+
+
+  <section
+    class="publish-card"
+  >
+
+
+    <label
+      class="test-label"
+      for="testSelect"
+    >
+      テスト
+    </label>
+
+
+    <select
+      id="testSelect"
+    >
+
+      <option value="">
+        テストを選択してください
+      </option>
+
+    </select>
+
+
+
+    <div
+      id="status"
+      class="publish-status"
+    >
+      テストを選択してください。
+    </div>
+
+
+
+    <div
+      class="publish-actions"
+    >
+
+      <button
+        id="publishButton"
+        class="btn btn-primary"
+        type="button"
+        disabled
+      >
+        公開する
+      </button>
+
+
+      <button
+        id="unpublishButton"
+        class="btn"
+        type="button"
+        disabled
+      >
+        非公開にする
+      </button>
+
+    </div>
+
+
+
+    <div
+      class="publish-note"
+    >
+      公開すると、生徒は自分自身の成績・採点済み答案・公開対象の答案を閲覧できます。
+      非公開にすると、生徒側から再び閲覧できなくなります。
+    </div>
+
+
+  </section>
+
+
+</main>
+
+
+
+<!-- Supabase -->
+
+<script
+  src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+></script>
+
+
+<!-- Config -->
+
+<script
+  src="/js/config.js"
+></script>
+
+
+<!-- Auth -->
+
+<script
+  src="/js/auth.js"
+></script>
+
+
+<!-- このページ専用JS -->
+
+<script
+  src="/js/teacher/test-publish.js"
+></script>
+
+
+</body>
+
+</html>

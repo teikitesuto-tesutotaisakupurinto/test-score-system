@@ -1,9 +1,10 @@
+
 <!doctype html>
 <html lang="ja">
 
 <head>
 
-<meta charset="UTF-8">
+<meta charset="utf-8">
 
 <meta
   name="viewport"
@@ -21,12 +22,32 @@
 
 <style>
 
+* {
+  box-sizing: border-box;
+}
+
 .upload-card {
-  max-width: 1000px;
+  max-width: 1100px;
+}
+
+.form-row {
+  margin-bottom: 18px;
+}
+
+.form-row label {
+  display: block;
+  margin-bottom: 7px;
+  font-weight: 700;
+}
+
+.form-row select {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 10px;
 }
 
 .drop-zone {
-  min-height: 220px;
+  min-height: 210px;
 
   display: flex;
 
@@ -36,19 +57,29 @@
 
   text-align: center;
 
-  border: 2px dashed #9da7b0;
+  border: 2px dashed #aeb6bd;
 
   background: #fafbfc;
 
   cursor: pointer;
 
-  margin-top: 15px;
+  transition:
+    border-color .15s,
+    background .15s;
 }
 
 .drop-zone.dragover {
   border-color: #2468a8;
 
   background: #f1f6fa;
+}
+
+.drop-zone strong {
+  display: block;
+
+  margin-bottom: 8px;
+
+  font-size: 16px;
 }
 
 .file-list {
@@ -62,31 +93,83 @@
 
   justify-content: space-between;
 
-  gap: 10px;
+  gap: 12px;
 
-  padding: 10px;
+  padding: 11px 12px;
 
-  border: 1px solid #ddd;
+  margin-bottom: 7px;
 
-  margin-bottom: 6px;
+  border: 1px solid #dfe3e6;
+
+  background: #fff;
+}
+
+.file-name {
+  min-width: 0;
+
+  overflow: hidden;
+
+  text-overflow: ellipsis;
+
+  white-space: nowrap;
+}
+
+.file-size {
+  color: #777;
+
+  font-size: 12px;
+
+  margin-top: 3px;
+}
+
+.remove-file {
+  border: 0;
+
+  background: transparent;
+
+  color: #a22;
+
+  cursor: pointer;
+
+  white-space: nowrap;
+}
+
+.actions {
+  display: flex;
+
+  gap: 8px;
+
+  margin-top: 18px;
+}
+
+.progress-wrap {
+  margin-top: 18px;
 }
 
 .progress {
-  margin-top: 15px;
-
   height: 8px;
+
+  overflow: hidden;
 
   background: #e5e7eb;
 }
 
 .progress-bar {
-  height: 100%;
-
   width: 0;
+
+  height: 100%;
 
   background: #2468a8;
 
   transition: width .2s;
+}
+
+.progress-text {
+  margin-top: 6px;
+
+  font-size: 12px;
+
+  color: #666;
 }
 
 .result {
@@ -94,11 +177,15 @@
 
   padding: 12px;
 
+  border: 1px solid #dfe3e6;
+
   background: #f5f6f7;
 
-  border: 1px solid #ddd;
+  font-size: 13px;
 
   line-height: 1.7;
+
+  white-space: pre-line;
 }
 
 .result.error {
@@ -109,10 +196,36 @@
   color: #175b2c;
 }
 
+.processing-list {
+  margin-top: 15px;
+}
+
+.processing-item {
+  padding: 9px 10px;
+
+  margin-bottom: 5px;
+
+  background: #f7f8f9;
+
+  border: 1px solid #e3e6e8;
+
+  font-size: 12px;
+}
+
+.processing-item.matched {
+  border-left: 4px solid #267a42;
+}
+
+.processing-item.unmatched {
+  border-left: 4px solid #b66a00;
+}
+
 .small {
   color: #666;
 
   font-size: 12px;
+
+  line-height: 1.7;
 }
 
 </style>
@@ -121,6 +234,32 @@
 
 
 <body>
+
+
+<header class="topbar">
+
+  <div class="system-name">
+    テスト成績システム
+  </div>
+
+
+  <div class="topbar-space"></div>
+
+
+  <span id="teacherName">
+    -
+  </span>
+
+
+  <button
+    id="logoutButton"
+    class="logout-button"
+    type="button"
+  >
+    ログアウト
+  </button>
+
+</header>
 
 
 <div class="app">
@@ -132,9 +271,11 @@
     答案管理
   </h2>
 
+
   <a href="teacher.html">
     ダッシュボード
   </a>
+
 
   <a
     class="active"
@@ -143,9 +284,11 @@
     アップロード
   </a>
 
+
   <a href="teacher-answers-unmatched.html">
     未紐付け
   </a>
+
 
   <a href="teacher-marking.html">
     採点
@@ -165,22 +308,31 @@
 <div class="card upload-card">
 
 
+<!-- =====================================================
+     TEST
+===================================================== -->
+
 <div class="form-row">
 
 <label for="test">
   テスト
 </label>
 
-<select
-  id="test"
->
-  <option value="">
-    テストを選択してください
-  </option>
+
+<select id="test">
+
+<option value="">
+  テストを選択してください
+</option>
+
 </select>
 
 </div>
 
+
+<!-- =====================================================
+     ANSWER TYPE
+===================================================== -->
 
 <div class="form-row">
 
@@ -188,13 +340,13 @@
   答案種類
 </label>
 
-<select
-  id="answerType"
->
+
+<select id="answerType">
 
 <option value="student">
   生徒答案
 </option>
+
 
 <option value="model">
   解答用紙・模範解答
@@ -204,6 +356,10 @@
 
 </div>
 
+
+<!-- =====================================================
+     DROP
+===================================================== -->
 
 <div
   id="dropZone"
@@ -216,9 +372,11 @@
   ファイルをここへドロップ
 </strong>
 
+
 <div>
   またはクリックして選択
 </div>
+
 
 <div class="small">
   PDF / JPG / JPEG / PNG / WEBP / ZIP
@@ -238,23 +396,19 @@
 >
 
 
+<!-- =====================================================
+     FILE LIST
+===================================================== -->
+
 <div
   id="fileList"
   class="file-list"
 ></div>
 
 
-<div
-  class="progress"
->
-
-<div
-  id="progressBar"
-  class="progress-bar"
-></div>
-
-</div>
-
+<!-- =====================================================
+     ACTION
+===================================================== -->
 
 <div class="actions">
 
@@ -277,10 +431,46 @@
 </div>
 
 
+<!-- =====================================================
+     PROGRESS
+===================================================== -->
+
+<div class="progress-wrap">
+
+<div class="progress">
+
+<div
+  id="progressBar"
+  class="progress-bar"
+></div>
+
+</div>
+
+
+<div
+  id="progressText"
+  class="progress-text"
+>
+  待機中
+</div>
+
+</div>
+
+
+<!-- =====================================================
+     RESULT
+===================================================== -->
+
 <div
   id="result"
   class="result"
   hidden
+></div>
+
+
+<div
+  id="processingList"
+  class="processing-list"
 ></div>
 
 
@@ -291,13 +481,29 @@
 </div>
 
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- =======================================================
+     LIBRARIES
+======================================================= -->
 
-<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script
+  src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+></script>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
-<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<script
+  src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"
+></script>
+
+
+<script
+  src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"
+></script>
+
+
+<script
+  src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"
+></script>
+
 
 <script src="js/config.js"></script>
 
@@ -310,12 +516,32 @@
 
 
 /* =========================================================
+   SUPABASE
+========================================================= */
+
+const client =
+  window.SB ||
+  window.supabaseClient;
+
+
+if (!client) {
+
+  throw new Error(
+    "Supabaseクライアントが初期化されていません。"
+  );
+
+}
+
+
+/* =========================================================
    STATE
 ========================================================= */
 
 let selectedFiles = [];
 
-let teacher = null;
+let currentStudents = [];
+
+let currentLayout = null;
 
 
 /* =========================================================
@@ -370,9 +596,27 @@ const progressBar =
   );
 
 
+const progressText =
+  document.getElementById(
+    "progressText"
+  );
+
+
 const resultBox =
   document.getElementById(
     "result"
+  );
+
+
+const processingList =
+  document.getElementById(
+    "processingList"
+  );
+
+
+const teacherName =
+  document.getElementById(
+    "teacherName"
   );
 
 
@@ -382,92 +626,44 @@ const resultBox =
 
 async function init() {
 
-  teacher =
-    await requireTeacher();
+  try {
+
+    const profile =
+      await requireTeacher();
 
 
-  if (!teacher) {
-    return;
-  }
+    if (!profile) {
+      return;
+    }
 
 
-  await loadTests();
+    if (teacherName) {
+
+      teacherName.textContent =
+        profile.name ||
+        "先生";
+
+    }
 
 
-  setupEvents();
-
-}
+    setupEvents();
 
 
-/* =========================================================
-   TESTS
-========================================================= */
-
-async function loadTests() {
-
-  const {
-    data,
-    error
-  } =
-    await supabaseClient
-      .from("tests")
-      .select(`
-        id,
-        name,
-        subject,
-        grade,
-        created_at
-      `)
-      .order(
-        "created_at",
-        {
-          ascending: false
-        }
-      );
+    await loadTests();
 
 
-  if (error) {
-    throw error;
-  }
+  } catch (error) {
+
+    console.error(
+      "INIT ERROR",
+      error
+    );
 
 
-  testSelect.innerHTML = `
-
-    <option value="">
-      テストを選択してください
-    </option>
-
-  `;
-
-
-  for (
-    const test
-    of data || []
-  ) {
-
-    const option =
-      document.createElement(
-        "option"
-      );
-
-
-    option.value =
-      test.id;
-
-
-    option.textContent =
-      [
-        test.name,
-        test.subject
-      ]
-        .filter(Boolean)
-        .join(
-          " / "
-        );
-
-
-    testSelect.appendChild(
-      option
+    showResult(
+      error.message ||
+      "初期化に失敗しました。",
+      true
     );
 
   }
@@ -483,8 +679,11 @@ function setupEvents() {
 
   dropZone.addEventListener(
     "click",
-    () =>
-      filesInput.click()
+    () => {
+
+      filesInput.click();
+
+    }
   );
 
 
@@ -566,8 +765,98 @@ function setupEvents() {
     )
     ?.addEventListener(
       "click",
-      logout
+      async () => {
+
+        if (
+          typeof logout ===
+          "function"
+        ) {
+
+          await logout();
+
+        }
+
+      }
     );
+
+}
+
+
+/* =========================================================
+   TESTS
+========================================================= */
+
+async function loadTests() {
+
+  const {
+    data,
+    error
+  } =
+    await client
+      .from(
+        "tests"
+      )
+      .select(`
+        id,
+        name,
+        subject,
+        grade,
+        created_at
+      `)
+      .order(
+        "created_at",
+        {
+          ascending:
+            false
+        }
+      );
+
+
+  if (error) {
+    throw error;
+  }
+
+
+  testSelect.innerHTML = `
+
+    <option value="">
+      テストを選択してください
+    </option>
+
+  `;
+
+
+  for (
+    const test
+    of data || []
+  ) {
+
+    const option =
+      document.createElement(
+        "option"
+      );
+
+
+    option.value =
+      test.id;
+
+
+    option.textContent =
+      [
+        test.name,
+        test.subject
+      ]
+        .filter(Boolean)
+        .join(
+          " / "
+        );
+
+
+    testSelect.appendChild(
+      option
+    );
+
+  }
 
 }
 
@@ -580,6 +869,16 @@ function addFiles(
   list
 ) {
 
+  const allowed = [
+    "pdf",
+    "jpg",
+    "jpeg",
+    "png",
+    "webp",
+    "zip"
+  ];
+
+
   for (
     const file
     of Array.from(
@@ -587,24 +886,22 @@ function addFiles(
     )
   ) {
 
-    const ext =
+    const extension =
       getExtension(
         file.name
       );
 
 
     if (
-      ![
-        "pdf",
-        "jpg",
-        "jpeg",
-        "png",
-        "webp",
-        "zip"
-      ].includes(
-        ext
+      !allowed.includes(
+        extension
       )
     ) {
+
+      showResult(
+        `${file.name} は対応していない形式です。`,
+        true
+      );
 
       continue;
 
@@ -613,12 +910,12 @@ function addFiles(
 
     const duplicate =
       selectedFiles.some(
-        item =>
-          item.name ===
+        existing =>
+          existing.name ===
             file.name &&
-          item.size ===
+          existing.size ===
             file.size &&
-          item.lastModified ===
+          existing.lastModified ===
             file.lastModified
       );
 
@@ -661,14 +958,54 @@ function renderFileList() {
         "file-item";
 
 
-      const name =
+      const info =
         document.createElement(
-          "span"
+          "div"
         );
 
 
+      info.style.minWidth =
+        "0";
+
+
+      const name =
+        document.createElement(
+          "div"
+        );
+
+
+      name.className =
+        "file-name";
+
+
       name.textContent =
-        `${file.name} (${formatBytes(file.size)})`;
+        file.name;
+
+
+      const size =
+        document.createElement(
+          "div"
+        );
+
+
+      size.className =
+        "file-size";
+
+
+      size.textContent =
+        formatBytes(
+          file.size
+        );
+
+
+      info.appendChild(
+        name
+      );
+
+
+      info.appendChild(
+        size
+      );
 
 
       const remove =
@@ -681,11 +1018,16 @@ function renderFileList() {
         "button";
 
 
+      remove.className =
+        "remove-file";
+
+
       remove.textContent =
         "削除";
 
 
-      remove.onclick =
+      remove.addEventListener(
+        "click",
         () => {
 
           selectedFiles.splice(
@@ -693,13 +1035,15 @@ function renderFileList() {
             1
           );
 
+
           renderFileList();
 
-        };
+        }
+      );
 
 
       row.appendChild(
-        name
+        info
       );
 
 
@@ -718,30 +1062,8 @@ function renderFileList() {
 }
 
 
-function clearFiles() {
-
-  selectedFiles =
-    [];
-
-
-  renderFileList();
-
-
-  setProgress(
-    0
-  );
-
-
-  showResult(
-    "",
-    false
-  );
-
-}
-
-
 /* =========================================================
-   MAIN PROCESS
+   MAIN
 ========================================================= */
 
 async function processUploads() {
@@ -784,15 +1106,37 @@ async function processUploads() {
       true;
 
 
-    showResult(
-      "答案を処理しています。",
-      false
+    processingList.innerHTML =
+      "";
+
+
+    setProgress(
+      0,
+      "レイアウトを読み込んでいます..."
     );
 
 
     /*
-      模範解答
+      生徒答案なら
+      枠設定と生徒一覧を先に取得。
     */
+
+    if (
+      answerType.value ===
+      "student"
+    ) {
+
+      currentLayout =
+        await loadLayout(
+          testId
+        );
+
+
+      currentStudents =
+        await loadStudents();
+
+    }
+
 
     if (
       answerType.value ===
@@ -803,19 +1147,19 @@ async function processUploads() {
         testId
       );
 
-    }
-
-    /*
-      生徒答案
-    */
-
-    else {
+    } else {
 
       await processStudentAnswers(
         testId
       );
 
     }
+
+
+    setProgress(
+      100,
+      "処理完了"
+    );
 
 
     showResult(
@@ -845,6 +1189,7 @@ async function processUploads() {
       true
     );
 
+
   } finally {
 
     uploadButton.disabled =
@@ -853,377 +1198,6 @@ async function processUploads() {
 
     clearButton.disabled =
       false;
-
-  }
-
-}
-
-
-/* =========================================================
-   STUDENT ANSWERS
-========================================================= */
-
-async function processStudentAnswers(
-  testId
-) {
-
-  /*
-    枠設定を取得。
-  */
-
-  const layout =
-    await loadLayout(
-      testId
-    );
-
-
-  let processed =
-    0;
-
-
-  for (
-    const file
-    of selectedFiles
-  ) {
-
-    setProgress(
-      Math.round(
-        processed /
-        selectedFiles.length *
-        100
-      )
-    );
-
-
-    const pages =
-      await expandFile(
-        file
-      );
-
-
-    if (!pages.length) {
-      continue;
-    }
-
-
-    /*
-      1答案につき1レコード
-    */
-
-    const answerId =
-      crypto.randomUUID();
-
-
-    const firstPath =
-      buildAnswerPath(
-        testId,
-        answerId,
-        1
-      );
-
-
-    /*
-      まず1ページ目をStorageへ。
-      その後answer_sheets作成。
-    */
-
-    const firstPage =
-      pages[0];
-
-
-    await uploadPageImage(
-      firstPath,
-      firstPage
-    );
-
-
-    /*
-      QRを全ページから検索。
-    */
-
-    let qrResult =
-      null;
-
-
-    for (
-      let i = 0;
-      i < pages.length;
-      i++
-    ) {
-
-      const page =
-        pages[i];
-
-
-      const pageNo =
-        i + 1;
-
-
-      const pageLayout =
-        getPageLayout(
-          layout,
-          pageNo
-        );
-
-
-      qrResult =
-        await readPageQr(
-          page,
-          pageLayout
-        );
-
-
-      if (qrResult) {
-        break;
-      }
-
-    }
-
-
-    /*
-      QRから生徒を特定
-    */
-
-    let student =
-      null;
-
-
-    if (qrResult) {
-
-      student =
-        await findStudentByQr(
-          qrResult
-        );
-
-    }
-
-
-    /*
-      answer_sheets
-    */
-
-    const {
-      error:
-        sheetError
-    } =
-      await supabaseClient
-        .from(
-          "answer_sheets"
-        )
-        .insert({
-
-          id:
-            answerId,
-
-          test_id:
-            testId,
-
-          student_id:
-            student?.id ||
-            null,
-
-          qr_token:
-            qrResult ||
-            null,
-
-          file_path:
-            firstPath,
-
-          status:
-            student
-              ? "matched"
-              : "unmatched"
-
-        });
-
-
-    if (sheetError) {
-      throw sheetError;
-    }
-
-
-    /*
-      全ページ保存
-    */
-
-    for (
-      let i = 0;
-      i < pages.length;
-      i++
-    ) {
-
-      const page =
-        pages[i];
-
-
-      const pageNo =
-        i + 1;
-
-
-      const path =
-        buildAnswerPath(
-          testId,
-          answerId,
-          pageNo
-        );
-
-
-      if (pageNo !== 1) {
-
-        await uploadPageImage(
-          path,
-          page
-        );
-
-      }
-
-
-      /*
-        answer_sheet_pages
-      */
-
-      const {
-        error:
-          pageInsertError
-      } =
-        await supabaseClient
-          .from(
-            "answer_sheet_pages"
-          )
-          .insert({
-
-            answer_sheet_id:
-              answerId,
-
-            page_no:
-              pageNo,
-
-            file_path:
-              path,
-
-            width_px:
-              page.width,
-
-            height_px:
-              page.height
-
-          });
-
-
-      if (pageInsertError) {
-        throw pageInsertError;
-      }
-
-
-      /*
-        枠から答案領域を生成
-      */
-
-      await createAnswerRegions(
-        answerId,
-        testId,
-        pageNo,
-        page,
-        getPageLayout(
-          layout,
-          pageNo
-        )
-      );
-
-    }
-
-
-    processed++;
-
-    setProgress(
-      Math.round(
-        processed /
-        selectedFiles.length *
-        100
-      )
-    );
-
-  }
-
-}
-
-
-/* =========================================================
-   MODEL ANSWER
-========================================================= */
-
-async function processModelAnswers(
-  testId
-) {
-
-  for (
-    const file
-    of selectedFiles
-  ) {
-
-    const pages =
-      await expandFile(
-        file
-      );
-
-
-    let pageNo =
-      1;
-
-
-    for (
-      const page
-      of pages
-    ) {
-
-      const path =
-        [
-          testId,
-          "model-answer",
-          `page-${String(
-            pageNo
-          ).padStart(
-            3,
-            "0"
-          )}.png`
-        ].join("/");
-
-
-      const blob =
-        await canvasToBlob(
-          page.canvas
-        );
-
-
-      const {
-        error
-      } =
-        await supabaseClient
-          .storage
-          .from(
-            "model-answers"
-          )
-          .upload(
-            path,
-            blob,
-            {
-              contentType:
-                "image/png",
-
-              upsert:
-                true
-            }
-          );
-
-
-      if (error) {
-        throw error;
-      }
-
-
-      pageNo++;
-
-    }
 
   }
 
@@ -1244,7 +1218,7 @@ async function loadLayout(
     error:
       pageError
   } =
-    await supabaseClient
+    await client
       .from(
         "test_pages"
       )
@@ -1254,7 +1228,8 @@ async function loadLayout(
         page_no,
         image_path,
         width_px,
-        height_px
+        height_px,
+        original_name
       `)
       .eq(
         "test_id",
@@ -1280,7 +1255,7 @@ async function loadLayout(
     error:
       boxError
   } =
-    await supabaseClient
+    await client
       .from(
         "layout_boxes"
       )
@@ -1295,6 +1270,7 @@ async function loadLayout(
         width,
         height,
         points,
+        question_id,
         parent_box_id,
         major_no,
         minor_no,
@@ -1341,224 +1317,16 @@ async function loadLayout(
 
 
 /* =========================================================
-   PAGE LAYOUT
+   LOAD STUDENTS
 ========================================================= */
 
-function getPageLayout(
-  layout,
-  pageNo
-) {
-
-  return {
-
-    page:
-      layout.pages.find(
-        page =>
-          Number(
-            page.page_no
-          ) ===
-          Number(
-            pageNo
-          )
-      ) || null,
-
-    boxes:
-      layout.boxes.filter(
-        box =>
-          Number(
-            box.page_no
-          ) ===
-          Number(
-            pageNo
-          )
-      )
-
-  };
-
-}
-
-
-/* =========================================================
-   QR
-========================================================= */
-
-async function readPageQr(
-  page,
-  pageLayout
-) {
-
-  const qrBoxes =
-    pageLayout.boxes.filter(
-      box =>
-        box.box_role ===
-        "qr" ||
-        box.box_type ===
-        "qr"
-    );
-
-
-  /*
-    QR枠が設定されている場合
-    その範囲を優先。
-  */
-
-  for (
-    const box
-    of qrBoxes
-  ) {
-
-    const result =
-      decodeQrInBox(
-        page.canvas,
-        box
-      );
-
-
-    if (
-      result?.data
-    ) {
-
-      return normalizeQr(
-        result.data
-      );
-
-    }
-
-  }
-
-
-  /*
-    QR枠がない場合も
-    ページ全体を一度探索。
-  */
-
-  const result =
-    decodeQrFullPage(
-      page.canvas
-    );
-
-
-  return result
-    ? normalizeQr(
-        result.data
-      )
-    : null;
-
-}
-
-
-/* =========================================================
-   QR BOX
-========================================================= */
-
-function decodeQrInBox(
-  canvas,
-  box
-) {
-
-  const image =
-    cropCanvas(
-      canvas,
-      box
-    );
-
-
-  return decodeQrCanvas(
-    image
-  );
-
-}
-
-
-/* =========================================================
-   QR FULL PAGE
-========================================================= */
-
-function decodeQrFullPage(
-  canvas
-) {
-
-  return decodeQrCanvas(
-    canvas
-  );
-
-}
-
-
-/* =========================================================
-   QR DECODE
-========================================================= */
-
-function decodeQrCanvas(
-  canvas
-) {
-
-  const ctx =
-    canvas.getContext(
-      "2d",
-      {
-        willReadFrequently:
-          true
-      }
-    );
-
-
-  const image =
-    ctx.getImageData(
-      0,
-      0,
-      canvas.width,
-      canvas.height
-    );
-
-
-  return jsQR(
-    image.data,
-    image.width,
-    image.height,
-    {
-      inversionAttempts:
-        "attemptBoth"
-    }
-  );
-
-}
-
-
-/* =========================================================
-   QR TOKEN
-========================================================= */
-
-function normalizeQr(
-  value
-) {
-
-  return String(
-    value || ""
-  )
-    .trim();
-
-}
-
-
-/* =========================================================
-   STUDENT
-========================================================= */
-
-async function findStudentByQr(
-  qrToken
-) {
-
-  /*
-    QRはstudents.qr_tokenを
-    基準にする。
-  */
+async function loadStudents() {
 
   const {
     data,
     error
   } =
-    await supabaseClient
+    await client
       .from(
         "students"
       )
@@ -1566,18 +1334,12 @@ async function findStudentByQr(
         id,
         student_no,
         name,
-        qr_token,
         active
       `)
       .eq(
-        "qr_token",
-        qrToken
-      )
-      .eq(
         "active",
         true
-      )
-      .maybeSingle();
+      );
 
 
   if (error) {
@@ -1585,7 +1347,332 @@ async function findStudentByQr(
   }
 
 
-  return data || null;
+  return data || [];
+
+}
+
+
+/* =========================================================
+   STUDENT ANSWERS
+========================================================= */
+
+async function processStudentAnswers(
+  testId
+) {
+
+  let completed =
+    0;
+
+
+  for (
+    const file
+    of selectedFiles
+  ) {
+
+    setProgress(
+      Math.round(
+        completed /
+        selectedFiles.length *
+        100
+      ),
+      `${file.name} を処理しています...`
+    );
+
+
+    const pages =
+      await expandFile(
+        file
+      );
+
+
+    if (!pages.length) {
+
+      addProcessing(
+        file.name,
+        "ページを取得できませんでした。",
+        false
+      );
+
+      continue;
+
+    }
+
+
+    /*
+      ===================================================
+      QR読取
+      ===================================================
+    */
+
+    let qrValue =
+      null;
+
+
+    let qrPageNo =
+      null;
+
+
+    for (
+      let index = 0;
+      index < pages.length;
+      index++
+    ) {
+
+      const page =
+        pages[index];
+
+
+      const pageNo =
+        index + 1;
+
+
+      const pageLayout =
+        getPageLayout(
+          currentLayout,
+          pageNo
+        );
+
+
+      qrValue =
+        await readQrFromPage(
+          page,
+          pageLayout
+        );
+
+
+      if (qrValue) {
+
+        qrPageNo =
+          pageNo;
+
+        break;
+
+      }
+
+    }
+
+
+    /*
+      ===================================================
+      生徒特定
+      ===================================================
+    */
+
+    const student =
+      qrValue
+        ? findStudentFromQr(
+            qrValue,
+            currentStudents
+          )
+        : null;
+
+
+    /*
+      ===================================================
+      answer_sheets
+      ===================================================
+    */
+
+    const answerId =
+      crypto.randomUUID();
+
+
+    const firstPath =
+      buildAnswerPath(
+        testId,
+        answerId,
+        1
+      );
+
+
+    /*
+      先に1ページ目をStorage
+    */
+
+    await uploadAnswerPage(
+      firstPath,
+      pages[0]
+    );
+
+
+    const {
+      error:
+        sheetError
+    } =
+      await client
+        .from(
+          "answer_sheets"
+        )
+        .insert({
+
+          id:
+            answerId,
+
+          test_id:
+            testId,
+
+          student_id:
+            student?.id ||
+            null,
+
+          qr_token:
+            qrValue ||
+            null,
+
+          file_path:
+            firstPath,
+
+          status:
+            student
+              ? "matched"
+              : "unmatched"
+
+        });
+
+
+    if (sheetError) {
+      throw sheetError;
+    }
+
+
+    /*
+      ===================================================
+      全ページ
+      ===================================================
+    */
+
+    for (
+      let index = 0;
+      index < pages.length;
+      index++
+    ) {
+
+      const page =
+        pages[index];
+
+
+      const pageNo =
+        index + 1;
+
+
+      const path =
+        buildAnswerPath(
+          testId,
+          answerId,
+          pageNo
+        );
+
+
+      /*
+        1ページ目は既に保存済み
+      */
+
+      if (
+        pageNo !== 1
+      ) {
+
+        await uploadAnswerPage(
+          path,
+          page
+        );
+
+      }
+
+
+      /*
+        answer_sheet_pages
+      */
+
+      const {
+        error:
+          pageError
+      } =
+        await client
+          .from(
+            "answer_sheet_pages"
+          )
+          .insert({
+
+            answer_sheet_id:
+              answerId,
+
+            page_no:
+              pageNo,
+
+            file_path:
+              path,
+
+            width_px:
+              page.width,
+
+            height_px:
+              page.height
+
+          });
+
+
+      if (pageError) {
+        throw pageError;
+      }
+
+
+      /*
+        answer_regions
+
+        question_idが実際に設定されている
+        小問だけ作成する。
+      */
+
+      await createAnswerRegions(
+        answerId,
+        pageNo,
+        getPageLayout(
+          currentLayout,
+          pageNo
+        )
+      );
+
+    }
+
+
+    /*
+      結果表示
+    */
+
+    if (student) {
+
+      addProcessing(
+        file.name,
+        `生徒紐付け: ${student.student_no} ${student.name} / QR: ${qrValue}`,
+        true
+      );
+
+    } else {
+
+      addProcessing(
+        file.name,
+        qrValue
+          ? `QRは読み取れましたが、生徒を特定できませんでした: ${qrValue}`
+          : "QRコードを読み取れませんでした。未紐付けに登録しました。",
+        false
+      );
+
+    }
+
+
+    completed++;
+
+
+    setProgress(
+      Math.round(
+        completed /
+        selectedFiles.length *
+        100
+      ),
+      `${completed}/${selectedFiles.length} 件処理完了`
+    );
+
+  }
 
 }
 
@@ -1596,47 +1683,21 @@ async function findStudentByQr(
 
 async function createAnswerRegions(
   answerSheetId,
-  testId,
   pageNo,
-  page,
   pageLayout
 ) {
 
-  /*
-    現在の枠設定では
-    小問枠にquestion_idを
-    設定しない仕様。
-
-    そのため、question_idを
-    勝手に生成しない。
-
-    後の配点/設問設定で
-    questionsと紐付いた段階で
-    answer_regionsを生成する。
-  */
-
-  const minorBoxes =
-    pageLayout.boxes.filter(
-      box =>
-        box.box_role ===
-        "minor"
-    );
-
-
-  if (!minorBoxes.length) {
+  if (!pageLayout) {
     return;
   }
 
 
-  /*
-    question_idが既に存在する
-    古い枠だけ対応。
-  */
-
   const rows =
-    minorBoxes
+    pageLayout.boxes
       .filter(
         box =>
+          box.box_role ===
+            "minor" &&
           box.question_id
       )
       .map(
@@ -1683,7 +1744,7 @@ async function createAnswerRegions(
   const {
     error
   } =
-    await supabaseClient
+    await client
       .from(
         "answer_regions"
       )
@@ -1700,6 +1761,520 @@ async function createAnswerRegions(
 
 
 /* =========================================================
+   MODEL ANSWER
+========================================================= */
+
+async function processModelAnswers(
+  testId
+) {
+
+  let completed =
+    0;
+
+
+  for (
+    const file
+    of selectedFiles
+  ) {
+
+    const pages =
+      await expandFile(
+        file
+      );
+
+
+    let pageNo =
+      1;
+
+
+    for (
+      const page
+      of pages
+    ) {
+
+      const path =
+        [
+          testId,
+          "model-answer",
+          `page-${String(
+            pageNo
+          ).padStart(
+            3,
+            "0"
+          )}.png`
+        ].join("/");
+
+
+      const blob =
+        await canvasToBlob(
+          page.canvas
+        );
+
+
+      const {
+        error
+      } =
+        await client
+          .storage
+          .from(
+            "model-answers"
+          )
+          .upload(
+            path,
+            blob,
+            {
+              contentType:
+                "image/png",
+
+              upsert:
+                true
+            }
+          );
+
+
+      if (error) {
+        throw error;
+      }
+
+
+      pageNo++;
+
+    }
+
+
+    completed++;
+
+
+    setProgress(
+      Math.round(
+        completed /
+        selectedFiles.length *
+        100
+      ),
+      `${completed}/${selectedFiles.length} 件処理完了`
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   QR
+========================================================= */
+
+async function readQrFromPage(
+  page,
+  pageLayout
+) {
+
+  /*
+    1. 設定済みQR枠
+  */
+
+  const qrBoxes =
+    (
+      pageLayout?.boxes ||
+      []
+    ).filter(
+      box =>
+        box.box_role ===
+          "qr" ||
+        box.box_type ===
+          "qr"
+    );
+
+
+  for (
+    const box
+    of qrBoxes
+  ) {
+
+    const cropped =
+      cropCanvas(
+        page.canvas,
+        box
+      );
+
+
+    const result =
+      decodeQr(
+        cropped
+      );
+
+
+    if (
+      result?.data
+    ) {
+
+      return normalizeQr(
+        result.data
+      );
+
+    }
+
+  }
+
+
+  /*
+    2. QR枠がない場合
+       ページ全体
+  */
+
+  const fullPage =
+    decodeQr(
+      page.canvas
+    );
+
+
+  if (
+    fullPage?.data
+  ) {
+
+    return normalizeQr(
+      fullPage.data
+    );
+
+  }
+
+
+  return null;
+
+}
+
+
+/* =========================================================
+   QR DECODE
+========================================================= */
+
+function decodeQr(
+  canvas
+) {
+
+  if (
+    typeof jsQR !==
+    "function"
+  ) {
+
+    return null;
+
+  }
+
+
+  const context =
+    canvas.getContext(
+      "2d",
+      {
+        willReadFrequently:
+          true
+      }
+    );
+
+
+  const image =
+    context.getImageData(
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
+
+
+  return jsQR(
+    image.data,
+    image.width,
+    image.height,
+    {
+      inversionAttempts:
+        "attemptBoth"
+    }
+  );
+
+}
+
+
+/* =========================================================
+   QR NORMALIZE
+========================================================= */
+
+function normalizeQr(
+  value
+) {
+
+  let text =
+    String(
+      value ||
+      ""
+    ).trim();
+
+
+  /*
+    JSON QR
+  */
+
+  try {
+
+    const parsed =
+      JSON.parse(
+        text
+      );
+
+
+    if (
+      parsed.student_no
+    ) {
+
+      return String(
+        parsed.student_no
+      ).trim();
+
+    }
+
+
+    if (
+      parsed.studentNo
+    ) {
+
+      return String(
+        parsed.studentNo
+      ).trim();
+
+    }
+
+
+    if (
+      parsed.student_id
+    ) {
+
+      return String(
+        parsed.student_id
+      ).trim();
+
+    }
+
+
+    if (
+      parsed.studentId
+    ) {
+
+      return String(
+        parsed.studentId
+      ).trim();
+
+    }
+
+  } catch (_) {}
+
+
+  /*
+    URL形式
+  */
+
+  try {
+
+    const url =
+      new URL(
+        text
+      );
+
+
+    const keys = [
+      "student_no",
+      "studentNo",
+      "student_id",
+      "studentId",
+      "student"
+    ];
+
+
+    for (
+      const key
+      of keys
+    ) {
+
+      const value =
+        url.searchParams.get(
+          key
+        );
+
+
+      if (value) {
+
+        return value.trim();
+
+      }
+
+    }
+
+  } catch (_) {}
+
+
+  return text;
+
+}
+
+
+/* =========================================================
+   STUDENT MATCH
+========================================================= */
+
+function findStudentFromQr(
+  qrValue,
+  students
+) {
+
+  const normalized =
+    normalizeStudentValue(
+      qrValue
+    );
+
+
+  /*
+    まず生徒番号完全一致
+  */
+
+  let student =
+    students.find(
+      item =>
+        normalizeStudentValue(
+          item.student_no
+        ) ===
+        normalized
+    );
+
+
+  if (student) {
+    return student;
+  }
+
+
+  /*
+    QRが数字だけなら
+    先頭ゼロを除いて再比較
+  */
+
+  if (
+    /^\d+$/.test(
+      normalized
+    )
+  ) {
+
+    const withoutZero =
+      normalized.replace(
+        /^0+/,
+        ""
+      );
+
+
+    student =
+      students.find(
+        item =>
+          normalizeStudentValue(
+            item.student_no
+          ).replace(
+            /^0+/,
+            ""
+          ) ===
+          withoutZero
+      );
+
+
+    if (student) {
+      return student;
+    }
+
+  }
+
+
+  /*
+    QRがUUIDならstudent.id
+  */
+
+  student =
+    students.find(
+      item =>
+        String(
+          item.id
+        ).toLowerCase() ===
+        String(
+          qrValue
+        ).trim().toLowerCase()
+    );
+
+
+  return student || null;
+
+}
+
+
+function normalizeStudentValue(
+  value
+) {
+
+  return String(
+    value ||
+    ""
+  )
+    .trim()
+    .replace(
+      /[\s\-]/g,
+      ""
+    )
+    .toLowerCase();
+
+}
+
+
+/* =========================================================
+   PAGE LAYOUT
+========================================================= */
+
+function getPageLayout(
+  layout,
+  pageNo
+) {
+
+  if (!layout) {
+    return null;
+  }
+
+
+  return {
+
+    page:
+      (
+        layout.pages ||
+        []
+      ).find(
+        page =>
+          Number(
+            page.page_no
+          ) ===
+          Number(
+            pageNo
+          )
+      ) || null,
+
+    boxes:
+      (
+        layout.boxes ||
+        []
+      ).filter(
+        box =>
+          Number(
+            box.page_no
+          ) ===
+          Number(
+            pageNo
+          )
+      )
+
+  };
+
+}
+
+
+/* =========================================================
    FILE EXPANSION
 ========================================================= */
 
@@ -1707,14 +2282,14 @@ async function expandFile(
   file
 ) {
 
-  const ext =
+  const extension =
     getExtension(
       file.name
     );
 
 
   if (
-    ext ===
+    extension ===
     "zip"
   ) {
 
@@ -1726,7 +2301,7 @@ async function expandFile(
 
 
   if (
-    ext ===
+    extension ===
     "pdf"
   ) {
 
@@ -1793,14 +2368,14 @@ async function expandZip(
     of entries
   ) {
 
-    const ext =
+    const extension =
       getExtension(
         entry.name
       );
 
 
     if (
-      ext ===
+      extension ===
       "pdf"
     ) {
 
@@ -1812,9 +2387,7 @@ async function expandZip(
 
       const pdfFile =
         new File(
-          [
-            blob
-          ],
+          [blob],
           entry.name,
           {
             type:
@@ -1846,7 +2419,7 @@ async function expandZip(
         "png",
         "webp"
       ].includes(
-        ext
+        extension
       )
     ) {
 
@@ -1858,13 +2431,14 @@ async function expandZip(
 
       const imageFile =
         new File(
-          [
-            blob
-          ],
+          [blob],
           entry.name,
           {
             type:
-              `image/${ext === "jpg" ? "jpeg" : ext}`
+              extension ===
+              "jpg"
+                ? "image/jpeg"
+                : `image/${extension}`
           }
         );
 
@@ -2072,10 +2646,10 @@ async function imageToPage(
 
 
 /* =========================================================
-   UPLOAD PAGE IMAGE
+   STORAGE
 ========================================================= */
 
-async function uploadPageImage(
+async function uploadAnswerPage(
   path,
   page
 ) {
@@ -2089,7 +2663,7 @@ async function uploadPageImage(
   const {
     error
   } =
-    await supabaseClient
+    await client
       .storage
       .from(
         "answers"
@@ -2100,6 +2674,9 @@ async function uploadPageImage(
         {
           contentType:
             "image/png",
+
+          cacheControl:
+            "3600",
 
           upsert:
             true
@@ -2115,7 +2692,7 @@ async function uploadPageImage(
 
 
 /* =========================================================
-   PATH
+   ANSWER PATH
 ========================================================= */
 
 function buildAnswerPath(
@@ -2151,7 +2728,9 @@ function cropCanvas(
     Math.max(
       0,
       Math.round(
-        Number(box.x)
+        Number(
+          box.x
+        )
       )
     );
 
@@ -2160,7 +2739,9 @@ function cropCanvas(
     Math.max(
       0,
       Math.round(
-        Number(box.y)
+        Number(
+          box.y
+        )
       )
     );
 
@@ -2169,7 +2750,9 @@ function cropCanvas(
     Math.max(
       1,
       Math.round(
-        Number(box.width)
+        Number(
+          box.width
+        )
       )
     );
 
@@ -2178,7 +2761,31 @@ function cropCanvas(
     Math.max(
       1,
       Math.round(
-        Number(box.height)
+        Number(
+          box.height
+        )
+      )
+    );
+
+
+  const safeWidth =
+    Math.max(
+      1,
+      Math.min(
+        width,
+        source.width -
+        x
+      )
+    );
+
+
+  const safeHeight =
+    Math.max(
+      1,
+      Math.min(
+        height,
+        source.height -
+        y
       )
     );
 
@@ -2190,19 +2797,11 @@ function cropCanvas(
 
 
   canvas.width =
-    Math.min(
-      width,
-      source.width -
-      x
-    );
+    safeWidth;
 
 
   canvas.height =
-    Math.min(
-      height,
-      source.height -
-      y
-    );
+    safeHeight;
 
 
   canvas
@@ -2214,13 +2813,13 @@ function cropCanvas(
 
       x,
       y,
-      canvas.width,
-      canvas.height,
+      safeWidth,
+      safeHeight,
 
       0,
       0,
-      canvas.width,
-      canvas.height
+      safeWidth,
+      safeHeight
     );
 
 
@@ -2264,7 +2863,8 @@ function canvasToBlob(
           );
 
         },
-        "image/png"
+        "image/png",
+        .95
       );
 
     }
@@ -2317,8 +2917,87 @@ function loadImage(
 
 
 /* =========================================================
-   HELPERS
+   UI
 ========================================================= */
+
+function setProgress(
+  value,
+  text
+) {
+
+  const safe =
+    Math.max(
+      0,
+      Math.min(
+        100,
+        value
+      )
+    );
+
+
+  progressBar.style.width =
+    `${safe}%`;
+
+
+  if (text) {
+
+    progressText.textContent =
+      text;
+
+  }
+
+}
+
+
+function showResult(
+  message,
+  isError
+) {
+
+  resultBox.hidden =
+    !message;
+
+
+  resultBox.textContent =
+    message || "";
+
+
+  resultBox.className =
+    isError
+      ? "result error"
+      : "result success";
+
+}
+
+
+function addProcessing(
+  fileName,
+  message,
+  matched
+) {
+
+  const item =
+    document.createElement(
+      "div"
+    );
+
+
+  item.className =
+    matched
+      ? "processing-item matched"
+      : "processing-item unmatched";
+
+
+  item.textContent =
+    `${fileName}: ${message}`;
+
+
+  processingList.appendChild(
+    item
+  );
+
+}
+
 
 function getExtension(
   name
@@ -2344,8 +3023,7 @@ function formatBytes(
 ) {
 
   if (
-    bytes <
-    1024
+    bytes < 1024
   ) {
 
     return `${bytes} B`;
@@ -2355,8 +3033,7 @@ function formatBytes(
 
   if (
     bytes <
-    1024 *
-    1024
+    1024 * 1024
   ) {
 
     return `${(
@@ -2376,41 +3053,29 @@ function formatBytes(
 }
 
 
-function setProgress(
-  value
-) {
+function clearFiles() {
 
-  progressBar.style.width =
-    `${Math.max(
-      0,
-      Math.min(
-        100,
-        value
-      )
-    )}%`;
-
-}
+  selectedFiles =
+    [];
 
 
-function showResult(
-  message,
-  error
-) {
-
-  resultBox.hidden =
-    !message;
+  renderFileList();
 
 
-  resultBox.textContent =
-    message;
+  processingList.innerHTML =
+    "";
 
 
-  resultBox.className =
-    `result ${
-      error
-        ? "error"
-        : "success"
-    }`;
+  setProgress(
+    0,
+    "待機中"
+  );
+
+
+  showResult(
+    "",
+    false
+  );
 
 }
 
@@ -2422,6 +3087,7 @@ function showResult(
 init();
 
 </script>
+
 
 </body>
 

@@ -63,46 +63,98 @@
 
   <div class="page-header">
 
-    <h1 id="testName">
-      -
-    </h1>
+    <div>
+
+      <h1 id="testName">
+        -
+      </h1>
+
+      <div
+        id="testMeta"
+        class="test-meta"
+      >
+      </div>
+
+    </div>
 
   </div>
 
 
 
-  <div
+  <section
     id="resultSummary"
     class="student-result-summary"
   >
-  </div>
+  </section>
 
 
 
-  <div
-    class="student-result-actions"
+  <section
+    id="questionResultsCard"
+    class="student-result-card"
   >
 
-    <a
-      id="originalAnswerLink"
-      class="btn"
-      href="#"
+    <div class="student-result-card-title">
+      設問別結果
+    </div>
+
+
+    <div
+      id="questionResults"
+      class="question-results-wrap"
     >
-      採点前答案を見る
-    </a>
+    </div>
 
-  </div>
-
+  </section>
 
 
-  <div
-    id="markedPages"
-    class="student-answer-pages"
+
+  <section
+    class="student-result-card"
   >
 
-    読み込み中...
+    <div class="student-result-card-title">
+      答案
+    </div>
 
-  </div>
+
+    <div
+      class="student-result-actions"
+    >
+
+      <a
+        id="originalAnswerLink"
+        class="btn"
+        href="#"
+      >
+        採点前答案を見る
+      </a>
+
+    </div>
+
+  </section>
+
+
+
+  <section
+    class="student-result-card"
+  >
+
+    <div class="student-result-card-title">
+      採点済み答案
+    </div>
+
+
+    <div
+      id="markedPages"
+      class="student-answer-pages"
+    >
+
+      読み込み中...
+
+    </div>
+
+  </section>
 
 
 </main>
@@ -112,6 +164,7 @@
 <script
   src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
 ></script>
+
 
 <script src="/js/config.js"></script>
 

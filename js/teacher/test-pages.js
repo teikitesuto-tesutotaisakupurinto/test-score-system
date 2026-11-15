@@ -3,25 +3,49 @@
    テスト成績システム
    js/teacher/test-pages.js
 
-   解答用紙アップロード・解答欄設定
+   現在のDB構造に完全対応
+
+   test_pages
+   ---------------------------------------------------------
+   id
+   test_id
+   page_no
+   image_path
+   width_px
+   height_px
+   created_at
+   file_path
+   file_type
+   original_name
+
+   layout_boxes
+   ---------------------------------------------------------
+   id
+   test_id
+   page_no
+   box_type
+   label
+   x
+   y
+   width
+   height
+   question_id
+   created_at
+   points
+
+   重要
+   ---------------------------------------------------------
+   source_page_id は使用しない。
+
+   test_pages.page_no
+          ↓
+   layout_boxes.page_no
+
+   でページを対応させる。
 
    URL
    ---------------------------------------------------------
    /teacher/tests/pages?test=UUID
-
-   DB
-   ---------------------------------------------------------
-   test_pages.image_path
-   layout_boxes
-
-   重要
-   ---------------------------------------------------------
-   ・testSelectがなくても動作
-   ・URL ?test=UUID を最優先
-   ・解答用紙にだけ枠を設定
-   ・枠は原画像のピクセル座標で保存
-   ・答案側には枠を設定しない
-   ・答案アップロード時にlayout_boxesを自動適用
 ========================================================= */
 
 (function () {
@@ -178,8 +202,6 @@
 
       /*
         URLを最優先。
-        古いHTMLからwindow.__TEST_ID__が
-        渡された場合にも対応。
       */
 
       selectedTestId =
@@ -192,7 +214,7 @@
 
 
       /*
-        testSelectが存在する古いHTMLにも対応。
+        testSelectが存在する旧HTMLにも対応。
       */
 
       if (testSelect) {
@@ -357,10 +379,6 @@
 
   function setupEvents() {
 
-    /*
-      testSelectが存在する場合だけ。
-    */
-
     testSelect?.addEventListener(
       "change",
       async () => {
@@ -432,7 +450,7 @@
 
 
   /* =======================================================
-     LOAD TEST PAGES
+     LOAD TEST PAGES + BOXES
   ======================================================= */
 
   async function loadTestPages() {
@@ -480,8 +498,7 @@
     /*
       =====================================================
       test_pages
-
-      正式な画像パスは image_path
+      image_pathを使用
       =====================================================
     */
 
@@ -531,6 +548,10 @@
     /*
       =====================================================
       layout_boxes
+
+      source_page_idは使用しない。
+
+      page_noでページと対応。
       =====================================================
     */
 
@@ -547,20 +568,27 @@
         .select(`
           id,
           test_id,
-          source_page_id,
-          question_id,
+          page_no,
           box_type,
           label,
-          points,
           x,
           y,
           width,
           height,
+          question_id,
+          points,
           created_at
         `)
         .eq(
           "test_id",
           selectedTestId
+        )
+        .order(
+          "page_no",
+          {
+            ascending:
+              true
+          }
         )
         .order(
           "created_at",
@@ -669,10 +697,6 @@
       );
 
 
-      /*
-        PDF / 画像 → ページ
-      */
-
       const pageImages =
         await fileToPages(
           file
@@ -689,9 +713,7 @@
 
 
       /*
-        ===================================================
         古いページ削除
-        ===================================================
       */
 
       const {
@@ -742,12 +764,6 @@
 
       }
 
-
-      /*
-        ===================================================
-        Storage + test_pages
-        ===================================================
-      */
 
       let pageNo =
         1;
@@ -813,10 +829,9 @@
 
 
         /*
-          DB
+          test_pages
 
-          正式列：
-          image_path
+          image_pathを使用。
         */
 
         const {
@@ -869,10 +884,6 @@
 
       }
 
-
-      /*
-        再読み込み
-      */
 
       await loadTestPages();
 
@@ -984,10 +995,6 @@
     );
 
 
-    /*
-      image_pathを使用
-    */
-
     if (!page.image_path) {
 
       throw new Error(
@@ -1036,10 +1043,6 @@
       );
 
 
-    /*
-      元画像サイズを維持
-    */
-
     canvas.width =
       image.naturalWidth;
 
@@ -1072,13 +1075,19 @@
 
     /*
       既存枠
+
+      page_noで対応。
     */
 
     boxes
       .filter(
         box =>
-          box.source_page_id ===
-          page.id
+          Number(
+            box.page_no
+          ) ===
+          Number(
+            page.page_no
+          )
       )
       .forEach(
         box => {
@@ -1097,7 +1106,7 @@
 
 
   /* =======================================================
-     DRAW
+     DRAW NEW BOX
   ======================================================= */
 
   function setupDrawing(
@@ -1389,8 +1398,16 @@
           test_id:
             selectedTestId,
 
-          source_page_id:
-            page.id,
+          /*
+            source_page_idは使わない。
+
+            現在のDBではpage_no。
+          */
+
+          page_no:
+            Number(
+              page.page_no
+            ),
 
           question_id:
             null,
@@ -1399,7 +1416,7 @@
             "answer",
 
           label:
-            `問${boxes.length + 1}`,
+            `問${getNextBoxNumber()}`,
 
           points:
             0,
@@ -1441,6 +1458,20 @@
         );
 
       }
+    );
+
+  }
+
+
+  /* =======================================================
+     NEXT BOX NUMBER
+  ======================================================= */
+
+  function getNextBoxNumber() {
+
+    return (
+      boxes.length +
+      1
     );
 
   }
@@ -1593,16 +1624,24 @@
         original = {
 
           x:
-            Number(box.x),
+            Number(
+              box.x
+            ),
 
           y:
-            Number(box.y),
+            Number(
+              box.y
+            ),
 
           width:
-            Number(box.width),
+            Number(
+              box.width
+            ),
 
           height:
-            Number(box.height)
+            Number(
+              box.height
+            )
 
         };
 
@@ -1663,7 +1702,8 @@
 
           box.x =
             clamp(
-              original.x + dx,
+              original.x +
+                dx,
               0,
               canvas.width -
                 box.width
@@ -1672,7 +1712,8 @@
 
           box.y =
             clamp(
-              original.y + dy,
+              original.y +
+                dy,
               0,
               canvas.height -
                 box.height
@@ -1685,7 +1726,8 @@
 
           box.width =
             clamp(
-              original.width + dx,
+              original.width +
+                dx,
               10,
               canvas.width -
                 box.x
@@ -1694,7 +1736,8 @@
 
           box.height =
             clamp(
-              original.height + dy,
+              original.height +
+                dy,
               10,
               canvas.height -
                 box.y
@@ -2003,7 +2046,7 @@
 
 
   /* =======================================================
-     SAVE BOXES
+     SAVE
   ======================================================= */
 
   async function saveBoxes() {
@@ -2022,14 +2065,14 @@
     try {
 
       /*
-        選択中の枠を反映
+        現在選択中の枠を反映
       */
 
       applySelectedBox();
 
 
       /*
-        座標・サイズ・配点チェック
+        チェック
       */
 
       for (
@@ -2038,22 +2081,15 @@
       ) {
 
         if (
-          !Number.isFinite(
-            Number(box.x)
-          ) ||
-          !Number.isFinite(
-            Number(box.y)
-          ) ||
-          !Number.isFinite(
-            Number(box.width)
-          ) ||
-          !Number.isFinite(
-            Number(box.height)
+          !Number.isInteger(
+            Number(
+              box.page_no
+            )
           )
         ) {
 
           throw new Error(
-            `${box.label || "設問"}の座標が正しくありません。`
+            `${box.label || "設問"}のページ番号がありません。`
           );
 
         }
@@ -2094,7 +2130,7 @@
 
 
       /*
-        既存枠削除
+        既存枠を削除
       */
 
       const {
@@ -2120,7 +2156,7 @@
 
 
       /*
-        新しい枠保存
+        新しい枠を保存
       */
 
       if (boxes.length) {
@@ -2135,24 +2171,24 @@
               test_id:
                 selectedTestId,
 
-              source_page_id:
-                box.source_page_id,
+              /*
+                現在のDBでは
+                source_page_idではなく
+                page_no。
+              */
 
-              question_id:
-                box.question_id ||
-                null,
+              page_no:
+                Number(
+                  box.page_no
+                ),
 
               box_type:
+                box.box_type ||
                 "answer",
 
               label:
                 box.label ||
                 "設問",
-
-              points:
-                Number(
-                  box.points
-                ) || 0,
 
               x:
                 Number(
@@ -2172,7 +2208,16 @@
               height:
                 Number(
                   box.height
-                )
+                ),
+
+              question_id:
+                box.question_id ||
+                null,
+
+              points:
+                Number(
+                  box.points
+                ) || 0
 
             })
           );
@@ -2201,10 +2246,7 @@
 
 
       /*
-        DBから再取得。
-
-        保存時にUUIDが変わるため、
-        画面上の古いIDを残さない。
+        DBから再取得
       */
 
       await loadTestPages();
@@ -2351,12 +2393,15 @@
 
 
           script.onerror =
-            () =>
+            () => {
+
               reject(
                 new Error(
                   "PDF.jsの読み込みに失敗しました。"
                 )
               );
+
+            };
 
 
           document.head.appendChild(
@@ -2727,7 +2772,9 @@
 
 
     return parts.length > 1
-      ? parts.pop().toLowerCase()
+      ? parts
+          .pop()
+          .toLowerCase()
       : "";
 
   }

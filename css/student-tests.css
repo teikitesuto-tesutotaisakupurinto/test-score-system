@@ -1,0 +1,105 @@
+
+.student-main {
+
+  max-width:1200px;
+
+  margin:0 auto;
+
+  padding:25px;
+
+}
+
+
+.student-test-grid {
+
+  display:grid;
+
+  grid-template-columns:
+    repeat(
+      3,
+      minmax(
+        0,
+        1fr
+      )
+    );
+
+  gap:15px;
+
+}
+
+
+.student-test-card {
+
+  background:#fff;
+
+  border:
+    1px solid #d0d6dc;
+
+  border-radius:5px;
+
+  padding:18px;
+
+}
+
+
+.student-test-title {
+
+  font-size:17px;
+
+  font-weight:700;
+
+  margin-bottom:12px;
+
+}
+
+
+.student-test-info {
+
+  color:#555;
+
+  font-size:13px;
+
+  line-height:1.8;
+
+}
+
+
+.student-test-actions {
+
+  display:flex;
+
+  gap:7px;
+
+  margin-top:16px;
+
+  flex-wrap:wrap;
+
+}
+
+
+.empty-state {
+
+  padding:50px;
+
+  text-align:center;
+
+  color:#777;
+
+  background:#fff;
+
+  border:
+    1px solid #d0d6dc;
+
+}
+
+
+@media(max-width:900px) {
+
+  .student-test-grid {
+
+    grid-template-columns:
+      1fr;
+
+  }
+
+}

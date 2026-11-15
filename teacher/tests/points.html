@@ -11,7 +11,9 @@
   content="width=device-width,initial-scale=1"
 >
 
-<title>配点設定 - テスト成績システム</title>
+<title>
+  配点設定 - テスト成績システム
+</title>
 
 <link
   rel="stylesheet"
@@ -26,21 +28,6 @@
   padding: 22px;
 }
 
-.page-header {
-  margin-bottom: 18px;
-}
-
-.page-header h1 {
-  margin: 0;
-  font-size: 24px;
-}
-
-.page-header p {
-  margin: 7px 0 0;
-  color: #666;
-  font-size: 13px;
-}
-
 .toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -51,21 +38,27 @@
 .status {
   padding: 10px 12px;
   margin-bottom: 15px;
+
   background: #f5f6f7;
+
   border: 1px solid #d5dbe0;
+
   font-size: 13px;
 }
 
-.test-info {
-  display: none;
-  margin-bottom: 15px;
-  padding: 15px;
-  background: #fff;
-  border: 1px solid #d0d6dc;
+.status.error {
+  color: #b42318;
 }
 
-.test-info.show {
-  display: block;
+.test-info {
+  margin-bottom: 15px;
+  padding: 15px;
+
+  background: #fff;
+
+  border: 1px solid #d0d6dc;
+
+  border-radius: 6px;
 }
 
 .test-name {
@@ -79,50 +72,64 @@
   font-size: 13px;
 }
 
-.points-table-wrap {
+.table-wrap {
   overflow-x: auto;
+
   background: #fff;
+
   border: 1px solid #d0d6dc;
 }
 
 .points-table {
   width: 100%;
+
   border-collapse: collapse;
 }
 
 .points-table th,
 .points-table td {
   border: 1px solid #d0d6dc;
+
   padding: 9px 10px;
+
   font-size: 13px;
+
+  vertical-align: middle;
 }
 
 .points-table th {
   background: #f3f5f7;
+
+  font-weight: 700;
+
   text-align: left;
 }
 
-.question-label {
-  font-weight: 700;
-}
-
-.page-number {
-  color: #666;
-}
-
 .points-input {
-  width: 100px;
+  width: 110px;
+
   height: 38px;
+
   padding: 0 8px;
+
+  border: 1px solid #b8c1c9;
+
+  border-radius: 4px;
+
   text-align: right;
+
+  background: #fff;
 }
 
-.save-button {
-  min-width: 70px;
+.points-input:focus {
+  outline: none;
+
+  border-color: #1769aa;
 }
 
 .total-row td {
   background: #f8fafb;
+
   font-weight: 700;
 }
 
@@ -132,16 +139,32 @@
 
 .empty {
   padding: 50px;
+
   text-align: center;
+
   color: #777;
 }
 
-.error {
-  color: #b42318;
+.next-area {
+  display: flex;
+
+  flex-wrap: wrap;
+
+  gap: 8px;
+
+  margin-top: 15px;
+
+  padding-top: 15px;
+
+  border-top: 1px solid #d0d6dc;
 }
 
-.success {
-  color: #1769aa;
+@media (max-width: 600px) {
+
+  .points-main {
+    padding: 14px;
+  }
+
 }
 
 </style>
@@ -154,23 +177,26 @@
 
 <header class="topbar">
 
-<div class="system-name">
-テスト成績システム
-</div>
+  <div class="system-name">
+    テスト成績システム
+  </div>
 
-<div class="topbar-space"></div>
 
-<span id="teacherName">
--
-</span>
+  <div class="topbar-space"></div>
 
-<button
-id="logoutButton"
-class="logout-button"
-type="button"
->
-ログアウト
-</button>
+
+  <span id="teacherName">
+    -
+  </span>
+
+
+  <button
+    id="logoutButton"
+    class="logout-button"
+    type="button"
+  >
+    ログアウト
+  </button>
 
 </header>
 
@@ -181,42 +207,8 @@ type="button"
 <div class="page-header">
 
 <h1>
-配点設定
+  配点設定
 </h1>
-
-<p>
-枠設定で作成した設問ごとに配点を設定します。
-</p>
-
-</div>
-
-
-<div class="toolbar">
-
-<a
-href="/teacher/tests"
-class="btn"
->
-テスト一覧へ戻る
-</a>
-
-
-<a
-id="pagesLink"
-href="#"
-class="btn"
->
-枠設定へ戻る
-</a>
-
-
-<a
-id="qrLink"
-href="#"
-class="btn btn-primary"
->
-生徒QR発行へ
-</a>
 
 </div>
 
@@ -225,7 +217,7 @@ class="btn btn-primary"
 id="status"
 class="status"
 >
-読み込み中...
+  読み込み中...
 </div>
 
 
@@ -238,27 +230,81 @@ class="test-info"
 id="testName"
 class="test-name"
 >
--
+  -
 </div>
 
 <div
 id="testMeta"
 class="test-meta"
 >
--
+  -
 </div>
 
 </section>
 
 
+<div class="toolbar">
+
+
+<a
+id="layoutButton"
+class="btn"
+href="#"
+>
+枠設定へ戻る
+</a>
+
+
+<a
+href="/teacher/students/qr"
+class="btn"
+>
+生徒QR発行
+</a>
+
+
+<a
+id="markingButton"
+class="btn btn-primary"
+href="#"
+>
+採点へ
+</a>
+
+
+</div>
+
+
 <div
 id="tableWrap"
-class="points-table-wrap"
+class="table-wrap"
 >
 
 <div class="empty">
-配点設定を読み込んでいます...
+  設問を読み込んでいます...
 </div>
+
+</div>
+
+
+<div class="next-area">
+
+
+<a
+href="/teacher/tests"
+class="btn"
+>
+テスト一覧へ戻る
+</a>
+
+
+<a
+href="/teacher/students/qr"
+class="btn btn-primary"
+>
+配点設定完了・生徒QR発行へ
+</a>
+
 
 </div>
 
@@ -280,12 +326,9 @@ src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
 "use strict";
 
 
-(function () {
-
-
 let DB =
-window.SB ||
-window.supabaseClient;
+  window.SB ||
+  window.supabaseClient;
 
 
 let testId = null;
@@ -293,662 +336,805 @@ let testId = null;
 let boxes = [];
 
 
-const status =
-document.getElementById(
-"status"
-);
+const statusElement =
+  document.getElementById(
+    "status"
+  );
+
 
 const tableWrap =
-document.getElementById(
-"tableWrap"
-);
+  document.getElementById(
+    "tableWrap"
+  );
 
 
-document.addEventListener(
-"DOMContentLoaded",
-initialize
-);
+/* =====================================================
+   INIT
+===================================================== */
+
+(async function () {
+
+  try {
+
+    if (!DB) {
+
+      throw new Error(
+        "Supabase接続がありません。"
+      );
+
+    }
 
 
-async function initialize() {
+    const result =
+      await requireRole(
+        "teacher"
+      );
 
-try {
 
-if (!DB) {
+    const profile =
+      result?.profile ||
+      result ||
+      {};
 
-throw new Error(
-"Supabase接続がありません。"
-);
+
+    document.getElementById(
+      "teacherName"
+    ).textContent =
+      profile.name ||
+      "先生";
+
+
+    const params =
+      new URLSearchParams(
+        window.location.search
+      );
+
+
+    testId =
+      params.get(
+        "test"
+      );
+
+
+    if (!testId) {
+
+      throw new Error(
+        "テストIDがありません。"
+      );
+
+    }
+
+
+    setLinks();
+
+    await load();
+
+
+  } catch (error) {
+
+    showError(
+      error.message ||
+      "配点設定を読み込めませんでした。"
+    );
+
+  }
+
+})();
+
+
+/* =====================================================
+   LINKS
+===================================================== */
+
+function setLinks() {
+
+  const encoded =
+    encodeURIComponent(
+      testId
+    );
+
+
+  document.getElementById(
+    "layoutButton"
+  ).href =
+    `/teacher/tests/layout?test=${encoded}`;
+
+
+  document.getElementById(
+    "markingButton"
+  ).href =
+    `/teacher/marking?test=${encoded}`;
 
 }
 
 
-if (
-typeof requireRole ===
-"function"
-) {
-
-await requireRole(
-"teacher"
-);
-
-}
-
-
-const params =
-new URLSearchParams(
-location.search
-);
-
-
-testId =
-params.get(
-"test"
-);
-
-
-if (!testId) {
-
-throw new Error(
-"テストIDがありません。"
-);
-
-}
-
-
-document.getElementById(
-"pagesLink"
-).href =
-`/teacher/tests/pages?test=${encodeURIComponent(
-testId
-)}`;
-
-
-document.getElementById(
-"qrLink"
-).href =
-`/teacher/students/qr?test=${encodeURIComponent(
-testId
-)}`;
-
-
-await load();
-
-
-} catch (error) {
-
-showError(
-error.message
-);
-
-}
-
-}
-
+/* =====================================================
+   LOAD
+===================================================== */
 
 async function load() {
 
-
-setStatus(
-"テスト情報を取得しています..."
-);
-
-
-const {
-data: test,
-error: testError
-} =
-await DB
-.from("tests")
-.select(
-`
-id,
-name,
-subject,
-grade,
-class_name
-`
-)
-.eq(
-"id",
-testId
-)
-.single();
+  setStatus(
+    "テスト情報を取得しています..."
+  );
 
 
-if (testError) {
+  const {
+    data: test,
+    error: testError
+  } =
+    await DB
+      .from(
+        "tests"
+      )
+      .select(
+        `
+        id,
+        name,
+        subject,
+        grade,
+        class_name
+        `
+      )
+      .eq(
+        "id",
+        testId
+      )
+      .maybeSingle();
 
-throw testError;
+
+  if (testError) {
+
+    throw testError;
+
+  }
+
+
+  if (!test) {
+
+    throw new Error(
+      "指定されたテストが見つかりません。"
+    );
+
+  }
+
+
+  document.getElementById(
+    "testName"
+  ).textContent =
+    test.name;
+
+
+  document.getElementById(
+    "testMeta"
+  ).textContent =
+    [
+      test.subject,
+      test.grade,
+      test.class_name
+    ]
+      .filter(
+        value =>
+          value !== null &&
+          value !== undefined &&
+          String(
+            value
+          ).trim() !== ""
+      )
+      .join(
+        " / "
+      );
+
+
+  setStatus(
+    "設問枠を取得しています..."
+  );
+
+
+  const {
+    data,
+    error
+  } =
+    await DB
+      .from(
+        "layout_boxes"
+      )
+      .select(
+        `
+        id,
+        page_no,
+        box_type,
+        label,
+        question_id,
+        points,
+        sort_order,
+        created_at
+        `
+      )
+      .eq(
+        "test_id",
+        testId
+      )
+      .order(
+        "page_no",
+        {
+          ascending:
+            true
+        }
+      )
+      .order(
+        "sort_order",
+        {
+          ascending:
+            true
+        }
+      );
+
+
+  if (error) {
+
+    throw error;
+
+  }
+
+
+  /*
+   * question_idを持つ枠だけを
+   * 配点設定対象にする。
+   *
+   * QR枠・大問枠・合計枠などは除外。
+   */
+
+  boxes =
+    (data || [])
+      .filter(
+        box =>
+          box.question_id !==
+            null &&
+          box.question_id !==
+            undefined &&
+          String(
+            box.question_id
+          ).trim() !== ""
+      );
+
+
+  render();
+
+
+  setStatus(
+    `${boxes.length}問の配点を設定できます。`
+  );
 
 }
 
 
-document.getElementById(
-"testInfo"
-).classList.add(
-"show"
-);
-
-
-document.getElementById(
-"testName"
-).textContent =
-test.name;
-
-
-document.getElementById(
-"testMeta"
-).textContent =
-[
-test.subject,
-test.grade,
-test.class_name
-]
-.filter(Boolean)
-.join(
-" / "
-);
-
-
-setStatus(
-"設問枠を取得しています..."
-);
-
-
-const {
-data,
-error
-} =
-await DB
-.from("layout_boxes")
-.select(
-`
-id,
-page_no,
-box_type,
-label,
-question_id,
-points,
-sort_order,
-created_at
-`
-)
-.eq(
-"test_id",
-testId
-)
-.order(
-"page_no",
-{
-ascending:true
-}
-)
-.order(
-"sort_order",
-{
-ascending:true
-}
-);
-
-
-if (error) {
-
-throw error;
-
-}
-
-
-boxes =
-(data || [])
-.filter(
-box =>
-box.question_id !== null &&
-box.question_id !== undefined &&
-String(
-box.question_id
-).trim() !== ""
-);
-
-
-render();
-
-}
-
+/* =====================================================
+   RENDER
+===================================================== */
 
 function render() {
 
+  if (!boxes.length) {
 
-if (!boxes.length) {
+    tableWrap.innerHTML = `
 
-tableWrap.innerHTML = `
+      <div class="empty">
 
-<div class="empty">
+        採点対象の設問枠がありません。
 
-採点対象の設問枠がありません。
+        <br><br>
 
-<br><br>
+        <a
+          href="/teacher/tests/layout?test=${encodeURIComponent(
+            testId
+          )}"
+          class="btn"
+        >
+          枠設定へ戻る
+        </a>
 
-<a
-href="/teacher/tests/pages?test=${encodeURIComponent(
-testId
-)}"
-class="btn"
->
-枠設定へ戻る
-</a>
+      </div>
 
-</div>
+    `;
 
-`;
+    setStatus(
+      "先に枠設定を行ってください。",
+      true
+    );
 
-setStatus(
-"設問枠がありません。",
-true
-);
+    return;
 
-return;
+  }
+
+
+  const table =
+    document.createElement(
+      "table"
+    );
+
+
+  table.className =
+    "points-table";
+
+
+  table.innerHTML = `
+
+    <thead>
+
+      <tr>
+
+        <th>
+          No.
+        </th>
+
+        <th>
+          設問
+        </th>
+
+        <th>
+          ページ
+        </th>
+
+        <th>
+          配点
+        </th>
+
+        <th>
+          操作
+        </th>
+
+      </tr>
+
+    </thead>
+
+
+    <tbody></tbody>
+
+
+    <tfoot>
+
+      <tr class="total-row">
+
+        <td
+          colspan="3"
+        >
+          合計配点
+        </td>
+
+        <td>
+
+          <span
+            id="totalPoints"
+            class="total-points"
+          >
+            0
+          </span>
+
+        </td>
+
+        <td>
+          点
+        </td>
+
+      </tr>
+
+    </tfoot>
+
+  `;
+
+
+  const tbody =
+    table.querySelector(
+      "tbody"
+    );
+
+
+  boxes.forEach(
+    (
+      box,
+      index
+    ) => {
+
+      const row =
+        document.createElement(
+          "tr"
+        );
+
+
+      const numberCell =
+        document.createElement(
+          "td"
+        );
+
+
+      numberCell.textContent =
+        index + 1;
+
+
+      const labelCell =
+        document.createElement(
+          "td"
+        );
+
+
+      labelCell.textContent =
+        box.label ||
+        `設問${index + 1}`;
+
+
+      const pageCell =
+        document.createElement(
+          "td"
+        );
+
+
+      pageCell.textContent =
+        `${box.page_no || 1}ページ`;
+
+
+      const pointsCell =
+        document.createElement(
+          "td"
+        );
+
+
+      const input =
+        document.createElement(
+          "input"
+        );
+
+
+      input.type =
+        "number";
+
+
+      input.min =
+        "0";
+
+
+      input.step =
+        "0.1";
+
+
+      input.className =
+        "points-input";
+
+
+      input.value =
+        Number(
+          box.points
+        ) || 0;
+
+
+      input.dataset.id =
+        box.id;
+
+
+      const actionCell =
+        document.createElement(
+          "td"
+        );
+
+
+      const saveButton =
+        document.createElement(
+          "button"
+        );
+
+
+      saveButton.type =
+        "button";
+
+
+      saveButton.className =
+        "btn";
+
+
+      saveButton.textContent =
+        "保存";
+
+
+      saveButton.addEventListener(
+        "click",
+        async () => {
+
+          await savePoint(
+            box,
+            input,
+            saveButton
+          );
+
+        }
+      );
+
+
+      input.addEventListener(
+        "input",
+        updateTotal
+      );
+
+
+      pointsCell.appendChild(
+        input
+      );
+
+
+      actionCell.appendChild(
+        saveButton
+      );
+
+
+      row.append(
+        numberCell,
+        labelCell,
+        pageCell,
+        pointsCell,
+        actionCell
+      );
+
+
+      tbody.appendChild(
+        row
+      );
+
+    }
+  );
+
+
+  tableWrap.innerHTML =
+    "";
+
+
+  tableWrap.appendChild(
+    table
+  );
+
+
+  updateTotal();
 
 }
 
 
-const rows =
-boxes
-.map(
-(box, index) => `
+/* =====================================================
+   SAVE POINT
+===================================================== */
 
-<tr>
-
-<td>
-${index + 1}
-</td>
-
-<td>
-${escapeHtml(
-box.label ||
-"設問"
-)}
-</td>
-
-<td class="page-number">
-${box.page_no || "-"}ページ
-</td>
-
-<td>
-
-<input
-class="points-input"
-type="number"
-min="0"
-step="0.1"
-value="${Number(
-box.points
-) || 0}"
-data-id="${escapeHtml(
-box.id
-)}"
->
-
-</td>
-
-<td>
-
-<button
-class="btn save-button"
-type="button"
-data-save="${escapeHtml(
-box.id
-)}"
->
-保存
-</button>
-
-</td>
-
-</tr>
-
-`
-)
-.join("");
-
-
-tableWrap.innerHTML = `
-
-<table class="points-table">
-
-<thead>
-
-<tr>
-
-<th>
-No.
-</th>
-
-<th>
-設問
-</th>
-
-<th>
-ページ
-</th>
-
-<th>
-配点
-</th>
-
-<th>
-操作
-</th>
-
-</tr>
-
-</thead>
-
-<tbody>
-
-${rows}
-
-<tr class="total-row">
-
-<td colspan="3">
-合計配点
-</td>
-
-<td colspan="2">
-
-<span
-id="totalPoints"
-class="total-points"
->
-0
-</span>
-点
-
-</td>
-
-</tr>
-
-</tbody>
-
-</table>
-
-`;
-
-
-updateTotal();
-
-
-tableWrap
-.querySelectorAll(
-"[data-save]"
-)
-.forEach(
-button => {
-
-button.addEventListener(
-"click",
-async () => {
-
-await savePoints(
-button.dataset.save
-);
-
-});
-
-}
-);
-
-
-tableWrap
-.querySelectorAll(
-".points-input"
-)
-.forEach(
-input => {
-
-input.addEventListener(
-"input",
-updateTotal
-);
-
-}
-);
-
-
-setStatus(
-`${boxes.length}個の設問に配点を設定できます。`
-);
-
-}
-
-
-async function savePoints(
-id
+async function savePoint(
+  box,
+  input,
+  button
 ) {
 
-
-const input =
-tableWrap.querySelector(
-`.points-input[data-id="${CSS.escape(
-id
-)}"]`
-);
+  const value =
+    Number(
+      input.value
+    );
 
 
-if (!input) {
+  if (
+    !Number.isFinite(
+      value
+    ) ||
+    value < 0
+  ) {
 
-return;
+    showError(
+      "配点は0以上の数値で入力してください。"
+    );
 
-}
+    return;
 
-
-const value =
-Number(
-input.value
-);
-
-
-if (
-!Number.isFinite(value) ||
-value < 0
-) {
-
-showError(
-"配点は0以上の数値で入力してください。"
-);
-
-return;
-
-}
+  }
 
 
-const button =
-tableWrap.querySelector(
-`[data-save="${CSS.escape(
-id
-)}"]`
-);
+  button.disabled =
+    true;
 
 
-if (button) {
-
-button.disabled =
-true;
-
-button.textContent =
-"保存中...";
-
-}
+  button.textContent =
+    "保存中...";
 
 
-try {
+  try {
 
-const {
-error
-} =
-await DB
-.from("layout_boxes")
-.update({
+    const {
+      error
+    } =
+      await DB
+        .from(
+          "layout_boxes"
+        )
+        .update({
 
-points:
-value
+          points:
+            value
 
-})
-.eq(
-"id",
-id
-);
-
-
-if (error) {
-
-throw error;
-
-}
+        })
+        .eq(
+          "id",
+          box.id
+        );
 
 
-const box =
-boxes.find(
-item =>
-item.id ===
-id
-);
+    if (error) {
+
+      throw error;
+
+    }
 
 
-if (box) {
-
-box.points =
-value;
-
-}
+    box.points =
+      value;
 
 
-setStatus(
-"配点を保存しました。"
-);
+    button.textContent =
+      "保存済み";
 
 
-updateTotal();
+    setStatus(
+      `${box.label || "設問"} の配点を保存しました。`
+    );
 
 
-} catch (error) {
+    updateTotal();
 
-showError(
-`配点保存エラー: ${error.message}`
-);
 
-} finally {
+  } catch (error) {
 
-if (button) {
+    console.error(
+      error
+    );
 
-button.disabled =
-false;
 
-button.textContent =
-"保存";
+    button.textContent =
+      "保存";
+
+
+    showError(
+      `配点保存エラー: ${error.message}`
+    );
+
+
+  } finally {
+
+    button.disabled =
+      false;
+
+  }
 
 }
 
-}
 
-}
-
+/* =====================================================
+   TOTAL
+===================================================== */
 
 function updateTotal() {
 
-const total =
-[
-...tableWrap.querySelectorAll(
-".points-input"
-)
-]
-.reduce(
-(sum, input) =>
-sum +
-(
-Number(
-input.value
-) || 0
-),
-0
-);
+  const inputs =
+    Array.from(
+      document.querySelectorAll(
+        ".points-input"
+      )
+    );
 
 
-const element =
-document.getElementById(
-"totalPoints"
-);
+  const total =
+    inputs.reduce(
+      (
+        sum,
+        input
+      ) =>
+        sum +
+        (
+          Number(
+            input.value
+          ) || 0
+        ),
+      0
+    );
 
 
-if (element) {
+  const totalElement =
+    document.getElementById(
+      "totalPoints"
+    );
 
-element.textContent =
-Number.isInteger(total)
-? String(total)
-: total.toFixed(1);
+
+  if (!totalElement) {
+
+    return;
+
+  }
+
+
+  totalElement.textContent =
+    Number.isInteger(
+      total
+    )
+      ? String(
+          total
+        )
+      : total.toFixed(
+          1
+        );
 
 }
 
-}
 
+/* =====================================================
+   STATUS
+===================================================== */
 
 function setStatus(
-message,
-error = false
+  message,
+  error = false
 ) {
 
-status.textContent =
-message;
+  statusElement.textContent =
+    message;
 
-status.className =
-error
-? "status error"
-: "status";
+
+  statusElement.className =
+    error
+      ? "status error"
+      : "status";
 
 }
 
 
 function showError(
-message
+  message
 ) {
 
-setStatus(
-message,
-true
-);
+  setStatus(
+    message,
+    true
+  );
 
 }
 
 
-function escapeHtml(
-value
-) {
+/* =====================================================
+   LOGOUT
+===================================================== */
 
-return String(
-value ??
-""
-)
-.replaceAll(
-"&",
-"&amp;"
-)
-.replaceAll(
-"<",
-"&lt;"
-)
-.replaceAll(
-">",
-"&gt;"
-)
-.replaceAll(
-'"',
-"&quot;"
-)
-.replaceAll(
-"'",
-"&#039;"
-);
+document
+  .getElementById(
+    "logoutButton"
+  )
+  ?.addEventListener(
+    "click",
+    async () => {
 
-}
+      if (
+        typeof logout ===
+        "function"
+      ) {
+
+        await logout();
+
+        return;
+
+      }
 
 
-})();
+      if (
+        typeof signOut ===
+        "function"
+      ) {
+
+        await signOut();
+
+      }
+
+    }
+  );
+
+</script>
+
+
+</body>
+
+</html>

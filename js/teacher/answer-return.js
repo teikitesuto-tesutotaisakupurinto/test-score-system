@@ -1,43 +1,68 @@
 
 /* =========================================================
-   採点済み答案返却 最終版
+   テスト成績システム
+   js/teacher/answer-return.js
 
-   出力内容
+   採点済み答案返却
+
+   最終仕様
    ---------------------------------------------------------
    元答案
-   +
-   保存済み採点記号
-   +
+      +
+   採点記号
+      +
    点数
 
-   出力しないもの
+   追加しないもの
    ---------------------------------------------------------
-   氏名
-   生徒番号
-   テスト名
-   新しい枠
-   layout_boxes
-   ページ番号
-   ヘッダー
-   フッター
-   「採点済み」文字
+   ・氏名
+   ・生徒番号
+   ・テスト名
+   ・新しい枠
+   ・layout_boxesの枠線
+   ・ヘッダー
+   ・フッター
+   ・「採点済み」などの文字
 
+   DB
+   ---------------------------------------------------------
+   test_pages.image_path
+      → 元の解答用紙ではなく、
+        答案ページでは answer_sheet_pages.file_path
+
+   answer_regions.image_path
+      → 自動クロップ画像
+
+   mark_objects
+      → 採点記号
+
+   scores
+      → 点数
 
    座標
    ---------------------------------------------------------
-   answer_regions
-      x / y
-      ↓
-   mark_objects
-      x / y = region内座標
-      ↓
-   元答案座標へ復元
+   answer_regions.x/y
+      = 元答案上の解答欄左上
+
+   mark_objects.x/y
+      = answer_regions内の座標
+
+   返却時
+      answer_regions.x/y
+      +
+      mark_objects.x/y
+      =
+      元答案座標
 ========================================================= */
 
 (function () {
 
   "use strict";
 
+
+  /* =======================================================
+     STATE
+  ======================================================= */
 
   let answerSheetId = null;
 
@@ -52,10 +77,9 @@
   let boxes = [];
 
 
-  const preview =
-    document.getElementById(
-      "returnPreview"
-    );
+  /* =======================================================
+     DOM
+  ======================================================= */
 
   const answerSelect =
     document.getElementById(
@@ -63,53 +87,195 @@
     );
 
 
+  const preview =
+    document.getElementById(
+      "returnPreview"
+    );
+
+
+  const statusElement =
+    document.getElementById(
+      "status"
+    );
+
+
   /* =======================================================
-     INIT
+     INITIALIZE
   ======================================================= */
 
   async function initialize() {
 
-    const profile =
-      await requireTeacher();
+    try {
 
-    if (!profile) {
-      return;
-    }
+      const profile =
+        await requireTeacher();
 
 
-    const teacherName =
-      document.getElementById(
-        "teacherName"
+      if (!profile) {
+        return;
+      }
+
+
+      const teacherName =
+        document.getElementById(
+          "teacherName"
+        );
+
+
+      if (teacherName) {
+
+        teacherName.textContent =
+          profile.name ||
+          "先生";
+
+      }
+
+
+      setupEvents();
+
+      await loadAnswers();
+
+
+      /*
+        URL:
+        ?answer=UUID
+      */
+
+      const answerId =
+        new URLSearchParams(
+          window.location.search
+        ).get(
+          "answer"
+        );
+
+
+      if (answerId) {
+
+        answerSheetId =
+          answerId;
+
+
+        if (answerSelect) {
+
+          answerSelect.value =
+            answerId;
+
+        }
+
+
+        await loadAnswer();
+
+      }
+
+    } catch (error) {
+
+      console.error(
+        "answer-return initialize:",
+        error
       );
 
-    if (teacherName) {
 
-      teacherName.textContent =
-        profile.name ||
-        "先生";
+      showError(
+        error.message ||
+        "答案返却画面を読み込めませんでした。"
+      );
 
     }
-
-
-    await loadAnswers();
-
-    setupEvents();
 
   }
 
 
   /* =======================================================
-     ANSWERS
+     EVENTS
+  ======================================================= */
+
+  function setupEvents() {
+
+    answerSelect?.addEventListener(
+      "change",
+      async () => {
+
+        answerSheetId =
+          answerSelect.value ||
+          null;
+
+
+        if (!answerSheetId) {
+
+          clearPreview();
+
+          return;
+
+        }
+
+
+        await loadAnswer();
+
+      }
+    );
+
+
+    document
+      .getElementById(
+        "pdfButton"
+      )
+      ?.addEventListener(
+        "click",
+        downloadPdf
+      );
+
+
+    document
+      .getElementById(
+        "printButton"
+      )
+      ?.addEventListener(
+        "click",
+        printAnswer
+      );
+
+
+    document
+      .getElementById(
+        "downloadButton"
+      )
+      ?.addEventListener(
+        "click",
+        downloadPng
+      );
+
+
+    document
+      .getElementById(
+        "logoutButton"
+      )
+      ?.addEventListener(
+        "click",
+        logout
+      );
+
+  }
+
+
+  /* =======================================================
+     LOAD ANSWERS
   ======================================================= */
 
   async function loadAnswers() {
+
+    if (!answerSelect) {
+      return;
+    }
+
 
     const {
       data,
       error
     } =
       await supabaseClient
-        .from("answer_sheets")
+        .from(
+          "answer_sheets"
+        )
         .select(`
           id,
           test_id,
@@ -124,7 +290,8 @@
         .order(
           "created_at",
           {
-            ascending:false
+            ascending:
+              false
           }
         );
 
@@ -146,9 +313,15 @@
             answer => `
 
               <option
-                value="${escapeHtml(answer.id)}"
+                value="${escapeHtml(
+                  answer.id
+                )}"
               >
-                ${escapeHtml(answer.id)}
+
+                ${escapeHtml(
+                  answer.id
+                )}
+
               </option>
 
             `
@@ -162,80 +335,55 @@
 
 
   /* =======================================================
-     EVENTS
-  ======================================================= */
-
-  function setupEvents() {
-
-    answerSelect?.addEventListener(
-      "change",
-      async () => {
-
-        answerSheetId =
-          answerSelect.value ||
-          null;
-
-
-        if (answerSheetId) {
-
-          await loadAnswer();
-
-        }
-
-      }
-    );
-
-
-    document
-      .getElementById("pdfButton")
-      ?.addEventListener(
-        "click",
-        downloadPdf
-      );
-
-
-    document
-      .getElementById("printButton")
-      ?.addEventListener(
-        "click",
-        printAnswer
-      );
-
-
-    document
-      .getElementById("downloadButton")
-      ?.addEventListener(
-        "click",
-        downloadPng
-      );
-
-
-    document
-      .getElementById("logoutButton")
-      ?.addEventListener(
-        "click",
-        logout
-      );
-
-  }
-
-
-  /* =======================================================
-     LOAD
+     LOAD ANSWER
   ======================================================= */
 
   async function loadAnswer() {
 
+    if (!answerSheetId) {
+      return;
+    }
+
+
+    setStatus(
+      "答案を読み込んでいます..."
+    );
+
+
+    /*
+      =====================================================
+      答案ページ
+      =====================================================
+
+      answer_sheet_pages.file_path
+      を使用。
+
+      test_pages.image_pathではない。
+
+      test_pages.image_pathは
+      解答用紙テンプレート用。
+
+      答案そのものは
+      answer_sheet_pages.file_path。
+    */
+
     const {
-      data: pageData,
-      error: pageError
+      data:
+        pageData,
+      error:
+        pageError
     } =
       await supabaseClient
-        .from("answer_sheet_pages")
+        .from(
+          "answer_sheet_pages"
+        )
         .select(`
           id,
+          answer_sheet_id,
           page_no,
           file_path,
+          file_type,
+          original_name,
           width_px,
           height_px
         `)
@@ -246,7 +394,8 @@
         .order(
           "page_no",
           {
-            ascending:true
+            ascending:
+              true
           }
         );
 
@@ -260,16 +409,28 @@
       pageData || [];
 
 
+    /*
+      =====================================================
+      answer_regions
+      =====================================================
+    */
+
     const {
-      data: regionData,
-      error: regionError
+      data:
+        regionData,
+      error:
+        regionError
     } =
       await supabaseClient
-        .from("answer_regions")
+        .from(
+          "answer_regions"
+        )
         .select(`
           id,
+          answer_sheet_id,
           layout_box_id,
           page_no,
+          image_path,
           x,
           y,
           width,
@@ -278,6 +439,13 @@
         .eq(
           "answer_sheet_id",
           answerSheetId
+        )
+        .order(
+          "page_no",
+          {
+            ascending:
+              true
+          }
         );
 
 
@@ -290,15 +458,27 @@
       regionData || [];
 
 
+    /*
+      =====================================================
+      mark_objects
+      =====================================================
+    */
+
     const {
-      data: markData,
-      error: markError
+      data:
+        markData,
+      error:
+        markError
     } =
       await supabaseClient
-        .from("mark_objects")
+        .from(
+          "mark_objects"
+        )
         .select(`
           id,
+          answer_sheet_id,
           layout_box_id,
+          question_id,
           object_type,
           text_value,
           color,
@@ -308,11 +488,19 @@
           y,
           width,
           height,
-          points
+          points,
+          created_at
         `)
         .eq(
           "answer_sheet_id",
           answerSheetId
+        )
+        .order(
+          "created_at",
+          {
+            ascending:
+              true
+          }
         );
 
 
@@ -325,15 +513,27 @@
       markData || [];
 
 
+    /*
+      =====================================================
+      scores
+      =====================================================
+    */
+
     const {
-      data: scoreData,
-      error: scoreError
+      data:
+        scoreData,
+      error:
+        scoreError
     } =
       await supabaseClient
-        .from("scores")
+        .from(
+          "scores"
+        )
         .select(`
           id,
+          answer_sheet_id,
           layout_box_id,
+          question_id,
           score,
           status
         `)
@@ -353,51 +553,89 @@
 
 
     /*
-      layout_boxesは座標補助にだけ使用。
+      =====================================================
+      layout_boxes
 
-      枠として描画しない。
+      枠そのものは描画しない。
+
+      必要なID情報だけ。
+      =====================================================
     */
 
-    const {
-      data: boxData,
-      error: boxError
-    } =
-      await supabaseClient
-        .from("layout_boxes")
-        .select(`
-          id,
-          points
-        `)
-        .in(
-          "id",
+    const layoutBoxIds =
+      [
+        ...new Set(
           [
-            ...new Set(
-              [
-                ...regions.map(
-                  r => r.layout_box_id
-                ),
-                ...marks.map(
-                  m => m.layout_box_id
-                ),
-                ...scores.map(
-                  s => s.layout_box_id
-                )
-              ]
+            ...regions.map(
+              region =>
+                region.layout_box_id
+            ),
+
+            ...marks.map(
+              mark =>
+                mark.layout_box_id
+            ),
+
+            ...scores.map(
+              score =>
+                score.layout_box_id
             )
+
           ]
-        );
+        )
+      ];
 
 
-    if (boxError) {
-      throw boxError;
+    if (layoutBoxIds.length) {
+
+      const {
+        data:
+          boxData,
+        error:
+          boxError
+      } =
+        await supabaseClient
+          .from(
+            "layout_boxes"
+          )
+          .select(`
+            id,
+            question_id,
+            label,
+            points
+          `)
+          .in(
+            "id",
+            layoutBoxIds
+          );
+
+
+      if (boxError) {
+        throw boxError;
+      }
+
+
+      boxes =
+        boxData || [];
+
+    } else {
+
+      boxes =
+        [];
+
     }
 
 
-    boxes =
-      boxData || [];
-
+    /*
+      表示
+    */
 
     await renderPreview();
+
+
+    setStatus(
+      "採点済み答案を表示しています。"
+    );
 
   }
 
@@ -417,6 +655,21 @@
       "";
 
 
+    if (!pages.length) {
+
+      preview.innerHTML = `
+
+        <div class="empty">
+          答案ページがありません。
+        </div>
+
+      `;
+
+      return;
+
+    }
+
+
     for (
       const page
       of pages
@@ -431,11 +684,17 @@
       canvas.style.display =
         "block";
 
+
       canvas.style.width =
         "100%";
 
+
       canvas.style.height =
         "auto";
+
+
+      canvas.style.marginBottom =
+        "20px";
 
 
       preview.appendChild(
@@ -448,12 +707,29 @@
 
 
   /* =======================================================
-     CREATE RETURNED IMAGE
+     CREATE RETURNED CANVAS
   ======================================================= */
 
   async function createReturnedCanvas(
     page
   ) {
+
+    /*
+      =====================================================
+      元答案
+
+      answer_sheet_pages.file_path
+      =====================================================
+    */
+
+    if (!page.file_path) {
+
+      throw new Error(
+        `答案ページ${page.page_no}のfile_pathがありません。`
+      );
+
+    }
+
 
     const {
       data,
@@ -472,6 +748,17 @@
 
     if (error) {
       throw error;
+    }
+
+
+    if (
+      !data?.signedUrl
+    ) {
+
+      throw new Error(
+        `答案ページ${page.page_no}の画像URLを取得できませんでした。`
+      );
+
     }
 
 
@@ -494,6 +781,7 @@
     canvas.width =
       image.naturalWidth;
 
+
     canvas.height =
       image.naturalHeight;
 
@@ -505,7 +793,7 @@
 
 
     /*
-      元画像をそのまま描画
+      元答案をそのまま描画
     */
 
     context.drawImage(
@@ -516,11 +804,13 @@
 
 
     /*
-      採点記号
+      =====================================================
+      このページのregion
+      =====================================================
     */
 
-    regions
-      .filter(
+    const pageRegions =
+      regions.filter(
         region =>
           Number(
             region.page_no
@@ -528,55 +818,68 @@
           Number(
             page.page_no
           )
-      )
-      .forEach(
-        region => {
-
-          marks
-            .filter(
-              mark =>
-                mark.layout_box_id ===
-                region.layout_box_id
-            )
-            .forEach(
-              mark => {
-
-                drawMark(
-                  context,
-                  mark,
-                  region
-                );
-
-              }
-            );
+      );
 
 
-          /*
-            点数のみ。
+    for (
+      const region
+      of pageRegions
+    ) {
 
-            layout_boxの枠は描かない。
-          */
+      /*
+        ===================================================
+        採点記号
+        ===================================================
+      */
 
-          const score =
-            scores.find(
-              item =>
-                item.layout_box_id ===
-                region.layout_box_id
-            );
+      marks
+        .filter(
+          mark =>
+            mark.layout_box_id ===
+            region.layout_box_id
+        )
+        .forEach(
+          mark => {
 
-
-          if (score) {
-
-            drawScore(
+            drawMark(
               context,
-              score,
+              mark,
               region
             );
 
           }
+        );
 
-        }
-      );
+
+      /*
+        ===================================================
+        点数
+
+        「点数だけ追加」
+
+        枠・設問名などは追加しない。
+        ===================================================
+      */
+
+      const score =
+        scores.find(
+          item =>
+            item.layout_box_id ===
+            region.layout_box_id
+        );
+
+
+      if (score) {
+
+        drawScore(
+          context,
+          score,
+          region
+        );
+
+      }
+
+    }
 
 
     return canvas;
@@ -585,7 +888,7 @@
 
 
   /* =======================================================
-     MARK
+     DRAW MARK
   ======================================================= */
 
   function drawMark(
@@ -597,27 +900,53 @@
     /*
       region内座標
       +
-      regionの元答案座標
+      元答案上のregion座標
     */
 
+    const baseX =
+      Number(
+        region.x
+      ) || 0;
+
+
+    const baseY =
+      Number(
+        region.y
+      ) || 0;
+
+
     const x =
-      Number(region.x || 0) +
-      Number(mark.x || 0);
+      baseX +
+      (
+        Number(
+          mark.x
+        ) || 0
+      );
 
 
     const y =
-      Number(region.y || 0) +
-      Number(mark.y || 0);
+      baseY +
+      (
+        Number(
+          mark.y
+        ) || 0
+      );
 
 
     const width =
-      Number(mark.width) ||
-      Number(mark.font_size) ||
+      Number(
+        mark.width
+      ) ||
+      Number(
+        mark.font_size
+      ) ||
       50;
 
 
     const height =
-      Number(mark.height) ||
+      Number(
+        mark.height
+      ) ||
       width;
 
 
@@ -626,13 +955,13 @@
       "#d00000";
 
 
-    const stroke =
+    const strokeWidth =
       Number(
         mark.stroke_width
       ) || 4;
 
 
-    const font =
+    const fontSize =
       Number(
         mark.font_size
       ) || 42;
@@ -644,18 +973,26 @@
     context.strokeStyle =
       color;
 
+
     context.fillStyle =
       color;
 
+
     context.lineWidth =
-      stroke;
+      strokeWidth;
+
 
     context.lineCap =
       "round";
 
+
     context.lineJoin =
       "round";
 
+
+    /*
+      ○
+    */
 
     if (
       mark.object_type ===
@@ -664,18 +1001,27 @@
 
       context.beginPath();
 
+
       context.arc(
         x,
         y,
-        width / 2,
+        Math.max(
+          5,
+          width / 2
+        ),
         0,
         Math.PI * 2
       );
+
 
       context.stroke();
 
     }
 
+
+    /*
+      ×
+    */
 
     else if (
       mark.object_type ===
@@ -684,30 +1030,39 @@
 
       context.beginPath();
 
+
       context.moveTo(
         x - width / 2,
         y - height / 2
       );
+
 
       context.lineTo(
         x + width / 2,
         y + height / 2
       );
 
+
       context.moveTo(
         x + width / 2,
         y - height / 2
       );
 
+
       context.lineTo(
         x - width / 2,
         y + height / 2
       );
+
 
       context.stroke();
 
     }
 
+
+    /*
+      △
+    */
 
     else if (
       mark.object_type ===
@@ -716,27 +1071,36 @@
 
       context.beginPath();
 
+
       context.moveTo(
         x,
         y - height / 2
       );
+
 
       context.lineTo(
         x - width / 2,
         y + height / 2
       );
 
+
       context.lineTo(
         x + width / 2,
         y + height / 2
       );
 
+
       context.closePath();
+
 
       context.stroke();
 
     }
 
+
+    /*
+      ◎
+    */
 
     else if (
       mark.object_type ===
@@ -744,10 +1108,16 @@
     ) {
 
       context.font =
-        `bold ${font}px Arial`;
+        `bold ${fontSize}px Arial`;
+
+
+      context.textAlign =
+        "center";
+
 
       context.textBaseline =
         "middle";
+
 
       context.fillText(
         "◎",
@@ -758,19 +1128,26 @@
     }
 
 
+    /*
+      文字
+    */
+
     else if (
       mark.object_type ===
       "text"
     ) {
 
       context.font =
-        `${font}px Arial`;
+        `${fontSize}px Arial`;
+
 
       context.textBaseline =
         "middle";
 
+
       context.fillText(
-        mark.text_value || "",
+        mark.text_value ||
+        "",
         x,
         y
       );
@@ -778,67 +1155,20 @@
     }
 
 
+    /*
+      ペン
+    */
+
     else if (
       mark.object_type ===
       "pen"
     ) {
 
-      /*
-        pointsが保存されている場合。
-      */
-
-      const points =
-        Array.isArray(
-          mark.points
-        )
-          ? mark.points
-          : [];
-
-
-      if (points.length > 1) {
-
-        context.beginPath();
-
-
-        points.forEach(
-          (
-            point,
-            index
-          ) => {
-
-            const px =
-              Number(region.x || 0) +
-              Number(point.x || 0);
-
-
-            const py =
-              Number(region.y || 0) +
-              Number(point.y || 0);
-
-
-            if (index === 0) {
-
-              context.moveTo(
-                px,
-                py
-              );
-
-            } else {
-
-              context.lineTo(
-                px,
-                py
-              );
-
-            }
-
-          }
-        );
-
-
-        context.stroke();
-
-      }
+      drawPenMark(
+        context,
+        mark,
+        region
+      );
 
     }
 
@@ -849,11 +1179,123 @@
 
 
   /* =======================================================
+     PEN
+  ======================================================= */
+
+  function drawPenMark(
+    context,
+    mark,
+    region
+  ) {
+
+    let points =
+      mark.points;
+
+
+    /*
+      JSON文字列の場合
+    */
+
+    if (
+      typeof points ===
+      "string"
+    ) {
+
+      try {
+
+        points =
+          JSON.parse(
+            points
+          );
+
+      } catch (_) {
+
+        points =
+          [];
+
+      }
+
+    }
+
+
+    if (
+      !Array.isArray(points) ||
+      points.length < 2
+    ) {
+
+      return;
+
+    }
+
+
+    const baseX =
+      Number(
+        region.x
+      ) || 0;
+
+
+    const baseY =
+      Number(
+        region.y
+      ) || 0;
+
+
+    context.beginPath();
+
+
+    points.forEach(
+      (
+        point,
+        index
+      ) => {
+
+        const x =
+          baseX +
+          (
+            Number(
+              point.x
+            ) || 0
+          );
+
+
+        const y =
+          baseY +
+          (
+            Number(
+              point.y
+            ) || 0
+          );
+
+
+        if (
+          index === 0
+        ) {
+
+          context.moveTo(
+            x,
+            y
+          );
+
+        } else {
+
+          context.lineTo(
+            x,
+            y
+          );
+
+        }
+
+      }
+    );
+
+
+    context.stroke();
+
+  }
+
+
+  /* =======================================================
      SCORE
-     
-     点数「だけ」を追加。
-     
-     枠・設問名・氏名等は追加しない。
   ======================================================= */
 
   function drawScore(
@@ -861,6 +1303,18 @@
     score,
     region
   ) {
+
+    const regionX =
+      Number(
+        region.x
+      ) || 0;
+
+
+    const regionY =
+      Number(
+        region.y
+      ) || 0;
+
 
     const regionWidth =
       Number(
@@ -875,19 +1329,19 @@
 
 
     /*
-      点数位置は答案領域の右側。
+      点数はregionの右側。
 
-      元答案の座標で描画。
+      元答案上に直接追加。
     */
 
     const x =
-      Number(region.x || 0) +
+      regionX +
       regionWidth +
       10;
 
 
     const y =
-      Number(region.y || 0) +
+      regionY +
       regionHeight / 2;
 
 
@@ -896,7 +1350,7 @@
         18,
         Math.min(
           42,
-          regionHeight * .25
+          regionHeight * 0.25
         )
       );
 
@@ -917,7 +1371,9 @@
 
 
     context.fillText(
-      `${Number(score.score) || 0}点`,
+      `${Number(
+        score.score
+      ) || 0}点`,
       x,
       y
     );
@@ -932,7 +1388,8 @@
      PDF
   ======================================================= */
 
-  let pdfPromise = null;
+  let pdfPromise =
+    null;
 
 
   function loadJsPdf() {
@@ -1019,7 +1476,7 @@
 
 
   /* =======================================================
-     PDF DOWNLOAD
+     DOWNLOAD PDF
   ======================================================= */
 
   async function downloadPdf() {
@@ -1045,13 +1502,17 @@
       );
 
 
+    const orientation =
+      first.width >=
+      first.height
+        ? "landscape"
+        : "portrait";
+
+
     const pdf =
       new JsPDF({
 
-        orientation:
-          first.width >= first.height
-            ? "landscape"
-            : "portrait",
+        orientation,
 
         unit:
           "px",
@@ -1068,7 +1529,7 @@
       });
 
 
-    addCanvas(
+    addCanvasToPdf(
       pdf,
       first
     );
@@ -1091,13 +1552,14 @@
           canvas.width,
           canvas.height
         ],
-        canvas.width >= canvas.height
+        canvas.width >=
+          canvas.height
           ? "landscape"
           : "portrait"
       );
 
 
-      addCanvas(
+      addCanvasToPdf(
         pdf,
         canvas
       );
@@ -1112,7 +1574,7 @@
   }
 
 
-  function addCanvas(
+  function addCanvasToPdf(
     pdf,
     canvas
   ) {
@@ -1140,18 +1602,24 @@
   async function printAnswer() {
 
     if (!pages.length) {
+
+      alert(
+        "答案がありません。"
+      );
+
       return;
+
     }
 
 
-    const win =
+    const printWindow =
       window.open(
         "",
         "_blank"
       );
 
 
-    if (!win) {
+    if (!printWindow) {
 
       alert(
         "印刷画面を開けませんでした。"
@@ -1162,7 +1630,7 @@
     }
 
 
-    win.document.write(`
+    printWindow.document.write(`
 
       <!DOCTYPE html>
 
@@ -1177,24 +1645,24 @@
         <style>
 
           @page {
-            margin:0;
+            margin: 0;
           }
 
           html,
           body {
-            margin:0;
-            padding:0;
+            margin: 0;
+            padding: 0;
           }
 
           img {
-            display:block;
-            width:100%;
-            height:auto;
-            page-break-after:always;
+            display: block;
+            width: 100%;
+            height: auto;
+            page-break-after: always;
           }
 
           img:last-child {
-            page-break-after:auto;
+            page-break-after: auto;
           }
 
         </style>
@@ -1208,7 +1676,7 @@
     `);
 
 
-    win.document.close();
+    printWindow.document.close();
 
 
     for (
@@ -1223,9 +1691,10 @@
 
 
       const image =
-        win.document.createElement(
-          "img"
-        );
+        printWindow.document
+          .createElement(
+            "img"
+          );
 
 
       image.src =
@@ -1234,28 +1703,43 @@
         );
 
 
-      win.document.body.appendChild(
-        image
-      );
+      printWindow.document.body
+        .appendChild(
+          image
+        );
 
     }
 
 
-    await wait(300);
+    await wait(
+      500
+    );
 
 
-    win.focus();
+    printWindow.focus();
 
-    win.print();
+
+    printWindow.print();
 
   }
 
 
   /* =======================================================
-     PNG
+     DOWNLOAD PNG
   ======================================================= */
 
   async function downloadPng() {
+
+    if (!pages.length) {
+
+      alert(
+        "答案がありません。"
+      );
+
+      return;
+
+    }
+
 
     for (
       const page
@@ -1289,15 +1773,71 @@
         )}.png`;
 
 
+      document.body.appendChild(
+        link
+      );
+
+
       link.click();
 
 
-      await wait(150);
+      link.remove();
+
+
+      await wait(
+        150
+      );
 
     }
 
   }
 
+
+  /* =======================================================
+     CLEAR
+  ======================================================= */
+
+  function clearPreview() {
+
+    pages =
+      [];
+
+    regions =
+      [];
+
+    marks =
+      [];
+
+    scores =
+      [];
+
+    boxes =
+      [];
+
+
+    if (preview) {
+
+      preview.innerHTML = `
+
+        <div class="empty">
+          答案を選択してください。
+        </div>
+
+      `;
+
+    }
+
+
+    setStatus(
+      "答案を選択してください。"
+    );
+
+  }
+
+
+  /* =======================================================
+     HELPERS
+  ======================================================= */
 
   function loadImage(
     src
@@ -1321,7 +1861,12 @@
 
 
         image.onerror =
-          reject;
+          () =>
+            reject(
+              new Error(
+                "画像を読み込めませんでした。"
+              )
+            );
 
 
         image.src =
@@ -1334,15 +1879,40 @@
 
 
   function wait(
-    ms
+    milliseconds
   ) {
 
     return new Promise(
       resolve =>
         setTimeout(
           resolve,
-          ms
+          milliseconds
         )
+    );
+
+  }
+
+
+  function setStatus(
+    message
+  ) {
+
+    if (statusElement) {
+
+      statusElement.textContent =
+        message;
+
+    }
+
+  }
+
+
+  function showError(
+    message
+  ) {
+
+    setStatus(
+      message
     );
 
   }
@@ -1355,14 +1925,33 @@
     return String(
       value ?? ""
     )
-      .replaceAll("&","&amp;")
-      .replaceAll("<","&lt;")
-      .replaceAll(">","&gt;")
-      .replaceAll('"',"&quot;")
-      .replaceAll("'","&#039;");
+      .replaceAll(
+        "&",
+        "&amp;"
+      )
+      .replaceAll(
+        "<",
+        "&lt;"
+      )
+      .replaceAll(
+        ">",
+        "&gt;"
+      )
+      .replaceAll(
+        '"',
+        "&quot;"
+      )
+      .replaceAll(
+        "'",
+        "&#039;"
+      );
 
   }
 
+
+  /* =======================================================
+     START
+  ======================================================= */
 
   initialize();
 

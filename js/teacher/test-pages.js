@@ -3,46 +3,9 @@
    テスト成績システム
    js/teacher/test-pages.js
 
-   解答用紙登録 + 枠設定エディタ 完全版
+   解答用紙登録 + 枠設定
 
-   ---------------------------------------------------------
-   test_pages
-   ---------------------------------------------------------
-   id
-   test_id
-   page_no
-   image_path
-   width_px
-   height_px
-   created_at
-   file_path
-   file_type
-   original_name
-
-   ---------------------------------------------------------
-   layout_boxes
-   ---------------------------------------------------------
-   id
-   test_id
-   page_no
-   box_type
-   label
-   x
-   y
-   width
-   height
-   question_id
-   created_at
-   points
-   parent_box_id
-   major_no
-   minor_no
-   box_role
-   sort_order
-   subtotal_group
-
-   ---------------------------------------------------------
-   box_type CHECK制約
+   box_type のDB制約
    ---------------------------------------------------------
    answer
    qr
@@ -50,7 +13,6 @@
    name
    other
 
-   ---------------------------------------------------------
    box_role
    ---------------------------------------------------------
    major
@@ -63,59 +25,24 @@
    instruction
    other
 
+   この画面では
    ---------------------------------------------------------
-   ルール
+   ・配点を設定しない
+   ・question_idを設定しない
+   ・表示名を入力しない
+   ・大問/小問は自動採番
+   ・小問が大問内にある場合だけ親大問を設定
+   ・小計が大問内にある場合だけ親大問を設定
+   ・合計は独立
+   ・QRは独立
+
+   test_pages
    ---------------------------------------------------------
-   ・大問 → box_type=answer
-   ・小問 → box_type=answer
-   ・QR → box_type=qr
-   ・小計 → box_type=answer
-   ・合計 → box_type=answer
-   ・氏名 → box_type=name
-   ・生徒番号 → box_type=student_no
-   ・説明 → box_type=other
-   ・その他 → box_type=other
+   image_pathを使用
 
-   ・この画面では配点を設定しない
-   ・pointsは0で保存
-   ・question_idは使用しない
-   ・question_idはnullで保存
-
+   layout_boxes
    ---------------------------------------------------------
-   親子関係
-   ---------------------------------------------------------
-
-   大問1
-      ├ 問1
-      ├ 問2
-      └ 小計
-
-   小問・小計を大問の内側に置いた場合だけ
-   parent_box_idを設定。
-
-   大問がない小問は
-   major_no=null
-   minor_no=null
-   parent_box_id=null
-
-   勝手に大問を生成しない。
-
-   合計は独立。
-
-   QRも独立。
-
-   ---------------------------------------------------------
-   操作
-   ---------------------------------------------------------
-
-   ・枠種類を選択
-   ・解答用紙をドラッグ
-   ・ドラッグ中は赤い仮枠をリアルタイム表示
-   ・既存枠クリックで選択
-   ・枠ドラッグで移動
-   ・右下ハンドルでリサイズ
-   ・Deleteキーで削除
-   ・保存
+   page_noでtest_pagesと対応
 ========================================================= */
 
 (function () {
@@ -136,9 +63,7 @@
   let selectedBoxId = null;
 
 
-  /*
-    新規枠ドラッグ
-  */
+  /* 新規枠作成 */
 
   let drawing = false;
 
@@ -153,9 +78,7 @@
   let drawPreview = null;
 
 
-  /*
-    既存枠移動・リサイズ
-  */
+  /* 既存枠移動・リサイズ */
 
   let dragMode = null;
 
@@ -168,9 +91,7 @@
   let dragOriginal = null;
 
 
-  /*
-    PDF.js
-  */
+  /* PDF */
 
   let pdfPromise = null;
 
@@ -247,100 +168,55 @@
   const ROLE_INFO = {
 
     major: {
-
-      label:
-        "大問",
-
-      boxType:
-        "answer"
-
+      label: "大問",
+      boxType: "answer"
     },
 
     minor: {
-
-      label:
-        "小問",
-
-      boxType:
-        "answer"
-
+      label: "小問",
+      boxType: "answer"
     },
 
     qr: {
-
-      label:
-        "QR",
-
-      boxType:
-        "qr"
-
+      label: "QR",
+      boxType: "qr"
     },
 
     subtotal: {
-
-      label:
-        "小計",
-
-      boxType:
-        "answer"
-
+      label: "小計",
+      boxType: "answer"
     },
 
     total: {
-
-      label:
-        "合計",
-
-      boxType:
-        "answer"
-
+      label: "合計",
+      boxType: "answer"
     },
 
     name: {
-
-      label:
-        "氏名",
-
-      boxType:
-        "name"
-
+      label: "氏名",
+      boxType: "name"
     },
 
     student_no: {
-
-      label:
-        "生徒番号",
-
-      boxType:
-        "student_no"
-
+      label: "生徒番号",
+      boxType: "student_no"
     },
 
     instruction: {
-
-      label:
-        "説明",
-
-      boxType:
-        "other"
-
+      label: "説明",
+      boxType: "other"
     },
 
     other: {
-
-      label:
-        "その他",
-
-      boxType:
-        "other"
-
+      label: "その他",
+      boxType: "other"
     }
 
   };
 
 
   /* =======================================================
-     INIT
+     INITIALIZE
   ======================================================= */
 
   async function initialize() {
@@ -373,11 +249,6 @@
       }
 
 
-      /*
-        URL:
-        /teacher/tests/pages?test=UUID
-      */
-
       selectedTestId =
         new URLSearchParams(
           window.location.search
@@ -388,7 +259,19 @@
         null;
 
 
+      /*
+        イベント登録
+      */
+
       setupEvents();
+
+
+      /*
+        枠設定パネルは
+        最初から表示する。
+      */
+
+      openBoxPanel();
 
 
       updateRoleHelp();
@@ -406,6 +289,7 @@
 
 
       await loadLayout();
+
 
     } catch (error) {
 
@@ -503,9 +387,7 @@
 
 
     /*
-      =====================================================
       test_pages
-      =====================================================
     */
 
     const {
@@ -552,9 +434,7 @@
 
 
     /*
-      =====================================================
       layout_boxes
-      =====================================================
     */
 
     const {
@@ -612,13 +492,21 @@
     normalizeBoxes();
 
 
+    /*
+      既存データの親子関係を
+      座標から再確認。
+    */
+
+    rebuildHierarchy();
+
+
     await renderAllPages();
 
 
     if (!pages.length) {
 
       setStatus(
-        "先に解答用紙を登録してください。"
+        "解答用紙を登録してください。"
       );
 
       return;
@@ -634,17 +522,13 @@
 
 
   /* =======================================================
-     NORMALIZE BOXES
+     NORMALIZE
   ======================================================= */
 
   function normalizeBoxes() {
 
     boxes.forEach(
       box => {
-
-        /*
-          古いデータにも対応
-        */
 
         if (
           !ROLE_INFO[
@@ -660,11 +544,6 @@
         }
 
 
-        /*
-          DB CHECK制約に
-          必ず合わせる。
-        */
-
         box.box_type =
           ROLE_INFO[
             box.box_role
@@ -673,21 +552,105 @@
 
 
         /*
-          配点設定は後。
-
-          この画面では常に0。
+          配点は後の画面で設定。
         */
 
         box.points =
           0;
 
+      }
+    );
 
-        /*
-          設問IDは使わない。
-        */
+  }
+
+
+  /* =======================================================
+     REBUILD HIERARCHY
+  ======================================================= */
+
+  function rebuildHierarchy() {
+
+    /*
+      まず大問番号
+    */
+
+    const majors =
+      boxes
+        .filter(
+          box =>
+            box.box_role ===
+            "major"
+        )
+        .sort(
+          compareBoxes
+        );
+
+
+    majors.forEach(
+      (
+        major,
+        index
+      ) => {
+
+        major.major_no =
+          index + 1;
+
+        major.parent_box_id =
+          null;
+
+        major.minor_no =
+          null;
+
+        major.subtotal_group =
+          null;
 
       }
     );
+
+
+    /*
+      小問
+    */
+
+    boxes
+      .filter(
+        box =>
+          box.box_role ===
+          "minor"
+      )
+      .forEach(
+        box => {
+
+          updateParent(
+            box
+          );
+
+        }
+      );
+
+
+    /*
+      小計
+    */
+
+    boxes
+      .filter(
+        box =>
+          box.box_role ===
+          "subtotal"
+      )
+      .forEach(
+        box => {
+
+          updateParent(
+            box
+          );
+
+        }
+      );
+
+
+    renumberAll();
 
   }
 
@@ -802,10 +765,6 @@
     }
 
 
-    /*
-      Storage
-    */
-
     const {
       data,
       error
@@ -864,19 +823,11 @@
       );
 
 
-    /*
-      新規枠
-    */
-
     setupDrawing(
       layer,
       page
     );
 
-
-    /*
-      既存枠
-    */
 
     boxes
       .filter(
@@ -918,11 +869,6 @@
     layer.addEventListener(
       "pointerdown",
       event => {
-
-        /*
-          既存枠上なら
-          新規枠を作らない。
-        */
 
         if (
           event.target !==
@@ -975,15 +921,14 @@
           );
 
 
-        layer.setPointerCapture(
-          event.pointerId
-        );
+        try {
 
+          layer.setPointerCapture(
+            event.pointerId
+          );
 
-        /*
-          ドラッグ開始直後から
-          仮枠を表示。
-        */
+        } catch (_) {}
+
 
         drawPreview =
           document.createElement(
@@ -1253,10 +1198,6 @@
         );
 
 
-    /*
-      表示座標 → 原画像座標
-    */
-
     if (!canvas) {
 
       cancelDrawing();
@@ -1280,8 +1221,13 @@
       canvasRect.height;
 
 
+    const role =
+      boxRole?.value ||
+      "minor";
+
+
     /*
-      状態を解除
+      状態解除
     */
 
     drawing =
@@ -1318,11 +1264,6 @@
     }
 
 
-    const role =
-      boxRole?.value ||
-      "minor";
-
-
     const roleInfo =
       ROLE_INFO[
         role
@@ -1342,10 +1283,6 @@
         Number(
           page.page_no
         ),
-
-      /*
-        CHECK制約に合う値だけ。
-      */
 
       box_type:
         roleInfo.boxType,
@@ -1369,16 +1306,8 @@
         height *
         scaleY,
 
-      /*
-        配点は後設定。
-      */
-
       points:
         0,
-
-      /*
-        設問IDは使用しない。
-      */
 
       parent_box_id:
         null,
@@ -1402,42 +1331,46 @@
 
 
     /*
-      親大問判定
+      まず追加。
+      その後に親と番号を決める。
     */
-
-    assignHierarchy(
-      box
-    );
-
-
-    /*
-      自動番号
-    */
-
-    renumberAll();
-
-
-    /*
-      ラベル
-    */
-
-    box.label =
-      automaticLabel(
-        box.box_role,
-        box
-      );
-
 
     boxes.push(
       box
     );
 
 
-    /*
-      push後にもう一度番号を整理
-    */
+    if (
+      role ===
+      "major"
+    ) {
 
-    renumberAll();
+      renumberAll();
+
+    }
+
+    else if (
+      role ===
+        "minor" ||
+      role ===
+        "subtotal"
+    ) {
+
+      updateParent(
+        box
+      );
+
+      renumberAll();
+
+    }
+
+    else {
+
+      clearParent(
+        box
+      );
+
+    }
 
 
     box.label =
@@ -1461,11 +1394,13 @@
 
     updateAllLabels();
 
+    updateRoleHelp();
+
   }
 
 
   /* =======================================================
-     CANCEL
+     CANCEL DRAWING
   ======================================================= */
 
   function cancelDrawing() {
@@ -1593,7 +1528,7 @@
 
 
   /* =======================================================
-     STYLE
+     ROLE STYLE
   ======================================================= */
 
   function applyRoleStyle(
@@ -1683,7 +1618,7 @@
 
 
   /* =======================================================
-     MOVE / RESIZE
+     BOX MOVE / RESIZE
   ======================================================= */
 
   function setupBoxInteraction(
@@ -1785,9 +1720,13 @@
         };
 
 
-        element.setPointerCapture(
-          event.pointerId
-        );
+        try {
+
+          element.setPointerCapture(
+            event.pointerId
+          );
+
+        } catch (_) {}
 
       }
     );
@@ -1877,8 +1816,8 @@
 
 
         /*
-          小問・小計の親を
-          リアルタイム再判定。
+          小問・小計は
+          移動中にも親判定。
         */
 
         if (
@@ -1955,7 +1894,7 @@
 
 
   /* =======================================================
-     FINISH MOVE / RESIZE
+     FINISH BOX DRAG
   ======================================================= */
 
   function finishBoxDrag(
@@ -2003,7 +1942,7 @@
 
 
   /* =======================================================
-     SELECT
+     SELECT BOX
   ======================================================= */
 
   function selectBox(
@@ -2055,7 +1994,7 @@
 
 
   /* =======================================================
-     SELECTED
+     GET SELECTED BOX
   ======================================================= */
 
   function getSelectedBox() {
@@ -2080,7 +2019,7 @@
 
 
   /* =======================================================
-     APPLY
+     APPLY SELECTED ROLE
   ======================================================= */
 
   function applySelectedBox() {
@@ -2117,10 +2056,6 @@
       role;
 
 
-    /*
-      CHECK制約対応。
-    */
-
     box.box_type =
       ROLE_INFO[
         role
@@ -2128,41 +2063,29 @@
 
 
     /*
-      この画面では配点なし。
+      配点は後で設定。
     */
 
     box.points =
       0;
 
 
-    /*
-      大問
-    */
-
     if (
       role ===
       "major"
     ) {
 
-      box.parent_box_id =
-        null;
-
-      box.minor_no =
-        null;
-
-      box.subtotal_group =
-        null;
+      clearParent(
+        box
+      );
 
     }
 
-
-    /*
-      小問
-    */
-
     else if (
       role ===
-      "minor"
+        "minor" ||
+      role ===
+        "subtotal"
     ) {
 
       updateParent(
@@ -2170,46 +2093,12 @@
       );
 
     }
-
-
-    /*
-      小計
-    */
-
-    else if (
-      role ===
-      "subtotal"
-    ) {
-
-      updateParent(
-        box
-      );
-
-    }
-
-
-    /*
-      合計
-      QR
-      氏名
-      生徒番号
-      説明
-      その他
-    */
 
     else {
 
-      box.parent_box_id =
-        null;
-
-      box.major_no =
-        null;
-
-      box.minor_no =
-        null;
-
-      box.subtotal_group =
-        null;
+      clearParent(
+        box
+      );
 
     }
 
@@ -2225,232 +2114,12 @@
 
 
   /* =======================================================
-     DELETE
+     CLEAR PARENT
   ======================================================= */
 
-  function deleteSelectedBox() {
-
-    if (!selectedBoxId) {
-
-      return;
-
-    }
-
-
-    const targetId =
-      selectedBoxId;
-
-
-    /*
-      子枠の親を解除。
-    */
-
-    boxes
-      .filter(
-        box =>
-          box.parent_box_id ===
-          targetId
-      )
-      .forEach(
-        child => {
-
-          child.parent_box_id =
-            null;
-
-          child.major_no =
-            null;
-
-          child.minor_no =
-            null;
-
-          child.subtotal_group =
-            null;
-
-        }
-      );
-
-
-    boxes =
-      boxes.filter(
-        box =>
-          box.id !==
-          targetId
-      );
-
-
-    document
-      .querySelectorAll(
-        ".layout-box"
-      )
-      .forEach(
-        element => {
-
-          if (
-            element.dataset.boxId ===
-            targetId
-          ) {
-
-            element.remove();
-
-          }
-
-        }
-      );
-
-
-    selectedBoxId =
-      null;
-
-
-    renumberAll();
-
-
-    closeBoxPanel();
-
-
-    updateAllLabels();
-
-  }
-
-
-  /* =======================================================
-     HIERARCHY
-  ======================================================= */
-
-  function assignHierarchy(
+  function clearParent(
     box
   ) {
-
-    /*
-      大問
-    */
-
-    if (
-      box.box_role ===
-      "major"
-    ) {
-
-      box.parent_box_id =
-        null;
-
-      box.major_no =
-        null;
-
-      box.minor_no =
-        null;
-
-      box.subtotal_group =
-        null;
-
-      return;
-
-    }
-
-
-    /*
-      小問
-    */
-
-    if (
-      box.box_role ===
-      "minor"
-    ) {
-
-      const parent =
-        findContainingMajor(
-          box
-        );
-
-
-      if (parent) {
-
-        box.parent_box_id =
-          parent.id;
-
-        box.major_no =
-          parent.major_no;
-
-        box.minor_no =
-          null;
-
-      } else {
-
-        /*
-          大問がなければ
-          大問を作らない。
-        */
-
-        box.parent_box_id =
-          null;
-
-        box.major_no =
-          null;
-
-        box.minor_no =
-          null;
-
-      }
-
-
-      box.subtotal_group =
-        null;
-
-      return;
-
-    }
-
-
-    /*
-      小計
-    */
-
-    if (
-      box.box_role ===
-      "subtotal"
-    ) {
-
-      const parent =
-        findContainingMajor(
-          box
-        );
-
-
-      if (parent) {
-
-        box.parent_box_id =
-          parent.id;
-
-        box.major_no =
-          parent.major_no;
-
-        box.subtotal_group =
-          parent.major_no;
-
-      } else {
-
-        box.parent_box_id =
-          null;
-
-        box.major_no =
-          null;
-
-        box.subtotal_group =
-          null;
-
-      }
-
-
-      box.minor_no =
-        null;
-
-      return;
-
-    }
-
-
-    /*
-      その他は独立
-    */
 
     box.parent_box_id =
       null;
@@ -2481,36 +2150,16 @@
       );
 
 
+    /*
+      大問がない
+      または外に出た
+    */
+
     if (!parent) {
 
-      box.parent_box_id =
-        null;
-
-      box.major_no =
-        null;
-
-
-      if (
-        box.box_role ===
-        "minor"
-      ) {
-
-        box.minor_no =
-          null;
-
-      }
-
-
-      if (
-        box.box_role ===
-        "subtotal"
-      ) {
-
-        box.subtotal_group =
-          null;
-
-      }
-
+      clearParent(
+        box
+      );
 
       return;
 
@@ -2540,6 +2189,9 @@
       box.box_role ===
       "subtotal"
     ) {
+
+      box.minor_no =
+        null;
 
       box.subtotal_group =
         parent.major_no;
@@ -2596,8 +2248,8 @@
 
 
     /*
-      一番小さい大問を
-      最も具体的な親として採用。
+      複数の大問に入っている場合、
+      一番小さい大問を親にする。
     */
 
     candidates.sort(
@@ -2616,8 +2268,10 @@
           Number(b.height);
 
 
-        return areaA -
-          areaB;
+        return (
+          areaA -
+          areaB
+        );
 
       }
     );
@@ -2629,7 +2283,7 @@
 
 
   /* =======================================================
-     RENUMBER
+     RENUMBER ALL
   ======================================================= */
 
   function renumberAll() {
@@ -2673,7 +2327,7 @@
 
 
     /*
-      大問ごとの小問
+      小問を親ごとに採番
     */
 
     majors.forEach(
@@ -2713,8 +2367,7 @@
 
 
     /*
-      大問外の小問は
-      番号なし。
+      大問外の小問
     */
 
     boxes
@@ -2785,8 +2438,76 @@
 
 
     /*
-      この画面では
-      配点を設定しない。
+      合計は必ず独立
+    */
+
+    boxes
+      .filter(
+        box =>
+          box.box_role ===
+          "total"
+      )
+      .forEach(
+        total => {
+
+          clearParent(
+            total
+          );
+
+        }
+      );
+
+
+    /*
+      QRも独立
+    */
+
+    boxes
+      .filter(
+        box =>
+          box.box_role ===
+          "qr"
+      )
+      .forEach(
+        qr => {
+
+          clearParent(
+            qr
+          );
+
+        }
+      );
+
+
+    /*
+      氏名・生徒番号・説明・その他も独立
+    */
+
+    boxes
+      .filter(
+        box =>
+          [
+            "name",
+            "student_no",
+            "instruction",
+            "other"
+          ].includes(
+            box.box_role
+          )
+      )
+      .forEach(
+        box => {
+
+          clearParent(
+            box
+          );
+
+        }
+      );
+
+
+    /*
+      配点はこの画面では0
     */
 
     boxes.forEach(
@@ -2810,106 +2531,68 @@
     box
   ) {
 
-    if (
-      role ===
-      "major"
+    switch (
+      role
     ) {
 
-      return `大問${
-        box?.major_no ||
-        "?"
-      }`;
+      case "major":
+
+        return `大問${
+          box?.major_no ||
+          "?"
+        }`;
+
+
+      case "minor":
+
+        return box?.minor_no
+          ? `問${box.minor_no}`
+          : "小問";
+
+
+      case "qr":
+
+        return "QR";
+
+
+      case "subtotal":
+
+        return box?.major_no
+          ? `大問${box.major_no} 小計`
+          : "小計";
+
+
+      case "total":
+
+        return "合計";
+
+
+      case "name":
+
+        return "氏名";
+
+
+      case "student_no":
+
+        return "生徒番号";
+
+
+      case "instruction":
+
+        return "説明";
+
+
+      default:
+
+        return "その他";
 
     }
-
-
-    if (
-      role ===
-      "minor"
-    ) {
-
-      return box?.minor_no
-        ? `問${box.minor_no}`
-        : "小問";
-
-    }
-
-
-    if (
-      role ===
-      "qr"
-    ) {
-
-      return "QR";
-
-    }
-
-
-    if (
-      role ===
-      "subtotal"
-    ) {
-
-      if (
-        box?.major_no
-      ) {
-
-        return `大問${box.major_no} 小計`;
-
-      }
-
-      return "小計";
-
-    }
-
-
-    if (
-      role ===
-      "total"
-    ) {
-
-      return "合計";
-
-    }
-
-
-    if (
-      role ===
-      "name"
-    ) {
-
-      return "氏名";
-
-    }
-
-
-    if (
-      role ===
-      "student_no"
-    ) {
-
-      return "生徒番号";
-
-    }
-
-
-    if (
-      role ===
-      "instruction"
-    ) {
-
-      return "説明";
-
-    }
-
-
-    return "その他";
 
   }
 
 
   /* =======================================================
-     LABEL UPDATE
+     UPDATE LABELS
   ======================================================= */
 
   function updateAllLabels() {
@@ -2965,155 +2648,152 @@
 
 
   /* =======================================================
-     ROLE HELP
+     UPDATE BOX ELEMENT
   ======================================================= */
 
-  function updateRoleHelp() {
+  function updateBoxElement(
+    element,
+    page,
+    box
+  ) {
 
-    if (!parentInfo) {
+    const pageWidth =
+      Number(
+        page.width_px
+      );
+
+
+    const pageHeight =
+      Number(
+        page.height_px
+      );
+
+
+    if (
+      !pageWidth ||
+      !pageHeight
+    ) {
 
       return;
 
     }
 
 
-    const box =
-      getSelectedBox();
+    element.style.left =
+      `${(
+        Number(
+          box.x
+        ) /
+        pageWidth
+      ) * 100}%`;
 
 
-    const role =
-      box?.box_role ||
-      boxRole?.value ||
-      "minor";
+    element.style.top =
+      `${(
+        Number(
+          box.y
+        ) /
+        pageHeight
+      ) * 100}%`;
 
 
-    if (
-      role ===
-      "major"
-    ) {
+    element.style.width =
+      `${(
+        Number(
+          box.width
+        ) /
+        pageWidth
+      ) * 100}%`;
 
-      parentInfo.textContent =
-        "大問の範囲を設定します。";
+
+    element.style.height =
+      `${(
+        Number(
+          box.height
+        ) /
+        pageHeight
+      ) * 100}%`;
+
+  }
+
+
+  /* =======================================================
+     DELETE
+  ======================================================= */
+
+  function deleteSelectedBox() {
+
+    if (!selectedBoxId) {
 
       return;
 
     }
 
 
-    if (
-      role ===
-      "minor"
-    ) {
+    const targetId =
+      selectedBoxId;
 
-      if (box) {
 
-        const parent =
-          findContainingMajor(
-            box
+    /*
+      子枠の親を解除
+    */
+
+    boxes
+      .filter(
+        box =>
+          box.parent_box_id ===
+          targetId
+      )
+      .forEach(
+        child => {
+
+          clearParent(
+            child
           );
 
-
-        parentInfo.textContent =
-          parent
-            ? `大問${parent.major_no}の小問です。`
-            : "大問の外にある小問です。";
-
-      } else {
-
-        parentInfo.textContent =
-          "大問の内側に置いた場合だけ、その大問の小問になります。";
-
-      }
-
-      return;
-
-    }
+        }
+      );
 
 
-    if (
-      role ===
-      "subtotal"
-    ) {
-
-      if (box) {
-
-        const parent =
-          findContainingMajor(
-            box
-          );
+    boxes =
+      boxes.filter(
+        box =>
+          box.id !==
+          targetId
+      );
 
 
-        parentInfo.textContent =
-          parent
-            ? `大問${parent.major_no}の小計です。`
-            : "大問の外にある小計です。";
+    document
+      .querySelectorAll(
+        ".layout-box"
+      )
+      .forEach(
+        element => {
 
-      } else {
+          if (
+            element.dataset.boxId ===
+            targetId
+          ) {
 
-        parentInfo.textContent =
-          "大問の内側に置くと、その大問の小計になります。";
+            element.remove();
 
-      }
+          }
 
-      return;
-
-    }
-
-
-    if (
-      role ===
-      "total"
-    ) {
-
-      parentInfo.textContent =
-        "全体の合計です。大問には所属しません。";
-
-      return;
-
-    }
+        }
+      );
 
 
-    if (
-      role ===
-      "qr"
-    ) {
-
-      parentInfo.textContent =
-        "生徒特定用QRコードの読み取り範囲です。";
-
-      return;
-
-    }
+    selectedBoxId =
+      null;
 
 
-    if (
-      role ===
-      "name"
-    ) {
-
-      parentInfo.textContent =
-        "氏名の読み取り範囲です。";
-
-      return;
-
-    }
+    renumberAll();
 
 
-    if (
-      role ===
-      "student_no"
-    ) {
-
-      parentInfo.textContent =
-        "生徒番号の読み取り範囲です。";
-
-      return;
-
-    }
+    closeBoxPanel();
 
 
-    parentInfo.textContent =
-      "この範囲を登録します。";
+    updateAllLabels();
 
   }
 
@@ -3137,7 +2817,11 @@
 
     try {
 
-      renumberAll();
+      /*
+        保存前に必ず構造を再構築
+      */
+
+      rebuildHierarchy();
 
 
       boxes
@@ -3196,7 +2880,7 @@
 
 
       /*
-        新規保存
+        新規枠
       */
 
       if (boxes.length) {
@@ -3217,7 +2901,9 @@
                 ),
 
               /*
-                CHECK制約対応
+                CHECK制約
+                answer / qr / student_no /
+                name / other
               */
 
               box_type:
@@ -3253,14 +2939,14 @@
                 ),
 
               /*
-                後の配点設定で設定する。
+                配点は後設定
               */
 
               points:
                 0,
 
               /*
-                この画面では使わない。
+                設問IDは使用しない
               */
 
               question_id:
@@ -3358,7 +3044,7 @@
       new Set();
 
 
-    const allowedBoxTypes =
+    const allowedTypes =
       [
         "answer",
         "qr",
@@ -3428,13 +3114,13 @@
 
 
         if (
-          !allowedBoxTypes.includes(
+          !allowedTypes.includes(
             type
           )
         ) {
 
           throw new Error(
-            `box_type「${type}」は使用できません。`
+            `box_type「${type}」はDB制約で使用できません。`
           );
 
         }
@@ -3471,7 +3157,7 @@
           ) {
 
             throw new Error(
-              "小問・小計の親は大問でなければなりません。"
+              "親枠は大問でなければなりません。"
             );
 
           }
@@ -3496,72 +3182,177 @@
 
 
         /*
-          大問
+          合計は独立
         */
 
         if (
           box.box_role ===
-          "major"
+            "total" &&
+          box.parent_box_id
         ) {
 
-          if (
-            box.parent_box_id
-          ) {
-
-            throw new Error(
-              "大問に親枠は設定できません。"
-            );
-
-          }
+          throw new Error(
+            "合計は大問に所属できません。"
+          );
 
         }
 
 
         /*
-          合計
+          QRは独立
         */
 
         if (
           box.box_role ===
-          "total"
+            "qr" &&
+          box.parent_box_id
         ) {
 
-          if (
-            box.parent_box_id
-          ) {
-
-            throw new Error(
-              "合計は大問に所属できません。"
-            );
-
-          }
-
-        }
-
-
-        /*
-          QR
-        */
-
-        if (
-          box.box_role ===
-          "qr"
-        ) {
-
-          if (
-            box.parent_box_id
-          ) {
-
-            throw new Error(
-              "QRは大問に所属できません。"
-            );
-
-          }
+          throw new Error(
+            "QRは大問に所属できません。"
+          );
 
         }
 
       }
     );
+
+  }
+
+
+  /* =======================================================
+     ROLE HELP
+  ======================================================= */
+
+  function updateRoleHelp() {
+
+    if (!parentInfo) {
+
+      return;
+
+    }
+
+
+    const box =
+      getSelectedBox();
+
+
+    const role =
+      box?.box_role ||
+      boxRole?.value ||
+      "minor";
+
+
+    switch (
+      role
+    ) {
+
+      case "major":
+
+        parentInfo.textContent =
+          "大問の範囲をドラッグしてください。";
+
+        break;
+
+
+      case "minor":
+
+        if (box) {
+
+          const parent =
+            findContainingMajor(
+              box
+            );
+
+
+          parentInfo.textContent =
+            parent
+              ? `大問${parent.major_no}の小問です。`
+              : "大問の外にある小問です。";
+
+        } else {
+
+          parentInfo.textContent =
+            "大問の内側に置いた小問だけ、その大問に登録されます。";
+
+        }
+
+        break;
+
+
+      case "subtotal":
+
+        if (box) {
+
+          const parent =
+            findContainingMajor(
+              box
+            );
+
+
+          parentInfo.textContent =
+            parent
+              ? `大問${parent.major_no}の小計です。`
+              : "大問の外にある小計です。";
+
+        } else {
+
+          parentInfo.textContent =
+            "大問の内側に置くと、その大問の小計になります。";
+
+        }
+
+        break;
+
+
+      case "total":
+
+        parentInfo.textContent =
+          "全体の合計です。大問には所属しません。";
+
+        break;
+
+
+      case "qr":
+
+        parentInfo.textContent =
+          "生徒特定用QRコードの読み取り範囲です。";
+
+        break;
+
+
+      case "name":
+
+        parentInfo.textContent =
+          "氏名の読み取り範囲です。";
+
+        break;
+
+
+      case "student_no":
+
+        parentInfo.textContent =
+          "生徒番号の読み取り範囲です。";
+
+        break;
+
+
+      case "instruction":
+
+        parentInfo.textContent =
+          "説明・指示などの範囲です。";
+
+        break;
+
+
+      default:
+
+        parentInfo.textContent =
+          "その他の範囲です。";
+
+        break;
+
+    }
 
   }
 
@@ -3579,12 +3370,9 @@
 
 
     if (
-      tag ===
-        "INPUT" ||
-      tag ===
-        "TEXTAREA" ||
-      tag ===
-        "SELECT"
+      tag === "INPUT" ||
+      tag === "TEXTAREA" ||
+      tag === "SELECT"
     ) {
 
       return;
@@ -3625,82 +3413,6 @@
 
 
   /* =======================================================
-     INFER ROLE
-  ======================================================= */
-
-  function inferRole(
-    box
-  ) {
-
-    if (
-      ROLE_INFO[
-        box.box_role
-      ]
-    ) {
-
-      return box.box_role;
-
-    }
-
-
-    switch (
-      box.box_type
-    ) {
-
-      case "qr":
-        return "qr";
-
-      case "student_no":
-        return "student_no";
-
-      case "name":
-        return "name";
-
-      case "answer":
-
-        /*
-          古いanswerデータは
-          大問/小問を判定できないため
-          小問として扱う。
-        */
-
-        return "minor";
-
-      default:
-        return "other";
-
-    }
-
-  }
-
-
-  /* =======================================================
-     CLOSE PANEL
-  ======================================================= */
-
-  function closeBoxPanel() {
-
-    boxPanel?.classList.remove(
-      "open"
-    );
-
-  }
-
-
-  /* =======================================================
-     OPEN PANEL
-  ======================================================= */
-
-  function openBoxPanel() {
-
-    boxPanel?.classList.add(
-      "open"
-    );
-
-  }
-
-
-  /* =======================================================
      BACK
   ======================================================= */
 
@@ -3727,316 +3439,7 @@
 
 
   /* =======================================================
-     HELPERS
-  ======================================================= */
-
-  function setStatus(
-    message
-  ) {
-
-    if (statusElement) {
-
-      statusElement.textContent =
-        message;
-
-    }
-
-  }
-
-
-  function showError(
-    message
-  ) {
-
-    setStatus(
-      message
-    );
-
-  }
-
-
-  function getPoint(
-    event,
-    rect
-  ) {
-
-    return {
-
-      x:
-        clamp(
-          event.clientX -
-            rect.left,
-          0,
-          rect.width
-        ),
-
-      y:
-        clamp(
-          event.clientY -
-            rect.top,
-          0,
-          rect.height
-        )
-
-    };
-
-  }
-
-
-  function getCenter(
-    box
-  ) {
-
-    return {
-
-      x:
-        Number(
-          box.x
-        ) +
-        Number(
-          box.width
-        ) /
-        2,
-
-      y:
-        Number(
-          box.y
-        ) +
-        Number(
-          box.height
-        ) /
-        2
-
-    };
-
-  }
-
-
-  function pointInside(
-    point,
-    box
-  ) {
-
-    return (
-
-      point.x >=
-        Number(
-          box.x
-        ) &&
-
-      point.y >=
-        Number(
-          box.y
-        ) &&
-
-      point.x <=
-        Number(
-          box.x
-        ) +
-        Number(
-          box.width
-        ) &&
-
-      point.y <=
-        Number(
-          box.y
-        ) +
-        Number(
-          box.height
-        )
-
-    );
-
-  }
-
-
-  function clamp(
-    value,
-    min,
-    max
-  ) {
-
-    return Math.max(
-      min,
-      Math.min(
-        max,
-        value
-      )
-    );
-
-  }
-
-
-  function compareBoxes(
-    a,
-    b
-  ) {
-
-    if (
-      Number(
-        a.page_no
-      ) !==
-      Number(
-        b.page_no
-      )
-    ) {
-
-      return (
-        Number(
-          a.page_no
-        ) -
-        Number(
-          b.page_no
-        )
-      );
-
-    }
-
-
-    if (
-      Number(
-        a.y
-      ) !==
-      Number(
-        b.y
-      )
-    ) {
-
-      return (
-        Number(
-          a.y
-        ) -
-        Number(
-          b.y
-        )
-      );
-
-    }
-
-
-    return (
-      Number(
-        a.x
-      ) -
-      Number(
-        b.x
-      )
-    );
-
-  }
-
-
-  function loadImage(
-    src
-  ) {
-
-    return new Promise(
-      (
-        resolve,
-        reject
-      ) => {
-
-        const image =
-          new Image();
-
-
-        image.onload =
-          () =>
-            resolve(
-              image
-            );
-
-
-        image.onerror =
-          () =>
-            reject(
-              new Error(
-                "画像を読み込めませんでした。"
-              )
-            );
-
-
-        image.src =
-          src;
-
-      }
-    );
-
-  }
-
-
-  function canvasToBlob(
-    canvas,
-    type
-  ) {
-
-    return new Promise(
-      (
-        resolve,
-        reject
-      ) => {
-
-        canvas.toBlob(
-          blob => {
-
-            if (!blob) {
-
-              reject(
-                new Error(
-                  "画像を作成できませんでした。"
-                )
-              );
-
-              return;
-
-            }
-
-
-            resolve(
-              blob
-            );
-
-          },
-          type,
-          .95
-        );
-
-      }
-    );
-
-  }
-
-
-  function getExtension(
-    value
-  ) {
-
-    const clean =
-      String(
-        value ||
-        ""
-      )
-        .split("?")[0]
-        .split("#")[0];
-
-
-    const parts =
-      clean.split(".");
-
-
-    return (
-      parts.length > 1
-        ? parts
-            .pop()
-            .toLowerCase()
-        : ""
-    );
-
-  }
-
-
-  /* =======================================================
-     PDF.js
+     PDF
   ======================================================= */
 
   function loadPdfJs() {
@@ -4217,10 +3620,6 @@
         });
 
 
-      /*
-        解像度を大きくしすぎない。
-      */
-
       const scale =
         Math.min(
           3,
@@ -4363,19 +3762,6 @@
 
   /* =======================================================
      UPLOAD ANSWER SHEET
-     
-     重要
-     -------------------------------------------------------
-     Storage保存
-       ↓
-     Storage確認
-       ↓
-     DB test_pages更新
-       ↓
-     画面再読込
-
-     以前のようにDBだけ残って
-     Object not foundになる状態を防ぐ。
   ======================================================= */
 
   async function uploadAnswerSheet() {
@@ -4472,9 +3858,6 @@
 
 
       if (
-        !Array.isArray(
-          pageImages
-        ) ||
         !pageImages.length
       ) {
 
@@ -4529,15 +3912,6 @@
           );
 
 
-        if (!blob) {
-
-          throw new Error(
-            `ページ${pageNo}の画像作成に失敗しました。`
-          );
-
-        }
-
-
         setStatus(
           `解答用紙を保存しています... ${pageNo}/${pageImages.length}`
         );
@@ -4570,16 +3944,9 @@
 
         if (uploadError) {
 
-          console.error(
-            "Storage upload:",
-            uploadError
-          );
-
-
           throw new Error(
             `ページ${pageNo}のStorage保存に失敗しました: ${
-              uploadError.message ||
-              "不明なエラー"
+              uploadError.message
             }`
           );
 
@@ -4608,11 +3975,6 @@
         3. Storage確認
         ===================================================
       */
-
-      setStatus(
-        "保存した解答用紙を確認しています..."
-      );
-
 
       for (
         const item
@@ -4660,14 +4022,9 @@
 
       /*
         ===================================================
-        4. DBの旧test_pages削除
+        4. DBの旧ページ削除
         ===================================================
       */
-
-      setStatus(
-        "既存の解答用紙情報を更新しています..."
-      );
-
 
       const {
         error:
@@ -4809,67 +4166,7 @@
 
       /*
         ===================================================
-        7. DB確認
-        ===================================================
-      */
-
-      const {
-        data:
-          verifyPages,
-        error:
-          verifyError
-      } =
-        await supabaseClient
-          .from(
-            "test_pages"
-          )
-          .select(`
-            id,
-            test_id,
-            page_no,
-            image_path,
-            width_px,
-            height_px
-          `)
-          .eq(
-            "test_id",
-            selectedTestId
-          )
-          .order(
-            "page_no",
-            {
-              ascending:
-                true
-            }
-          );
-
-
-      if (verifyError) {
-
-        throw new Error(
-          `登録結果を確認できません: ${
-            verifyError.message
-          }`
-        );
-
-      }
-
-
-      if (
-        !verifyPages ||
-        verifyPages.length === 0
-      ) {
-
-        throw new Error(
-          "test_pagesに解答用紙が登録されていません。"
-        );
-
-      }
-
-
-      /*
-        ===================================================
-        8. 入力リセット
+        7. ファイル入力をリセット
         ===================================================
       */
 
@@ -4887,39 +4184,23 @@
 
       /*
         ===================================================
-        9. 再読込
+        8. 再読込
         ===================================================
       */
-
-      setStatus(
-        "解答用紙を表示しています..."
-      );
-
 
       await loadLayout();
 
 
       setStatus(
-        `解答用紙を登録しました（${verifyPages.length}ページ）。`
+        `解答用紙を登録しました（${insertedPages.length}ページ）。`
       );
 
 
     } catch (error) {
 
       console.error(
-        "================================"
-      );
-
-      console.error(
-        "解答用紙登録エラー"
-      );
-
-      console.error(
+        "解答用紙登録エラー:",
         error
-      );
-
-      console.error(
-        "================================"
       );
 
 
@@ -4934,6 +4215,432 @@
         false;
 
     }
+
+  }
+
+
+  /* =======================================================
+     PDF / IMAGE HELPERS
+  ======================================================= */
+
+  function getExtension(
+    value
+  ) {
+
+    const clean =
+      String(
+        value ||
+        ""
+      )
+        .split("?")[0]
+        .split("#")[0];
+
+
+    const parts =
+      clean.split(".");
+
+
+    return (
+      parts.length > 1
+        ? parts
+            .pop()
+            .toLowerCase()
+        : ""
+    );
+
+  }
+
+
+  function loadImage(
+    src
+  ) {
+
+    return new Promise(
+      (
+        resolve,
+        reject
+      ) => {
+
+        const image =
+          new Image();
+
+
+        image.onload =
+          () =>
+            resolve(
+              image
+            );
+
+
+        image.onerror =
+          () =>
+            reject(
+              new Error(
+                "画像を読み込めませんでした。"
+              )
+            );
+
+
+        image.src =
+          src;
+
+      }
+    );
+
+  }
+
+
+  function canvasToBlob(
+    canvas,
+    type
+  ) {
+
+    return new Promise(
+      (
+        resolve,
+        reject
+      ) => {
+
+        canvas.toBlob(
+          blob => {
+
+            if (!blob) {
+
+              reject(
+                new Error(
+                  "画像を作成できませんでした。"
+                )
+              );
+
+              return;
+
+            }
+
+
+            resolve(
+              blob
+            );
+
+          },
+          type,
+          .95
+        );
+
+      }
+    );
+
+  }
+
+
+  /* =======================================================
+     PDF.JS
+  ======================================================= */
+
+  function loadPdfJs() {
+
+    if (pdfPromise) {
+
+      return pdfPromise;
+
+    }
+
+
+    pdfPromise =
+      new Promise(
+        (
+          resolve,
+          reject
+        ) => {
+
+          if (
+            window.pdfjsLib
+          ) {
+
+            resolve(
+              window.pdfjsLib
+            );
+
+            return;
+
+          }
+
+
+          const script =
+            document.createElement(
+              "script"
+            );
+
+
+          script.src =
+            "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+
+
+          script.onload =
+            () => {
+
+              if (
+                !window.pdfjsLib
+              ) {
+
+                reject(
+                  new Error(
+                    "PDF.jsを読み込めませんでした。"
+                  )
+                );
+
+                return;
+
+              }
+
+
+              window.pdfjsLib
+                .GlobalWorkerOptions
+                .workerSrc =
+                  "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+
+              resolve(
+                window.pdfjsLib
+              );
+
+            };
+
+
+          script.onerror =
+            () =>
+              reject(
+                new Error(
+                  "PDF.jsの読み込みに失敗しました。"
+                )
+              );
+
+
+          document.head.appendChild(
+            script
+          );
+
+        }
+      );
+
+
+    return pdfPromise;
+
+  }
+
+
+  /* =======================================================
+     PDF
+  ======================================================= */
+
+  async function convertPdf(
+    file
+  ) {
+
+    const pdfjs =
+      await loadPdfJs();
+
+
+    const buffer =
+      await file.arrayBuffer();
+
+
+    const pdf =
+      await pdfjs
+        .getDocument({
+          data:
+            buffer
+        })
+        .promise;
+
+
+    const result =
+      [];
+
+
+    for (
+      let pageNo = 1;
+      pageNo <=
+        pdf.numPages;
+      pageNo++
+    ) {
+
+      const page =
+        await pdf.getPage(
+          pageNo
+        );
+
+
+      const base =
+        page.getViewport({
+          scale: 1
+        });
+
+
+      const scale =
+        Math.min(
+          3,
+          Math.max(
+            1,
+            3500 /
+            Math.max(
+              base.width,
+              base.height
+            )
+          )
+        );
+
+
+      const viewport =
+        page.getViewport({
+          scale
+        });
+
+
+      const canvas =
+        document.createElement(
+          "canvas"
+        );
+
+
+      canvas.width =
+        Math.ceil(
+          viewport.width
+        );
+
+
+      canvas.height =
+        Math.ceil(
+          viewport.height
+        );
+
+
+      await page.render({
+
+        canvasContext:
+          canvas.getContext(
+            "2d"
+          ),
+
+        viewport
+
+      }).promise;
+
+
+      result.push({
+
+        canvas,
+
+        width:
+          canvas.width,
+
+        height:
+          canvas.height
+
+      });
+
+    }
+
+
+    return result;
+
+  }
+
+
+  /* =======================================================
+     IMAGE
+  ======================================================= */
+
+  async function convertImage(
+    file
+  ) {
+
+    const url =
+      URL.createObjectURL(
+        file
+      );
+
+
+    try {
+
+      const image =
+        await loadImage(
+          url
+        );
+
+
+      const canvas =
+        document.createElement(
+          "canvas"
+        );
+
+
+      canvas.width =
+        image.naturalWidth;
+
+
+      canvas.height =
+        image.naturalHeight;
+
+
+      canvas
+        .getContext(
+          "2d"
+        )
+        .drawImage(
+          image,
+          0,
+          0
+        );
+
+
+      return {
+
+        canvas,
+
+        width:
+          canvas.width,
+
+        height:
+          canvas.height
+
+      };
+
+    } finally {
+
+      URL.revokeObjectURL(
+        url
+      );
+
+    }
+
+  }
+
+
+  /* =======================================================
+     STATUS
+  ======================================================= */
+
+  function setStatus(
+    message
+  ) {
+
+    if (statusElement) {
+
+      statusElement.textContent =
+        message;
+
+    }
+
+  }
+
+
+  function showError(
+    message
+  ) {
+
+    setStatus(
+      message
+    );
 
   }
 

@@ -4,296 +4,333 @@
 
 <head>
 
-  <meta charset="UTF-8">
+<meta charset="UTF-8">
 
-  <meta
-    name="viewport"
-    content="width=device-width,initial-scale=1"
-  >
+<meta
+  name="viewport"
+  content="width=device-width,initial-scale=1"
+>
 
-  <title>
-    採点 - テスト成績システム
-  </title>
+<title>採点 - テスト成績システム</title>
 
-  <link
-    rel="stylesheet"
-    href="/css/common.css"
-  >
+<link
+  rel="stylesheet"
+  href="/css/common.css"
+>
 
-  <style>
+<style>
 
-    .marking-main {
-      max-width: 1500px;
-      margin: 0 auto;
-      padding: 22px;
-    }
+.marking-main {
+  max-width:1500px;
+  margin:0 auto;
+  padding:22px;
+}
 
-    .page-header {
-      margin-bottom: 18px;
-    }
+.page-header {
+  margin-bottom:18px;
+}
 
-    .page-header h1 {
-      margin: 0;
-      font-size: 24px;
-    }
+.page-header h1 {
+  margin:0;
+  font-size:24px;
+}
 
-    .page-header p {
-      margin: 7px 0 0;
-      color: #666;
-      font-size: 13px;
-    }
+.page-header p {
+  margin:7px 0 0;
+  color:#666;
+  font-size:13px;
+}
 
-    .toolbar {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 15px;
-    }
+.toolbar {
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:10px;
+  margin-bottom:15px;
+}
 
-    .toolbar select {
-      min-width: 360px;
-      height: 40px;
-      padding: 0 10px;
-    }
+.toolbar select {
+  min-width:360px;
+  height:40px;
+  padding:0 10px;
+}
 
-    .status {
-      padding: 10px 12px;
-      margin-bottom: 15px;
-      background: #f5f6f7;
-      border: 1px solid #d5dbe0;
-      font-size: 13px;
-    }
+.status {
+  padding:10px 12px;
+  margin-bottom:15px;
+  background:#f5f6f7;
+  border:1px solid #d5dbe0;
+  font-size:13px;
+}
 
-    .progress-area {
-      display: none;
-      margin-bottom: 15px;
-      padding: 14px;
-      background: #fff;
-      border: 1px solid #d0d6dc;
-    }
+.answer-summary {
+  display:none;
+  margin-bottom:15px;
+  background:#fff;
+  border:1px solid #d0d6dc;
+}
 
-    .progress-area.show {
-      display: block;
-    }
+.answer-summary.show {
+  display:block;
+}
 
-    .progress-title {
-      font-weight: 700;
-      margin-bottom: 8px;
-    }
+.summary-header {
+  padding:12px 15px;
+  border-bottom:1px solid #d0d6dc;
+  font-weight:700;
+}
 
-    .progress-track {
-      height: 8px;
-      background: #e1e5e8;
-      overflow: hidden;
-      border-radius: 4px;
-    }
+.summary-table-wrap {
+  overflow-x:auto;
+}
 
-    .progress-bar {
-      height: 100%;
-      width: 0;
-      background: #1769aa;
-      transition: width .2s;
-    }
+.summary-table {
+  width:100%;
+  border-collapse:collapse;
+  min-width:700px;
+}
 
-    .progress-text {
-      margin-top: 7px;
-      color: #666;
-      font-size: 12px;
-    }
+.summary-table th,
+.summary-table td {
+  border:1px solid #d0d6dc;
+  padding:8px 10px;
+  font-size:13px;
+  white-space:nowrap;
+}
 
-    .question-area {
-      display: none;
-    }
+.summary-table th {
+  background:#f3f5f7;
+}
 
-    .question-area.show {
-      display: block;
-    }
+.progress-area {
+  display:none;
+  margin-bottom:15px;
+  padding:14px;
+  background:#fff;
+  border:1px solid #d0d6dc;
+}
 
-    .question-header {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 15px;
-      padding: 15px;
-      background: #fff;
-      border: 1px solid #d0d6dc;
-    }
+.progress-area.show {
+  display:block;
+}
 
-    .question-title {
-      font-size: 20px;
-      font-weight: 700;
-    }
+.progress-title {
+  font-weight:700;
+  margin-bottom:8px;
+}
 
-    .question-meta {
-      color: #666;
-      font-size: 13px;
-    }
+.progress-track {
+  height:8px;
+  background:#e1e5e8;
+  overflow:hidden;
+  border-radius:4px;
+}
 
-    .question-navigation {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
+.progress-bar {
+  height:100%;
+  width:0;
+  background:#1769aa;
+  transition:width .2s;
+}
 
-    .answer-table-wrap {
-      overflow-x: auto;
-      background: #fff;
-      border: 1px solid #d0d6dc;
-    }
+.progress-text {
+  margin-top:7px;
+  color:#666;
+  font-size:12px;
+}
 
-    .answer-table {
-      width: 100%;
-      border-collapse: collapse;
-      min-width: 1050px;
-    }
+.question-area {
+  display:none;
+}
 
-    .answer-table th,
-    .answer-table td {
-      border: 1px solid #d0d6dc;
-      padding: 9px;
-      vertical-align: top;
-      font-size: 13px;
-    }
+.question-area.show {
+  display:block;
+}
 
-    .answer-table th {
-      background: #f3f5f7;
-      font-weight: 700;
-      white-space: nowrap;
-    }
+.question-header {
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+  margin-bottom:15px;
+  padding:15px;
+  background:#fff;
+  border:1px solid #d0d6dc;
+}
 
-    .student-cell {
-      width: 150px;
-      min-width: 150px;
-    }
+.question-title {
+  font-size:20px;
+  font-weight:700;
+}
 
-    .student-no {
-      font-weight: 700;
-    }
+.question-meta {
+  margin-top:5px;
+  color:#666;
+  font-size:13px;
+}
 
-    .student-name {
-      margin-top: 4px;
-      color: #555;
-    }
+.question-navigation {
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
 
-    .answer-cell {
-      width: 500px;
-      min-width: 500px;
-    }
+.answer-table-wrap {
+  overflow-x:auto;
+  background:#fff;
+  border:1px solid #d0d6dc;
+}
 
-    .answer-viewer {
-      position: relative;
-      overflow: hidden;
-      width: 100%;
-      min-height: 150px;
-      background: #f7f8f9;
-      border: 1px solid #e0e3e6;
-    }
+.answer-table {
+  width:100%;
+  border-collapse:collapse;
+  min-width:1050px;
+}
 
-    .answer-viewer img {
-      position: absolute;
-      max-width: none;
-      max-height: none;
-      margin: 0;
-      user-select: none;
-      -webkit-user-drag: none;
-    }
+.answer-table th,
+.answer-table td {
+  border:1px solid #d0d6dc;
+  padding:9px;
+  vertical-align:top;
+  font-size:13px;
+}
 
-    .answer-missing {
-      padding: 35px 10px;
-      text-align: center;
-      color: #888;
-    }
+.answer-table th {
+  background:#f3f5f7;
+  white-space:nowrap;
+}
 
-    .score-cell {
-      width: 150px;
-      min-width: 150px;
-      text-align: center;
-    }
+.student-cell {
+  width:150px;
+  min-width:150px;
+}
 
-    .score-input {
-      width: 90px;
-      height: 40px;
-      padding: 0 8px;
-      font-size: 17px;
-      text-align: center;
-    }
+.student-no {
+  font-weight:700;
+}
 
-    .score-save-button {
-      margin-top: 7px;
-    }
+.student-name {
+  margin-top:4px;
+  color:#555;
+}
 
-    .score-state {
-      margin-top: 7px;
-      font-size: 12px;
-      color: #666;
-    }
+.answer-cell {
+  width:500px;
+  min-width:500px;
+}
 
-    .score-state.marked {
-      color: #1769aa;
-      font-weight: 700;
-    }
+.answer-viewer {
+  position:relative;
+  overflow:hidden;
+  width:100%;
+  min-height:150px;
+  background:#f7f8f9;
+  border:1px solid #e0e3e6;
+}
 
-    .score-state.error {
-      color: #b42318;
-    }
+.answer-viewer img {
+  position:absolute;
+  max-width:none;
+  max-height:none;
+  margin:0;
+  user-select:none;
+  -webkit-user-drag:none;
+}
 
-    .warning {
-      display: none;
-      margin-top: 7px;
-      padding: 7px;
-      color: #b42318;
-      background: #fff4f2;
-      border: 1px solid #efc2bc;
-      font-size: 12px;
-    }
+.answer-missing {
+  padding:35px 10px;
+  text-align:center;
+  color:#888;
+}
 
-    .warning.show {
-      display: block;
-    }
+.score-cell {
+  width:150px;
+  min-width:150px;
+  text-align:center;
+}
 
-    .complete-area {
-      display: none;
-      margin-top: 15px;
-      padding: 18px;
-      background: #fff;
-      border: 1px solid #d0d6dc;
-    }
+.score-input {
+  width:90px;
+  height:40px;
+  padding:0 8px;
+  font-size:17px;
+  text-align:center;
+}
 
-    .complete-area.show {
-      display: block;
-    }
+.score-save-button {
+  margin-top:7px;
+}
 
-    .complete-title {
-      font-size: 18px;
-      font-weight: 700;
-      margin-bottom: 8px;
-    }
+.score-state {
+  margin-top:7px;
+  font-size:12px;
+  color:#666;
+}
 
-    .empty {
-      padding: 50px;
-      text-align: center;
-      color: #777;
-      background: #fff;
-      border: 1px solid #d0d6dc;
-    }
+.score-state.marked {
+  color:#1769aa;
+  font-weight:700;
+}
 
-    @media (max-width: 700px) {
+.score-state.error {
+  color:#b42318;
+}
 
-      .marking-main {
-        padding: 14px;
-      }
+.warning {
+  display:none;
+  margin-top:7px;
+  padding:7px;
+  color:#b42318;
+  background:#fff4f2;
+  border:1px solid #efc2bc;
+  font-size:12px;
+}
 
-      .toolbar select {
-        width: 100%;
-        min-width: 0;
-      }
+.warning.show {
+  display:block;
+}
 
-    }
+.complete-area {
+  display:none;
+  margin-top:15px;
+  padding:18px;
+  background:#fff;
+  border:1px solid #d0d6dc;
+}
 
-  </style>
+.complete-area.show {
+  display:block;
+}
+
+.complete-title {
+  font-size:18px;
+  font-weight:700;
+  margin-bottom:8px;
+}
+
+.empty {
+  padding:50px;
+  text-align:center;
+  color:#777;
+  background:#fff;
+  border:1px solid #d0d6dc;
+}
+
+@media(max-width:700px) {
+
+  .marking-main {
+    padding:14px;
+  }
+
+  .toolbar select {
+    width:100%;
+    min-width:0;
+  }
+
+}
+
+</style>
 
 </head>
 
@@ -303,23 +340,23 @@
 
 <header class="topbar">
 
-  <div class="system-name">
-    テスト成績システム
-  </div>
+<div class="system-name">
+テスト成績システム
+</div>
 
-  <div class="topbar-space"></div>
+<div class="topbar-space"></div>
 
-  <span id="teacherName">
-    -
-  </span>
+<span id="teacherName">
+-
+</span>
 
-  <button
-    id="logoutButton"
-    class="logout-button"
-    type="button"
-  >
-    ログアウト
-  </button>
+<button
+id="logoutButton"
+class="logout-button"
+type="button"
+>
+ログアウト
+</button>
 
 </header>
 
@@ -327,201 +364,251 @@
 <main class="marking-main">
 
 
-  <div class="page-header">
+<div class="page-header">
 
-    <h1>
-      採点
-    </h1>
+<h1>
+採点
+</h1>
 
-    <p>
-      テスト全体を対象に、設問ごとに全生徒の答案を採点します。
-    </p>
+<p>
+テストを選択すると、そのテストの答案を確認できます。
+採点開始後は、設問ごとに全生徒の答案を採点します。
+</p>
 
-  </div>
-
-
-  <!-- ===================================================
-       テスト選択
-  ==================================================== -->
-
-  <div class="toolbar">
-
-    <select id="testSelect">
-
-      <option value="">
-        テストを選択してください
-      </option>
-
-    </select>
+</div>
 
 
-    <button
-      id="startButton"
-      class="btn btn-primary"
-      type="button"
-    >
-      採点開始
-    </button>
+<div class="toolbar">
+
+<select id="testSelect">
+
+<option value="">
+テストを選択してください
+</option>
+
+</select>
 
 
-    <button
-      id="refreshButton"
-      class="btn"
-      type="button"
-    >
-      更新
-    </button>
+<button
+id="startButton"
+class="btn btn-primary"
+type="button"
+disabled
+>
+採点開始
+</button>
 
 
-    <a
-      href="/teacher/marking"
-      class="btn"
-    >
-      採点一覧へ戻る
-    </a>
-
-  </div>
-
-
-  <div
-    id="status"
-    class="status"
-  >
-    テストを選択してください。
-  </div>
+<button
+id="refreshButton"
+class="btn"
+type="button"
+>
+更新
+</button>
 
 
-  <!-- ===================================================
-       進捗
-  ==================================================== -->
+<a
+href="/teacher/marking"
+class="btn"
+>
+採点一覧へ戻る
+</a>
 
-  <div
-    id="progressArea"
-    class="progress-area"
-  >
-
-    <div
-      id="progressTitle"
-      class="progress-title"
-    >
-      採点進捗
-    </div>
+</div>
 
 
-    <div class="progress-track">
-
-      <div
-        id="progressBar"
-        class="progress-bar"
-      ></div>
-
-    </div>
+<div
+id="status"
+class="status"
+>
+テストを選択してください。
+</div>
 
 
-    <div
-      id="progressText"
-      class="progress-text"
-    >
-      -
-    </div>
+<!-- =====================================================
+     答案一覧
+====================================================== -->
 
-  </div>
+<section
+id="answerSummary"
+class="answer-summary"
+>
 
+<div class="summary-header">
 
-  <!-- ===================================================
-       問題
-  ==================================================== -->
+このテストの答案
 
-  <section
-    id="questionArea"
-    class="question-area"
-  >
-
-    <div class="question-header">
-
-      <div>
-
-        <div
-          id="questionTitle"
-          class="question-title"
-        >
-          -
-        </div>
-
-        <div
-          id="questionMeta"
-          class="question-meta"
-        >
-          -
-        </div>
-
-      </div>
+</div>
 
 
-      <div class="question-navigation">
+<div class="summary-table-wrap">
 
-        <button
-          id="previousButton"
-          class="btn"
-          type="button"
-        >
-          前の問題
-        </button>
+<table class="summary-table">
+
+<thead>
+
+<tr>
+
+<th>
+生徒番号
+</th>
+
+<th>
+生徒名
+</th>
+
+<th>
+ページ数
+</th>
+
+<th>
+状態
+</th>
+
+</tr>
+
+</thead>
+
+<tbody
+id="answerSummaryBody"
+></tbody>
+
+</table>
+
+</div>
+
+</section>
 
 
-        <button
-          id="nextButton"
-          class="btn btn-primary"
-          type="button"
-        >
-          次の問題
-        </button>
+<!-- =====================================================
+     進捗
+====================================================== -->
 
-      </div>
+<div
+id="progressArea"
+class="progress-area"
+>
 
-    </div>
-
-
-    <div
-      id="answerTableWrap"
-      class="answer-table-wrap"
-    >
-
-      <div class="empty">
-        答案を読み込んでいます...
-      </div>
-
-    </div>
+<div class="progress-title">
+テスト全体の採点進捗
+</div>
 
 
-    <!-- =================================================
-         全体完了
-    ================================================== -->
+<div class="progress-track">
 
-    <div
-      id="completeArea"
-      class="complete-area"
-    >
+<div
+id="progressBar"
+class="progress-bar"
+></div>
 
-      <div class="complete-title">
-        全設問の採点が完了しました。
-      </div>
+</div>
 
-      <div>
-        この時点ではまだ公開しません。
-        成績・偏差値・順位の計算がすべて完了した後に公開処理を行います。
-      </div>
 
-    </div>
+<div
+id="progressText"
+class="progress-text"
+>
+-
+</div>
 
-  </section>
+</div>
+
+
+<!-- =====================================================
+     採点
+====================================================== -->
+
+<section
+id="questionArea"
+class="question-area"
+>
+
+
+<div class="question-header">
+
+
+<div>
+
+<div
+id="questionTitle"
+class="question-title"
+>
+-
+</div>
+
+
+<div
+id="questionMeta"
+class="question-meta"
+>
+-
+</div>
+
+</div>
+
+
+<div class="question-navigation">
+
+<button
+id="previousButton"
+class="btn"
+type="button"
+>
+前の問題
+</button>
+
+
+<button
+id="nextButton"
+class="btn btn-primary"
+type="button"
+>
+次の問題
+</button>
+
+</div>
+
+
+</div>
+
+
+<div
+id="answerTableWrap"
+class="answer-table-wrap"
+>
+
+<div class="empty">
+採点開始してください。
+</div>
+
+</div>
+
+
+<div
+id="completeArea"
+class="complete-area"
+>
+
+<div class="complete-title">
+全答案・全設問の採点が完了しました。
+</div>
+
+<div>
+成績・偏差値・順位の計算が完了するまで公開しません。
+</div>
+
+</div>
+
+
+</section>
 
 
 </main>
 
 
 <script
-  src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
 ></script>
 
 <script src="/js/config.js"></script>

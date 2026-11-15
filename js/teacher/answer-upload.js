@@ -1,37 +1,108 @@
 /* =========================================================
-   答案アップロード
+   答案アップロード完全版
+
+   対応
+   JPG
+   JPEG
+   PNG
+   WEBP
+   GIF
+   BMP
+   PDF
+   ZIP
+
+   ZIP
+   ↓
+   展開
+   ↓
+   画像/PDF
+   ↓
+   ページ化
+   ↓
+   answer_sheets
+   ↓
+   answer_sheet_pages
+   ↓
+   QR
+   ↓
+   生徒紐付け
 ========================================================= */
 
-let tests = [];
 
+let uploadTests = [];
+
+
+/* =========================================================
+   対応形式
+========================================================= */
+
+const SUPPORTED_IMAGE_EXTENSIONS = [
+  "jpg",
+  "jpeg",
+  "png",
+  "webp",
+  "gif",
+  "bmp"
+];
+
+
+const SUPPORTED_PDF_EXTENSIONS = [
+  "pdf"
+];
+
+
+const SUPPORTED_ARCHIVE_EXTENSIONS = [
+  "zip"
+];
+
+
+/* =========================================================
+   初期化
+========================================================= */
 
 async function initializeAnswerUpload() {
 
   const profile =
     await getProfile();
 
+
   if (!profile) {
-    location.href = "/login";
+
+    location.href =
+      "/login";
+
     return;
+
   }
+
 
   if (
     profile.role !== "teacher" &&
     profile.role !== "admin"
   ) {
-    location.href = "/student/dashboard";
+
+    location.href =
+      "/student/dashboard";
+
     return;
+
   }
+
 
   document.getElementById(
     "teacherName"
   ).textContent =
     profile.name || "先生";
 
+
   await loadTests();
 
 }
 
+
+/* =========================================================
+   テスト
+========================================================= */
 
 async function loadTests() {
 
@@ -55,6 +126,7 @@ async function loadTests() {
         }
       );
 
+
   if (error) {
 
     console.error(error);
@@ -65,9 +137,11 @@ async function loadTests() {
     );
 
     return;
+
   }
 
-  tests =
+
+  uploadTests =
     data || [];
 
 
@@ -77,19 +151,6 @@ async function loadTests() {
     );
 
 
-  if (!tests.length) {
-
-    select.innerHTML = `
-      <option value="">
-        テストがありません
-      </option>
-    `;
-
-    return;
-
-  }
-
-
   select.innerHTML = `
 
     <option value="">
@@ -97,13 +158,17 @@ async function loadTests() {
     </option>
 
     ${
-      tests
+      uploadTests
         .map(
           test => `
 
-            <option value="${test.id}">
+            <option
+              value="${test.id}"
+            >
 
-              ${escapeHtml(test.name)}
+              ${escapeHtml(
+                test.name
+              )}
 
               ${
                 test.subject
@@ -124,7 +189,7 @@ async function loadTests() {
 
 
 /* =========================================================
-   アップロード開始
+   アップロード
 ========================================================= */
 
 document
@@ -142,9 +207,12 @@ document
 
 
       const files =
-        document.getElementById(
-          "answerFiles"
-        ).files;
+        [
+          ...
+          document.getElementById(
+            "answerFiles"
+          ).files
+        ];
 
 
       if (!testId) {
@@ -162,7 +230,7 @@ document
       if (!files.length) {
 
         showMessage(
-          "答案ファイルを選択してください。",
+          "ファイルを選択してください。",
           true
         );
 
@@ -177,10 +245,11 @@ document
         );
 
 
-      button.disabled = true;
+      button.disabled =
+        true;
 
       button.textContent =
-        "アップロード中...";
+        "処理中...";
 
 
       clearUploadList();
@@ -188,32 +257,21 @@ document
 
       try {
 
-        let completed =
-          0;
-
-
         for (
           const file
           of files
         ) {
 
-          await uploadOneFile(
+          await processUploadFile(
             testId,
             file
-          );
-
-
-          completed++;
-
-          showMessage(
-            `${completed} / ${files.length} 件処理しました。`
           );
 
         }
 
 
         showMessage(
-          `${completed}件のアップロードが完了しました。`
+          "すべてのファイルの処理が完了しました。"
         );
 
 
@@ -230,7 +288,8 @@ document
       }
 
 
-      button.disabled = false;
+      button.disabled =
+        false;
 
       button.textContent =
         "アップロード開始";
@@ -240,10 +299,10 @@ document
 
 
 /* =========================================================
-   1ファイル
+   1ファイル処理
 ========================================================= */
 
-async function uploadOneFile(
+async function processUploadFile(
   testId,
   file
 ) {
@@ -256,18 +315,509 @@ async function uploadOneFile(
 
   try {
 
-    /*
-      Storage保存
-    */
-
     const extension =
       getExtension(
         file.name
       );
 
 
-    const path =
-      `${testId}/${crypto.randomUUID()}.${extension}`;
+    /*
+      ZIP
+    */
+
+    if (
+      SUPPORTED_ARCHIVE_EXTENSIONS
+        .includes(extension)
+    ) {
+
+      await processZip(
+        testId,
+        file,
+        row
+      );
+
+      return;
+
+    }
+
+
+    /*
+      PDF
+    */
+
+    if (
+      SUPPORTED_PDF_EXTENSIONS
+        .includes(extension)
+    ) {
+
+      await processPdf(
+        testId,
+        file,
+        row
+      );
+
+      return;
+
+    }
+
+
+    /*
+      画像
+    */
+
+    if (
+      SUPPORTED_IMAGE_EXTENSIONS
+        .includes(extension)
+    ) {
+
+      await processImage(
+        testId,
+        file,
+        row
+      );
+
+      return;
+
+    }
+
+
+    throw new Error(
+      "対応していないファイル形式です。"
+    );
+
+
+  } catch (error) {
+
+    console.error(error);
+
+    setRowStatus(
+      row,
+      error.message ||
+      "処理失敗",
+      true
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   ZIP
+========================================================= */
+
+async function processZip(
+  testId,
+  file,
+  row
+) {
+
+  setRowStatus(
+    row,
+    "ZIP展開中..."
+  );
+
+
+  const zip =
+    await JSZip.loadAsync(
+      file
+    );
+
+
+  const entries = [];
+
+
+  for (
+    const [
+      path,
+      entry
+    ]
+    of Object.entries(
+      zip.files
+    )
+  ) {
+
+    if (
+      entry.dir
+    ) {
+
+      continue;
+
+    }
+
+
+    const extension =
+      getExtension(
+        path
+      );
+
+
+    if (
+      ![
+        ...SUPPORTED_IMAGE_EXTENSIONS,
+        ...SUPPORTED_PDF_EXTENSIONS
+      ].includes(
+        extension
+      )
+    ) {
+
+      continue;
+
+    }
+
+
+    const blob =
+      await entry.async(
+        "blob"
+      );
+
+
+    entries.push({
+
+      name:
+        path
+          .split("/")
+          .pop(),
+
+      path,
+
+      blob
+
+    });
+
+  }
+
+
+  if (!entries.length) {
+
+    throw new Error(
+      "ZIP内に対応ファイルがありません。"
+    );
+
+  }
+
+
+  setRowStatus(
+    row,
+    `${entries.length}ファイル展開`
+  );
+
+
+  /*
+    ZIP内の順番を安定させる
+  */
+
+  entries.sort(
+    (a, b) =>
+      a.path.localeCompare(
+        b.path,
+        undefined,
+        {
+          numeric: true
+        }
+      )
+  );
+
+
+  for (
+    const entry
+    of entries
+  ) {
+
+    const extension =
+      getExtension(
+        entry.name
+      );
+
+
+    if (
+      SUPPORTED_PDF_EXTENSIONS
+        .includes(extension)
+    ) {
+
+      await processPdfBlob(
+        testId,
+        entry.blob,
+        entry.name,
+        row
+      );
+
+    } else {
+
+      await processImageBlob(
+        testId,
+        entry.blob,
+        entry.name,
+        row
+      );
+
+    }
+
+  }
+
+
+  setRowStatus(
+    row,
+    "ZIP処理完了"
+  );
+
+}
+
+
+/* =========================================================
+   画像
+========================================================= */
+
+async function processImage(
+  testId,
+  file,
+  row
+) {
+
+  await processImageBlob(
+    testId,
+    file,
+    file.name,
+    row
+  );
+
+
+  setRowStatus(
+    row,
+    "画像処理完了"
+  );
+
+}
+
+
+async function processImageBlob(
+  testId,
+  blob,
+  originalName,
+  row
+) {
+
+  /*
+    画像をStorageへ保存
+  */
+
+  const path =
+    `${testId}/raw/${crypto.randomUUID()}-${sanitizeFileName(originalName)}`;
+
+
+  const {
+    error: uploadError
+  } =
+    await supabaseClient
+      .storage
+      .from(
+        "answer-files"
+      )
+      .upload(
+        path,
+        blob,
+        {
+          upsert: false
+        }
+      );
+
+
+  if (uploadError) {
+
+    throw uploadError;
+
+  }
+
+
+  /*
+    画像サイズ
+  */
+
+  const image =
+    await loadImageFromBlob(
+      blob
+    );
+
+
+  /*
+    答案1件作成
+  */
+
+  const answer =
+    await createAnswerSheet(
+      testId,
+      path,
+      originalName
+    );
+
+
+  /*
+    ページ1
+  */
+
+  await createAnswerPage(
+    answer.id,
+    1,
+    path,
+    originalName,
+    image.naturalWidth,
+    image.naturalHeight,
+    blob.type
+  );
+
+
+  /*
+    QR読み取り
+  */
+
+  setRowStatus(
+    row,
+    `${originalName}：QR読み取り中...`
+  );
+
+
+  const qr =
+    await readQRCodeFromBlob(
+      blob
+    );
+
+
+  if (qr) {
+
+    await matchAnswerByQr(
+      answer.id,
+      qr
+    );
+
+  }
+
+
+}
+
+
+/* =========================================================
+   PDF
+========================================================= */
+
+async function processPdf(
+  testId,
+  file,
+  row
+) {
+
+  await processPdfBlob(
+    testId,
+    file,
+    file.name,
+    row
+  );
+
+
+  setRowStatus(
+    row,
+    "PDF処理完了"
+  );
+
+}
+
+
+async function processPdfBlob(
+  testId,
+  blob,
+  originalName,
+  row
+) {
+
+  const pdf =
+    await loadPdf(
+      blob
+    );
+
+
+  if (!pdf) {
+
+    throw new Error(
+      "PDFを読み込めませんでした。"
+    );
+
+  }
+
+
+  /*
+    PDFは1ページごとに
+    PNGとして保存
+  */
+
+  const answer =
+    await createAnswerSheet(
+      testId,
+      null,
+      originalName
+    );
+
+
+  let detectedStudent =
+    null;
+
+
+  for (
+    let pageNo = 1;
+    pageNo <= pdf.numPages;
+    pageNo++
+  ) {
+
+    const page =
+      await pdf.getPage(
+        pageNo
+      );
+
+
+    const viewport =
+      page.getViewport({
+        scale: 2
+      });
+
+
+    const canvas =
+      document.createElement(
+        "canvas"
+      );
+
+
+    canvas.width =
+      Math.ceil(
+        viewport.width
+      );
+
+
+    canvas.height =
+      Math.ceil(
+        viewport.height
+      );
+
+
+    const context =
+      canvas.getContext(
+        "2d"
+      );
+
+
+    await page.render({
+      canvasContext:
+        context,
+
+      viewport
+    }).promise;
+
+
+    const pageBlob =
+      await canvasToBlob(
+        canvas
+      );
+
+
+    const pagePath =
+      `${testId}/raw/${answer.id}/page-${String(pageNo).padStart(3,"0")}.png`;
 
 
     const {
@@ -279,10 +829,14 @@ async function uploadOneFile(
           "answer-files"
         )
         .upload(
-          path,
-          file,
+          pagePath,
+          pageBlob,
           {
-            upsert: false
+            contentType:
+              "image/png",
+
+            upsert:
+              true
           }
         );
 
@@ -294,207 +848,177 @@ async function uploadOneFile(
     }
 
 
-    setRowStatus(
-      row,
-      "Storage保存完了"
+    await createAnswerPage(
+      answer.id,
+      pageNo,
+      pagePath,
+      originalName,
+      canvas.width,
+      canvas.height,
+      "image/png"
     );
 
 
     /*
-      答案レコード作成
+      QRは全ページを確認
     */
 
-    const session =
-      await getSession();
+    if (!detectedStudent) {
 
-
-    const {
-      data: answerSheet,
-      error: answerError
-    } =
-      await supabaseClient
-        .from(
-          "answer_sheets"
-        )
-        .insert({
-
-          test_id:
-            testId,
-
-          original_file_path:
-            path,
-
-          status:
-            "unmatched",
-
-          uploaded_by:
-            session.user.id
-
-        })
-        .select()
-        .single();
-
-
-    if (answerError) {
-
-      throw answerError;
-
-    }
-
-
-    setRowStatus(
-      row,
-      "答案登録完了"
-    );
-
-
-    /*
-      画像の場合のみ、
-      QR読み取りを行う
-    */
-
-    if (
-      file.type.startsWith(
-        "image/"
-      )
-    ) {
-
-      setRowStatus(
-        row,
-        "QR読み取り中..."
-      );
-
-
-      const qrValue =
-        await readQRCode(
-          file
+      const qr =
+        await readQRCodeFromBlob(
+          pageBlob
         );
 
 
-      if (qrValue) {
+      if (qr) {
 
-        await matchQRCode(
-          answerSheet.id,
-          qrValue,
-          row
-        );
-
-      } else {
-
-        setRowStatus(
-          row,
-          "QR未読取 → 未紐付け"
-        );
+        detectedStudent =
+          qr;
 
       }
 
-    } else {
-
-      setRowStatus(
-        row,
-        "PDF → 未紐付け"
-      );
-
     }
 
+  }
 
-  } catch (error) {
 
-    console.error(error);
+  if (detectedStudent) {
 
-    setRowStatus(
-      row,
-      error.message ||
-      "エラー",
-      true
+    await matchAnswerByQr(
+      answer.id,
+      detectedStudent
     );
 
   }
+
 
 }
 
 
 /* =========================================================
-   QR → 生徒
+   PDF.js
 ========================================================= */
 
-async function matchQRCode(
-  answerSheetId,
-  qrValue,
-  row
+async function loadPdf(
+  blob
 ) {
 
   /*
-    QR形式
-    STUDENT:483921
+    PDF.jsを動的ロード
   */
 
-  const prefix =
-    "STUDENT:";
-
-
   if (
-    !qrValue.startsWith(
-      prefix
-    )
+    !window.pdfjsLib
   ) {
 
-    setRowStatus(
-      row,
-      "QR形式不正 → 未紐付け",
-      true
-    );
+    await loadPdfJs();
+
+  }
+
+
+  const buffer =
+    await blob.arrayBuffer();
+
+
+  return await window.pdfjsLib
+    .getDocument({
+      data:
+        buffer
+    })
+    .promise;
+
+}
+
+
+async function loadPdfJs() {
+
+  if (
+    window.pdfjsLib
+  ) {
 
     return;
 
   }
 
 
-  const studentNo =
-    qrValue
-      .substring(
-        prefix.length
-      )
-      .trim();
+  await new Promise(
+    (
+      resolve,
+      reject
+    ) => {
+
+      const script =
+        document.createElement(
+          "script"
+        );
 
 
-  if (
-    !/^\d{6}$/.test(
-      studentNo
-    )
-  ) {
+      script.src =
+        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs";
 
-    setRowStatus(
-      row,
-      "6桁生徒番号ではありません。",
-      true
-    );
 
-    return;
+      script.type =
+        "module";
 
-  }
+
+      script.onload =
+        resolve;
+
+
+      script.onerror =
+        reject;
+
+
+      document.head.appendChild(
+        script
+      );
+
+    }
+  );
+
+}
+
+
+/* =========================================================
+   答案作成
+========================================================= */
+
+async function createAnswerSheet(
+  testId,
+  filePath,
+  originalName
+) {
+
+  const session =
+    await getSession();
 
 
   const {
-    data: student,
+    data,
     error
   } =
     await supabaseClient
       .from(
-        "students"
+        "answer_sheets"
       )
-      .select(
-        "id,student_no,name"
-      )
-      .eq(
-        "student_no",
-        studentNo
-      )
-      .eq(
-        "active",
-        true
-      )
-      .maybeSingle();
+      .insert({
+
+        test_id:
+          testId,
+
+        original_file_path:
+          filePath,
+
+        status:
+          "unmatched",
+
+        uploaded_by:
+          session.user.id
+
+      })
+      .select()
+      .single();
 
 
   if (error) {
@@ -504,84 +1028,85 @@ async function matchQRCode(
   }
 
 
-  if (!student) {
-
-    setRowStatus(
-      row,
-      `生徒番号 ${studentNo} が未登録`,
-      true
-    );
-
-    return;
-
-  }
-
-
-  /*
-    答案に生徒を紐付け
-  */
-
-  const {
-    error: updateError
-  } =
-    await supabaseClient
-      .from(
-        "answer_sheets"
-      )
-      .update({
-
-        student_id:
-          student.id,
-
-        qr_value:
-          qrValue,
-
-        status:
-          "matched"
-
-      })
-      .eq(
-        "id",
-        answerSheetId
-      );
-
-
-  if (updateError) {
-
-    throw updateError;
-
-  }
-
-
-  setRowStatus(
-    row,
-    `${student.student_no} ${student.name} に紐付け完了`
-  );
+  return data;
 
 }
 
 
 /* =========================================================
-   QR読み取り
+   答案ページ
 ========================================================= */
 
-async function readQRCode(
-  file
+async function createAnswerPage(
+  answerId,
+  pageNo,
+  filePath,
+  originalName,
+  width,
+  height,
+  fileType
 ) {
 
-  /*
-    jsQRを使用。
-    画像からQRを読み取る。
-  */
+  const {
+    error
+  } =
+    await supabaseClient
+      .from(
+        "answer_sheet_pages"
+      )
+      .upsert(
+        {
+
+          answer_sheet_id:
+            answerId,
+
+          page_no:
+            pageNo,
+
+          file_path:
+            filePath,
+
+          file_type:
+            fileType,
+
+          original_name:
+            originalName,
+
+          width_px:
+            width,
+
+          height_px:
+            height
+
+        },
+        {
+          onConflict:
+            "answer_sheet_id,page_no"
+        }
+      );
+
+
+  if (error) {
+
+    throw error;
+
+  }
+
+}
+
+
+/* =========================================================
+   QR
+========================================================= */
+
+async function readQRCodeFromBlob(
+  blob
+) {
 
   if (
     typeof jsQR ===
     "undefined"
   ) {
-
-    console.warn(
-      "jsQRが読み込まれていません。"
-    );
 
     return null;
 
@@ -589,8 +1114,8 @@ async function readQRCode(
 
 
   const image =
-    await loadImage(
-      file
+    await loadImageFromBlob(
+      blob
     );
 
 
@@ -608,13 +1133,13 @@ async function readQRCode(
     image.naturalHeight;
 
 
-  const ctx =
+  const context =
     canvas.getContext(
       "2d"
     );
 
 
-  ctx.drawImage(
+  context.drawImage(
     image,
     0,
     0
@@ -622,7 +1147,7 @@ async function readQRCode(
 
 
   const imageData =
-    ctx.getImageData(
+    context.getImageData(
       0,
       0,
       canvas.width,
@@ -648,8 +1173,139 @@ async function readQRCode(
 }
 
 
-function loadImage(
-  file
+/* =========================================================
+   QR → 生徒
+========================================================= */
+
+async function matchAnswerByQr(
+  answerId,
+  qrValue
+) {
+
+  if (
+    !qrValue
+  ) {
+
+    return false;
+
+  }
+
+
+  const prefix =
+    "STUDENT:";
+
+
+  if (
+    !qrValue.startsWith(
+      prefix
+    )
+  ) {
+
+    return false;
+
+  }
+
+
+  const studentNo =
+    qrValue
+      .substring(
+        prefix.length
+      )
+      .trim();
+
+
+  if (
+    !/^\d{6}$/.test(
+      studentNo
+    )
+  ) {
+
+    return false;
+
+  }
+
+
+  const {
+    data: student,
+    error
+  } =
+    await supabaseClient
+      .from(
+        "students"
+      )
+      .select(`
+        id,
+        student_no,
+        name
+      `)
+      .eq(
+        "student_no",
+        studentNo
+      )
+      .eq(
+        "active",
+        true
+      )
+      .maybeSingle();
+
+
+  if (error) {
+
+    throw error;
+
+  }
+
+
+  if (!student) {
+
+    return false;
+
+  }
+
+
+  const {
+    error: updateError
+  } =
+    await supabaseClient
+      .from(
+        "answer_sheets"
+      )
+      .update({
+
+        student_id:
+          student.id,
+
+        qr_value:
+          qrValue,
+
+        status:
+          "matched"
+
+      })
+      .eq(
+        "id",
+        answerId
+      );
+
+
+  if (updateError) {
+
+    throw updateError;
+
+  }
+
+
+  return true;
+
+}
+
+
+/* =========================================================
+   画像読み込み
+========================================================= */
+
+function loadImageFromBlob(
+  blob
 ) {
 
   return new Promise(
@@ -662,18 +1318,44 @@ function loadImage(
         new Image();
 
 
+      const url =
+        URL.createObjectURL(
+          blob
+        );
+
+
       image.onload =
-        () => resolve(image);
+        () => {
+
+          URL.revokeObjectURL(
+            url
+          );
+
+          resolve(
+            image
+          );
+
+        };
 
 
       image.onerror =
-        reject;
+        () => {
+
+          URL.revokeObjectURL(
+            url
+          );
+
+          reject(
+            new Error(
+              "画像を読み込めませんでした。"
+            )
+          );
+
+        };
 
 
       image.src =
-        URL.createObjectURL(
-          file
-        );
+        url;
 
     }
   );
@@ -682,11 +1364,100 @@ function loadImage(
 
 
 /* =========================================================
-   表示
+   Canvas → Blob
+========================================================= */
+
+function canvasToBlob(
+  canvas
+) {
+
+  return new Promise(
+    (
+      resolve,
+      reject
+    ) => {
+
+      canvas.toBlob(
+        blob => {
+
+          if (blob) {
+
+            resolve(
+              blob
+            );
+
+          } else {
+
+            reject(
+              new Error(
+                "画像変換に失敗しました。"
+              )
+            );
+
+          }
+
+        },
+        "image/png"
+      );
+
+    }
+  );
+
+}
+
+
+/* =========================================================
+   ファイル名
+========================================================= */
+
+function sanitizeFileName(
+  filename
+) {
+
+  return filename
+    .replace(
+      /[^a-zA-Z0-9._-]/g,
+      "_"
+    );
+
+}
+
+
+function getExtension(
+  filename
+) {
+
+  const clean =
+    filename
+      .split("?")[0]
+      .toLowerCase();
+
+
+  const parts =
+    clean.split(".");
+
+
+  if (
+    parts.length < 2
+  ) {
+
+    return "";
+
+  }
+
+
+  return parts
+    .pop();
+
+}
+
+
+/* =========================================================
+   UI
 ========================================================= */
 
 function createUploadRow(
-  fileName
+  name
 ) {
 
   const container =
@@ -702,9 +1473,9 @@ function createUploadRow(
 
 
   row.style.cssText = `
-    border:1px solid #d0d6dc;
     padding:10px;
     margin-bottom:6px;
+    border:1px solid #d0d6dc;
     background:#fff;
   `;
 
@@ -712,7 +1483,7 @@ function createUploadRow(
   row.innerHTML = `
 
     <strong>
-      ${escapeHtml(fileName)}
+      ${escapeHtml(name)}
     </strong>
 
     <span
@@ -766,7 +1537,8 @@ function clearUploadList() {
 
   document.getElementById(
     "uploadList"
-  ).innerHTML = "";
+  ).innerHTML =
+    "";
 
 }
 
@@ -790,23 +1562,6 @@ function showMessage(
     error
       ? "#c62828"
       : "#16834b";
-
-}
-
-
-function getExtension(
-  filename
-) {
-
-  const parts =
-    filename.split(".");
-
-
-  return parts.length > 1
-    ? parts
-        .pop()
-        .toLowerCase()
-    : "bin";
 
 }
 

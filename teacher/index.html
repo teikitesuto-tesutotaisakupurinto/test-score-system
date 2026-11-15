@@ -3,148 +3,95 @@
 <html lang="ja">
 
 <head>
-
-  <meta charset="UTF-8">
-
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
-  >
-
-  <title>
-    教師ホーム - テスト成績システム
-  </title>
-
-  <link
-    rel="stylesheet"
-    href="/css/common.css"
-  >
-
-  <style>
-
-    .teacher-main {
-
-      max-width:1200px;
-
-      margin:0 auto;
-
-      padding:25px;
-
-    }
-
-
-    .teacher-header {
-
-      margin-bottom:25px;
-
-    }
-
-
-    .teacher-header h1 {
-
-      margin:0;
-
-      font-size:24px;
-
-    }
-
-
-    .teacher-header p {
-
-      margin:8px 0 0;
-
-      color:#666;
-
-      font-size:13px;
-
-    }
-
-
-    .menu-grid {
-
-      display:grid;
-
-      grid-template-columns:
-        repeat(
-          3,
-          minmax(
-            0,
-            1fr
-          )
-        );
-
-      gap:15px;
-
-    }
-
-
-    .menu-card {
-
-      display:block;
-
-      padding:20px;
-
-      background:#fff;
-
-      border:
-        1px solid #d0d6dc;
-
-      border-radius:5px;
-
-      text-decoration:none;
-
-      color:#222;
-
-    }
-
-
-    .menu-card:hover {
-
-      border-color:#888;
-
-    }
-
-
-    .menu-title {
-
-      font-size:17px;
-
-      font-weight:700;
-
-      margin-bottom:8px;
-
-    }
-
-
-    .menu-description {
-
-      color:#666;
-
-      font-size:13px;
-
-      line-height:1.7;
-
-    }
-
-
-    @media(max-width:800px) {
-
-      .menu-grid {
-
-        grid-template-columns:
-          1fr;
-
-      }
-
-    }
-
-  </style>
-
+<meta charset="UTF-8">
+
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1.0"
+>
+
+<title>教師ホーム - テスト成績システム</title>
+
+<link rel="stylesheet" href="/css/common.css">
+
+<style>
+
+.main {
+  max-width:1200px;
+  margin:0 auto;
+  padding:25px;
+}
+
+.header {
+  margin-bottom:25px;
+}
+
+.header h1 {
+  margin:0;
+  font-size:24px;
+}
+
+.header p {
+  margin:8px 0 0;
+  color:#666;
+  font-size:13px;
+}
+
+.grid {
+  display:grid;
+  grid-template-columns:
+    repeat(3,minmax(0,1fr));
+  gap:15px;
+}
+
+.card {
+  display:block;
+  padding:20px;
+  background:#fff;
+  border:1px solid #d5dbe0;
+  border-radius:5px;
+  color:#222;
+  text-decoration:none;
+}
+
+.card:hover {
+  border-color:#777;
+}
+
+.card-title {
+  font-size:17px;
+  font-weight:700;
+  margin-bottom:8px;
+}
+
+.card-description {
+  color:#666;
+  font-size:13px;
+  line-height:1.7;
+}
+
+@media(max-width:900px) {
+  .grid {
+    grid-template-columns:
+      repeat(2,minmax(0,1fr));
+  }
+}
+
+@media(max-width:600px) {
+  .main {
+    padding:15px;
+  }
+
+  .grid {
+    grid-template-columns:1fr;
+  }
+}
+
+</style>
 </head>
 
 
 <body>
-
 
 <header class="topbar">
 
@@ -152,14 +99,9 @@
     テスト成績システム
   </div>
 
-
   <div class="topbar-space"></div>
 
-
-  <span id="teacherName">
-    -
-  </span>
-
+  <span id="teacherName">-</span>
 
   <button
     id="logoutButton"
@@ -172,16 +114,13 @@
 </header>
 
 
+<main class="main">
 
-<main class="teacher-main">
-
-
-  <section class="teacher-header">
+  <section class="header">
 
     <h1>
       教師ホーム
     </h1>
-
 
     <p>
       テスト・答案・採点・成績を管理します。
@@ -190,163 +129,106 @@
   </section>
 
 
-
-  <section class="menu-grid">
-
+  <section class="grid">
 
     <a
-      class="menu-card"
+      class="card"
       href="/teacher/tests"
     >
-
-      <div class="menu-title">
+      <div class="card-title">
         テスト管理
       </div>
-
-      <div class="menu-description">
-        テストの作成・編集・管理を行います。
+      <div class="card-description">
+        テストの作成・編集を行います。
       </div>
-
     </a>
 
 
-
     <a
-      class="menu-card"
-      href="/teacher/tests/pages.html"
+      class="card"
+      href="/teacher/tests/pages"
     >
-
-      <div class="menu-title">
-        テストページ
+      <div class="card-title">
+        解答用紙・枠設定
       </div>
-
-      <div class="menu-description">
-        テスト用紙のページを管理します。
+      <div class="card-description">
+        解答用紙を登録し、設問ごとの解答欄と配点を設定します。
       </div>
-
     </a>
 
 
+    <a
+      class="card"
+      href="/teacher/tests/publish"
+    >
+      <div class="card-title">
+        成績・答案公開
+      </div>
+      <div class="card-description">
+        生徒への公開・非公開を切り替えます。
+      </div>
+    </a>
+
 
     <a
-      class="menu-card"
-      href="/teacher/answers/upload.html"
+      class="card"
+      href="/teacher/answers/upload"
     >
-
-      <div class="menu-title">
+      <div class="card-title">
         答案アップロード
       </div>
-
-      <div class="menu-description">
+      <div class="card-description">
         PDF・画像・ZIPの答案をアップロードします。
       </div>
-
     </a>
 
 
-
     <a
-      class="menu-card"
-      href="/teacher/answers/matched.html"
+      class="card"
+      href="/teacher/answers/matched"
     >
-
-      <div class="menu-title">
+      <div class="card-title">
         答案確認・紐付け
       </div>
-
-      <div class="menu-description">
-        生徒番号と答案の紐付けを確認します。
+      <div class="card-description">
+        QRによる自動紐付けと未紐付け答案を確認します。
       </div>
-
     </a>
 
 
-
     <a
-      class="menu-card"
-      href="/teacher/answers/regions.html"
-    >
-
-      <div class="menu-title">
-        答案領域
-      </div>
-
-      <div class="menu-description">
-        答案の解答領域を設定します。
-      </div>
-
-    </a>
-
-
-
-    <a
-      class="menu-card"
+      class="card"
       href="/teacher/marking"
     >
-
-      <div class="menu-title">
+      <div class="card-title">
         採点
       </div>
-
-      <div class="menu-description">
-        答案の採点を行います。
+      <div class="card-description">
+        自動クロップされた解答欄を採点します。
       </div>
-
     </a>
 
 
-
     <a
-      class="menu-card"
-      href="/teacher/results/summary.html"
+      class="card"
+      href="/teacher/results/summary"
     >
-
-      <div class="menu-title">
+      <div class="card-title">
         結果総括表
       </div>
-
-      <div class="menu-description">
-        各設問・合計・平均・順位を確認します。
+      <div class="card-description">
+        生徒番号・氏名・各設問点・合計・平均・順位を確認します。
       </div>
-
-    </a>
-
-
-
-    <a
-      class="menu-card"
-      href="/teacher/answers/return.html"
-    >
-
-      <div class="menu-title">
-        答案返却
-      </div>
-
-      <div class="menu-description">
-        採点済み答案を確認・印刷します。
-      </div>
-
     </a>
 
   </section>
 
-
 </main>
 
 
-
-<script
-  src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
-></script>
-
-<script
-  src="/js/config.js"
-></script>
-
-<script
-  src="/js/auth.js"
-></script>
-
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/js/config.js"></script>
+<script src="/js/auth.js"></script>
 
 <script>
 
@@ -355,43 +237,26 @@
   const profile =
     await requireTeacher();
 
-
   if (!profile) {
-
     return;
-
   }
 
-
-  const name =
-    document.getElementById(
-      "teacherName"
-    );
-
-
-  if (name) {
-
-    name.textContent =
-      profile.name ||
-      "先生";
-
-  }
+  document.getElementById(
+    "teacherName"
+  ).textContent =
+    profile.name || "先生";
 
 
-  document
-    .getElementById(
-      "logoutButton"
-    )
-    ?.addEventListener(
-      "click",
-      logout
-    );
+  document.getElementById(
+    "logoutButton"
+  ).addEventListener(
+    "click",
+    logout
+  );
 
 })();
 
 </script>
 
-
 </body>
-
 </html>

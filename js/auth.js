@@ -1,224 +1,64 @@
 
 "use strict";
 
-/* =========================================================
-   テスト成績システム
-   js/auth.js
 
+/* =========================================================
    共通認証
-
-   提供:
-     requireRole(role)
-     getSession()
-     getProfile()
-     getCurrentUser()
-     signOut()
-     logout()
-
-   対応:
-     teacher
-     student
-     admin
-
-   DB:
-     profiles
-       id
-       name
-       role
-       student_id
 ========================================================= */
 
-
-/* =========================================================
-   SUPABASE
-========================================================= */
-
-function getSupabaseClient() {
-
-  /*
-   * 既にconfig.js側で作られている場合
-   */
-
-  if (
-    window.SB
-  ) {
-
-    return window.SB;
-
-  }
-
-
-  if (
-    window.supabaseClient
-  ) {
-
-    return window.supabaseClient;
-
-  }
-
-
-  /*
-   * config.jsの設定から作成
-   */
-
-  if (
-    window.supabase &&
-    window.APP_CONFIG
-  ) {
-
-    const url =
-      window.APP_CONFIG
-        .SUPABASE_URL;
-
-
-    const key =
-      window.APP_CONFIG
-        .SUPABASE_ANON_KEY;
-
-
-    if (
-      url &&
-      key &&
-      url !==
-        "YOUR_SUPABASE_URL" &&
-      key !==
-        "YOUR_SUPABASE_ANON_KEY"
-    ) {
-
-      const client =
-        window.supabase.createClient(
-          url,
-          key
-        );
-
-
-      window.SB =
-        client;
-
-
-      window.supabaseClient =
-        client;
-
-
-      return client;
-
-    }
-
-  }
-
-
-  return null;
-
-}
-
-
-/* =========================================================
-   SESSION
-========================================================= */
-
-async function getSession() {
-
-  const DB =
-    getSupabaseClient();
-
-
-  if (!DB) {
-
-    throw new Error(
-      "Supabaseクライアントがありません。js/config.jsを確認してください。"
-    );
-
-  }
-
-
-  const {
-    data,
-    error
-  } =
-    await DB.auth.getSession();
-
-
-  if (error) {
-
-    throw new Error(
-      `セッション取得エラー: ${error.message}`
-    );
-
-  }
-
-
-  return (
-    data?.session ||
-    null
-  );
-
-}
-
-
-/* =========================================================
-   CURRENT USER
-========================================================= */
-
-async function getCurrentUser() {
-
-  const DB =
-    getSupabaseClient();
-
-
-  if (!DB) {
-
-    throw new Error(
-      "Supabaseクライアントがありません。"
-    );
-
-  }
-
-
-  const {
-    data,
-    error
-  } =
-    await DB.auth.getUser();
-
-
-  if (error) {
-
-    throw new Error(
-      `ユーザー取得エラー: ${error.message}`
-    );
-
-  }
-
-
-  return (
-    data?.user ||
-    null
-  );
-
-}
+const {
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY
+} =
+  window.APP_CONFIG || {};
+
+
+const sb =
+  (
+    SUPABASE_URL &&
+    SUPABASE_ANON_KEY &&
+    SUPABASE_URL.startsWith("http") &&
+    SUPABASE_ANON_KEY.startsWith("ey")
+  )
+    ? window.supabase.createClient(
+        SUPABASE_URL,
+        SUPABASE_ANON_KEY
+      )
+    : null;
 
 
 /* =========================================================
    PROFILE
+   ---------------------------------------------------------
+   今のDBには profiles.student_id が無い。
+   role と name だけ取得する。
 ========================================================= */
 
 async function getProfile() {
 
-  const DB =
-    getSupabaseClient();
-
-
-  if (!DB) {
+  if (!sb) {
 
     throw new Error(
-      "Supabaseクライアントがありません。"
+      "Supabase設定がありません。"
     );
 
   }
 
 
-  const user =
-    await getCurrentUser();
+  const {
+    data: {
+      user
+    },
+    error: userError
+  } =
+    await sb.auth.getUser();
+
+
+  if (userError) {
+
+    throw userError;
+
+  }
 
 
   if (!user) {
@@ -232,18 +72,13 @@ async function getProfile() {
     data,
     error
   } =
-    await DB
-      .from(
-        "profiles"
-      )
-      .select(
-        `
+    await sb
+      .from("profiles")
+      .select(`
         id,
         name,
-        role,
-        student_id
-        `
-      )
+        role
+      `)
       .eq(
         "id",
         user.id
@@ -260,33 +95,18 @@ async function getProfile() {
   }
 
 
-  if (!data) {
-
-    return {
-
-      id:
-        user.id,
-
-      name:
-        user.email ||
-        "ユーザー",
-
-      role:
-        null,
-
-      student_id:
-        null,
-
-      user
-
-    };
-
-  }
-
-
   return {
 
-    ...data,
+    id:
+      user.id,
+
+    name:
+      data?.name ||
+      "先生",
+
+    role:
+      data?.role ||
+      null,
 
     user
 
@@ -296,248 +116,241 @@ async function getProfile() {
 
 
 /* =========================================================
-   REQUIRE ROLE
+   SESSION
 ========================================================= */
 
-async function requireRole(
-  requiredRole
-) {
+async function getSession() {
 
-  const user =
-    await getCurrentUser();
-
-
-  /*
-   * 未ログイン
-   */
-
-  if (!user) {
-
-    location.replace(
-      "/login"
-    );
+  if (!sb) {
 
     return null;
 
   }
 
 
-  const profile =
-    await getProfile();
+  const {
+    data,
+    error
+  } =
+    await sb.auth.getSession();
 
 
-  if (!profile) {
+  if (error) {
 
-    location.replace(
-      "/login"
-    );
-
-    return null;
-
-  }
-
-
-  const role =
-    profile.role;
-
-
-  /*
-   * teacherを要求
-   *
-   * adminも先生画面を利用可能。
-   */
-
-  if (
-    requiredRole ===
-    "teacher"
-  ) {
-
-    if (
-      role !== "teacher" &&
-      role !== "admin"
-    ) {
-
-      redirectByRole(
-        role
-      );
-
-      return null;
-
-    }
+    throw error;
 
   }
 
 
-  /*
-   * admin
-   */
-
-  else if (
-    requiredRole ===
-    "admin"
-  ) {
-
-    if (
-      role !== "admin"
-    ) {
-
-      redirectByRole(
-        role
-      );
-
-      return null;
-
-    }
-
-  }
-
-
-  /*
-   * student
-   */
-
-  else if (
-    requiredRole ===
-    "student"
-  ) {
-
-    if (
-      role !== "student"
-    ) {
-
-      redirectByRole(
-        role
-      );
-
-      return null;
-
-    }
-
-  }
-
-
-  return {
-
-    user,
-
-    profile
-
-  };
-
-}
-
-
-/* =========================================================
-   ROLE REDIRECT
-========================================================= */
-
-function redirectByRole(
-  role
-) {
-
-  if (
-    role ===
-    "student"
-  ) {
-
-    location.replace(
-      "/student.html"
-    );
-
-    return;
-
-  }
-
-
-  if (
-    role ===
-    "teacher" ||
-    role ===
-    "admin"
-  ) {
-
-    location.replace(
-      "/teacher.html"
-    );
-
-    return;
-
-  }
-
-
-  location.replace(
-    "/login"
+  return (
+    data?.session ||
+    null
   );
 
 }
 
 
 /* =========================================================
-   SIGN OUT
+   USER
 ========================================================= */
 
-async function signOut() {
+async function getCurrentUser() {
 
-  const DB =
-    getSupabaseClient();
+  if (!sb) {
 
-
-  if (!DB) {
-
-    location.replace(
-      "/login"
-    );
-
-    return;
+    return null;
 
   }
 
 
-  try {
+  const {
+    data,
+    error
+  } =
+    await sb.auth.getUser();
+
+
+  if (error) {
+
+    throw error;
+
+  }
+
+
+  return (
+    data?.user ||
+    null
+  );
+
+}
+
+
+/* =========================================================
+   ROLE
+========================================================= */
+
+window.requireRole =
+  async function (
+    role
+  ) {
+
+    if (!sb) {
+
+      throw new Error(
+        "Supabase設定がありません。"
+      );
+
+    }
+
 
     const {
-      error
+      data: {
+        user
+      },
+      error: userError
     } =
-      await DB.auth.signOut();
+      await sb.auth.getUser();
 
 
-    if (error) {
+    if (userError) {
 
-      throw error;
+      throw userError;
 
     }
 
-  } catch (error) {
 
-    console.error(
-      "signOut:",
-      error
-    );
+    if (!user) {
 
-  }
+      location.replace(
+        "/login"
+      );
+
+      return null;
+
+    }
 
 
-  location.replace(
-    "/login"
-  );
+    /*
+     * student_id は絶対に取得しない。
+     */
 
-}
+    const {
+      data: profile,
+      error: profileError
+    } =
+      await sb
+        .from("profiles")
+        .select(`
+          id,
+          name,
+          role
+        `)
+        .eq(
+          "id",
+          user.id
+        )
+        .maybeSingle();
+
+
+    if (profileError) {
+
+      throw new Error(
+        `プロフィール取得エラー: ${profileError.message}`
+      );
+
+    }
+
+
+    if (!profile) {
+
+      throw new Error(
+        "プロフィールが登録されていません。"
+      );
+
+    }
+
+
+    const allowed =
+      profile.role === role ||
+      profile.role === "admin";
+
+
+    if (!allowed) {
+
+      if (
+        profile.role ===
+        "student"
+      ) {
+
+        location.replace(
+          "/student.html"
+        );
+
+      } else {
+
+        location.replace(
+          "/login"
+        );
+
+      }
+
+
+      return null;
+
+    }
+
+
+    return {
+
+      user,
+
+      profile
+
+    };
+
+  };
 
 
 /* =========================================================
    LOGOUT
 ========================================================= */
 
-async function logout() {
+window.signOut =
+  async function () {
 
-  await signOut();
+    if (sb) {
 
-}
+      await sb.auth.signOut();
+
+    }
+
+
+    location.replace(
+      "/login"
+    );
+
+  };
+
+
+window.logout =
+  window.signOut;
 
 
 /* =========================================================
    GLOBAL
 ========================================================= */
+
+window.SB =
+  sb;
+
+
+window.supabaseClient =
+  sb;
+
+
+window.getProfile =
+  getProfile;
+
 
 window.getSession =
   getSession;
@@ -545,20 +358,3 @@ window.getSession =
 
 window.getCurrentUser =
   getCurrentUser;
-
-
-window.getProfile =
-  getProfile;
-
-
-window.requireRole =
-  requireRole;
-
-
-window.signOut =
-  signOut;
-
-
-window.logout =
-  logout;
-

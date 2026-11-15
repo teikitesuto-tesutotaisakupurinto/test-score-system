@@ -1,86 +1,608 @@
+
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
+
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <title>ログイン - テスト成績システム</title>
 
-  <link rel="stylesheet" href="/css/login.css">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+
+  <meta
+    name="robots"
+    content="noindex,nofollow"
+  >
+
+
+  <title>
+    ログイン - テスト成績システム
+  </title>
+
+
+  <link
+    rel="stylesheet"
+    href="/css/common.css"
+  >
+
+
+  <style>
+
+    * {
+
+      box-sizing:
+        border-box;
+
+    }
+
+
+    html,
+    body {
+
+      margin:
+        0;
+
+      padding:
+        0;
+
+      min-height:
+        100%;
+
+    }
+
+
+    body {
+
+      min-height:
+        100vh;
+
+      background:
+        #f3f5f7;
+
+      color:
+        #222;
+
+      font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        "Hiragino Kaku Gothic ProN",
+        "Yu Gothic",
+        Meiryo,
+        sans-serif;
+
+    }
+
+
+    .login-page {
+
+      min-height:
+        100vh;
+
+      display:
+        flex;
+
+      align-items:
+        center;
+
+      justify-content:
+        center;
+
+      padding:
+        20px;
+
+    }
+
+
+    .login-card {
+
+      width:
+        100%;
+
+      max-width:
+        420px;
+
+      background:
+        #fff;
+
+      border:
+        1px solid #d5dbe0;
+
+      border-radius:
+        6px;
+
+      padding:
+        32px;
+
+      box-shadow:
+        0 4px 18px
+        rgba(
+          0,
+          0,
+          0,
+          .06
+        );
+
+    }
+
+
+    .system-title {
+
+      margin:
+        0;
+
+      text-align:
+        center;
+
+      font-size:
+        25px;
+
+      font-weight:
+        700;
+
+      line-height:
+        1.4;
+
+    }
+
+
+    .system-description {
+
+      margin:
+        8px 0 28px;
+
+      text-align:
+        center;
+
+      color:
+        #666;
+
+      font-size:
+        13px;
+
+    }
+
+
+    .form-group {
+
+      margin-bottom:
+        18px;
+
+    }
+
+
+    .form-group label {
+
+      display:
+        block;
+
+      margin-bottom:
+        7px;
+
+      font-size:
+        13px;
+
+      font-weight:
+        700;
+
+    }
+
+
+    .form-group input {
+
+      display:
+        block;
+
+      width:
+        100%;
+
+      height:
+        46px;
+
+      padding:
+        0 12px;
+
+      border:
+        1px solid #c8ced4;
+
+      border-radius:
+        4px;
+
+      background:
+        #fff;
+
+      color:
+        #222;
+
+      font-size:
+        15px;
+
+      outline:
+        none;
+
+    }
+
+
+    .form-group input:focus {
+
+      border-color:
+        #555;
+
+      box-shadow:
+        0 0 0 2px
+        rgba(
+          0,
+          0,
+          0,
+          .06
+        );
+
+    }
+
+
+    .login-error {
+
+      display:
+        none;
+
+      margin:
+        0 0 15px;
+
+      padding:
+        11px 12px;
+
+      border:
+        1px solid #e2b8b2;
+
+      border-radius:
+        4px;
+
+      background:
+        #fff4f2;
+
+      color:
+        #b42318;
+
+      font-size:
+        13px;
+
+      line-height:
+        1.6;
+
+    }
+
+
+    .login-button {
+
+      display:
+        block;
+
+      width:
+        100%;
+
+      height:
+        46px;
+
+      border:
+        1px solid #333;
+
+      border-radius:
+        4px;
+
+      background:
+        #333;
+
+      color:
+        #fff;
+
+      font-size:
+        15px;
+
+      font-weight:
+        700;
+
+      cursor:
+        pointer;
+
+    }
+
+
+    .login-button:hover {
+
+      background:
+        #222;
+
+    }
+
+
+    .login-button:disabled {
+
+      opacity:
+        .55;
+
+      cursor:
+        default;
+
+    }
+
+
+    .login-footer {
+
+      margin-top:
+        22px;
+
+      text-align:
+        center;
+
+      color:
+        #888;
+
+      font-size:
+        11px;
+
+      line-height:
+        1.6;
+
+    }
+
+
+    .security-note {
+
+      margin-top:
+        18px;
+
+      padding:
+        10px;
+
+      background:
+        #f7f8f9;
+
+      border:
+        1px solid #e1e5e8;
+
+      color:
+        #666;
+
+      font-size:
+        11px;
+
+      line-height:
+        1.6;
+
+    }
+
+
+    @media (
+      max-width: 480px
+    ) {
+
+      .login-page {
+
+        padding:
+          12px;
+
+      }
+
+
+      .login-card {
+
+        padding:
+          24px 18px;
+
+      }
+
+
+      .system-title {
+
+        font-size:
+          21px;
+
+      }
+
+    }
+
+  </style>
+
 </head>
+
 
 <body>
 
-<div class="login-page">
 
-  <div class="login-card">
+<main
+  class="login-page"
+>
 
-    <div class="system-title">
+
+  <section
+    class="login-card"
+    aria-labelledby="loginTitle"
+  >
+
+
+    <h1
+      id="loginTitle"
+      class="system-title"
+    >
       テスト成績システム
-    </div>
+    </h1>
 
-    <div class="login-title">
-      ログイン
-    </div>
 
-    <form id="loginForm">
+    <p
+      class="system-description"
+    >
+      ログインしてください
+    </p>
 
-      <div class="form-group">
 
-        <label for="email">
+
+    <!--
+      重要
+
+      method="post" を指定。
+
+      さらに login.js の submit handler で
+      preventDefault() する。
+
+      パスワードをGET URLへ送信しない。
+    -->
+
+    <form
+      id="loginForm"
+      method="post"
+      action="/login"
+      autocomplete="on"
+      novalidate
+    >
+
+
+      <div
+        class="form-group"
+      >
+
+        <label
+          for="email"
+        >
           メールアドレス
         </label>
+
 
         <input
           id="email"
           name="email"
           type="email"
+          inputmode="email"
           autocomplete="username"
+          autocapitalize="none"
+          autocorrect="off"
+          spellcheck="false"
+          placeholder="メールアドレス"
           required
         >
 
       </div>
 
-      <div class="form-group">
 
-        <label for="password">
+
+      <div
+        class="form-group"
+      >
+
+        <label
+          for="password"
+        >
           パスワード
         </label>
+
 
         <input
           id="password"
           name="password"
           type="password"
           autocomplete="current-password"
+          placeholder="パスワード"
           required
         >
 
       </div>
 
+
+
+      <div
+        id="loginError"
+        class="login-error"
+        role="alert"
+        aria-live="polite"
+      ></div>
+
+
+
       <button
         id="loginButton"
-        type="submit"
         class="login-button"
+        type="submit"
       >
         ログイン
       </button>
 
-      <div
-        id="loginMessage"
-        class="login-message"
-      ></div>
 
     </form>
 
-  </div>
-
-</div>
 
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <div
+      class="security-note"
+    >
 
-<script src="/js/config.js"></script>
-<script src="/js/auth.js"></script>
+      ログイン情報は安全な認証処理で送信されます。
+      パスワードをURLに表示・保存することはありません。
+
+    </div>
+
+
+
+    <div
+      class="login-footer"
+    >
+
+      テスト成績システム
+
+    </div>
+
+
+  </section>
+
+
+</main>
+
+
+
+<!-- =======================================================
+     Supabase
+======================================================= -->
+
+<script
+  src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+></script>
+
+
+<!-- =======================================================
+     Config
+
+     SUPABASE_URL
+     SUPABASE_KEY
+     supabaseClient
+======================================================= -->
+
+<script
+  src="/js/config.js"
+></script>
+
+
+<!-- =======================================================
+     共通認証
+======================================================= -->
+
+<script
+  src="/js/auth.js"
+></script>
+
+
+<!-- =======================================================
+     ログイン処理
+
+     必ず最後に読み込む。
+======================================================= -->
+
+<script
+  src="/js/login.js"
+></script>
+
 
 </body>
+
 </html>

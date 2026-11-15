@@ -3,31 +3,118 @@
    テスト成績システム
    js/auth.js 完全版
 
-   認証構成
+   URLはすべてClean URLを使用。
+
+   実ファイル
+   ---------------------------------------------------------
+   /login.html
+   /teacher/index.html
+   /teacher/tests/index.html
+   /teacher/tests/edit.html
+   /teacher/tests/pages.html
+   /teacher/tests/publish.html
+   /teacher/answers/upload.html
+   /teacher/answers/matched.html
+   /teacher/answers/regions.html
+   /teacher/marking/index.html
+   /teacher/marking/mark.html
+   /teacher/results/summary.html
+   /student/tests/index.html
+   /student/answer.html
+
+   URL
+   ---------------------------------------------------------
+   /login
+   /teacher
+   /teacher/tests
+   /teacher/tests/edit?id=UUID
+   /teacher/tests/pages?test=UUID
+   /teacher/tests/publish?test=UUID
+   /teacher/answers/upload
+   /teacher/answers/matched
+   /teacher/answers/regions
+   /teacher/marking
+   /teacher/marking/mark?answer=UUID
+   /teacher/results/summary
+   /student/tests
+   /student/answer
+
+
+   認証
    ---------------------------------------------------------
    Supabase Auth
-        ↓
-   auth.users.id
-        ↓
-   public.get_my_profile()
-        ↓
-   public.profiles
-        ↓
+       ↓
+   get_my_profile()
+       ↓
+   profiles
+       ↓
    role
-        ├─ teacher → /teacher/index.html
-        ├─ admin   → /teacher/index.html
-        └─ student → /student/tests/index.html
 
-   生徒
-        ↓
+   teacher/admin
+       ↓
+   /teacher
+
+   student
+       ↓
    students.auth_user_id
-        ↓
-   students.id
+       ↓
+   /student/tests
 ========================================================= */
 
 (function () {
 
   "use strict";
+
+
+  /* =======================================================
+     ROUTES
+  ======================================================= */
+
+  window.APP_ROUTES = {
+
+    login:
+      "/login",
+
+    teacher:
+      "/teacher",
+
+    teacherTests:
+      "/teacher/tests",
+
+    teacherTestEdit:
+      "/teacher/tests/edit",
+
+    teacherTestPages:
+      "/teacher/tests/pages",
+
+    teacherTestPublish:
+      "/teacher/tests/publish",
+
+    teacherAnswersUpload:
+      "/teacher/answers/upload",
+
+    teacherAnswersMatched:
+      "/teacher/answers/matched",
+
+    teacherAnswersRegions:
+      "/teacher/answers/regions",
+
+    teacherMarking:
+      "/teacher/marking",
+
+    teacherMark:
+      "/teacher/marking/mark",
+
+    teacherResults:
+      "/teacher/results/summary",
+
+    studentTests:
+      "/student/tests",
+
+    studentAnswer:
+      "/student/answer"
+
+  };
 
 
   /* =======================================================
@@ -48,6 +135,7 @@
 
     }
 
+
     return window.supabaseClient;
 
   }
@@ -57,223 +145,198 @@
      Session
   ======================================================= */
 
-  window.getSession = async function () {
+  window.getSession =
+    async function () {
 
-    const client =
-      getClient();
-
-
-    if (!client) {
-
-      return null;
-
-    }
+      const client =
+        getClient();
 
 
-    const {
-      data,
-      error
-    } =
-      await client
-        .auth
-        .getSession();
+      if (!client) {
+
+        return null;
+
+      }
 
 
-    if (error) {
-
-      console.error(
-        "getSession:",
+      const {
+        data,
         error
+      } =
+        await client
+          .auth
+          .getSession();
+
+
+      if (error) {
+
+        console.error(
+          "getSession:",
+          error
+        );
+
+        return null;
+
+      }
+
+
+      return (
+        data?.session ||
+        null
       );
 
-      return null;
-
-    }
-
-
-    return (
-      data?.session ||
-      null
-    );
-
-  };
+    };
 
 
   /* =======================================================
      Auth User
   ======================================================= */
 
-  window.getAuthUser = async function () {
+  window.getAuthUser =
+    async function () {
 
-    const session =
-      await window.getSession();
-
-
-    if (!session) {
-
-      return null;
-
-    }
+      const session =
+        await window.getSession();
 
 
-    return (
-      session.user ||
-      null
-    );
+      if (!session) {
 
-  };
+        return null;
+
+      }
+
+
+      return (
+        session.user ||
+        null
+      );
+
+    };
 
 
   /* =======================================================
      Profile
-     
-     RPC:
-       public.get_my_profile()
-
-     RPC内部:
-       profiles.id = auth.uid()
   ======================================================= */
 
-  window.getProfile = async function () {
+  window.getProfile =
+    async function () {
 
-    const user =
-      await window.getAuthUser();
-
-
-    if (!user) {
-
-      return null;
-
-    }
+      const user =
+        await window.getAuthUser();
 
 
-    const client =
-      getClient();
+      if (!user) {
+
+        return null;
+
+      }
 
 
-    if (!client) {
-
-      throw new Error(
-        "Supabaseが初期化されていません。"
-      );
-
-    }
+      const client =
+        getClient();
 
 
-    const {
-      data,
-      error
-    } =
-      await client
-        .rpc(
-          "get_my_profile"
+      if (!client) {
+
+        throw new Error(
+          "Supabaseが初期化されていません。"
+        );
+
+      }
+
+
+      const {
+        data,
+        error
+      } =
+        await client
+          .rpc(
+            "get_my_profile"
+          );
+
+
+      if (error) {
+
+        console.error(
+          "get_my_profile:",
+          error
         );
 
 
-    if (error) {
+        throw new Error(
+          "ユーザー権限を取得できません。"
+        );
 
-      console.error(
-        "get_my_profile ERROR:",
-        error
-      );
-
-
-      throw new Error(
-        `ユーザー権限を取得できません。${error.message ? " " + error.message : ""}`
-      );
-
-    }
+      }
 
 
-    /*
-      RETURNS TABLEは配列で返る。
-    */
-
-    const profile =
-      Array.isArray(data)
-        ? data[0]
-        : data;
+      const profile =
+        Array.isArray(data)
+          ? data[0]
+          : data;
 
 
-    if (!profile) {
+      if (!profile) {
 
-      console.error(
-        "profilesが見つかりません。",
-        {
-          auth_user_id:
-            user.id,
+        throw new Error(
+          "ログインユーザーの権限情報が登録されていません。"
+        );
 
-          email:
-            user.email
-        }
-      );
+      }
 
 
-      throw new Error(
-        "ログインユーザーの権限情報がprofilesに登録されていません。"
-      );
-
-    }
-
-
-    const role =
-      String(
-        profile.role ||
-        ""
-      )
-        .toLowerCase()
-        .trim();
+      const role =
+        String(
+          profile.role ||
+          ""
+        )
+          .toLowerCase()
+          .trim();
 
 
-    if (
-      role !== "teacher" &&
-      role !== "admin" &&
-      role !== "student"
-    ) {
+      if (
+        ![
+          "teacher",
+          "admin",
+          "student"
+        ].includes(
+          role
+        )
+      ) {
 
-      console.error(
-        "未対応role:",
-        profile.role
-      );
+        throw new Error(
+          "ユーザー権限が正しく設定されていません。"
+        );
 
-
-      throw new Error(
-        `未対応のユーザー権限です: ${profile.role}`
-      );
-
-    }
+      }
 
 
-    return {
+      return {
 
-      id:
-        profile.id,
+        id:
+          profile.id,
 
-      role,
+        role,
 
-      name:
-        profile.name ||
-        "",
+        name:
+          profile.name ||
+          "",
 
-      email:
-        profile.email ||
-        user.email ||
-        "",
+        email:
+          profile.email ||
+          user.email ||
+          "",
 
-      auth_user_id:
-        user.id
+        auth_user_id:
+          user.id
+
+      };
 
     };
 
-  };
-
 
   /* =======================================================
-     Student Profile
-     
-     students.auth_user_id
-       =
-     auth.users.id
+     Student
   ======================================================= */
 
   window.getStudentProfile =
@@ -308,9 +371,7 @@
         error
       } =
         await client
-          .from(
-            "students"
-          )
+          .from("students")
           .select(`
             id,
             student_no,
@@ -333,13 +394,13 @@
       if (error) {
 
         console.error(
-          "students取得エラー:",
+          "students:",
           error
         );
 
 
         throw new Error(
-          `生徒情報を取得できません。${error.message ? " " + error.message : ""}`
+          "生徒情報を取得できません。"
         );
 
       }
@@ -351,7 +412,7 @@
 
 
   /* =======================================================
-     現在のRole
+     Current Role
   ======================================================= */
 
   window.getCurrentRole =
@@ -361,20 +422,14 @@
         await window.getProfile();
 
 
-      if (!profile) {
-
-        return null;
-
-      }
-
-
-      return profile.role;
+      return profile?.role ||
+        null;
 
     };
 
 
   /* =======================================================
-     認証必須
+     Require Auth
   ======================================================= */
 
   window.requireAuth =
@@ -387,7 +442,7 @@
       if (!session) {
 
         window.location.replace(
-          "/login"
+          window.APP_ROUTES.login
         );
 
         return null;
@@ -401,7 +456,7 @@
 
 
   /* =======================================================
-     Teacher / Admin 必須
+     Require Teacher
   ======================================================= */
 
   window.requireTeacher =
@@ -414,7 +469,7 @@
       if (!session) {
 
         window.location.replace(
-          "/login"
+          window.APP_ROUTES.login
         );
 
         return null;
@@ -439,18 +494,7 @@
 
 
         window.location.replace(
-          "/login"
-        );
-
-        return null;
-
-      }
-
-
-      if (!profile) {
-
-        window.location.replace(
-          "/login"
+          window.APP_ROUTES.login
         );
 
         return null;
@@ -464,7 +508,7 @@
       ) {
 
         window.location.replace(
-          "/student/tests/index.html"
+          window.APP_ROUTES.studentTests
         );
 
         return null;
@@ -478,7 +522,7 @@
 
 
   /* =======================================================
-     Student 必須
+     Require Student
   ======================================================= */
 
   window.requireStudent =
@@ -491,7 +535,7 @@
       if (!session) {
 
         window.location.replace(
-          "/login"
+          window.APP_ROUTES.login
         );
 
         return null;
@@ -516,18 +560,7 @@
 
 
         window.location.replace(
-          "/login"
-        );
-
-        return null;
-
-      }
-
-
-      if (!profile) {
-
-        window.location.replace(
-          "/login"
+          window.APP_ROUTES.login
         );
 
         return null;
@@ -540,7 +573,7 @@
       ) {
 
         window.location.replace(
-          "/teacher/index.html"
+          window.APP_ROUTES.teacher
         );
 
         return null;
@@ -548,45 +581,15 @@
       }
 
 
-      let student;
-
-
-      try {
-
-        student =
-          await window.getStudentProfile();
-
-      } catch (error) {
-
-        console.error(
-          "getStudentProfile:",
-          error
-        );
-
-
-        alert(
-          error.message ||
-          "生徒情報を取得できません。"
-        );
-
-
-        return null;
-
-      }
+      const student =
+        await window.getStudentProfile();
 
 
       if (!student) {
 
-        console.error(
-          "生徒マスター未紐付け:",
-          session.user.id
-        );
-
-
         alert(
           "このアカウントは生徒マスターに紐付いていません。"
         );
-
 
         return null;
 
@@ -600,7 +603,6 @@
         alert(
           "この生徒アカウントは現在利用できません。"
         );
-
 
         await window.logout();
 
@@ -645,8 +647,7 @@
 
       const cleanEmail =
         String(
-          email ||
-          ""
+          email || ""
         )
           .trim();
 
@@ -687,20 +688,12 @@
 
       if (error) {
 
-        console.error(
-          "signInWithPassword:",
-          error
-        );
-
-
         throw error;
 
       }
 
 
-      if (
-        !data?.session
-      ) {
+      if (!data?.session) {
 
         throw new Error(
           "ログインセッションを取得できませんでした。"
@@ -715,7 +708,7 @@
 
 
   /* =======================================================
-     Login後の遷移
+     Login後遷移
   ======================================================= */
 
   window.redirectAfterLogin =
@@ -738,26 +731,13 @@
         await window.getProfile();
 
 
-      if (!profile) {
-
-        throw new Error(
-          "ユーザー権限を取得できません。"
-        );
-
-      }
-
-
-      /* -----------------------------------------------
-         Teacher
-      ------------------------------------------------ */
-
       if (
-        profile.role ===
-        "teacher"
+        profile.role === "teacher" ||
+        profile.role === "admin"
       ) {
 
         window.location.replace(
-          "/teacher/index.html"
+          window.APP_ROUTES.teacher
         );
 
         return;
@@ -765,31 +745,8 @@
       }
 
 
-      /* -----------------------------------------------
-         Admin
-      ------------------------------------------------ */
-
       if (
-        profile.role ===
-        "admin"
-      ) {
-
-        window.location.replace(
-          "/teacher/index.html"
-        );
-
-        return;
-
-      }
-
-
-      /* -----------------------------------------------
-         Student
-      ------------------------------------------------ */
-
-      if (
-        profile.role ===
-        "student"
+        profile.role === "student"
       ) {
 
         const student =
@@ -817,7 +774,7 @@
 
 
         window.location.replace(
-          "/student/tests/index.html"
+          window.APP_ROUTES.studentTests
         );
 
         return;
@@ -843,55 +800,86 @@
         getClient();
 
 
-      if (!client) {
+      if (client) {
 
-        window.location.replace(
-          "/login"
-        );
+        try {
 
-        return;
-
-      }
-
-
-      try {
-
-        const {
-          error
-        } =
           await client
             .auth
             .signOut();
 
-
-        if (error) {
+        } catch (error) {
 
           console.error(
-            "signOut:",
+            "logout:",
             error
           );
 
         }
 
-      } catch (error) {
-
-        console.error(
-          "logout exception:",
-          error
-        );
-
       }
 
 
       window.location.replace(
-        "/login"
+        window.APP_ROUTES.login
       );
 
     };
 
 
   /* =======================================================
-     Auth State Change
+     URL Helper
+  ======================================================= */
+
+  window.getUrlParam =
+    function (
+      name
+    ) {
+
+      const params =
+        new URLSearchParams(
+          window.location.search
+        );
+
+
+      return params.get(
+        name
+      );
+
+    };
+
+
+  /* =======================================================
+     Require URL Parameter
+  ======================================================= */
+
+  window.requireUrlParam =
+    function (
+      name
+    ) {
+
+      const value =
+        window.getUrlParam(
+          name
+        );
+
+
+      if (!value) {
+
+        throw new Error(
+          `URLパラメータ「${name}」がありません。`
+        );
+
+      }
+
+
+      return value;
+
+    };
+
+
+  /* =======================================================
+     Auth State
   ======================================================= */
 
   const client =
@@ -902,13 +890,7 @@
 
     client.auth
       .onAuthStateChange(
-        (
-          event
-        ) => {
-
-          /*
-            ログアウト
-          */
+        event => {
 
           if (
             event ===
@@ -923,7 +905,7 @@
             ) {
 
               window.location.replace(
-                "/login"
+                window.APP_ROUTES.login
               );
 
             }

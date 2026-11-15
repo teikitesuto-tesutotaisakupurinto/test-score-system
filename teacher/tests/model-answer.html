@@ -1,120 +1,359 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
+
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>模範解答 - テスト成績システム</title>
-  <link rel="stylesheet" href="/css/common.css">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>
+    模範解答登録 - テスト成績システム
+  </title>
+
+  <link
+    rel="stylesheet"
+    href="/css/common.css"
+  >
+
 </head>
+
 
 <body>
 
+
 <header class="topbar">
-  <div class="system-name">テスト成績システム</div>
+
+  <div class="system-name">
+    テスト成績システム
+  </div>
+
+
   <div class="topbar-space"></div>
-  <span id="teacherName">-</span>
-  <button id="logoutButton" class="logout-button">ログアウト</button>
+
+
+  <span id="teacherName">
+    -
+  </span>
+
+
+  <button
+    id="logoutButton"
+    class="logout-button"
+    type="button"
+  >
+    ログアウト
+  </button>
+
 </header>
+
+
 
 <div class="teacher-layout">
 
+
   <aside class="sidebar">
 
-    <div class="sidebar-title">テスト設定</div>
 
-    <a id="pagesLink" href="#" class="menu-link">
+    <div class="sidebar-title">
+      テスト設定
+    </div>
+
+
+    <a
+      href="/teacher/tests"
+      class="menu-link"
+    >
+      テスト一覧
+    </a>
+
+
+    <a
+      id="pagesLink"
+      href="#"
+      class="menu-link"
+    >
       解答用紙登録
     </a>
 
-    <a id="layoutLink" href="#" class="menu-link">
+
+    <a
+      id="layoutLink"
+      href="#"
+      class="menu-link"
+    >
       枠設定
     </a>
 
-    <a id="modelAnswerLink" href="#" class="menu-link active">
+
+    <a
+      id="modelAnswerLink"
+      href="#"
+      class="menu-link active"
+    >
       模範解答
     </a>
 
-    <a id="previewLink" href="#" class="menu-link">
+
+    <a
+      id="previewLink"
+      href="#"
+      class="menu-link"
+    >
       テスト確認
     </a>
 
+
   </aside>
+
+
 
   <main class="main-content">
 
+
     <div class="page-header">
-      <h1>模範解答登録</h1>
+
+      <h1>
+        模範解答登録
+      </h1>
+
     </div>
 
-    <div id="testInformation" class="card">
+
+
+    <div
+      id="testInformation"
+      class="card"
+    >
       読み込み中...
     </div>
 
+
+
+    <!-- =================================================
+         アップロード
+    ================================================== -->
+
     <div class="card">
 
-      <h3>模範解答</h3>
+
+      <h3>
+        模範解答ファイル
+      </h3>
+
 
       <p>
-        採点時に左側へ表示する模範解答画像を登録します。
+        模範解答を登録してください。
       </p>
+
+
+      <div
+        style="
+          background:#f3f5f7;
+          border:1px solid #d0d6dc;
+          padding:14px;
+          margin-bottom:16px;
+          line-height:1.8;
+        "
+      >
+
+        <strong>
+          対応形式
+        </strong>
+
+        <br>
+
+        JPG / JPEG / PNG / WEBP / GIF / BMP
+
+        <br>
+
+        PDF
+
+        <br>
+
+        ZIP
+
+        <br><br>
+
+        PDFは自動的にページ分割されます。
+
+        <br>
+
+        ZIPには複数の画像・PDFをまとめて入れられます。
+
+      </div>
+
+
 
       <div class="form-group">
 
-        <label>
-          模範解答画像
+        <label for="modelAnswerFiles">
+          ファイル
         </label>
 
+
         <input
-          id="modelAnswerFile"
+          id="modelAnswerFiles"
           type="file"
-          accept="image/*"
+          multiple
+          accept="
+            .jpg,
+            .jpeg,
+            .png,
+            .webp,
+            .gif,
+            .bmp,
+            .pdf,
+            .zip,
+            image/jpeg,
+            image/png,
+            image/webp,
+            image/gif,
+            image/bmp,
+            application/pdf,
+            application/zip
+          "
         >
 
       </div>
 
-      <button
-        id="uploadButton"
-        class="btn btn-primary"
+
+
+      <div
+        style="
+          display:flex;
+          gap:8px;
+        "
       >
-        模範解答を登録
-      </button>
+
+        <button
+          id="uploadButton"
+          class="btn btn-primary"
+          type="button"
+        >
+          模範解答を登録
+        </button>
+
+
+        <button
+          id="clearButton"
+          class="btn"
+          type="button"
+        >
+          選択解除
+        </button>
+
+      </div>
+
+
 
       <div
         id="message"
-        style="margin-top:12px;min-height:22px;"
-      ></div>
+        style="
+          margin-top:14px;
+          min-height:24px;
+        "
+      >
+      </div>
+
 
     </div>
+
+
+
+    <!-- =================================================
+         登録ページ
+    ================================================== -->
 
     <div class="card">
 
-      <h3>登録済み模範解答</h3>
 
       <div
-        id="modelAnswerPreview"
         style="
-          min-height:300px;
-          border:1px solid #d0d6dc;
-          background:#f5f6f7;
           display:flex;
           align-items:center;
-          justify-content:center;
-          overflow:auto;
+          justify-content:space-between;
+          margin-bottom:15px;
         "
       >
-        登録されていません。
+
+        <h3 style="margin:0;">
+          登録済み模範解答
+        </h3>
+
+
+        <span
+          id="pageCount"
+          style="
+            color:#666;
+            font-size:13px;
+          "
+        >
+          0ページ
+        </span>
+
       </div>
+
+
+
+      <div
+        id="pageList"
+        style="
+          display:grid;
+          grid-template-columns:
+            repeat(3,minmax(0,1fr));
+          gap:15px;
+        "
+      >
+
+        <div
+          style="
+            grid-column:1/-1;
+            text-align:center;
+            color:#777;
+            padding:35px;
+          "
+        >
+          読み込み中...
+        </div>
+
+      </div>
+
 
     </div>
 
+
   </main>
+
 
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+
+<script
+  src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"
+></script>
+
+
+<script
+  src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+></script>
+
+
 <script src="/js/config.js"></script>
+
 <script src="/js/auth.js"></script>
+
+<script src="/js/lib/pdf-loader.js"></script>
+
+<script src="/js/lib/file-parser.js"></script>
+
 <script src="/js/teacher/model-answer.js"></script>
 
+
 </body>
+
 </html>

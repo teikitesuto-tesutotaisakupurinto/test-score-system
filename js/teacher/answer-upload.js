@@ -1,27 +1,32 @@
 
 /* =========================================================
    テスト成績システム
-   答案アップロード
+   答案アップロード 完全版
 
-   使用ファイル:
-     js/teacher/answer-upload.js
+   対応:
+   JPG / JPEG / PNG / WEBP / GIF / BMP
+   PDF
+   ZIP
 
-   ページ構造:
-     入力ファイル
-       ↓
-     file-parser
-       ↓
-     ページ画像
-       ↓
-     QR探索
-       ↓
-     QRがあるページ = 新しい答案
-       ↓
-     QRがない後続ページ = 直前の答案
-       ↓
-     answer_sheets
-       ↓
-     answer_sheet_pages
+   処理:
+
+   ファイル
+      ↓
+   PDF / ZIP / 画像をページ化
+      ↓
+   各ページQR探索
+      ↓
+   QRあり
+      ↓
+   新しい答案
+      ↓
+   QRなし
+      ↓
+   直前の答案の続き
+      ↓
+   answer_sheets
+      ↓
+   answer_sheet_pages
 
    source_page_id は使用しない。
 ========================================================= */
@@ -66,8 +71,9 @@
 
   function getUploadButton() {
 
-    return document.getElementById(
-      "uploadButton"
+    return (
+      document.getElementById("uploadButton") ||
+      document.getElementById("upload")
     );
 
   }
@@ -138,6 +144,10 @@
 
     try {
 
+      /*
+       * 認証
+       */
+
       const profile =
         await getProfile();
 
@@ -167,6 +177,10 @@
       }
 
 
+      /*
+       * 先生名
+       */
+
       const teacherName =
         document.getElementById(
           "teacherName"
@@ -182,8 +196,16 @@
       }
 
 
+      /*
+       * イベント
+       */
+
       setupEvents();
 
+
+      /*
+       * テスト一覧
+       */
 
       await loadTests();
 
@@ -191,7 +213,7 @@
     } catch (error) {
 
       console.error(
-        "answer upload initialize:",
+        "answer-upload initialize:",
         error
       );
 
@@ -208,7 +230,7 @@
 
 
   /* =======================================================
-     イベント
+     EVENTS
   ======================================================= */
 
   function setupEvents() {
@@ -225,6 +247,10 @@
       getClearButton();
 
 
+    /*
+     * ファイル選択
+     */
+
     filesElement?.addEventListener(
       "change",
       event => {
@@ -235,7 +261,7 @@
 
 
         /*
-         * 同じファイルを再選択可能にする。
+         * 同じファイルを再選択可能
          */
 
         event.target.value =
@@ -245,11 +271,19 @@
     );
 
 
+    /*
+     * アップロード
+     */
+
     uploadButton?.addEventListener(
       "click",
       uploadAnswers
     );
 
+
+    /*
+     * クリア
+     */
 
     clearButton?.addEventListener(
       "click",
@@ -288,7 +322,110 @@
 
 
   /* =======================================================
-     ファイル追加
+     TESTS
+  ======================================================= */
+
+  async function loadTests() {
+
+    const select =
+      getTestElement();
+
+
+    if (!select) {
+
+      throw new Error(
+        "テスト選択欄が見つかりません。"
+      );
+
+    }
+
+
+    const {
+      data,
+      error
+    } =
+      await supabaseClient
+        .from("tests")
+        .select(`
+          id,
+          name,
+          subject,
+          grade,
+          class_name,
+          created_at
+        `)
+        .order(
+          "created_at",
+          {
+            ascending: false
+          }
+        );
+
+
+    if (error) {
+
+      throw error;
+
+    }
+
+
+    tests =
+      data || [];
+
+
+    select.innerHTML = `
+
+      <option value="">
+        テストを選択してください
+      </option>
+
+    `;
+
+
+    for (
+      const test
+      of tests
+    ) {
+
+      const option =
+        document.createElement(
+          "option"
+        );
+
+
+      option.value =
+        test.id;
+
+
+      const parts = [
+        test.name,
+        test.subject,
+        test.grade
+      ].filter(
+        value =>
+          value !== null &&
+          value !== undefined &&
+          String(value).trim() !== ""
+      );
+
+
+      option.textContent =
+        parts.join(
+          " / "
+        );
+
+
+      select.appendChild(
+        option
+      );
+
+    }
+
+  }
+
+
+  /* =======================================================
+     FILES
   ======================================================= */
 
   function addFiles(
@@ -366,7 +503,7 @@
 
 
   /* =======================================================
-     ファイル一覧
+     FILE LIST
   ======================================================= */
 
   function renderFileList() {
@@ -416,7 +553,7 @@
 
 
         row.style.padding =
-          "8px 0";
+          "10px 0";
 
 
         row.style.borderBottom =
@@ -515,125 +652,7 @@
 
 
   /* =======================================================
-     テスト
-  ======================================================= */
-
-  async function loadTests() {
-
-    const {
-      data,
-      error
-    } =
-      await supabaseClient
-        .from("tests")
-        .select(`
-          id,
-          name,
-          subject,
-          grade,
-          class_name,
-          created_at
-        `)
-        .order(
-          "created_at",
-          {
-            ascending:
-              false
-          }
-        );
-
-
-    if (error) {
-
-      console.error(
-        error
-      );
-
-
-      showMessage(
-        "テスト一覧を取得できませんでした。",
-        true
-      );
-
-
-      return;
-
-    }
-
-
-    tests =
-      data || [];
-
-
-    const select =
-      getTestElement();
-
-
-    if (!select) {
-
-      throw new Error(
-        "テスト選択欄が見つかりません。"
-      );
-
-    }
-
-
-    select.innerHTML = `
-
-      <option value="">
-        テストを選択してください
-      </option>
-
-    `;
-
-
-    for (
-      const test
-      of tests
-    ) {
-
-      const option =
-        document.createElement(
-          "option"
-        );
-
-
-      option.value =
-        test.id;
-
-
-      const parts = [
-        test.name,
-        test.subject,
-        test.grade
-      ]
-        .filter(
-          value =>
-            value !== null &&
-            value !== undefined &&
-            String(
-              value
-            ).trim() !== ""
-        );
-
-
-      option.textContent =
-        parts.join(
-          " / "
-        );
-
-
-      select.appendChild(
-        option
-      );
-
-    }
-
-  }
-
-
-  /* =======================================================
-     アップロード
+     UPLOAD
   ======================================================= */
 
   async function uploadAnswers() {
@@ -675,18 +694,9 @@
       getUploadButton();
 
 
-    if (button) {
-
-      button.disabled =
-        true;
-
-      button.dataset.originalText =
-        button.textContent;
-
-      button.textContent =
-        "処理中...";
-
-    }
+    setBusy(
+      true
+    );
 
 
     clearUploadList();
@@ -694,10 +704,29 @@
 
     try {
 
+      const total =
+        selectedFiles.length;
+
+
       for (
-        const file
-        of selectedFiles
+        let index = 0;
+        index < total;
+        index++
       ) {
+
+        const file =
+          selectedFiles[index];
+
+
+        setProgress(
+          Math.round(
+            index /
+            total *
+            100
+          ),
+          `${index + 1}/${total}件目を処理しています...`
+        );
+
 
         await processInputFile(
           testId,
@@ -707,8 +736,14 @@
       }
 
 
+      setProgress(
+        100,
+        "すべての答案処理が完了しました。"
+      );
+
+
       showMessage(
-        "答案の処理が完了しました。"
+        `${total}件の答案処理が完了しました。`
       );
 
 
@@ -722,7 +757,7 @@
     } catch (error) {
 
       console.error(
-        "answer upload:",
+        "ANSWER UPLOAD ERROR:",
         error
       );
 
@@ -735,16 +770,9 @@
 
     } finally {
 
-      if (button) {
-
-        button.disabled =
-          false;
-
-        button.textContent =
-          button.dataset.originalText ||
-          "アップロード";
-
-      }
+      setBusy(
+        false
+      );
 
     }
 
@@ -752,7 +780,7 @@
 
 
   /* =======================================================
-     1ファイル
+     ONE FILE
   ======================================================= */
 
   async function processInputFile(
@@ -770,9 +798,13 @@
 
       setRowStatus(
         row,
-        "解析中..."
+        "ファイルを解析しています..."
       );
 
+
+      /*
+       * ページ化
+       */
 
       const pages =
         await parseFile(
@@ -786,7 +818,7 @@
       ) {
 
         throw new Error(
-          "ページを取得できませんでした。"
+          `${file.name} からページを取得できませんでした。`
         );
 
       }
@@ -799,7 +831,7 @@
 
 
       /*
-       * QR単位で答案を分割。
+       * QR単位で答案に分割
        */
 
       const groups =
@@ -808,11 +840,24 @@
         );
 
 
+      if (!groups.length) {
+
+        throw new Error(
+          "答案グループを作成できませんでした。"
+        );
+
+      }
+
+
       setRowStatus(
         row,
         `${groups.length}答案を検出`
       );
 
+
+      /*
+       * 各答案を保存
+       */
 
       for (
         const group
@@ -848,13 +893,19 @@
         true
       );
 
+
+      /*
+       * 1ファイルの失敗を
+       * 他ファイルまで巻き込まない。
+       */
+
     }
 
   }
 
 
   /* =======================================================
-     FILE PARSER
+     PARSER
   ======================================================= */
 
   async function parseFile(
@@ -862,26 +913,31 @@
   ) {
 
     /*
-     * 既存file-parserを優先。
+     * 既存file-parserがある場合は
+     * それを優先。
      */
 
     if (
       window.TEST_SCORE_FILES &&
-      typeof
-        window.TEST_SCORE_FILES.parseFile ===
+      typeof window.TEST_SCORE_FILES.parseFile ===
         "function"
     ) {
 
-      return window.TEST_SCORE_FILES
-        .parseFile(
+      const result =
+        await window.TEST_SCORE_FILES.parseFile(
           file
         );
+
+
+      return normalizeParsedPages(
+        result
+      );
 
     }
 
 
     /*
-     * フォールバック。
+     * フォールバック
      */
 
     const extension =
@@ -919,6 +975,56 @@
         file
       )
     ];
+
+  }
+
+
+  /* =======================================================
+     PARSER RESULT NORMALIZE
+  ======================================================= */
+
+  function normalizeParsedPages(
+    pages
+  ) {
+
+    if (!Array.isArray(pages)) {
+
+      return [];
+
+    }
+
+
+    return pages.map(
+      page => ({
+
+        blob:
+          page.blob,
+
+        name:
+          page.name ||
+          "page",
+
+        fileType:
+          page.fileType ||
+          page.type ||
+          "image/png",
+
+        width:
+          Number(
+            page.width ||
+            page.width_px ||
+            0
+          ),
+
+        height:
+          Number(
+            page.height ||
+            page.height_px ||
+            0
+          )
+
+      })
+    );
 
   }
 
@@ -979,6 +1085,11 @@
             1
         });
 
+
+      /*
+       * 枠座標を元画像に近い
+       * 高解像度で扱う。
+       */
 
       const scale =
         Math.min(
@@ -1276,7 +1387,7 @@
 
 
   /* =======================================================
-     QR単位でグループ化
+     QR GROUP
   ======================================================= */
 
   async function groupPagesByQr(
@@ -1296,6 +1407,10 @@
       of pages
     ) {
 
+      /*
+       * QR探索
+       */
+
       const qr =
         await readQRCode(
           page.blob
@@ -1304,8 +1419,8 @@
 
       /*
        * QRがある
-       * ↓
-       * 新しい答案
+       *
+       * → 新しい答案開始
        */
 
       if (qr) {
@@ -1329,8 +1444,10 @@
 
 
       /*
-       * 最初のページに
-       * QRがない場合
+       * QRがない最初のページ
+       *
+       * → 未紐付け答案として
+       *   独立グループにする。
        */
 
       if (!currentGroup) {
@@ -1354,7 +1471,7 @@
 
 
       /*
-       * 現在の答案へ追加
+       * 現在の答案にページ追加
        */
 
       currentGroup.pages.push(
@@ -1370,7 +1487,7 @@
 
 
   /* =======================================================
-     答案保存
+     SAVE ANSWER GROUP
   ======================================================= */
 
   async function saveAnswerGroup(
@@ -1378,6 +1495,10 @@
     group,
     row
   ) {
+
+    /*
+     * QR → 生徒
+     */
 
     const student =
       group.qrValue
@@ -1388,7 +1509,9 @@
 
 
     /*
-     * answer_sheets
+     * answer_sheets作成
+     *
+     * 現在のDB定義に合わせる。
      */
 
     const answer =
@@ -1400,13 +1523,12 @@
 
 
     /*
-     * ページ保存
+     * ページをStorageへ保存
      */
 
     for (
       let index = 0;
-      index <
-      group.pages.length;
+      index < group.pages.length;
       index++
     ) {
 
@@ -1453,41 +1575,72 @@
 
       if (uploadError) {
 
+        /*
+         * DBにゴミを残さない。
+         */
+
+        await deleteAnswerSheet(
+          answer.id
+        );
+
+
         throw uploadError;
 
       }
 
 
-      await saveAnswerPage({
+      /*
+       * answer_sheet_pages
+       */
 
-        answerSheetId:
-          answer.id,
+      try {
 
-        pageNo,
+        await saveAnswerPage({
 
-        storagePath:
-          path,
+          answerSheetId:
+            answer.id,
 
-        originalName:
-          page.name ||
-          "page",
+          pageNo,
 
-        fileType:
-          "image/png",
+          storagePath:
+            path,
 
-        width:
-          page.width,
+          originalName:
+            page.name ||
+            "page",
 
-        height:
-          page.height
+          fileType:
+            "image/png",
 
-      });
+          width:
+            page.width,
+
+          height:
+            page.height
+
+        });
+
+      } catch (error) {
+
+        /*
+         * ページ登録に失敗したら
+         * 答案自体を削除。
+         */
+
+        await deleteAnswerSheet(
+          answer.id
+        );
+
+
+        throw error;
+
+      }
 
     }
 
 
     /*
-     * QRから生徒を特定
+     * 生徒
      */
 
     if (student) {
@@ -1502,7 +1655,7 @@
 
 
     /*
-     * 表示
+     * UI
      */
 
     if (row) {
@@ -1524,7 +1677,195 @@
 
 
   /* =======================================================
-     生徒検索
+     ANSWER SHEET
+  ======================================================= */
+
+  async function createAnswerSheet(
+    testId,
+    student,
+    qrValue
+  ) {
+
+    /*
+     * 現在のDB:
+     *
+     * answer_sheets
+     *   id
+     *   test_id
+     *   student_id
+     *   qr_token
+     *   file_path
+     *   status
+     *   uploaded_at
+     *
+     * qr_value等は使わない。
+     */
+
+    const {
+      data,
+      error
+    } =
+      await supabaseClient
+        .from(
+          "answer_sheets"
+        )
+        .insert({
+
+          test_id:
+            testId,
+
+          student_id:
+            student?.id ||
+            null,
+
+          qr_token:
+            qrValue ||
+            null,
+
+          /*
+           * 最初のページのStorageパス。
+           * ページ保存前でもDBのNOT NULLを
+           * 満たすために先に確定させる。
+           */
+
+          file_path:
+            `${testId}/pending/page-001.png`,
+
+          status:
+            student
+              ? "matched"
+              : "unmatched"
+
+        })
+        .select(
+          "id"
+        )
+        .single();
+
+
+    if (error) {
+
+      throw error;
+
+    }
+
+
+    return data;
+
+  }
+
+
+  /* =======================================================
+     ANSWER PAGE
+  ======================================================= */
+
+  async function saveAnswerPage({
+    answerSheetId,
+    pageNo,
+    storagePath,
+    originalName,
+    fileType,
+    width,
+    height
+  }) {
+
+    /*
+     * 先ほど確認した
+     * answer_sheet_pagesの列を使用。
+     */
+
+    const {
+      error
+    } =
+      await supabaseClient
+        .from(
+          "answer_sheet_pages"
+        )
+        .upsert(
+          {
+
+            answer_sheet_id:
+              answerSheetId,
+
+            page_no:
+              pageNo,
+
+            file_path:
+              storagePath,
+
+            file_type:
+              fileType,
+
+            original_name:
+              originalName,
+
+            width_px:
+              width,
+
+            height_px:
+              height
+
+          },
+          {
+
+            onConflict:
+              "answer_sheet_id,page_no"
+
+          }
+        );
+
+
+    if (error) {
+
+      throw error;
+
+    }
+
+
+    /*
+     * 1ページ目なら
+     * answer_sheets.file_pathも
+     * 実際のStorageパスへ更新。
+     */
+
+    if (
+      Number(pageNo) ===
+      1
+    ) {
+
+      const {
+        error:
+          updateError
+      } =
+        await supabaseClient
+          .from(
+            "answer_sheets"
+          )
+          .update({
+
+            file_path:
+              storagePath
+
+          })
+          .eq(
+            "id",
+            answerSheetId
+          );
+
+
+      if (updateError) {
+
+        throw updateError;
+
+      }
+
+    }
+
+  }
+
+
+  /* =======================================================
+     STUDENT
   ======================================================= */
 
   async function findStudentByQr(
@@ -1538,29 +1879,95 @@
     }
 
 
-    const prefix =
-      "STUDENT:";
+    let studentNo =
+      null;
 
 
     /*
-     * 現在のQR仕様:
+     * 現行QR:
      *
      * STUDENT:424990
      */
 
+    const prefix =
+      "STUDENT:";
+
+
     if (
-      qrValue.startsWith(
-        prefix
-      )
+      qrValue
+        .toUpperCase()
+        .startsWith(
+          prefix
+        )
     ) {
 
-      const studentNo =
+      studentNo =
         qrValue
           .substring(
             prefix.length
           )
           .trim();
 
+    }
+
+
+    /*
+     * JSON
+     */
+
+    if (!studentNo) {
+
+      try {
+
+        const json =
+          JSON.parse(
+            qrValue
+          );
+
+
+        studentNo =
+          json.student_no ||
+          json.studentNo ||
+          null;
+
+      } catch (_) {}
+
+    }
+
+
+    /*
+     * URL
+     */
+
+    if (!studentNo) {
+
+      try {
+
+        const url =
+          new URL(
+            qrValue
+          );
+
+
+        studentNo =
+          url.searchParams.get(
+            "student_no"
+          ) ||
+          url.searchParams.get(
+            "studentNo"
+          );
+
+      } catch (_) {}
+
+    }
+
+
+    /*
+     * 生徒番号が取れなければ
+     * UUIDとして検索
+     */
+
+    if (!studentNo) {
 
       const {
         data,
@@ -1578,8 +1985,8 @@
             `
           )
           .eq(
-            "student_no",
-            studentNo
+            "id",
+            qrValue
           )
           .eq(
             "active",
@@ -1601,34 +2008,7 @@
 
 
     /*
-     * JSON形式
-     */
-
-    let value =
-      qrValue;
-
-
-    try {
-
-      const json =
-        JSON.parse(
-          qrValue
-        );
-
-
-      value =
-        json.student_no ||
-        json.studentNo ||
-        json.student_id ||
-        json.studentId ||
-        json.id ||
-        qrValue;
-
-    } catch (_) {}
-
-
-    /*
-     * 生徒番号で検索
+     * 生徒番号検索
      */
 
     const {
@@ -1649,7 +2029,7 @@
         .eq(
           "student_no",
           String(
-            value
+            studentNo
           ).trim()
         )
         .eq(
@@ -1672,149 +2052,7 @@
 
 
   /* =======================================================
-     answer_sheets
-  ======================================================= */
-
-  async function createAnswerSheet(
-    testId,
-    student,
-    qrValue
-  ) {
-
-    const session =
-      await getSession();
-
-
-    if (!session) {
-
-      throw new Error(
-        "ログインセッションがありません。"
-      );
-
-    }
-
-
-    /*
-     * 元のanswer-upload.js仕様を維持。
-     */
-
-    const {
-      data,
-      error
-    } =
-      await supabaseClient
-        .from(
-          "answer_sheets"
-        )
-        .insert({
-
-          test_id:
-            testId,
-
-          student_id:
-            student?.id ||
-            null,
-
-          original_file_path:
-            null,
-
-          qr_value:
-            qrValue ||
-            null,
-
-          status:
-            student
-              ? "matched"
-              : "unmatched",
-
-          uploaded_by:
-            session.user.id
-
-        })
-        .select(
-          "id"
-        )
-        .single();
-
-
-    if (error) {
-
-      throw error;
-
-    }
-
-
-    return data;
-
-  }
-
-
-  /* =======================================================
-     answer_sheet_pages
-  ======================================================= */
-
-  async function saveAnswerPage({
-    answerSheetId,
-    pageNo,
-    storagePath,
-    originalName,
-    fileType,
-    width,
-    height
-  }) {
-
-    const {
-      error
-    } =
-    await supabaseClient
-      .from(
-        "answer_sheet_pages"
-      )
-      .upsert(
-        {
-
-          answer_sheet_id:
-            answerSheetId,
-
-          page_no:
-            pageNo,
-
-          file_path:
-            storagePath,
-
-          file_type:
-            fileType,
-
-          original_name:
-            originalName,
-
-          width_px:
-            width,
-
-          height_px:
-            height
-
-        },
-        {
-
-          onConflict:
-            "answer_sheet_id,page_no"
-
-        }
-      );
-
-
-    if (error) {
-
-      throw error;
-
-    }
-
-  }
-
-
-  /* =======================================================
-     生徒紐付け
+     STUDENT UPDATE
   ======================================================= */
 
   async function updateAnswerStudent(
@@ -1835,7 +2073,7 @@
           student_id:
             studentId,
 
-          qr_value:
+          qr_token:
             qrValue,
 
           status:
@@ -1853,6 +2091,97 @@
       throw error;
 
     }
+
+  }
+
+
+  /* =======================================================
+     DELETE FAILED ANSWER
+  ======================================================= */
+
+  async function deleteAnswerSheet(
+    answerId
+  ) {
+
+    /*
+     * StorageはDB削除だけでは
+     * 消えないので、まずページ一覧を取得。
+     */
+
+    const {
+      data: pages
+    } =
+      await supabaseClient
+        .from(
+          "answer_sheet_pages"
+        )
+        .select(
+          "file_path"
+        )
+        .eq(
+          "answer_sheet_id",
+          answerId
+        );
+
+
+    if (
+      pages &&
+      pages.length
+    ) {
+
+      const paths =
+        pages
+          .map(
+            page =>
+              page.file_path
+          )
+          .filter(Boolean);
+
+
+      if (paths.length) {
+
+        await supabaseClient
+          .storage
+          .from(
+            "answer-files"
+          )
+          .remove(
+            paths
+          );
+
+      }
+
+    }
+
+
+    /*
+     * answer_sheet_pages
+     */
+
+    await supabaseClient
+      .from(
+        "answer_sheet_pages"
+      )
+      .delete()
+      .eq(
+        "answer_sheet_id",
+        answerId
+      );
+
+
+    /*
+     * answer_sheets
+     */
+
+    await supabaseClient
+      .from(
+        "answer_sheets"
+      )
+      .delete()
+      .eq(
+        "id",
+        answerId
+      );
 
   }
 
@@ -1953,7 +2282,7 @@
 
 
     /*
-     * 通常読み取り
+     * 通常
      */
 
     const imageData =
@@ -1981,13 +2310,13 @@
       result?.data
     ) {
 
-      return result.data;
+      return result.data.trim();
 
     }
 
 
     /*
-     * 二値化して再試行
+     * 二値化
      */
 
     const data =
@@ -2038,14 +2367,15 @@
       );
 
 
-    return result?.data ||
-      null;
+    return result?.data
+      ? result.data.trim()
+      : null;
 
   }
 
 
   /* =======================================================
-     IMAGE LOAD
+     IMAGE
   ======================================================= */
 
   function loadImage(
@@ -2124,6 +2454,51 @@
 
 
   /* =======================================================
+     CANVAS → BLOB
+  ======================================================= */
+
+  function canvasToBlob(
+    canvas
+  ) {
+
+    return new Promise(
+      (
+        resolve,
+        reject
+      ) => {
+
+        canvas.toBlob(
+          blob => {
+
+            if (!blob) {
+
+              reject(
+                new Error(
+                  "画像変換に失敗しました。"
+                )
+              );
+
+              return;
+
+            }
+
+
+            resolve(
+              blob
+            );
+
+          },
+          "image/png",
+          0.95
+        );
+
+      }
+    );
+
+  }
+
+
+  /* =======================================================
      UI
   ======================================================= */
 
@@ -2134,11 +2509,6 @@
     const container =
       getUploadListElement();
 
-
-    /*
-     * uploadListがない場合は
-     * 画面を壊さずnullを返す。
-     */
 
     if (!container) {
 
@@ -2334,6 +2704,130 @@
   }
 
 
+  function setProgress(
+    value,
+    text
+  ) {
+
+    const area =
+      getProgressArea();
+
+
+    const bar =
+      getProgressBar();
+
+
+    const label =
+      getProgressText();
+
+
+    if (area) {
+
+      area.hidden =
+        false;
+
+    }
+
+
+    if (bar) {
+
+      const safe =
+        Math.max(
+          0,
+          Math.min(
+            100,
+            value
+          )
+        );
+
+
+      bar.style.width =
+        `${safe}%`;
+
+    }
+
+
+    if (label) {
+
+      label.textContent =
+        text ||
+        "";
+
+    }
+
+  }
+
+
+  function setBusy(
+    busy
+  ) {
+
+    const button =
+      getUploadButton();
+
+
+    const clear =
+      getClearButton();
+
+
+    const files =
+      getFilesElement();
+
+
+    const test =
+      getTestElement();
+
+
+    if (button) {
+
+      if (
+        !button.dataset.originalText
+      ) {
+
+        button.dataset.originalText =
+          button.textContent;
+
+      }
+
+
+      button.disabled =
+        busy;
+
+
+      button.textContent =
+        busy
+          ? "処理中..."
+          : button.dataset.originalText;
+
+    }
+
+
+    if (clear) {
+
+      clear.disabled =
+        busy;
+
+    }
+
+
+    if (files) {
+
+      files.disabled =
+        busy;
+
+    }
+
+
+    if (test) {
+
+      test.disabled =
+        busy;
+
+    }
+
+  }
+
+
   /* =======================================================
      CLEAR
   ======================================================= */
@@ -2347,9 +2841,13 @@
     renderFileList();
 
 
-    if (filesElement) {
+    const files =
+      getFilesElement();
 
-      filesElement.value =
+
+    if (files) {
+
+      files.value =
         "";
 
     }
@@ -2360,13 +2858,13 @@
     );
 
 
-    const progress =
+    const area =
       getProgressArea();
 
 
-    if (progress) {
+    if (area) {
 
-      progress.hidden =
+      area.hidden =
         true;
 
     }
@@ -2394,6 +2892,9 @@
         "待機中";
 
     }
+
+
+    clearUploadList();
 
   }
 

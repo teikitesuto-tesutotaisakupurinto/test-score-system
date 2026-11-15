@@ -6,72 +6,49 @@
 
   <meta charset="UTF-8">
 
-
   <meta
     name="viewport"
     content="width=device-width, initial-scale=1.0"
   >
-
 
   <meta
     name="robots"
     content="noindex,nofollow"
   >
 
-
-  <title>
-    ログイン - テスト成績システム
-  </title>
-
-
-  <link
-    rel="stylesheet"
-    href="/css/common.css"
-  >
+  <title>ログイン - テスト成績システム</title>
 
 
   <style>
 
     * {
-
-      box-sizing:
-        border-box;
-
+      box-sizing: border-box;
     }
 
 
     html,
     body {
-
-      margin:
-        0;
-
-      padding:
-        0;
-
-      min-height:
-        100%;
-
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      min-height: 100%;
     }
 
 
     body {
 
-      min-height:
-        100vh;
+      min-height: 100vh;
 
-      background:
-        #f3f5f7;
+      background: #f3f5f7;
 
-      color:
-        #222;
+      color: #222;
 
       font-family:
         -apple-system,
         BlinkMacSystemFont,
         "Segoe UI",
-        "Hiragino Kaku Gothic ProN",
         "Yu Gothic",
+        "Hiragino Kaku Gothic ProN",
         Meiryo,
         sans-serif;
 
@@ -80,328 +57,181 @@
 
     .login-page {
 
-      min-height:
-        100vh;
+      min-height: 100vh;
 
-      display:
-        flex;
+      display: flex;
 
-      align-items:
-        center;
+      align-items: center;
 
-      justify-content:
-        center;
+      justify-content: center;
 
-      padding:
-        20px;
+      padding: 20px;
 
     }
 
 
     .login-card {
 
-      width:
-        100%;
+      width: 100%;
 
-      max-width:
-        420px;
+      max-width: 420px;
 
-      background:
-        #fff;
+      background: #fff;
 
-      border:
-        1px solid #d5dbe0;
+      border: 1px solid #d5dbe0;
 
-      border-radius:
-        6px;
+      border-radius: 6px;
 
-      padding:
-        32px;
+      padding: 32px;
 
       box-shadow:
-        0 4px 18px
-        rgba(
-          0,
-          0,
-          0,
-          .06
-        );
+        0 4px 18px rgba(0,0,0,.06);
 
     }
 
 
-    .system-title {
+    h1 {
 
-      margin:
-        0;
+      margin: 0;
 
-      text-align:
-        center;
+      text-align: center;
 
-      font-size:
-        25px;
+      font-size: 25px;
 
-      font-weight:
-        700;
-
-      line-height:
-        1.4;
+      line-height: 1.4;
 
     }
 
 
-    .system-description {
+    .description {
 
-      margin:
-        8px 0 28px;
+      margin: 8px 0 28px;
 
-      text-align:
-        center;
+      text-align: center;
 
-      color:
-        #666;
+      color: #666;
 
-      font-size:
-        13px;
+      font-size: 13px;
 
     }
 
 
-    .form-group {
+    .field {
 
-      margin-bottom:
-        18px;
-
-    }
-
-
-    .form-group label {
-
-      display:
-        block;
-
-      margin-bottom:
-        7px;
-
-      font-size:
-        13px;
-
-      font-weight:
-        700;
+      margin-bottom: 18px;
 
     }
 
 
-    .form-group input {
+    .field label {
 
-      display:
-        block;
+      display: block;
 
-      width:
-        100%;
+      margin-bottom: 7px;
 
-      height:
-        46px;
+      font-size: 13px;
 
-      padding:
-        0 12px;
-
-      border:
-        1px solid #c8ced4;
-
-      border-radius:
-        4px;
-
-      background:
-        #fff;
-
-      color:
-        #222;
-
-      font-size:
-        15px;
-
-      outline:
-        none;
+      font-weight: 700;
 
     }
 
 
-    .form-group input:focus {
+    .field input {
 
-      border-color:
-        #555;
+      display: block;
 
-      box-shadow:
-        0 0 0 2px
-        rgba(
-          0,
-          0,
-          0,
-          .06
-        );
+      width: 100%;
 
-    }
+      height: 46px;
 
+      padding: 0 12px;
 
-    .login-error {
+      border: 1px solid #c8ced4;
 
-      display:
-        none;
+      border-radius: 4px;
 
-      margin:
-        0 0 15px;
+      background: #fff;
 
-      padding:
-        11px 12px;
+      color: #222;
 
-      border:
-        1px solid #e2b8b2;
+      font-size: 15px;
 
-      border-radius:
-        4px;
-
-      background:
-        #fff4f2;
-
-      color:
-        #b42318;
-
-      font-size:
-        13px;
-
-      line-height:
-        1.6;
+      outline: none;
 
     }
 
 
-    .login-button {
+    .field input:focus {
 
-      display:
-        block;
-
-      width:
-        100%;
-
-      height:
-        46px;
-
-      border:
-        1px solid #333;
-
-      border-radius:
-        4px;
-
-      background:
-        #333;
-
-      color:
-        #fff;
-
-      font-size:
-        15px;
-
-      font-weight:
-        700;
-
-      cursor:
-        pointer;
+      border-color: #555;
 
     }
 
 
-    .login-button:hover {
+    #loginError {
 
-      background:
-        #222;
+      display: none;
 
-    }
+      margin-bottom: 15px;
 
+      padding: 11px 12px;
 
-    .login-button:disabled {
+      border: 1px solid #e2b8b2;
 
-      opacity:
-        .55;
+      border-radius: 4px;
 
-      cursor:
-        default;
+      background: #fff4f2;
 
-    }
+      color: #b42318;
 
+      font-size: 13px;
 
-    .login-footer {
-
-      margin-top:
-        22px;
-
-      text-align:
-        center;
-
-      color:
-        #888;
-
-      font-size:
-        11px;
-
-      line-height:
-        1.6;
+      line-height: 1.6;
 
     }
 
 
-    .security-note {
+    #loginButton {
 
-      margin-top:
-        18px;
+      width: 100%;
 
-      padding:
-        10px;
+      height: 46px;
 
-      background:
-        #f7f8f9;
+      border: 0;
 
-      border:
-        1px solid #e1e5e8;
+      border-radius: 4px;
 
-      color:
-        #666;
+      background: #333;
 
-      font-size:
-        11px;
+      color: #fff;
 
-      line-height:
-        1.6;
+      font-size: 15px;
+
+      font-weight: 700;
+
+      cursor: pointer;
 
     }
 
 
-    @media (
-      max-width: 480px
-    ) {
+    #loginButton:disabled {
 
-      .login-page {
+      opacity: .55;
 
-        padding:
-          12px;
+      cursor: default;
 
-      }
+    }
 
 
-      .login-card {
+    .footer {
 
-        padding:
-          24px 18px;
+      margin-top: 22px;
 
-      }
+      text-align: center;
 
+      color: #888;
 
-      .system-title {
-
-        font-size:
-          21px;
-
-      }
+      font-size: 11px;
 
     }
 
@@ -413,42 +243,25 @@
 <body>
 
 
-<main
-  class="login-page"
->
+<div class="login-page">
 
 
-  <section
-    class="login-card"
-    aria-labelledby="loginTitle"
-  >
+  <main class="login-card">
 
 
-    <h1
-      id="loginTitle"
-      class="system-title"
-    >
+    <h1>
       テスト成績システム
     </h1>
 
 
-    <p
-      class="system-description"
-    >
+    <p class="description">
       ログインしてください
     </p>
 
 
-
     <!--
-      重要
-
-      method="post" を指定。
-
-      さらに login.js の submit handler で
-      preventDefault() する。
-
-      パスワードをGET URLへ送信しない。
+      GET送信を絶対にしない。
+      JSでsubmitを捕捉する。
     -->
 
     <form
@@ -456,74 +269,54 @@
       method="post"
       action="/login"
       autocomplete="on"
-      novalidate
     >
 
 
-      <div
-        class="form-group"
-      >
+      <div class="field">
 
-        <label
-          for="email"
-        >
+        <label for="email">
           メールアドレス
         </label>
-
 
         <input
           id="email"
           name="email"
           type="email"
-          inputmode="email"
           autocomplete="username"
           autocapitalize="none"
           autocorrect="off"
           spellcheck="false"
-          placeholder="メールアドレス"
           required
         >
 
       </div>
 
 
+      <div class="field">
 
-      <div
-        class="form-group"
-      >
-
-        <label
-          for="password"
-        >
+        <label for="password">
           パスワード
         </label>
-
 
         <input
           id="password"
           name="password"
           type="password"
           autocomplete="current-password"
-          placeholder="パスワード"
           required
         >
 
       </div>
 
 
-
       <div
         id="loginError"
-        class="login-error"
         role="alert"
-        aria-live="polite"
       ></div>
-
 
 
       <button
         id="loginButton"
-        class="login-button"
         type="submit"
       >
         ログイン
@@ -533,74 +326,313 @@
     </form>
 
 
-
-    <div
-      class="security-note"
-    >
-
-      ログイン情報は安全な認証処理で送信されます。
-      パスワードをURLに表示・保存することはありません。
-
-    </div>
-
-
-
-    <div
-      class="login-footer"
-    >
-
+    <div class="footer">
       テスト成績システム
-
     </div>
 
 
-  </section>
+  </main>
 
 
-</main>
+</div>
 
 
 
-<!-- =======================================================
-     Supabase
-======================================================= -->
+<!-- Supabase -->
 
 <script
   src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
 ></script>
 
 
-<!-- =======================================================
-     Config
+<!-- 既存設定 -->
 
-     SUPABASE_URL
-     SUPABASE_KEY
-     supabaseClient
-======================================================= -->
-
-<script
-  src="/js/config.js"
-></script>
+<script src="/js/config.js"></script>
 
 
-<!-- =======================================================
-     共通認証
-======================================================= -->
+<!-- 共通認証 -->
 
-<script
-  src="/js/auth.js"
-></script>
+<script src="/js/auth.js"></script>
 
 
-<!-- =======================================================
-     ログイン処理
+<script>
 
-     必ず最後に読み込む。
-======================================================= -->
+(function () {
 
-<script
-  src="/js/login.js"
-></script>
+  "use strict";
+
+
+  const form =
+    document.getElementById(
+      "loginForm"
+    );
+
+
+  const email =
+    document.getElementById(
+      "email"
+    );
+
+
+  const password =
+    document.getElementById(
+      "password"
+    );
+
+
+  const button =
+    document.getElementById(
+      "loginButton"
+    );
+
+
+  const error =
+    document.getElementById(
+      "loginError"
+    );
+
+
+  function showError(
+    message
+  ) {
+
+    error.textContent =
+      message;
+
+    error.style.display =
+      "block";
+
+  }
+
+
+  function clearError() {
+
+    error.textContent =
+      "";
+
+    error.style.display =
+      "none";
+
+  }
+
+
+  function setLoading(
+    value
+  ) {
+
+    button.disabled =
+      value;
+
+    button.textContent =
+      value
+        ? "ログイン中..."
+        : "ログイン";
+
+  }
+
+
+  form.addEventListener(
+    "submit",
+    async function (event) {
+
+      /*
+        絶対に通常フォーム送信させない。
+
+        これで
+
+        /login?email=...
+        /login?password=...
+
+        にはならない。
+      */
+
+      event.preventDefault();
+
+      event.stopPropagation();
+
+
+      clearError();
+
+
+      const emailValue =
+        email.value.trim();
+
+
+      const passwordValue =
+        password.value;
+
+
+      if (!emailValue) {
+
+        showError(
+          "メールアドレスを入力してください。"
+        );
+
+        email.focus();
+
+        return;
+
+      }
+
+
+      if (!passwordValue) {
+
+        showError(
+          "パスワードを入力してください。"
+        );
+
+        password.focus();
+
+        return;
+
+      }
+
+
+      /*
+        Supabase Client確認
+      */
+
+      if (
+        typeof supabaseClient ===
+        "undefined"
+      ) {
+
+        showError(
+          "Supabaseの設定を読み込めませんでした。"
+        );
+
+        console.error(
+          "supabaseClient is undefined"
+        );
+
+        return;
+
+      }
+
+
+      setLoading(
+        true
+      );
+
+
+      try {
+
+        /*
+          Supabase Auth
+        */
+
+        const {
+          data,
+          error: loginError
+        } =
+          await supabaseClient
+            .auth
+            .signInWithPassword({
+
+              email:
+                emailValue,
+
+              password:
+                passwordValue
+
+            });
+
+
+        if (loginError) {
+
+          throw loginError;
+
+        }
+
+
+        if (
+          !data?.session
+        ) {
+
+          throw new Error(
+            "ログインセッションを取得できませんでした。"
+          );
+
+        }
+
+
+        /*
+          auth.jsのRole判定へ
+        */
+
+        if (
+          typeof redirectAfterLogin !==
+          "function"
+        ) {
+
+          throw new Error(
+            "認証処理を読み込めませんでした。"
+          );
+
+        }
+
+
+        await redirectAfterLogin();
+
+
+      } catch (e) {
+
+        console.error(
+          "LOGIN ERROR:",
+          e
+        );
+
+
+        const message =
+          String(
+            e?.message ||
+            ""
+          ).toLowerCase();
+
+
+        if (
+          message.includes(
+            "invalid login credentials"
+          )
+        ) {
+
+          showError(
+            "メールアドレスまたはパスワードが正しくありません。"
+          );
+
+        } else if (
+          message.includes(
+            "email not confirmed"
+          )
+        ) {
+
+          showError(
+            "メールアドレスの確認が完了していません。"
+          );
+
+        } else {
+
+          showError(
+            e?.message ||
+            "ログインできませんでした。"
+          );
+
+        }
+
+
+        setLoading(
+          false
+        );
+
+      }
+
+    },
+    true
+  );
+
+})();
+
+</script>
 
 
 </body>

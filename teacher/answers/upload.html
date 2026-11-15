@@ -27,7 +27,7 @@
 
 
 <!-- =====================================================
-     共通上部バー
+     上部バー
 ====================================================== -->
 
 <header class="topbar">
@@ -36,11 +36,14 @@
     テスト成績システム
   </div>
 
+
   <div class="topbar-space"></div>
+
 
   <span id="teacherName">
     -
   </span>
+
 
   <button
     id="logoutButton"
@@ -54,7 +57,7 @@
 
 
 <!-- =====================================================
-     先生レイアウト
+     先生画面
 ====================================================== -->
 
 <div class="teacher-layout">
@@ -65,6 +68,7 @@
   ==================================================== -->
 
   <aside class="sidebar">
+
 
     <div class="sidebar-title">
       メニュー
@@ -144,6 +148,7 @@
       成績・返却
     </a>
 
+
   </aside>
 
 
@@ -170,6 +175,8 @@
     <div class="card">
 
 
+      <!-- テスト -->
+
       <div class="form-group">
 
         <label for="test">
@@ -177,7 +184,9 @@
         </label>
 
 
-        <select id="test">
+        <select
+          id="test"
+        >
 
           <option value="">
             テストを選択してください
@@ -188,6 +197,8 @@
       </div>
 
 
+      <!-- 答案種類 -->
+
       <div class="form-group">
 
         <label for="answerType">
@@ -195,11 +206,14 @@
         </label>
 
 
-        <select id="answerType">
+        <select
+          id="answerType"
+        >
 
           <option value="student">
             生徒答案
           </option>
+
 
           <option value="model">
             解答用紙・模範解答
@@ -210,10 +224,12 @@
       </div>
 
 
+      <!-- ファイル -->
+
       <div class="form-group">
 
         <label for="files">
-          ファイル
+          答案ファイル
         </label>
 
 
@@ -221,7 +237,7 @@
           id="files"
           type="file"
           multiple
-          accept=".pdf,.jpg,.jpeg,.png,.webp,.zip"
+          accept=".pdf,.jpg,.jpeg,.png,.webp,.gif,.bmp,.zip"
         >
 
       </div>
@@ -229,7 +245,7 @@
 
       <p class="small muted">
 
-        PDF / JPG / JPEG / PNG / WEBP / ZIP
+        PDF / JPG / JPEG / PNG / WEBP / GIF / BMP / ZIP
 
         <br>
 
@@ -237,7 +253,12 @@
 
         <br>
 
-        ZIPの場合は内部の対応ファイルを展開して処理します。
+        ZIPは内部のPDF・画像を展開して処理します。
+
+        <br>
+
+        QRがあるページを新しい答案として扱い、
+        QRがない後続ページは直前の答案に追加します。
 
       </p>
 
@@ -250,7 +271,7 @@
       ></div>
 
 
-      <!-- 操作 -->
+      <!-- ボタン -->
 
       <div class="quick-actions">
 
@@ -259,7 +280,7 @@
           type="button"
           class="quick-button primary"
         >
-          アップロード
+          アップロード開始
         </button>
 
 
@@ -283,11 +304,23 @@
 
         <div
           class="progress-track"
+          style="
+            width:100%;
+            height:7px;
+            margin-top:14px;
+            background:#e1e5e8;
+            overflow:hidden;
+          "
         >
 
           <div
             id="progressBar"
             class="progress-bar"
+            style="
+              width:0;
+              height:100%;
+              background:#1769aa;
+            "
           ></div>
 
         </div>
@@ -312,10 +345,18 @@
       ></p>
 
 
-      <!-- 結果 -->
+      <!-- 処理結果 -->
 
       <div
         id="result"
+        hidden
+      ></div>
+
+
+      <!-- JSが処理結果を追加する場所 -->
+
+      <div
+        id="uploadList"
         hidden
       ></div>
 
@@ -324,6 +365,7 @@
 
 
   </main>
+
 
 </div>
 
@@ -352,16 +394,20 @@
 ></script>
 
 
-<!-- 共通JS -->
+<!-- =====================================================
+     共通JS
+====================================================== -->
 
 <script src="/js/config.js"></script>
 
 <script src="/js/auth.js"></script>
 
 
-<!-- 答案アップロードJS -->
+<!-- =====================================================
+     答案アップロード
+====================================================== -->
 
-<script src="/js/teacher/answers-upload.js"></script>
+<script src="/js/teacher/answer-upload.js"></script>
 
 
 </body>

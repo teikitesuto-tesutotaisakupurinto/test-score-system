@@ -1,78 +1,109 @@
 /* =========================================================
+   デジタル採点
    採点対象選択
 ========================================================= */
 
-const selectParams =
-  new URLSearchParams(location.search);
-
-const selectTestId =
-  selectParams.get("test");
-
+let markingTests = [];
 
 let selectedTest = null;
+
 let answerSheets = [];
+
 let layoutBoxes = [];
 
+
+/* =========================================================
+   初期化
+========================================================= */
 
 async function initializeMarkingSelect() {
 
   const profile =
     await getProfile();
 
+
   if (!profile) {
-    location.href = "/login";
+
+    location.replace(
+      "/login"
+    );
+
     return;
+
   }
+
 
   if (
     profile.role !== "teacher" &&
     profile.role !== "admin"
   ) {
-    location.href = "/student/dashboard";
+
+    location.replace(
+      "/student/dashboard"
+    );
+
     return;
+
   }
+
 
   document.getElementById(
     "teacherName"
   ).textContent =
-    profile.name || "先生";
+    profile.name ||
+    "先生";
 
 
-  if (!selectTestId) {
-
-    alert(
-      "テストが指定されていません。"
+  const params =
+    new URLSearchParams(
+      location.search
     );
 
-    location.href =
-      "/teacher/marking";
 
-    return;
+  const testId =
+    params.get(
+      "test"
+    );
+
+
+  await loadTests();
+
+
+  if (testId) {
+
+    const select =
+      document.getElementById(
+        "testSelect"
+      );
+
+
+    select.value =
+      testId;
+
+
+    await loadSelectedTest(
+      testId
+    );
 
   }
-
-
-  await loadTest();
-
-  await loadAnswers();
-
-  await loadLayoutBoxes();
-
-  renderAnswers();
-
-  renderQuestions();
 
 }
 
 
-async function loadTest() {
+/* =========================================================
+   テスト一覧
+========================================================= */
+
+async function loadTests() {
 
   const {
     data,
     error
   } =
     await supabaseClient
-      .from("tests")
+      .from(
+        "tests"
+      )
       .select(`
         id,
         name,
@@ -82,30 +113,113 @@ async function loadTest() {
         max_score,
         status
       `)
-      .eq(
-        "id",
-        selectTestId
-      )
-      .maybeSingle();
+      .order(
+        "created_at",
+        {
+          ascending:
+            false
+        }
+      );
 
 
   if (error) {
 
-    console.error(error);
+    console.error(
+      error
+    );
+
 
     return;
 
   }
 
 
-  if (!data) {
+  markingTests =
+    data || [];
 
-    alert(
-      "テストが見つかりません。"
+
+  const select =
+    document.getElementById(
+      "testSelect"
     );
 
-    location.href =
-      "/teacher/marking";
+
+  select.innerHTML = `
+
+    <option value="">
+      テストを選択してください
+    </option>
+
+    ${
+      markingTests
+        .map(
+          test => `
+
+            <option
+              value="${escapeHtml(test.id)}"
+            >
+
+              ${escapeHtml(
+                test.name
+              )}
+
+              ${
+                test.subject
+                  ? ` / ${escapeHtml(test.subject)}`
+                  : ""
+              }
+
+            </option>
+
+          `
+        )
+        .join("")
+    }
+
+  `;
+
+}
+
+
+/* =========================================================
+   テスト選択
+========================================================= */
+
+document
+  .getElementById(
+    "testSelect"
+  )
+  .addEventListener(
+    "change",
+    async event => {
+
+      await loadSelectedTest(
+        event.target.value
+      );
+
+    }
+  );
+
+
+/* =========================================================
+   選択テスト
+========================================================= */
+
+async function loadSelectedTest(
+  testId
+) {
+
+  const summary =
+    document.getElementById(
+      "markingSummary"
+    );
+
+
+  if (!testId) {
+
+    summary.style.display =
+      "none";
+
 
     return;
 
@@ -113,77 +227,136 @@ async function loadTest() {
 
 
   selectedTest =
-    data;
+    markingTests.find(
+      test =>
+        test.id ===
+        testId
+    );
 
+
+  if (!selectedTest) {
+
+    return;
+
+  }
+
+
+  await loadAnswers(
+    testId
+  );
+
+
+  await loadBoxes(
+    testId
+  );
+
+
+  renderTestInformation();
+
+
+  renderAnswers();
+
+
+  renderQuestions();
+
+
+  summary.style.display =
+    "block";
+
+}
+
+
+/* =========================================================
+   テスト情報
+========================================================= */
+
+function renderTestInformation() {
 
   document.getElementById(
     "testInformation"
   ).innerHTML = `
 
     <strong>
-      ${escapeHtml(data.name)}
+      ${escapeHtml(
+        selectedTest.name
+      )}
     </strong>
 
     <br>
 
     教科：
-    ${escapeHtml(data.subject || "")}
+    ${escapeHtml(
+      selectedTest.subject ||
+      "-"
+    )}
 
     ／
 
     学年：
-    ${escapeHtml(data.grade || "")}
+    ${escapeHtml(
+      selectedTest.grade ||
+      "-"
+    )}
 
     ／
 
     クラス：
-    ${escapeHtml(data.class_name || "")}
+    ${escapeHtml(
+      selectedTest.class_name ||
+      "-"
+    )}
 
     ／
 
     満点：
-    ${data.max_score}
+    ${selectedTest.max_score}
 
   `;
 
 }
 
 
-async function loadAnswers() {
+/* =========================================================
+   答案
+========================================================= */
+
+async function loadAnswers(
+  testId
+) {
 
   const {
     data,
     error
   } =
     await supabaseClient
-      .from("answer_sheets")
+      .from(
+        "answer_sheets"
+      )
       .select(`
         id,
         student_id,
         status,
-        created_at,
         students(
-          id,
           student_no,
           name
         )
       `)
       .eq(
         "test_id",
-        selectTestId
+        testId
       )
       .neq(
         "status",
         "unmatched"
-      )
-      .order(
-        "created_at"
       );
 
 
   if (error) {
 
-    console.error(error);
+    console.error(
+      error
+    );
+
 
     return;
 
@@ -196,18 +369,25 @@ async function loadAnswers() {
 }
 
 
-async function loadLayoutBoxes() {
+/* =========================================================
+   解答欄
+========================================================= */
+
+async function loadBoxes(
+  testId
+) {
 
   const {
     data,
     error
   } =
     await supabaseClient
-      .from("layout_boxes")
+      .from(
+        "layout_boxes"
+      )
       .select(`
         id,
         page_no,
-        box_type,
         label,
         x,
         y,
@@ -217,20 +397,41 @@ async function loadLayoutBoxes() {
       `)
       .eq(
         "test_id",
-        selectTestId
+        testId
       )
       .eq(
         "box_type",
         "answer"
       )
       .order(
-        "page_no"
+        "page_no",
+        {
+          ascending:
+            true
+        }
+      )
+      .order(
+        "y",
+        {
+          ascending:
+            true
+        }
+      )
+      .order(
+        "x",
+        {
+          ascending:
+            true
+        }
       );
 
 
   if (error) {
 
-    console.error(error);
+    console.error(
+      error
+    );
+
 
     return;
 
@@ -242,6 +443,10 @@ async function loadLayoutBoxes() {
 
 }
 
+
+/* =========================================================
+   答案表示
+========================================================= */
 
 function renderAnswers() {
 
@@ -258,15 +463,16 @@ function renderAnswers() {
       <div
         style="
           grid-column:1/-1;
+          padding:25px;
           text-align:center;
           color:#777;
-          padding:30px;
         "
       >
-        採点対象の答案がありません。
+        紐付け済み答案がありません。
       </div>
 
     `;
+
 
     return;
 
@@ -282,7 +488,7 @@ function renderAnswers() {
             class="card"
             style="
               margin:0;
-              border:1px solid #d0d6dc;
+              padding:10px;
             "
           >
 
@@ -308,8 +514,9 @@ function renderAnswers() {
                 font-size:12px;
               "
             >
-              ${getAnswerStatus(
-                answer.status
+              ${escapeHtml(
+                answer.status ||
+                ""
               )}
             </span>
 
@@ -321,6 +528,10 @@ function renderAnswers() {
 
 }
 
+
+/* =========================================================
+   解答欄表示
+========================================================= */
 
 function renderQuestions() {
 
@@ -344,6 +555,13 @@ function renderQuestions() {
 
     `;
 
+
+    updateSummary(
+      0,
+      0
+    );
+
+
     return;
 
   }
@@ -352,7 +570,10 @@ function renderQuestions() {
   container.innerHTML =
     layoutBoxes
       .map(
-        (box, index) => `
+        (
+          box,
+          index
+        ) => `
 
           <div
             style="
@@ -360,33 +581,45 @@ function renderQuestions() {
               align-items:center;
               gap:10px;
               padding:10px;
-              border-bottom:1px solid #d0d6dc;
+              border-bottom:
+                1px solid #d0d6dc;
             "
           >
 
             <strong>
+
               ${escapeHtml(
                 box.label ||
                 `解答欄${index + 1}`
               )}
+
             </strong>
 
+
             <span>
+
               配点：
               ${
                 box.points === null ||
                 box.points === undefined
+
                   ? "未設定"
+
                   : `${box.points}点`
+
               }
+
             </span>
 
+
             <a
-              href="/teacher/marking/mark?test=${encodeURIComponent(selectTestId)}&box=${encodeURIComponent(box.id)}"
+              href="/teacher/marking/mark?test=${encodeURIComponent(selectedTest.id)}&box=${encodeURIComponent(box.id)}"
               class="btn btn-primary"
-              style="margin-left:auto;"
+              style="
+                margin-left:auto;
+              "
             >
-              この問題を採点
+              この解答欄を採点
             </a>
 
           </div>
@@ -395,36 +628,76 @@ function renderQuestions() {
       )
       .join("");
 
+
+  updateSummary(
+    answerSheets.length,
+    layoutBoxes.length
+  );
+
 }
 
 
-function getAnswerStatus(
-  status
+/* =========================================================
+   概要
+========================================================= */
+
+function updateSummary(
+  answerCount,
+  boxCount
 ) {
 
-  const labels = {
+  document.getElementById(
+    "summaryContent"
+  ).innerHTML = `
 
-    matched:
-      "未採点",
+    答案：
+    <strong>
+      ${answerCount}
+    </strong>
+    枚
 
-    marking:
-      "採点中",
+    ／
 
-    marked:
-      "採点済み",
+    解答欄：
+    <strong>
+      ${boxCount}
+    </strong>
+    個
 
-    published:
-      "公開済み"
-
-  };
+  `;
 
 
-  return labels[status] ||
-    status ||
-    "";
+  const startButton =
+    document.getElementById(
+      "startMarkingButton"
+    );
+
+
+  if (
+    selectedTest &&
+    layoutBoxes.length
+  ) {
+
+    startButton.href =
+      `/teacher/marking/mark?test=${encodeURIComponent(selectedTest.id)}&box=${encodeURIComponent(layoutBoxes[0].id)}`;
+
+
+    startButton.style.display =
+      "inline-block";
+
+  } else {
+
+    startButton.style.display =
+      "none";
+
+  }
 
 }
 
+
+/* =========================================================
+   Logout
+========================================================= */
 
 document
   .getElementById(
@@ -436,22 +709,51 @@ document
   );
 
 
-function escapeHtml(value) {
+/* =========================================================
+   HTML escape
+========================================================= */
+
+function escapeHtml(
+  value
+) {
 
   if (
     value === null ||
     value === undefined
   ) {
+
     return "";
+
   }
 
+
   return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
+    .replaceAll(
+      "&",
+      "&amp;"
+    )
+    .replaceAll(
+      "<",
+      "&lt;"
+    )
+    .replaceAll(
+      ">",
+      "&gt;"
+    )
+    .replaceAll(
+      '"',
+      "&quot;"
+    )
+    .replaceAll(
+      "'",
+      "&#039;"
+    );
+
 }
 
+
+/* =========================================================
+   START
+========================================================= */
 
 initializeMarkingSelect();

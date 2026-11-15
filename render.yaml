@@ -19,7 +19,7 @@ services:
 
 
       # =====================================================
-      # Teacher
+      # Teacher Home
       # =====================================================
 
       - type: rewrite
@@ -28,31 +28,43 @@ services:
 
 
       # =====================================================
-      # Teacher / Tests
+      # Teacher Tests
       # =====================================================
 
       - type: rewrite
         source: /teacher/tests
-        destination: /teacher/tests/index.html
-
-
-      - type: rewrite
-        source: /teacher/tests/edit
-        destination: /teacher/tests/edit.html
-
-
-      - type: rewrite
-        source: /teacher/tests/pages
-        destination: /teacher/tests/pages.html
-
-
-      - type: rewrite
-        source: /teacher/tests/publish
-        destination: /teacher/tests/publish.html
+        destination: /teacher/tests.html
 
 
       # =====================================================
-      # Teacher / Answers
+      # Teacher Tests / Layout
+      # =====================================================
+
+      - type: rewrite
+        source: /teacher/tests/layout
+        destination: /teacher/tests/layout.html
+
+
+      # =====================================================
+      # Teacher Tests / Points
+      # =====================================================
+
+      - type: rewrite
+        source: /teacher/tests/points
+        destination: /teacher/tests/points.html
+
+
+      # =====================================================
+      # Teacher Students / QR
+      # =====================================================
+
+      - type: rewrite
+        source: /teacher/students/qr
+        destination: /teacher/students/qr.html
+
+
+      # =====================================================
+      # Teacher Answers
       # =====================================================
 
       - type: rewrite
@@ -71,7 +83,7 @@ services:
 
 
       # =====================================================
-      # Teacher / Marking
+      # Teacher Marking
       # =====================================================
 
       - type: rewrite
@@ -85,7 +97,7 @@ services:
 
 
       # =====================================================
-      # Teacher / Results
+      # Teacher Results
       # =====================================================
 
       - type: rewrite
@@ -105,3 +117,4 @@ services:
       - type: rewrite
         source: /student/answer
         destination: /student/answer.html
+

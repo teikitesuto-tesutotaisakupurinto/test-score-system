@@ -1,39 +1,8 @@
 
-/* =========================================================
-   テスト成績システム
-   採点答案選択
-
-   流れ
-   ---------------------------------------------------------
-   テスト選択
-      ↓
-   answer_sheets
-      ↓
-   student_id
-      ↓
-   answer_regions存在確認
-      ↓
-   採点画面
-      ↓
-   /teacher/marking/mark.html?answer=ANSWER_ID
-
-   注意
-   ---------------------------------------------------------
-   ・未紐付け答案は採点対象にしない
-   ・answer_regionsがない答案は採点対象にしない
-   ・元答案画像には何も描画しない
-========================================================= */
-
 (function () {
 
   "use strict";
 
-
-  /* =======================================================
-     State
-  ======================================================= */
-
-  let profile = null;
 
   let selectedTestId = null;
 
@@ -42,27 +11,15 @@
   let regionCounts = new Map();
 
 
-  /* =======================================================
-     DOM
-  ======================================================= */
-
   const testSelect =
     document.getElementById(
       "testSelect"
     );
 
-
-  const refreshButton =
-    document.getElementById(
-      "refreshButton"
-    );
-
-
   const answerGrid =
     document.getElementById(
       "answerGrid"
     );
-
 
   const statusElement =
     document.getElementById(
@@ -70,65 +27,30 @@
     );
 
 
-  /* =======================================================
-     Initialize
-  ======================================================= */
-
   async function initialize() {
 
-    try {
-
-      profile =
-        await requireTeacher();
+    const profile =
+      await requireTeacher();
 
 
-      if (!profile) {
-
-        return;
-
-      }
-
-
-      const teacherName =
-        document.getElementById(
-          "teacherName"
-        );
-
-
-      if (teacherName) {
-
-        teacherName.textContent =
-          profile.name ||
-          "先生";
-
-      }
-
-
-      await loadTests();
-
-      setupEvents();
-
-    } catch (error) {
-
-      console.error(
-        "marking-index initialize:",
-        error
-      );
-
-
-      showError(
-        error.message ||
-        "採点一覧を読み込めませんでした。"
-      );
-
+    if (!profile) {
+      return;
     }
+
+
+    document.getElementById(
+      "teacherName"
+    ).textContent =
+      profile.name ||
+      "先生";
+
+
+    await loadTests();
+
+    setupEvents();
 
   }
 
-
-  /* =======================================================
-     Tests
-  ======================================================= */
 
   async function loadTests() {
 
@@ -137,9 +59,7 @@
       error
     } =
       await supabaseClient
-        .from(
-          "tests"
-        )
+        .from("tests")
         .select(`
           id,
           name,
@@ -151,16 +71,13 @@
         .order(
           "created_at",
           {
-            ascending:
-              false
+            ascending:false
           }
         );
 
 
     if (error) {
-
       throw error;
-
     }
 
 
@@ -176,23 +93,9 @@
             test => `
 
               <option
-                value="${escapeHtml(
-                  test.id
-                )}"
+                value="${escapeHtml(test.id)}"
               >
-
-                ${escapeHtml(
-                  test.name
-                )}
-
-                ${
-                  test.subject
-                    ? ` / ${escapeHtml(
-                        test.subject
-                      )}`
-                    : ""
-                }
-
+                ${escapeHtml(test.name)}
               </option>
 
             `
@@ -205,10 +108,6 @@
   }
 
 
-  /* =======================================================
-     Events
-  ======================================================= */
-
   function setupEvents() {
 
     testSelect.addEventListener(
@@ -219,21 +118,20 @@
           testSelect.value ||
           null;
 
-
         await loadAnswers();
 
       }
     );
 
 
-    refreshButton.addEventListener(
-      "click",
-      async () => {
-
-        await loadAnswers();
-
-      }
-    );
+    document
+      .getElementById(
+        "refreshButton"
+      )
+      ?.addEventListener(
+        "click",
+        loadAnswers
+      );
 
 
     document
@@ -248,10 +146,6 @@
   }
 
 
-  /* =======================================================
-     Answers
-  ======================================================= */
-
   async function loadAnswers() {
 
     answerGrid.innerHTML =
@@ -263,35 +157,21 @@
       statusElement.textContent =
         "テストを選択してください。";
 
-
       renderEmpty(
         "テストを選択してください。"
       );
-
 
       return;
 
     }
 
 
-    statusElement.textContent =
-      "答案を読み込んでいます...";
-
-
-    /*
-      答案
-    */
-
     const {
-      data:
-        answerData,
-      error:
-        answerError
+      data,
+      error
     } =
       await supabaseClient
-        .from(
-          "answer_sheets"
-        )
+        .from("answer_sheets")
         .select(`
           id,
           test_id,
@@ -313,21 +193,18 @@
         .order(
           "created_at",
           {
-            ascending:
-              false
+            ascending:false
           }
         );
 
 
-    if (answerError) {
-
-      throw answerError;
-
+    if (error) {
+      throw error;
     }
 
 
     answers =
-      answerData || [];
+      data || [];
 
 
     if (!answers.length) {
@@ -335,52 +212,41 @@
       statusElement.textContent =
         "採点対象の答案はありません。";
 
-
       renderEmpty(
         "採点対象の答案はありません。"
       );
-
 
       return;
 
     }
 
 
-    /*
-      生徒
-    */
-
     const studentIds =
       [
         ...new Set(
           answers
             .map(
-              answer =>
-                answer.student_id
+              a => a.student_id
             )
-            .filter(
-              Boolean
-            )
+            .filter(Boolean)
         )
       ];
 
 
-    let students =
-      [];
+    let studentMap =
+      new Map();
 
 
-    if (
-      studentIds.length
-    ) {
+    if (studentIds.length) {
 
       const {
-        data,
-        error
+        data:
+          studentData,
+        error:
+          studentError
       } =
         await supabaseClient
-          .from(
-            "students"
-          )
+          .from("students")
           .select(`
             id,
             student_no,
@@ -392,38 +258,28 @@
           );
 
 
-      if (error) {
-
-        throw error;
-
+      if (studentError) {
+        throw studentError;
       }
 
 
-      students =
-        data || [];
+      studentMap =
+        new Map(
+          (studentData || [])
+            .map(
+              student => [
+                student.id,
+                student
+              ]
+            )
+        );
 
     }
 
 
-    const studentMap =
-      new Map(
-        students.map(
-          student => [
-            student.id,
-            student
-          ]
-        )
-      );
-
-
-    /*
-      answer_regions件数
-    */
-
     const answerIds =
       answers.map(
-        answer =>
-          answer.id
+        a => a.id
       );
 
 
@@ -431,23 +287,19 @@
       new Map();
 
 
-    if (
-      answerIds.length
-    ) {
+    if (answerIds.length) {
 
       const {
         data:
-          regions,
+          regionData,
         error:
           regionError
       } =
         await supabaseClient
-          .from(
-            "answer_regions"
+          .from("answer_regions")
+          .select(
+            "answer_sheet_id"
           )
-          .select(`
-            answer_sheet_id
-          `)
           .in(
             "answer_sheet_id",
             answerIds
@@ -455,40 +307,31 @@
 
 
       if (regionError) {
-
         throw regionError;
-
       }
 
 
-      (
-        regions ||
-        []
-      ).forEach(
-        region => {
+      (regionData || [])
+        .forEach(
+          region => {
 
-          regionCounts.set(
+            const id =
+              region.answer_sheet_id;
 
-            region.answer_sheet_id,
 
-            (
-              regionCounts.get(
-                region.answer_sheet_id
-              ) ||
-              0
-            ) + 1
+            regionCounts.set(
+              id,
+              (
+                regionCounts.get(id) ||
+                0
+              ) + 1
+            );
 
-          );
-
-        }
-      );
+          }
+        );
 
     }
 
-
-    /*
-      表示
-    */
 
     renderAnswers(
       studentMap
@@ -501,28 +344,12 @@
   }
 
 
-  /* =======================================================
-     Render
-  ======================================================= */
-
   function renderAnswers(
     studentMap
   ) {
 
     answerGrid.innerHTML =
       "";
-
-
-    if (!answers.length) {
-
-      renderEmpty(
-        "採点対象の答案はありません。"
-      );
-
-
-      return;
-
-    }
 
 
     answers.forEach(
@@ -537,8 +364,7 @@
         const regionCount =
           regionCounts.get(
             answer.id
-          ) ||
-          0;
+          ) || 0;
 
 
         const card =
@@ -551,92 +377,64 @@
           "answer-card";
 
 
-        const title =
-          document.createElement(
-            "div"
-          );
+        card.innerHTML = `
+
+          <div
+            class="answer-card-title"
+          >
+            ${escapeHtml(
+              student
+                ? `${student.student_no} / ${student.name}`
+                : "生徒未紐付け"
+            )}
+          </div>
 
 
-        title.className =
-          "answer-card-title";
+          <div
+            class="answer-card-meta"
+          >
 
+            状態：
+            ${escapeHtml(
+              answer.status ===
+                "marked"
+                ? "採点済み"
+                : "未採点"
+            )}
 
-        title.textContent =
-          student
+            <br>
 
-            ? `${student.student_no} / ${student.name}`
+            解答欄：
+            ${regionCount}件
 
-            : "生徒未紐付け";
+            <br>
 
+            登録：
+            ${escapeHtml(
+              formatDate(
+                answer.created_at
+              )
+            )}
 
-        card.appendChild(
-          title
-        );
-
-
-        const meta =
-          document.createElement(
-            "div"
-          );
-
-
-        meta.className =
-          "answer-card-meta";
-
-
-        meta.innerHTML = `
-
-          状態：
-          ${escapeHtml(
-            getStatusText(
-              answer.status
-            )
-          )}
-
-          <br>
-
-          解答欄：
-          ${regionCount}件
-
-          <br>
-
-          登録：
-          ${escapeHtml(
-            formatDate(
-              answer.created_at
-            )
-          )}
+          </div>
 
         `;
 
 
-        card.appendChild(
-          meta
-        );
-
-
-        const actions =
+        const action =
           document.createElement(
             "div"
           );
 
 
-        actions.className =
+        action.className =
           "answer-card-actions";
 
 
-        /*
-          採点対象条件
-        */
-
-        const canMark =
-          Boolean(
-            student
-          ) &&
-          regionCount > 0;
-
-
-        if (canMark) {
+        if (
+          student &&
+          regionCount > 0
+        ) {
 
           const link =
             document.createElement(
@@ -648,8 +446,12 @@
             "btn btn-primary";
 
 
+          /*
+            Clean URL
+          */
+
           link.href =
-            `/teacher/marking/mark.html?answer=${encodeURIComponent(
+            `/teacher/marking/mark?answer=${encodeURIComponent(
               answer.id
             )}`;
 
@@ -657,49 +459,26 @@
           link.textContent =
             answer.status ===
               "marked"
-
               ? "採点を再開"
-
               : "採点開始";
 
 
-          actions.appendChild(
+          action.appendChild(
             link
           );
 
         } else {
 
-          const disabled =
-            document.createElement(
-              "div"
-            );
-
-
-          disabled.style.color =
-            "#777";
-
-
-          disabled.style.fontSize =
-            "12px";
-
-
-          disabled.textContent =
-            !student
-
-              ? "生徒未紐付け"
-
-              : "解答欄が作成されていません";
-
-
-          actions.appendChild(
-            disabled
-          );
+          action.textContent =
+            student
+              ? "解答欄がありません"
+              : "生徒未紐付け";
 
         }
 
 
         card.appendChild(
-          actions
+          action
         );
 
 
@@ -713,39 +492,6 @@
   }
 
 
-  /* =======================================================
-     Status
-  ======================================================= */
-
-  function getStatusText(
-    status
-  ) {
-
-    switch (
-      status
-    ) {
-
-      case "uploaded":
-        return "未採点";
-
-      case "marked":
-        return "採点済み";
-
-      case "unmatched":
-        return "未紐付け";
-
-      default:
-        return status || "-";
-
-    }
-
-  }
-
-
-  /* =======================================================
-     Empty
-  ======================================================= */
-
   function renderEmpty(
     message
   ) {
@@ -754,9 +500,7 @@
 
       <div class="empty">
 
-        ${escapeHtml(
-          message
-        )}
+        ${escapeHtml(message)}
 
       </div>
 
@@ -765,103 +509,45 @@
   }
 
 
-  /* =======================================================
-     Error
-  ======================================================= */
-
-  function showError(
-    message
-  ) {
-
-    statusElement.textContent =
-      message;
-
-
-    renderEmpty(
-      message
-    );
-
-  }
-
-
-  /* =======================================================
-     Date
-  ======================================================= */
-
   function formatDate(
     value
   ) {
 
     if (!value) {
-
       return "-";
-
     }
 
 
     const date =
-      new Date(
-        value
-      );
+      new Date(value);
 
 
-    if (
-      Number.isNaN(
-        date.getTime()
-      )
-    ) {
-
-      return "-";
-
-    }
-
-
-    return date.toLocaleString(
-      "ja-JP"
-    );
+    return Number.isNaN(
+      date.getTime()
+    )
+      ? "-"
+      : date.toLocaleString(
+          "ja-JP"
+        );
 
   }
 
-
-  /* =======================================================
-     Escape
-  ======================================================= */
 
   function escapeHtml(
     value
   ) {
 
     return String(
-      value ??
-      ""
+      value ?? ""
     )
-      .replaceAll(
-        "&",
-        "&amp;"
-      )
-      .replaceAll(
-        "<",
-        "&lt;"
-      )
-      .replaceAll(
-        ">",
-        "&gt;"
-      )
-      .replaceAll(
-        '"',
-        "&quot;"
-      )
-      .replaceAll(
-        "'",
-        "&#039;"
-      );
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#039;");
 
   }
 
-
-  /* =======================================================
-     START
-  ======================================================= */
 
   initialize();
 

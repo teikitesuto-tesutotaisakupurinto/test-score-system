@@ -11,7 +11,9 @@
   content="width=device-width,initial-scale=1"
 >
 
-<title>テスト採点 - テスト成績システム</title>
+<title>
+  テスト採点 - テスト成績システム
+</title>
 
 <link
   rel="stylesheet"
@@ -20,220 +22,376 @@
 
 <style>
 
+/* =========================================================
+   採点画面
+========================================================= */
+
 .marking-main {
-  max-width:1500px;
-  margin:0 auto;
-  padding:22px;
+  max-width: 1500px;
+  margin: 0 auto;
+  padding: 22px;
 }
+
+
+/* =========================================================
+   上部操作
+========================================================= */
 
 .toolbar {
-  display:flex;
-  flex-wrap:wrap;
-  gap:8px;
-  margin-bottom:15px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 15px;
 }
+
+
+/* =========================================================
+   ステータス
+========================================================= */
 
 .status {
-  padding:10px 12px;
-  margin-bottom:15px;
-  background:#f5f6f7;
-  border:1px solid #d5dbe0;
-  font-size:13px;
+  padding: 10px 12px;
+  margin-bottom: 15px;
+
+  background: #f5f6f7;
+
+  border: 1px solid #d5dbe0;
+
+  font-size: 13px;
 }
 
+
+/* =========================================================
+   進捗
+========================================================= */
+
 .progress {
-  display:none;
-  margin-bottom:15px;
-  padding:14px;
-  background:#fff;
-  border:1px solid #d0d6dc;
+  display: none;
+
+  margin-bottom: 15px;
+  padding: 14px;
+
+  background: #fff;
+
+  border: 1px solid #d0d6dc;
 }
 
 .progress.show {
-  display:block;
+  display: block;
 }
 
 .progress-track {
-  height:8px;
-  background:#e1e5e8;
-  border-radius:4px;
-  overflow:hidden;
+  width: 100%;
+  height: 8px;
+
+  background: #e1e5e8;
+
+  border-radius: 4px;
+
+  overflow: hidden;
 }
 
 .progress-bar {
-  height:100%;
-  width:0;
-  background:#1769aa;
+  width: 0;
+  height: 100%;
+
+  background: #1769aa;
+
+  transition:
+    width .2s ease;
 }
 
 .progress-text {
-  margin-top:7px;
-  font-size:12px;
-  color:#666;
+  margin-top: 7px;
+
+  color: #666;
+
+  font-size: 12px;
 }
 
+
+/* =========================================================
+   問題ヘッダー
+========================================================= */
+
 .question-header {
-  display:flex;
-  flex-wrap:wrap;
-  justify-content:space-between;
-  align-items:center;
-  gap:12px;
-  padding:15px;
-  margin-bottom:15px;
-  background:#fff;
-  border:1px solid #d0d6dc;
+  display: flex;
+
+  flex-wrap: wrap;
+
+  justify-content: space-between;
+
+  align-items: center;
+
+  gap: 12px;
+
+  padding: 15px;
+
+  margin-bottom: 15px;
+
+  background: #fff;
+
+  border: 1px solid #d0d6dc;
 }
 
 .question-title {
-  font-size:20px;
-  font-weight:700;
+  font-size: 20px;
+  font-weight: 700;
 }
 
 .question-meta {
-  margin-top:5px;
-  color:#666;
-  font-size:13px;
+  margin-top: 5px;
+
+  color: #666;
+
+  font-size: 13px;
 }
 
 .navigation {
-  display:flex;
-  gap:8px;
+  display: flex;
+
+  flex-wrap: wrap;
+
+  gap: 8px;
 }
 
+
+/* =========================================================
+   答案一覧
+========================================================= */
+
 .answer-table-wrap {
-  overflow-x:auto;
-  background:#fff;
-  border:1px solid #d0d6dc;
+  overflow-x: auto;
+
+  background: #fff;
+
+  border: 1px solid #d0d6dc;
 }
 
 .answer-table {
-  width:100%;
-  border-collapse:collapse;
-  min-width:1050px;
+  width: 100%;
+
+  min-width: 1050px;
+
+  border-collapse: collapse;
 }
 
 .answer-table th,
 .answer-table td {
-  border:1px solid #d0d6dc;
-  padding:9px;
-  vertical-align:top;
-  font-size:13px;
+  border: 1px solid #d0d6dc;
+
+  padding: 9px;
+
+  vertical-align: top;
+
+  font-size: 13px;
 }
 
 .answer-table th {
-  background:#f3f5f7;
+  background: #f3f5f7;
+
+  font-weight: 700;
+
+  white-space: nowrap;
 }
 
+
+/* =========================================================
+   生徒
+========================================================= */
+
 .student-cell {
-  width:150px;
-  min-width:150px;
+  width: 150px;
+  min-width: 150px;
 }
 
 .student-no {
-  font-weight:700;
+  font-weight: 700;
 }
 
 .student-name {
-  margin-top:4px;
-  color:#555;
+  margin-top: 4px;
+
+  color: #555;
 }
 
+
+/* =========================================================
+   答案画像
+========================================================= */
+
 .answer-cell {
-  width:520px;
-  min-width:520px;
+  width: 520px;
+  min-width: 520px;
 }
 
 .answer-viewer {
-  position:relative;
-  overflow:hidden;
-  width:100%;
-  min-height:160px;
-  background:#f7f8f9;
-  border:1px solid #e0e3e6;
+  position: relative;
+
+  overflow: hidden;
+
+  width: 100%;
+
+  min-height: 160px;
+
+  background: #f7f8f9;
+
+  border: 1px solid #e0e3e6;
 }
 
 .answer-viewer img {
-  position:absolute;
-  max-width:none;
-  max-height:none;
-  margin:0;
+  position: absolute;
+
+  max-width: none;
+  max-height: none;
+
+  margin: 0;
+
+  user-select: none;
+
+  -webkit-user-drag: none;
 }
 
 .answer-error {
-  padding:40px 10px;
-  text-align:center;
-  color:#b42318;
+  padding: 40px 10px;
+
+  text-align: center;
+
+  color: #b42318;
 }
 
+
+/* =========================================================
+   得点
+========================================================= */
+
 .score-cell {
-  width:150px;
-  min-width:150px;
-  text-align:center;
+  width: 150px;
+  min-width: 150px;
+
+  text-align: center;
 }
 
 .score-input {
-  width:90px;
-  height:40px;
-  padding:0 8px;
-  font-size:17px;
-  text-align:center;
+  width: 90px;
+
+  height: 40px;
+
+  padding: 0 8px;
+
+  font-size: 17px;
+
+  text-align: center;
 }
 
 .score-save {
-  margin-top:7px;
+  margin-top: 7px;
 }
 
 .score-state {
-  margin-top:7px;
-  font-size:12px;
-  color:#666;
+  margin-top: 7px;
+
+  color: #666;
+
+  font-size: 12px;
 }
 
 .score-state.marked {
-  color:#1769aa;
-  font-weight:700;
+  color: #1769aa;
+
+  font-weight: 700;
 }
 
 .score-state.error {
-  color:#b42318;
+  color: #b42318;
+
+  font-weight: 700;
 }
 
+
+/* =========================================================
+   警告
+========================================================= */
+
 .warning {
-  display:none;
-  margin-top:7px;
-  padding:7px;
-  color:#b42318;
-  background:#fff4f2;
-  border:1px solid #efc2bc;
-  font-size:12px;
+  display: none;
+
+  margin-top: 7px;
+
+  padding: 7px;
+
+  color: #b42318;
+
+  background: #fff4f2;
+
+  border: 1px solid #efc2bc;
+
+  font-size: 12px;
 }
 
 .warning.show {
-  display:block;
+  display: block;
 }
 
+
+/* =========================================================
+   完了
+========================================================= */
+
 .complete {
-  display:none;
-  margin-top:15px;
-  padding:18px;
-  background:#fff;
-  border:1px solid #d0d6dc;
+  display: none;
+
+  margin-top: 15px;
+
+  padding: 18px;
+
+  background: #fff;
+
+  border: 1px solid #d0d6dc;
 }
 
 .complete.show {
-  display:block;
+  display: block;
 }
 
 .complete-title {
-  font-size:18px;
-  font-weight:700;
-  margin-bottom:8px;
+  margin-bottom: 8px;
+
+  font-size: 18px;
+
+  font-weight: 700;
 }
 
+
+/* =========================================================
+   空表示
+========================================================= */
+
 .empty {
-  padding:50px;
-  text-align:center;
-  color:#777;
+  padding: 50px;
+
+  text-align: center;
+
+  color: #777;
+}
+
+
+/* =========================================================
+   スマホ
+========================================================= */
+
+@media (max-width: 700px) {
+
+  .marking-main {
+    padding: 14px;
+  }
+
+  .answer-cell {
+    width: 400px;
+    min-width: 400px;
+  }
+
 }
 
 </style>
@@ -244,171 +402,227 @@
 <body>
 
 
+<!-- =====================================================
+     共通上部バー
+====================================================== -->
+
 <header class="topbar">
 
-<div class="system-name">
-テスト成績システム
-</div>
+  <div class="system-name">
+    テスト成績システム
+  </div>
 
-<div class="topbar-space"></div>
 
-<span id="teacherName">
--
-</span>
+  <div class="topbar-space"></div>
 
-<button
-id="logoutButton"
-class="logout-button"
-type="button"
->
-ログアウト
-</button>
+
+  <span id="teacherName">
+    -
+  </span>
+
+
+  <button
+    id="logoutButton"
+    class="logout-button"
+    type="button"
+  >
+    ログアウト
+  </button>
 
 </header>
 
 
+<!-- =====================================================
+     メイン
+====================================================== -->
+
 <main class="marking-main">
 
 
-<div class="toolbar">
+  <!-- ===================================================
+       操作
+  ==================================================== -->
 
-<a
-href="/teacher/marking"
-class="btn"
->
-採点一覧へ戻る
-</a>
+  <div class="toolbar">
 
-<button
-id="refreshButton"
-class="btn"
-type="button"
->
-更新
-</button>
-
-</div>
+    <a
+      href="/teacher/marking"
+      class="btn"
+    >
+      採点一覧へ戻る
+    </a>
 
 
-<div
-id="status"
-class="status"
->
-JavaScriptを起動しています...
-</div>
+    <button
+      id="refreshButton"
+      class="btn"
+      type="button"
+    >
+      更新
+    </button>
+
+  </div>
 
 
-<div
-id="progress"
-class="progress"
->
+  <!-- ===================================================
+       状態
+  ==================================================== -->
 
-<div
-id="progressText"
-class="progress-text"
->
--
-</div>
-
-<div class="progress-track">
-
-<div
-id="progressBar"
-class="progress-bar"
-></div>
-
-</div>
-
-</div>
+  <div
+    id="status"
+    class="status"
+    aria-live="polite"
+  >
+    JavaScriptを起動しています...
+  </div>
 
 
-<div class="question-header">
+  <!-- ===================================================
+       進捗
+  ==================================================== -->
 
-<div>
+  <div
+    id="progress"
+    class="progress"
+  >
 
-<div
-id="questionTitle"
-class="question-title"
->
--
-</div>
-
-<div
-id="questionMeta"
-class="question-meta"
->
--
-</div>
-
-</div>
+    <div
+      id="progressText"
+      class="progress-text"
+    >
+      採点状況を取得しています...
+    </div>
 
 
-<div class="navigation">
+    <div class="progress-track">
 
-<button
-id="previousButton"
-class="btn"
-type="button"
-disabled
->
-前の問題
-</button>
+      <div
+        id="progressBar"
+        class="progress-bar"
+      ></div>
 
-<button
-id="nextButton"
-class="btn btn-primary"
-type="button"
->
-次の問題
-</button>
+    </div>
 
-</div>
-
-</div>
+  </div>
 
 
-<div
-id="answerTableWrap"
-class="answer-table-wrap"
->
+  <!-- ===================================================
+       問題
+  ==================================================== -->
 
-<div class="empty">
-答案を読み込んでいます...
-</div>
+  <section
+    class="question-header"
+  >
 
-</div>
+    <div>
+
+      <div
+        id="questionTitle"
+        class="question-title"
+      >
+        -
+      </div>
 
 
-<div
-id="complete"
-class="complete"
->
+      <div
+        id="questionMeta"
+        class="question-meta"
+      >
+        -
+      </div>
 
-<div class="complete-title">
-全答案・全設問の採点が完了しました。
-</div>
+    </div>
 
-<div>
-成績・偏差値・順位の処理が完了するまで公開しません。
-</div>
 
-</div>
+    <div class="navigation">
+
+      <button
+        id="previousButton"
+        class="btn"
+        type="button"
+        disabled
+      >
+        前の問題
+      </button>
+
+
+      <button
+        id="nextButton"
+        class="btn btn-primary"
+        type="button"
+      >
+        次の問題
+      </button>
+
+    </div>
+
+  </section>
+
+
+  <!-- ===================================================
+       答案
+  ==================================================== -->
+
+  <div
+    id="answerTableWrap"
+    class="answer-table-wrap"
+  >
+
+    <div class="empty">
+      答案を読み込んでいます...
+    </div>
+
+  </div>
+
+
+  <!-- ===================================================
+       完了
+  ==================================================== -->
+
+  <div
+    id="complete"
+    class="complete"
+  >
+
+    <div class="complete-title">
+      全答案・全設問の採点が完了しました。
+    </div>
+
+
+    <div>
+      成績・偏差値・順位の処理がすべて完了するまで公開しません。
+    </div>
+
+  </div>
 
 
 </main>
 
 
+<!-- =====================================================
+     Supabase
+====================================================== -->
+
 <script
-src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+  src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
 ></script>
+
+
+<!-- =====================================================
+     共通
+====================================================== -->
 
 <script src="/js/config.js"></script>
 
 <script src="/js/auth.js"></script>
 
+
+<!-- =====================================================
+     採点
+====================================================== -->
+
 <script
-src="/js/teacher/marking.js"
-defer
+  src="/js/teacher/marking.js?v=20261115"
 ></script>
 
 

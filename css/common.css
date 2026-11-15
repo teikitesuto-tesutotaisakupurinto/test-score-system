@@ -1,0 +1,433 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+  font-family:
+    Arial,
+    "Noto Sans JP",
+    sans-serif;
+  color: #222;
+  background: #eef2f5;
+}
+
+body {
+  min-height: 100vh;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+/* =========================
+   上部バー
+========================= */
+
+.topbar {
+  height: 54px;
+
+  display: flex;
+  align-items: center;
+
+  padding: 0 18px;
+
+  background: #263746;
+  color: #fff;
+}
+
+.system-name {
+  font-size: 19px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.topbar-space {
+  flex: 1;
+}
+
+#teacherName {
+  margin-right: 12px;
+  font-size: 14px;
+}
+
+.logout-button {
+  border: 1px solid rgba(255,255,255,.5);
+  background: transparent;
+  color: #fff;
+
+  border-radius: 4px;
+
+  padding: 6px 12px;
+}
+
+.logout-button:hover {
+  background: rgba(255,255,255,.1);
+}
+
+/* =========================
+   先生画面
+========================= */
+
+.teacher-layout {
+  min-height: calc(100vh - 54px);
+
+  display: grid;
+
+  grid-template-columns: 220px 1fr;
+}
+
+.sidebar {
+  background: #fff;
+
+  border-right: 1px solid #d0d6dc;
+
+  padding: 12px 8px;
+}
+
+.sidebar-title {
+  margin: 14px 10px 5px;
+
+  color: #7b8289;
+
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.menu-link {
+  display: block;
+
+  padding: 9px 12px;
+
+  border-radius: 4px;
+
+  color: #30363b;
+
+  font-size: 14px;
+}
+
+.menu-link:hover {
+  background: #edf3f8;
+}
+
+.menu-link.active {
+  background: #e3eef8;
+  color: #1265a3;
+  font-weight: 700;
+}
+
+/* =========================
+   メイン
+========================= */
+
+.main-content {
+  min-width: 0;
+
+  padding: 22px;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+
+  margin-bottom: 20px;
+}
+
+.page-header h1 {
+  margin: 0;
+
+  font-size: 24px;
+}
+
+/* =========================
+   ダッシュボード
+========================= */
+
+.dashboard-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(4, minmax(0, 1fr));
+
+  gap: 14px;
+
+  margin-bottom: 24px;
+}
+
+.dashboard-card {
+  background: #fff;
+
+  border: 1px solid #d0d6dc;
+
+  border-radius: 6px;
+
+  padding: 18px;
+
+  min-height: 150px;
+}
+
+.dashboard-label {
+  color: #737a81;
+
+  font-size: 13px;
+}
+
+.dashboard-number {
+  margin-top: 8px;
+
+  font-size: 32px;
+
+  font-weight: 700;
+
+  color: #263746;
+}
+
+.dashboard-link {
+  display: inline-block;
+
+  margin-top: 14px;
+
+  color: #1769aa;
+
+  font-size: 13px;
+}
+
+.dashboard-section {
+  background: #fff;
+
+  border: 1px solid #d0d6dc;
+
+  border-radius: 6px;
+
+  padding: 20px;
+}
+
+.dashboard-section h2 {
+  margin:
+    0
+    0
+    15px;
+
+  font-size: 18px;
+}
+
+.quick-actions {
+  display: flex;
+
+  flex-wrap: wrap;
+
+  gap: 8px;
+}
+
+.quick-button {
+  display: inline-flex;
+
+  align-items: center;
+  justify-content: center;
+
+  min-width: 150px;
+
+  padding: 11px 15px;
+
+  border: 1px solid #b8c1c9;
+
+  border-radius: 4px;
+
+  background: #fff;
+
+  color: #333;
+
+  font-size: 14px;
+}
+
+.quick-button:hover {
+  background: #f1f5f8;
+}
+
+.quick-button.primary {
+  background: #1769aa;
+
+  border-color: #1769aa;
+
+  color: #fff;
+}
+
+/* =========================
+   共通ボタン
+========================= */
+
+.btn {
+  display: inline-flex;
+
+  align-items: center;
+  justify-content: center;
+
+  min-height: 36px;
+
+  padding: 7px 13px;
+
+  border: 1px solid #b8c1c9;
+
+  border-radius: 4px;
+
+  background: #fff;
+
+  color: #222;
+}
+
+.btn:hover {
+  background: #f1f4f6;
+}
+
+.btn-primary {
+  background: #1769aa;
+
+  border-color: #1769aa;
+
+  color: #fff;
+}
+
+.btn-primary:hover {
+  background: #12598f;
+}
+
+/* =========================
+   カード
+========================= */
+
+.card {
+  background: #fff;
+
+  border: 1px solid #d0d6dc;
+
+  border-radius: 6px;
+
+  padding: 18px;
+
+  margin-bottom: 16px;
+}
+
+/* =========================
+   テーブル
+========================= */
+
+.table {
+  width: 100%;
+
+  border-collapse: collapse;
+
+  background: #fff;
+}
+
+.table th,
+.table td {
+  border: 1px solid #d0d6dc;
+
+  padding: 9px 10px;
+
+  font-size: 13px;
+
+  text-align: left;
+}
+
+.table th {
+  background: #f3f5f7;
+
+  font-weight: 700;
+}
+
+/* =========================
+   フォーム
+========================= */
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+
+  margin-bottom: 6px;
+
+  font-size: 13px;
+
+  font-weight: 700;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+
+  border: 1px solid #b8c1c9;
+
+  border-radius: 4px;
+
+  padding: 9px 10px;
+
+  background: #fff;
+
+  outline: none;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  border-color: #1769aa;
+
+  box-shadow:
+    0 0 0 2px
+    rgba(23,105,170,.12);
+}
+
+/* =========================
+   レスポンシブ
+========================= */
+
+@media (max-width: 1000px) {
+
+  .dashboard-grid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+
+}
+
+@media (max-width: 700px) {
+
+  .teacher-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    display: none;
+  }
+
+  .main-content {
+    padding: 14px;
+  }
+
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .quick-button {
+    width: 100%;
+  }
+
+}

@@ -1,0 +1,954 @@
+
+<!doctype html>
+<html lang="ja">
+
+<head>
+
+<meta charset="utf-8">
+
+<meta
+  name="viewport"
+  content="width=device-width,initial-scale=1"
+>
+
+<title>配点設定 - テスト成績システム</title>
+
+<link
+  rel="stylesheet"
+  href="/css/common.css"
+>
+
+<style>
+
+.points-main {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 22px;
+}
+
+.page-header {
+  margin-bottom: 18px;
+}
+
+.page-header h1 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.page-header p {
+  margin: 7px 0 0;
+  color: #666;
+  font-size: 13px;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 15px;
+}
+
+.status {
+  padding: 10px 12px;
+  margin-bottom: 15px;
+  background: #f5f6f7;
+  border: 1px solid #d5dbe0;
+  font-size: 13px;
+}
+
+.test-info {
+  display: none;
+  margin-bottom: 15px;
+  padding: 15px;
+  background: #fff;
+  border: 1px solid #d0d6dc;
+}
+
+.test-info.show {
+  display: block;
+}
+
+.test-name {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.test-meta {
+  margin-top: 5px;
+  color: #666;
+  font-size: 13px;
+}
+
+.points-table-wrap {
+  overflow-x: auto;
+  background: #fff;
+  border: 1px solid #d0d6dc;
+}
+
+.points-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.points-table th,
+.points-table td {
+  border: 1px solid #d0d6dc;
+  padding: 9px 10px;
+  font-size: 13px;
+}
+
+.points-table th {
+  background: #f3f5f7;
+  text-align: left;
+}
+
+.question-label {
+  font-weight: 700;
+}
+
+.page-number {
+  color: #666;
+}
+
+.points-input {
+  width: 100px;
+  height: 38px;
+  padding: 0 8px;
+  text-align: right;
+}
+
+.save-button {
+  min-width: 70px;
+}
+
+.total-row td {
+  background: #f8fafb;
+  font-weight: 700;
+}
+
+.total-points {
+  font-size: 18px;
+}
+
+.empty {
+  padding: 50px;
+  text-align: center;
+  color: #777;
+}
+
+.error {
+  color: #b42318;
+}
+
+.success {
+  color: #1769aa;
+}
+
+</style>
+
+</head>
+
+
+<body>
+
+
+<header class="topbar">
+
+<div class="system-name">
+テスト成績システム
+</div>
+
+<div class="topbar-space"></div>
+
+<span id="teacherName">
+-
+</span>
+
+<button
+id="logoutButton"
+class="logout-button"
+type="button"
+>
+ログアウト
+</button>
+
+</header>
+
+
+<main class="points-main">
+
+
+<div class="page-header">
+
+<h1>
+配点設定
+</h1>
+
+<p>
+枠設定で作成した設問ごとに配点を設定します。
+</p>
+
+</div>
+
+
+<div class="toolbar">
+
+<a
+href="/teacher/tests"
+class="btn"
+>
+テスト一覧へ戻る
+</a>
+
+
+<a
+id="pagesLink"
+href="#"
+class="btn"
+>
+枠設定へ戻る
+</a>
+
+
+<a
+id="qrLink"
+href="#"
+class="btn btn-primary"
+>
+生徒QR発行へ
+</a>
+
+</div>
+
+
+<div
+id="status"
+class="status"
+>
+読み込み中...
+</div>
+
+
+<section
+id="testInfo"
+class="test-info"
+>
+
+<div
+id="testName"
+class="test-name"
+>
+-
+</div>
+
+<div
+id="testMeta"
+class="test-meta"
+>
+-
+</div>
+
+</section>
+
+
+<div
+id="tableWrap"
+class="points-table-wrap"
+>
+
+<div class="empty">
+配点設定を読み込んでいます...
+</div>
+
+</div>
+
+
+</main>
+
+
+<script
+src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+></script>
+
+<script src="/js/config.js"></script>
+
+<script src="/js/auth.js"></script>
+
+
+<script>
+
+"use strict";
+
+
+(function () {
+
+
+let DB =
+window.SB ||
+window.supabaseClient;
+
+
+let testId = null;
+
+let boxes = [];
+
+
+const status =
+document.getElementById(
+"status"
+);
+
+const tableWrap =
+document.getElementById(
+"tableWrap"
+);
+
+
+document.addEventListener(
+"DOMContentLoaded",
+initialize
+);
+
+
+async function initialize() {
+
+try {
+
+if (!DB) {
+
+throw new Error(
+"Supabase接続がありません。"
+);
+
+}
+
+
+if (
+typeof requireRole ===
+"function"
+) {
+
+await requireRole(
+"teacher"
+);
+
+}
+
+
+const params =
+new URLSearchParams(
+location.search
+);
+
+
+testId =
+params.get(
+"test"
+);
+
+
+if (!testId) {
+
+throw new Error(
+"テストIDがありません。"
+);
+
+}
+
+
+document.getElementById(
+"pagesLink"
+).href =
+`/teacher/tests/pages?test=${encodeURIComponent(
+testId
+)}`;
+
+
+document.getElementById(
+"qrLink"
+).href =
+`/teacher/students/qr?test=${encodeURIComponent(
+testId
+)}`;
+
+
+await load();
+
+
+} catch (error) {
+
+showError(
+error.message
+);
+
+}
+
+}
+
+
+async function load() {
+
+
+setStatus(
+"テスト情報を取得しています..."
+);
+
+
+const {
+data: test,
+error: testError
+} =
+await DB
+.from("tests")
+.select(
+`
+id,
+name,
+subject,
+grade,
+class_name
+`
+)
+.eq(
+"id",
+testId
+)
+.single();
+
+
+if (testError) {
+
+throw testError;
+
+}
+
+
+document.getElementById(
+"testInfo"
+).classList.add(
+"show"
+);
+
+
+document.getElementById(
+"testName"
+).textContent =
+test.name;
+
+
+document.getElementById(
+"testMeta"
+).textContent =
+[
+test.subject,
+test.grade,
+test.class_name
+]
+.filter(Boolean)
+.join(
+" / "
+);
+
+
+setStatus(
+"設問枠を取得しています..."
+);
+
+
+const {
+data,
+error
+} =
+await DB
+.from("layout_boxes")
+.select(
+`
+id,
+page_no,
+box_type,
+label,
+question_id,
+points,
+sort_order,
+created_at
+`
+)
+.eq(
+"test_id",
+testId
+)
+.order(
+"page_no",
+{
+ascending:true
+}
+)
+.order(
+"sort_order",
+{
+ascending:true
+}
+);
+
+
+if (error) {
+
+throw error;
+
+}
+
+
+boxes =
+(data || [])
+.filter(
+box =>
+box.question_id !== null &&
+box.question_id !== undefined &&
+String(
+box.question_id
+).trim() !== ""
+);
+
+
+render();
+
+}
+
+
+function render() {
+
+
+if (!boxes.length) {
+
+tableWrap.innerHTML = `
+
+<div class="empty">
+
+採点対象の設問枠がありません。
+
+<br><br>
+
+<a
+href="/teacher/tests/pages?test=${encodeURIComponent(
+testId
+)}"
+class="btn"
+>
+枠設定へ戻る
+</a>
+
+</div>
+
+`;
+
+setStatus(
+"設問枠がありません。",
+true
+);
+
+return;
+
+}
+
+
+const rows =
+boxes
+.map(
+(box, index) => `
+
+<tr>
+
+<td>
+${index + 1}
+</td>
+
+<td>
+${escapeHtml(
+box.label ||
+"設問"
+)}
+</td>
+
+<td class="page-number">
+${box.page_no || "-"}ページ
+</td>
+
+<td>
+
+<input
+class="points-input"
+type="number"
+min="0"
+step="0.1"
+value="${Number(
+box.points
+) || 0}"
+data-id="${escapeHtml(
+box.id
+)}"
+>
+
+</td>
+
+<td>
+
+<button
+class="btn save-button"
+type="button"
+data-save="${escapeHtml(
+box.id
+)}"
+>
+保存
+</button>
+
+</td>
+
+</tr>
+
+`
+)
+.join("");
+
+
+tableWrap.innerHTML = `
+
+<table class="points-table">
+
+<thead>
+
+<tr>
+
+<th>
+No.
+</th>
+
+<th>
+設問
+</th>
+
+<th>
+ページ
+</th>
+
+<th>
+配点
+</th>
+
+<th>
+操作
+</th>
+
+</tr>
+
+</thead>
+
+<tbody>
+
+${rows}
+
+<tr class="total-row">
+
+<td colspan="3">
+合計配点
+</td>
+
+<td colspan="2">
+
+<span
+id="totalPoints"
+class="total-points"
+>
+0
+</span>
+点
+
+</td>
+
+</tr>
+
+</tbody>
+
+</table>
+
+`;
+
+
+updateTotal();
+
+
+tableWrap
+.querySelectorAll(
+"[data-save]"
+)
+.forEach(
+button => {
+
+button.addEventListener(
+"click",
+async () => {
+
+await savePoints(
+button.dataset.save
+);
+
+});
+
+}
+);
+
+
+tableWrap
+.querySelectorAll(
+".points-input"
+)
+.forEach(
+input => {
+
+input.addEventListener(
+"input",
+updateTotal
+);
+
+}
+);
+
+
+setStatus(
+`${boxes.length}個の設問に配点を設定できます。`
+);
+
+}
+
+
+async function savePoints(
+id
+) {
+
+
+const input =
+tableWrap.querySelector(
+`.points-input[data-id="${CSS.escape(
+id
+)}"]`
+);
+
+
+if (!input) {
+
+return;
+
+}
+
+
+const value =
+Number(
+input.value
+);
+
+
+if (
+!Number.isFinite(value) ||
+value < 0
+) {
+
+showError(
+"配点は0以上の数値で入力してください。"
+);
+
+return;
+
+}
+
+
+const button =
+tableWrap.querySelector(
+`[data-save="${CSS.escape(
+id
+)}"]`
+);
+
+
+if (button) {
+
+button.disabled =
+true;
+
+button.textContent =
+"保存中...";
+
+}
+
+
+try {
+
+const {
+error
+} =
+await DB
+.from("layout_boxes")
+.update({
+
+points:
+value
+
+})
+.eq(
+"id",
+id
+);
+
+
+if (error) {
+
+throw error;
+
+}
+
+
+const box =
+boxes.find(
+item =>
+item.id ===
+id
+);
+
+
+if (box) {
+
+box.points =
+value;
+
+}
+
+
+setStatus(
+"配点を保存しました。"
+);
+
+
+updateTotal();
+
+
+} catch (error) {
+
+showError(
+`配点保存エラー: ${error.message}`
+);
+
+} finally {
+
+if (button) {
+
+button.disabled =
+false;
+
+button.textContent =
+"保存";
+
+}
+
+}
+
+}
+
+
+function updateTotal() {
+
+const total =
+[
+...tableWrap.querySelectorAll(
+".points-input"
+)
+]
+.reduce(
+(sum, input) =>
+sum +
+(
+Number(
+input.value
+) || 0
+),
+0
+);
+
+
+const element =
+document.getElementById(
+"totalPoints"
+);
+
+
+if (element) {
+
+element.textContent =
+Number.isInteger(total)
+? String(total)
+: total.toFixed(1);
+
+}
+
+}
+
+
+function setStatus(
+message,
+error = false
+) {
+
+status.textContent =
+message;
+
+status.className =
+error
+? "status error"
+: "status";
+
+}
+
+
+function showError(
+message
+) {
+
+setStatus(
+message,
+true
+);
+
+}
+
+
+function escapeHtml(
+value
+) {
+
+return String(
+value ??
+""
+)
+.replaceAll(
+"&",
+"&amp;"
+)
+.replaceAll(
+"<",
+"&lt;"
+)
+.replaceAll(
+">",
+"&gt;"
+)
+.replaceAll(
+'"',
+"&quot;"
+)
+.replaceAll(
+"'",
+"&#039;"
+);
+
+}
+
+
+})();

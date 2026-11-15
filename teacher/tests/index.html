@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>
+    テスト一覧 - テスト成績システム
+  </title>
+
+  <link
+    rel="stylesheet"
+    href="/css/common.css"
+  >
+
+</head>
+
+<body>
+
+<header class="topbar">
+
+  <div class="system-name">
+    テスト成績システム
+  </div>
+
+  <div class="topbar-space"></div>
+
+  <span id="teacherName">
+    -
+  </span>
+
+  <button
+    id="logoutButton"
+    class="logout-button"
+  >
+    ログアウト
+  </button>
+
+</header>
+
+
+<div class="teacher-layout">
+
+  <aside class="sidebar">
+
+    <div class="sidebar-title">
+      テスト
+    </div>
+
+    <a
+      href="/teacher/tests"
+      class="menu-link active"
+    >
+      テスト一覧
+    </a>
+
+    <a
+      href="/teacher/tests/new"
+      class="menu-link"
+    >
+      テスト作成
+    </a>
+
+  </aside>
+
+
+  <main class="main-content">
+
+    <div class="page-header">
+
+      <h1>
+        テスト一覧
+      </h1>
+
+      <div
+        style="
+          margin-left:auto;
+        "
+      >
+
+        <a
+          href="/teacher/tests/new"
+          class="btn btn-primary"
+        >
+          テスト作成
+        </a>
+
+      </div>
+
+    </div>
+
+
+    <div class="card">
+
+      <div
+        style="
+          display:flex;
+          gap:10px;
+          margin-bottom:15px;
+        "
+      >
+
+        <input
+          id="testSearch"
+          type="search"
+          placeholder="テスト名・教科で検索"
+          style="max-width:350px;"
+        >
+
+
+        <select
+          id="statusFilter"
+          style="max-width:170px;"
+        >
+
+          <option value="">
+            全状態
+          </option>
+
+          <option value="draft">
+            下書き
+          </option>
+
+          <option value="open">
+            実施前
+          </option>
+
+          <option value="marking">
+            採点中
+          </option>
+
+          <option value="completed">
+            採点完了
+          </option>
+
+          <option value="published">
+            公開済み
+          </option>
+
+        </select>
+
+      </div>
+
+
+      <div style="overflow:auto;">
+
+        <table class="table">
+
+          <thead>
+
+            <tr>
+
+              <th>
+                テスト名
+              </th>
+
+              <th>
+                教科
+              </th>
+
+              <th>
+                学年
+              </th>
+
+              <th>
+                実施日
+              </th>
+
+              <th>
+                満点
+              </th>
+
+              <th>
+                状態
+              </th>
+
+              <th>
+                操作
+              </th>
+
+            </tr>
+
+          </thead>
+
+
+          <tbody id="testRows">
+
+            <tr>
+
+              <td
+                colspan="7"
+                style="
+                  text-align:center;
+                "
+              >
+                読み込み中...
+              </td>
+
+            </tr>
+
+          </tbody>
+
+        </table>
+
+      </div>
+
+    </div>
+
+  </main>
+
+</div>
+
+
+<script
+  src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+></script>
+
+<script src="/js/config.js"></script>
+
+<script src="/js/auth.js"></script>
+
+<script src="/js/teacher/tests.js"></script>
+
+</body>
+
+</html>

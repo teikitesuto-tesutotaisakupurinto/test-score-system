@@ -22,30 +22,65 @@
 
 <body>
 
+
 <div class="app">
 
 
   <aside class="side">
 
-    <h2>答案管理</h2>
+    <h2>
+      デジタル採点
+    </h2>
+
 
     <a href="/teacher.html">
       ダッシュボード
     </a>
 
+
+    <a href="/teacher-students.html">
+      生徒管理
+    </a>
+
+
+    <a href="/teacher-qr.html">
+      QR発行
+    </a>
+
+
+    <a href="/teacher-tests.html">
+      テスト管理
+    </a>
+
+
     <a
       class="active"
       href="/teacher/answers/upload.html"
     >
-      アップロード
+      答案アップロード
     </a>
 
-    <a href="/teacher/answers/unmatched.html">
-      未紐付け
+
+    <a href="/teacher-answers-unmatched.html">
+      未紐付け答案
     </a>
+
 
     <a href="/teacher-marking.html">
-      採点
+      デジタル採点
+    </a>
+
+
+    <a href="/teacher-results.html">
+      成績・返却
+    </a>
+
+
+    <a
+      href="#"
+      id="logout"
+    >
+      ログアウト
     </a>
 
   </aside>
@@ -53,10 +88,18 @@
 
   <main class="main">
 
-    <h1>答案アップロード</h1>
+
+    <div class="top">
+
+      <h1>
+        答案アップロード
+      </h1>
+
+    </div>
 
 
     <div class="card">
+
 
       <div class="form-row">
 
@@ -64,60 +107,100 @@
           テスト
         </label>
 
-        <select id="test"></select>
+
+        <select id="test">
+
+          <option value="">
+            テストを選択してください
+          </option>
+
+        </select>
 
       </div>
 
 
-      <input
-        id="files"
-        type="file"
-        multiple
-        accept="image/*,.pdf,.zip"
-      >
+      <div class="form-row">
+
+        <label>
+          答案種類
+        </label>
 
 
-      <p class="small">
-        PDF、JPEG、JPG、PNG、WEBP、ZIPに対応しています。
-        ZIPの場合は内部の対応ファイルを展開して処理します。
-        QRを読み取り、生徒答案を自動で紐付けます。
+        <select id="answerType">
+
+          <option value="student">
+            生徒答案
+          </option>
+
+
+          <option value="model">
+            解答用紙・模範解答
+          </option>
+
+        </select>
+
+      </div>
+
+
+      <div class="form-row">
+
+        <label>
+          ファイル
+        </label>
+
+
+        <input
+          id="files"
+          type="file"
+          multiple
+          accept=".pdf,.jpg,.jpeg,.png,.webp,.zip"
+        >
+
+      </div>
+
+
+      <p class="small muted">
+
+        PDF / JPG / JPEG / PNG / WEBP / ZIP
+
       </p>
 
 
-      <button
-        class="primary"
-        id="upload"
-        type="button"
-      >
-        アップロード
-      </button>
+      <div class="actions">
+
+        <button
+          class="primary"
+          id="upload"
+          type="button"
+        >
+          アップロード
+        </button>
+
+
+        <button
+          id="clear"
+          type="button"
+        >
+          クリア
+        </button>
+
+      </div>
 
 
       <p id="msg"></p>
 
+
     </div>
+
 
   </main>
 
 </div>
 
 
-<!-- =====================================================
-     既存の認証・Supabase
-====================================================== -->
-
 <script
   src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
 ></script>
-
-<script src="/js/config.js"></script>
-
-<script src="/js/auth.js"></script>
-
-
-<!-- =====================================================
-     答案処理用ライブラリ
-====================================================== -->
 
 <script
   src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"
@@ -131,80 +214,97 @@
   src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"
 ></script>
 
+<script src="/js/config.js"></script>
+
+<script src="/js/auth.js"></script>
+
 
 <script>
 
 "use strict";
 
 
-/* =========================================================
-   STATE
-========================================================= */
-
-let testPages = [];
-
-let layoutBoxes = [];
-
-let students = [];
+let me = null;
 
 
 /* =========================================================
-   INITIALIZE
+   認証
 ========================================================= */
 
-requireRole("teacher")
-  .then(
-    load
-  );
+requireRole(
+  "teacher"
+).then(
+  user => {
+
+    me =
+      user;
+
+    loadTests();
+
+  }
+);
 
 
-async function load() {
+/* =========================================================
+   テスト一覧
+========================================================= */
 
-  try {
+async function loadTests() {
 
-    const {
-      data,
-      error
-    } =
-      await SB
-        .from("tests")
-        .select(
-          "id,name,subject"
-        )
-        .order(
-          "created_at",
-          {
-            ascending:
-              false
-          }
-        );
-
-
-    if (error) {
-
-      throw error;
-
-    }
-
-
-    const test =
-      document.getElementById(
-        "test"
+  const {
+    data,
+    error
+  } =
+    await SB
+      .from("tests")
+      .select(
+        `
+        id,
+        name,
+        subject,
+        grade,
+        created_at
+        `
+      )
+      .order(
+        "created_at",
+        {
+          ascending:
+            false
+        }
       );
 
 
-    test.innerHTML =
-      `
-        <option value="">
-          テストを選択してください
-        </option>
-      `;
+  if (error) {
+
+    showError(
+      error.message
+    );
+
+    return;
+
+  }
 
 
-    for (
-      const item
-      of data || []
-    ) {
+  const select =
+    document.getElementById(
+      "test"
+    );
+
+
+  select.innerHTML = `
+
+    <option value="">
+      テストを選択してください
+    </option>
+
+  `;
+
+
+  (
+    data || []
+  ).forEach(
+    test => {
 
       const option =
         document.createElement(
@@ -213,13 +313,13 @@ async function load() {
 
 
       option.value =
-        item.id;
+        test.id;
 
 
       option.textContent =
         [
-          item.name,
-          item.subject
+          test.name,
+          test.subject
         ]
           .filter(Boolean)
           .join(
@@ -227,52 +327,56 @@ async function load() {
           );
 
 
-      test.appendChild(
+      select.appendChild(
         option
       );
 
     }
-
-  } catch (error) {
-
-    showError(
-      error.message ||
-      "テスト一覧を読み込めませんでした。"
-    );
-
-  }
+  );
 
 }
 
 
 /* =========================================================
-   UPLOAD
+   アップロード
 ========================================================= */
 
 document
-  .getElementById("upload")
+  .getElementById(
+    "upload"
+  )
   .addEventListener(
     "click",
-    uploadAnswers
+    upload
   );
 
 
-async function uploadAnswers() {
+async function upload() {
 
   const testId =
     document
-      .getElementById("test")
+      .getElementById(
+        "test"
+      )
       .value;
 
 
-  const input =
+  const answerType =
     document
-      .getElementById("files");
+      .getElementById(
+        "answerType"
+      )
+      .value;
 
 
   const files =
     Array.from(
-      input.files || []
+      document
+        .getElementById(
+          "files"
+        )
+        .files ||
+      []
     );
 
 
@@ -290,7 +394,7 @@ async function uploadAnswers() {
   if (!files.length) {
 
     showError(
-      "答案ファイルを選択してください。"
+      "ファイルを選択してください。"
     );
 
     return;
@@ -310,80 +414,49 @@ async function uploadAnswers() {
 
   try {
 
-    setMessage(
-      "解答用紙の枠設定を読み込んでいます..."
-    );
-
-
-    /*
-      =====================================================
-      解答用紙と枠設定
-      =====================================================
-    */
-
-    await loadTestLayout(
-      testId
-    );
-
-
-    /*
-      =====================================================
-      生徒一覧
-      =====================================================
-    */
-
-    await loadStudents();
-
-
-    /*
-      =====================================================
-      ファイルを順番に処理
-      =====================================================
-    */
-
-    for (
-      let i = 0;
-      i < files.length;
-      i++
+    if (
+      answerType ===
+      "model"
     ) {
 
-      const file =
-        files[i];
-
-
-      setMessage(
-        `${i + 1}/${files.length} 件目を処理しています...`
+      await uploadModelAnswers(
+        testId,
+        files
       );
 
+    } else {
 
-      await processOneFile(
+      await uploadStudentAnswers(
         testId,
-        file
+        files
       );
 
     }
 
 
-    setMessage(
-      `${files.length}件の答案を処理しました。`
+    showMessage(
+      "アップロードと処理が完了しました。"
     );
 
 
-    input.value =
-      "";
+    document
+      .getElementById(
+        "files"
+      )
+      .value =
+        "";
 
 
   } catch (error) {
 
     console.error(
-      "答案アップロードエラー:",
       error
     );
 
 
     showError(
       error.message ||
-      "答案の処理に失敗しました。"
+      "アップロードに失敗しました。"
     );
 
   } finally {
@@ -397,22 +470,23 @@ async function uploadAnswers() {
 
 
 /* =========================================================
-   LOAD TEST PAGES / LAYOUT BOXES
+   生徒答案
 ========================================================= */
 
-async function loadTestLayout(
-  testId
+async function uploadStudentAnswers(
+  testId,
+  files
 ) {
 
   /*
-    test_pages
+    解答用紙ページ
   */
 
   const {
     data:
-      pages,
+      testPages,
     error:
-      pagesError
+      pageError
   } =
     await SB
       .from("test_pages")
@@ -423,8 +497,7 @@ async function loadTestLayout(
         page_no,
         image_path,
         width_px,
-        height_px,
-        original_name
+        height_px
         `
       )
       .eq(
@@ -440,26 +513,24 @@ async function loadTestLayout(
       );
 
 
-  if (pagesError) {
+  if (pageError) {
 
-    throw pagesError;
+    throw pageError;
 
   }
 
 
   /*
-    layout_boxes
+    枠設定
 
-    重要:
     source_page_idは使用しない。
-    page_noだけで対応する。
   */
 
   const {
     data:
       boxes,
     error:
-      boxesError
+      boxError
   } =
     await SB
       .from("layout_boxes")
@@ -474,8 +545,8 @@ async function loadTestLayout(
         y,
         width,
         height,
-        question_id,
         points,
+        question_id,
         parent_box_id,
         major_no,
         minor_no,
@@ -504,41 +575,22 @@ async function loadTestLayout(
       );
 
 
-  if (boxesError) {
+  if (boxError) {
 
-    throw boxesError;
+    throw boxError;
 
   }
 
 
-  testPages =
-    pages || [];
-
-
-  layoutBoxes =
-    boxes || [];
-
-}
-
-
-/* =========================================================
-   STUDENTS
-========================================================= */
-
-async function loadStudents() {
-
   /*
-    studentsの全列を取得して、
-    QRの形式が既存システムと違っていても
-    できるだけ対応する。
-
-    select * なので、
-    qr_token列の有無でSQL自体が失敗しない。
+    生徒
   */
 
   const {
-    data,
-    error
+    data:
+      students,
+    error:
+      studentError
   } =
     await SB
       .from("students")
@@ -549,469 +601,373 @@ async function loadStudents() {
       );
 
 
-  if (error) {
+  if (studentError) {
 
-    throw error;
-
-  }
-
-
-  students =
-    data || [];
-
-}
-
-
-/* =========================================================
-   PROCESS ONE FILE
-========================================================= */
-
-async function processOneFile(
-  testId,
-  file
-) {
-
-  /*
-    PDF / ZIP / 画像
-    ↓
-    ページ画像
-  */
-
-  const pages =
-    await expandFile(
-      file
-    );
-
-
-  if (!pages.length) {
-
-    throw new Error(
-      `${file.name}から処理可能なページを取得できませんでした。`
-    );
+    throw studentError;
 
   }
-
-
-  /*
-    =====================================================
-    QRを全ページから探す
-    =====================================================
-  */
-
-  let qrValue =
-    null;
-
-
-  let qrPageNo =
-    null;
 
 
   for (
-    let index = 0;
-    index < pages.length;
-    index++
+    const file
+    of files
   ) {
 
-    const pageNo =
-      index + 1;
+    /*
+      ファイルをページ化
+    */
 
-
-    const page =
-      pages[index];
-
-
-    const pageBoxes =
-      getBoxesForPage(
-        pageNo
+    const pages =
+      await expandFile(
+        file
       );
 
 
-    const qr =
-      readQrFromPage(
-        page,
-        pageBoxes
+    if (!pages.length) {
+
+      throw new Error(
+        `${file.name}を処理できませんでした。`
       );
-
-
-    if (qr) {
-
-      qrValue =
-        qr;
-
-      qrPageNo =
-        pageNo;
-
-      break;
-
-    }
-
-  }
-
-
-  /*
-    =====================================================
-    QR → 生徒
-    =====================================================
-  */
-
-  const student =
-    qrValue
-      ? findStudent(
-          qrValue
-        )
-      : null;
-
-
-  /*
-    =====================================================
-    答案ID
-    =====================================================
-  */
-
-  const answerId =
-    crypto.randomUUID();
-
-
-  /*
-    =====================================================
-    全ページStorage保存
-    =====================================================
-  */
-
-  const pageRecords =
-    [];
-
-
-  for (
-    let index = 0;
-    index < pages.length;
-    index++
-  ) {
-
-    const pageNo =
-      index + 1;
-
-
-    const page =
-      pages[index];
-
-
-    const path =
-      buildAnswerPath(
-        testId,
-        answerId,
-        pageNo
-      );
-
-
-    await uploadPage(
-      path,
-      page
-    );
-
-
-    pageRecords.push({
-
-      pageNo,
-
-      path,
-
-      width:
-        page.width,
-
-      height:
-        page.height
-
-    });
-
-  }
-
-
-  /*
-    =====================================================
-    answer_sheets
-    =====================================================
-  */
-
-  const {
-    data:
-      insertedSheet,
-    error:
-      sheetError
-  } =
-    await SB
-      .from("answer_sheets")
-      .insert({
-
-        id:
-          answerId,
-
-        test_id:
-          testId,
-
-        file_path:
-          pageRecords[0].path,
-
-        status:
-          student
-            ? "matched"
-            : "unmatched"
-
-      })
-      .select(
-        "id"
-      )
-      .single();
-
-
-  if (sheetError) {
-
-    throw sheetError;
-
-  }
-
-
-  /*
-    =====================================================
-    生徒が見つかった場合
-    =====================================================
-
-    answer_sheetsにstudent_idがある環境なら
-    紐付ける。
-
-    QR値そのものはanswer_sheetsに勝手に
-    保存しない。
-  */
-
-  if (
-    student &&
-    Object.prototype.hasOwnProperty.call(
-      student,
-      "id"
-    )
-  ) {
-
-    const {
-      error:
-        studentUpdateError
-    } =
-      await SB
-        .from("answer_sheets")
-        .update({
-
-          student_id:
-            student.id,
-
-          status:
-            "matched"
-
-        })
-        .eq(
-          "id",
-          insertedSheet.id
-        );
-
-
-    if (studentUpdateError) {
-
-      /*
-        student_idがDBにない古い構成でも
-        答案自体は残す。
-      */
-
-      console.warn(
-        "student_idの紐付け更新に失敗:",
-        studentUpdateError
-      );
-
-    }
-
-  }
-
-
-  /*
-    =====================================================
-    answer_sheet_pages
-    =====================================================
-  */
-
-  for (
-    const page
-    of pageRecords
-  ) {
-
-    const {
-      error:
-        pageError
-    } =
-      await SB
-        .from(
-          "answer_sheet_pages"
-        )
-        .upsert(
-          {
-
-            answer_sheet_id:
-              answerId,
-
-            page_no:
-              page.pageNo,
-
-            file_path:
-              page.path,
-
-            width_px:
-              page.width,
-
-            height_px:
-              page.height
-
-          },
-          {
-            onConflict:
-              "answer_sheet_id,page_no"
-          }
-        );
-
-
-    if (pageError) {
-
-      throw pageError;
 
     }
 
 
     /*
-      設問IDが既にある小問だけ
-      answer_regionsを作る。
-
-      この画面では設問IDを作らない。
+      QR
     */
 
-    await createAnswerRegions(
-      answerId,
-      page.pageNo
-    );
-
-  }
+    let qrValue =
+      null;
 
 
-  /*
-    =====================================================
-    結果
-    =====================================================
-  */
+    for (
+      let i = 0;
+      i < pages.length;
+      i++
+    ) {
 
-  if (student) {
-
-    setMessage(
-      `${file.name}: ${student.student_no || ""} ${student.name || ""} に自動紐付けしました。`
-    );
-
-  } else if (qrValue) {
-
-    setMessage(
-      `${file.name}: QR「${qrValue}」は読み取りましたが、生徒を特定できませんでした。`
-    );
-
-  } else {
-
-    setMessage(
-      `${file.name}: QRを読み取れなかったため未紐付けで保存しました。`
-    );
-
-  }
-
-}
+      const pageNo =
+        i + 1;
 
 
-/* =========================================================
-   ANSWER REGIONS
-========================================================= */
-
-async function createAnswerRegions(
-  answerSheetId,
-  pageNo
-) {
-
-  const boxes =
-    getBoxesForPage(
-      pageNo
-    );
-
-
-  /*
-    小問かつquestion_idがあるものだけ。
-
-    勝手にquestion_idを生成しない。
-  */
-
-  const rows =
-    boxes
-      .filter(
-        box =>
-          box.box_role ===
-            "minor" &&
-          box.question_id
-      )
-      .map(
-        box => ({
-
-          answer_sheet_id:
-            answerSheetId,
-
-          question_id:
-            box.question_id,
-
-          page_no:
-            pageNo,
-
-          x:
+      const pageBoxes =
+        boxes.filter(
+          box =>
             Number(
-              box.x
-            ),
+              box.page_no
+            ) ===
+            pageNo
+        );
 
-          y:
-            Number(
-              box.y
-            ),
 
-          width:
-            Number(
-              box.width
-            ),
+      qrValue =
+        readQr(
+          pages[i],
+          pageBoxes
+        );
 
-          height:
-            Number(
-              box.height
-            )
+
+      if (qrValue) {
+
+        break;
+
+      }
+
+    }
+
+
+    /*
+      生徒照合
+    */
+
+    const student =
+      findStudent(
+        qrValue,
+        students
+      );
+
+
+    /*
+      答案ID
+    */
+
+    const answerId =
+      crypto.randomUUID();
+
+
+    /*
+      ページ保存
+    */
+
+    const pageRecords =
+      [];
+
+
+    for (
+      let i = 0;
+      i < pages.length;
+      i++
+    ) {
+
+      const pageNo =
+        i + 1;
+
+
+      const path =
+        [
+          testId,
+          answerId,
+          `page-${String(
+            pageNo
+          ).padStart(
+            3,
+            "0"
+          )}.png`
+        ].join("/");
+
+
+      const blob =
+        await canvasToBlob(
+          pages[i].canvas
+        );
+
+
+      const {
+        error:
+          storageError
+      } =
+        await SB
+          .storage
+          .from("answers")
+          .upload(
+            path,
+            blob,
+            {
+              contentType:
+                "image/png",
+
+              upsert:
+                true
+            }
+          );
+
+
+      if (storageError) {
+
+        throw storageError;
+
+      }
+
+
+      pageRecords.push({
+
+        pageNo,
+
+        path,
+
+        width:
+          pages[i].width,
+
+        height:
+          pages[i].height
+
+      });
+
+    }
+
+
+    /*
+      answer_sheets
+    */
+
+    const {
+      data:
+        answerSheet,
+      error:
+        answerError
+    } =
+      await SB
+        .from("answer_sheets")
+        .insert({
+
+          id:
+            answerId,
+
+          test_id:
+            testId,
+
+          student_id:
+            student?.id ||
+            null,
+
+          file_path:
+            pageRecords[0].path,
+
+          status:
+            student
+              ? "matched"
+              : "unmatched"
 
         })
+        .select(
+          "id"
+        )
+        .single();
+
+
+    if (answerError) {
+
+      throw answerError;
+
+    }
+
+
+    /*
+      answer_sheet_pages
+    */
+
+    for (
+      const page
+      of pageRecords
+    ) {
+
+      const {
+        error:
+          pageInsertError
+      } =
+        await SB
+          .from(
+            "answer_sheet_pages"
+          )
+          .upsert(
+            {
+
+              answer_sheet_id:
+                answerSheet.id,
+
+              page_no:
+                page.pageNo,
+
+              file_path:
+                page.path,
+
+              width_px:
+                page.width,
+
+              height_px:
+                page.height
+
+            },
+            {
+              onConflict:
+                "answer_sheet_id,page_no"
+            }
+          );
+
+
+      if (pageInsertError) {
+
+        throw pageInsertError;
+
+      }
+
+
+      /*
+        設問IDが設定済みの場合だけ
+        answer_regionsを作る。
+      */
+
+      const pageBoxes =
+        boxes.filter(
+          box =>
+            Number(
+              box.page_no
+            ) ===
+            page.pageNo &&
+            box.box_role ===
+            "minor" &&
+            box.question_id
+        );
+
+
+      if (
+        pageBoxes.length
+      ) {
+
+        const regions =
+          pageBoxes.map(
+            box => ({
+
+              answer_sheet_id:
+                answerSheet.id,
+
+              question_id:
+                box.question_id,
+
+              page_no:
+                page.pageNo,
+
+              x:
+                Number(
+                  box.x
+                ),
+
+              y:
+                Number(
+                  box.y
+                ),
+
+              width:
+                Number(
+                  box.width
+                ),
+
+              height:
+                Number(
+                  box.height
+                )
+
+            })
+          );
+
+
+        const {
+          error:
+            regionError
+        } =
+          await SB
+            .from(
+              "answer_regions"
+            )
+            .insert(
+              regions
+            );
+
+
+        if (regionError) {
+
+          throw regionError;
+
+        }
+
+      }
+
+    }
+
+
+    if (student) {
+
+      showMessage(
+        `${file.name}: ${student.name} に紐付けました。`
       );
 
+    } else {
 
-  if (!rows.length) {
-
-    return;
-
-  }
-
-
-  const {
-    error
-  } =
-    await SB
-      .from(
-        "answer_regions"
-      )
-      .insert(
-        rows
+      showMessage(
+        `${file.name}: QRを読み取れなかった、または生徒を特定できなかったため未紐付けで保存しました。`
       );
 
-
-  if (error) {
-
-    throw error;
+    }
 
   }
 
@@ -1019,22 +975,86 @@ async function createAnswerRegions(
 
 
 /* =========================================================
-   GET BOXES FOR PAGE
+   模範解答
 ========================================================= */
 
-function getBoxesForPage(
-  pageNo
+async function uploadModelAnswers(
+  testId,
+  files
 ) {
 
-  return layoutBoxes.filter(
-    box =>
-      Number(
-        box.page_no
-      ) ===
-      Number(
-        pageNo
-      )
-  );
+  let pageNo =
+    1;
+
+
+  for (
+    const file
+    of files
+  ) {
+
+    const pages =
+      await expandFile(
+        file
+      );
+
+
+    for (
+      const page
+      of pages
+    ) {
+
+      const path =
+        [
+          testId,
+          "model-answer",
+          `page-${String(
+            pageNo
+          ).padStart(
+            3,
+            "0"
+          )}.png`
+        ].join("/");
+
+
+      const blob =
+        await canvasToBlob(
+          page.canvas
+        );
+
+
+      const {
+        error
+      } =
+        await SB
+          .storage
+          .from(
+            "model-answers"
+          )
+          .upload(
+            path,
+            blob,
+            {
+              contentType:
+                "image/png",
+
+              upsert:
+                true
+            }
+          );
+
+
+      if (error) {
+
+        throw error;
+
+      }
+
+
+      pageNo++;
+
+    }
+
+  }
 
 }
 
@@ -1043,14 +1063,13 @@ function getBoxesForPage(
    QR
 ========================================================= */
 
-function readQrFromPage(
+function readQr(
   page,
   boxes
 ) {
 
   /*
-    QR枠があれば、
-    まずQR枠だけを見る。
+    QR枠を優先。
   */
 
   const qrBoxes =
@@ -1082,8 +1101,7 @@ function readQrFromPage(
 
 
     if (
-      result &&
-      result.data
+      result?.data
     ) {
 
       return normalizeQr(
@@ -1096,29 +1114,21 @@ function readQrFromPage(
 
 
   /*
-    QR枠がなければ
-    ページ全体。
+    QR枠がない場合
+    ページ全体を探索。
   */
 
-  const full =
+  const result =
     decodeQr(
       page.canvas
     );
 
 
-  if (
-    full &&
-    full.data
-  ) {
-
-    return normalizeQr(
-      full.data
-    );
-
-  }
-
-
-  return null;
+  return result?.data
+    ? normalizeQr(
+        result.data
+      )
+    : null;
 
 }
 
@@ -1130,26 +1140,6 @@ function readQrFromPage(
 function decodeQr(
   canvas
 ) {
-
-  if (
-    typeof jsQR !==
-    "function"
-  ) {
-
-    return null;
-
-  }
-
-
-  if (
-    canvas.width <= 0 ||
-    canvas.height <= 0
-  ) {
-
-    return null;
-
-  }
-
 
   const context =
     canvas.getContext(
@@ -1184,241 +1174,90 @@ function decodeQr(
 
 
 /* =========================================================
-   NORMALIZE QR
-========================================================= */
-
-function normalizeQr(
-  value
-) {
-
-  const text =
-    String(
-      value ||
-      ""
-    ).trim();
-
-
-  /*
-    JSON
-  */
-
-  try {
-
-    const json =
-      JSON.parse(
-        text
-      );
-
-
-    const keys = [
-      "student_no",
-      "studentNo",
-      "student_id",
-      "studentId",
-      "id"
-    ];
-
-
-    for (
-      const key
-      of keys
-    ) {
-
-      if (
-        json[key] !==
-          undefined &&
-        json[key] !==
-          null
-      ) {
-
-        return String(
-          json[key]
-        ).trim();
-
-      }
-
-    }
-
-  } catch (_) {}
-
-
-  /*
-    URL
-  */
-
-  try {
-
-    const url =
-      new URL(
-        text
-      );
-
-
-    const keys = [
-      "student_no",
-      "studentNo",
-      "student_id",
-      "studentId",
-      "student"
-    ];
-
-
-    for (
-      const key
-      of keys
-    ) {
-
-      const value =
-        url.searchParams.get(
-          key
-        );
-
-
-      if (value) {
-
-        return value.trim();
-
-      }
-
-    }
-
-  } catch (_) {}
-
-
-  return text;
-
-}
-
-
-/* =========================================================
-   FIND STUDENT
+   STUDENT
 ========================================================= */
 
 function findStudent(
-  qrValue
+  qr,
+  students
 ) {
 
+  if (!qr) {
+
+    return null;
+
+  }
+
+
   const value =
-    normalizeStudentValue(
-      qrValue
-    );
-
-
-  /*
-    QR関連列を順番に確認。
-  */
-
-  const qrKeys = [
-    "qr_token",
-    "qr",
-    "qr_code",
-    "qr_value"
-  ];
+    String(
+      qr
+    )
+      .trim()
+      .replace(
+        /[\s-]/g,
+        ""
+      )
+      .toLowerCase();
 
 
   for (
-    const key
-    of qrKeys
+    const student
+    of students
   ) {
 
-    const student =
-      students.find(
-        item =>
-          Object.prototype.hasOwnProperty.call(
-            item,
-            key
-          ) &&
-          normalizeStudentValue(
-            item[key]
-          ) ===
-          value
-      );
+    const values = [
+
+      student.student_no,
+
+      student.qr_token,
+
+      student.qr,
+
+      student.qr_code,
+
+      student.id
+
+    ];
 
 
-    if (student) {
+    for (
+      const candidate
+      of values
+    ) {
 
-      return student;
+      if (
+        candidate ===
+        undefined ||
+        candidate ===
+        null
+      ) {
 
-    }
+        continue;
 
-  }
-
-
-  /*
-    生徒番号
-  */
-
-  let student =
-    students.find(
-      item =>
-        normalizeStudentValue(
-          item.student_no
-        ) ===
-        value
-    );
+      }
 
 
-  if (student) {
-
-    return student;
-
-  }
-
-
-  /*
-    ID
-  */
-
-  student =
-    students.find(
-      item =>
-        normalizeStudentValue(
-          item.id
-        ) ===
-        value
-    );
-
-
-  if (student) {
-
-    return student;
-
-  }
-
-
-  /*
-    数字なら先頭ゼロを無視。
-  */
-
-  if (
-    /^\d+$/.test(
-      value
-    )
-  ) {
-
-    const normalized =
-      value.replace(
-        /^0+/,
-        ""
-      );
-
-
-    student =
-      students.find(
-        item =>
-          normalizeStudentValue(
-            item.student_no
-          ).replace(
-            /^0+/,
+      const normalized =
+        String(
+          candidate
+        )
+          .trim()
+          .replace(
+            /[\s-]/g,
             ""
-          ) ===
-          normalized
-      );
+          )
+          .toLowerCase();
 
 
-    if (student) {
+      if (
+        normalized ===
+        value
+      ) {
 
-      return student;
+        return student;
+
+      }
 
     }
 
@@ -1430,26 +1269,8 @@ function findStudent(
 }
 
 
-function normalizeStudentValue(
-  value
-) {
-
-  return String(
-    value ||
-    ""
-  )
-    .trim()
-    .replace(
-      /[\s\-]/g,
-      ""
-    )
-    .toLowerCase();
-
-}
-
-
 /* =========================================================
-   FILE EXPANSION
+   FILE
 ========================================================= */
 
 async function expandFile(
@@ -1521,15 +1342,15 @@ async function pdfToPages(
 
 
   for (
-    let pageNo = 1;
-    pageNo <=
+    let i = 1;
+    i <=
     pdf.numPages;
-    pageNo++
+    i++
   ) {
 
     const pdfPage =
       await pdf.getPage(
-        pageNo
+        i
       );
 
 
@@ -1539,11 +1360,6 @@ async function pdfToPages(
           1
       });
 
-
-    /*
-      元画像を必要以上に
-      巨大化しない。
-    */
 
     const scale =
       Math.min(
@@ -1636,8 +1452,8 @@ async function zipToPages(
       zip.files
     )
       .filter(
-        entry =>
-          !entry.dir
+        item =>
+          !item.dir
       )
       .sort(
         (
@@ -1681,32 +1497,23 @@ async function zipToPages(
         );
 
 
-      const pdfFile =
-        new File(
-          [
-            blob
-          ],
-          entry.name,
-          {
-            type:
-              "application/pdf"
-          }
-        );
-
-
       pages.push(
         ...await pdfToPages(
-          pdfFile
+          new File(
+            [
+              blob
+            ],
+            entry.name,
+            {
+              type:
+                "application/pdf"
+            }
+          )
         )
       );
 
 
-      continue;
-
-    }
-
-
-    if (
+    } else if (
       [
         "jpg",
         "jpeg",
@@ -1723,25 +1530,14 @@ async function zipToPages(
         );
 
 
-      const imageFile =
-        new File(
-          [
-            blob
-          ],
-          entry.name,
-          {
-            type:
-              extension ===
-              "jpg"
-                ? "image/jpeg"
-                : `image/${extension}`
-          }
-        );
-
-
       pages.push(
         await imageToPage(
-          imageFile
+          new File(
+            [
+              blob
+            ],
+            entry.name
+          )
         )
       );
 
@@ -1772,8 +1568,36 @@ async function imageToPage(
   try {
 
     const image =
-      await loadImage(
-        url
+      await new Promise(
+        (
+          resolve,
+          reject
+        ) => {
+
+          const img =
+            new Image();
+
+
+          img.onload =
+            () =>
+              resolve(
+                img
+              );
+
+
+          img.onerror =
+            () =>
+              reject(
+                new Error(
+                  "画像を読み込めませんでした。"
+                )
+              );
+
+
+          img.src =
+            url;
+
+        }
       );
 
 
@@ -1821,80 +1645,6 @@ async function imageToPage(
     );
 
   }
-
-}
-
-
-/* =========================================================
-   STORAGE
-========================================================= */
-
-async function uploadPage(
-  path,
-  page
-) {
-
-  const blob =
-    await canvasToBlob(
-      page.canvas
-    );
-
-
-  const {
-    error
-  } =
-    await SB
-      .storage
-      .from(
-        "answers"
-      )
-      .upload(
-        path,
-        blob,
-        {
-          contentType:
-            "image/png",
-
-          cacheControl:
-            "3600",
-
-          upsert:
-            true
-        }
-      );
-
-
-  if (error) {
-
-    throw error;
-
-  }
-
-}
-
-
-/* =========================================================
-   PATH
-========================================================= */
-
-function buildAnswerPath(
-  testId,
-  answerId,
-  pageNo
-) {
-
-  return [
-    testId,
-    answerId,
-    `page-${String(
-      pageNo
-    ).padStart(
-      3,
-      "0"
-    )}.png`
-  ].join(
-    "/"
-  );
 
 }
 
@@ -1952,28 +1702,6 @@ function cropCanvas(
     );
 
 
-  const safeWidth =
-    Math.max(
-      1,
-      Math.min(
-        width,
-        source.width -
-        x
-      )
-    );
-
-
-  const safeHeight =
-    Math.max(
-      1,
-      Math.min(
-        height,
-        source.height -
-        y
-      )
-    );
-
-
   const canvas =
     document.createElement(
       "canvas"
@@ -1981,11 +1709,19 @@ function cropCanvas(
 
 
   canvas.width =
-    safeWidth;
+    Math.min(
+      width,
+      source.width -
+      x
+    );
 
 
   canvas.height =
-    safeHeight;
+    Math.min(
+      height,
+      source.height -
+      y
+    );
 
 
   canvas
@@ -1997,13 +1733,13 @@ function cropCanvas(
 
       x,
       y,
-      safeWidth,
-      safeHeight,
+      canvas.width,
+      canvas.height,
 
       0,
       0,
-      safeWidth,
-      safeHeight
+      canvas.width,
+      canvas.height
     );
 
 
@@ -2058,68 +1794,30 @@ function canvasToBlob(
 
 
 /* =========================================================
-   IMAGE
+   HELPERS
 ========================================================= */
 
-function loadImage(
-  src
+function getExtension(
+  name
 ) {
 
-  return new Promise(
-    (
-      resolve,
-      reject
-    ) => {
-
-      const image =
-        new Image();
-
-
-      image.onload =
-        () =>
-          resolve(
-            image
-          );
+  const parts =
+    String(
+      name ||
+      ""
+    )
+      .toLowerCase()
+      .split(
+        "."
+      );
 
 
-      image.onerror =
-        () =>
-          reject(
-            new Error(
-              "画像を読み込めませんでした。"
-            )
-          );
-
-
-      image.src =
-        src;
-
-    }
-  );
+  return parts.length > 1
+    ? parts.pop()
+    : "";
 
 }
 
-
-/* =========================================================
-   MODEL ANSWER
-========================================================= */
-
-async function processModelAnswers(
-  testId
-) {
-
-  /*
-    現在の画面には
-    答案種類の選択欄がないため、
-    この関数は将来の拡張用。
-  */
-
-}
-
-
-/* =========================================================
-   UI
-========================================================= */
 
 function setMessage(
   text
@@ -2145,38 +1843,44 @@ function showError(
     );
 
 
-  element.textContent =
-    text;
-
-
   element.className =
     "error";
 
+
+  element.textContent =
+    text;
+
 }
 
 
-function getExtension(
-  name
-) {
+/* =========================================================
+   CLEAR
+========================================================= */
 
-  const parts =
-    String(
-      name ||
-      ""
-    )
-      .toLowerCase()
-      .split(
-        "."
+document
+  .getElementById(
+    "clear"
+  )
+  ?.addEventListener(
+    "click",
+    () => {
+
+      document
+        .getElementById(
+          "files"
+        )
+        .value =
+          "";
+
+      setMessage(
+        ""
       );
 
-
-  return parts.length > 1
-    ? parts.pop()
-    : "";
-
-}
+    }
+  );
 
 </script>
+
 
 </body>
 

@@ -1,26 +1,29 @@
 
 /* =========================================================
    テスト成績システム
-   成績・答案 公開 / 非公開
    js/teacher/test-publish.js
 
-   仕様
+   成績・答案 公開 / 非公開
+
+   URL
    ---------------------------------------------------------
-   非公開
-      ↓
-   生徒には非公開
+   /teacher/tests/publish?test=UUID
 
    公開
-      ↓
+   ---------------------------------------------------------
    results_published = true
    results_published_at = 現在日時
 
-   非公開へ戻す
-      ↓
+   非公開
+   ---------------------------------------------------------
    results_published = false
    results_published_at = null
 
-   公開・非公開は先生Web画面から操作する。
+   重要
+   ---------------------------------------------------------
+   公開・非公開はWeb上から操作可能。
+
+   Teacher / Adminのみ操作可能。
 ========================================================= */
 
 (function () {
@@ -32,9 +35,13 @@
      STATE
   ======================================================= */
 
+  let profile = null;
+
   let tests = [];
 
   let selectedTest = null;
+
+  let initialTestId = null;
 
 
   /* =======================================================
@@ -46,18 +53,15 @@
       "testSelect"
     );
 
-
   const statusElement =
     document.getElementById(
       "status"
     );
 
-
   const publishButton =
     document.getElementById(
       "publishButton"
     );
-
 
   const unpublishButton =
     document.getElementById(
@@ -73,14 +77,12 @@
 
     try {
 
-      const profile =
+      profile =
         await requireTeacher();
 
 
       if (!profile) {
-
         return;
-
       }
 
 
@@ -99,10 +101,68 @@
       }
 
 
+      /*
+        /teacher/tests/publish?test=UUID
+      */
+
+      initialTestId =
+        window.__INITIAL_TEST_ID__ ||
+        new URLSearchParams(
+          window.location.search
+        ).get("test") ||
+        null;
+
+
       setupEvents();
 
       await loadTests();
 
+
+      /*
+        URLのtestを初期選択
+      */
+
+      if (initialTestId) {
+
+        const exists =
+          tests.some(
+            test =>
+              test.id ===
+              initialTestId
+          );
+
+
+        if (exists) {
+
+          testSelect.value =
+            initialTestId;
+
+
+          selectedTest =
+            tests.find(
+              test =>
+                test.id ===
+                initialTestId
+            ) ||
+            null;
+
+
+          renderStatus();
+
+        } else {
+
+          showStatus(
+            "指定されたテストが見つかりません。",
+            "error"
+          );
+
+        }
+
+      } else {
+
+        renderStatus();
+
+      }
 
     } catch (error) {
 
@@ -124,7 +184,7 @@
 
 
   /* =======================================================
-     TESTS
+     LOAD TESTS
   ======================================================= */
 
   async function loadTests() {
@@ -140,6 +200,9 @@
         .select(`
           id,
           name,
+          subject,
+          grade,
+          class_name,
           results_published,
           results_published_at,
           created_at
@@ -154,9 +217,7 @@
 
 
     if (error) {
-
       throw error;
-
     }
 
 
@@ -185,6 +246,14 @@
                   test.name
                 )}
 
+                ${
+                  test.subject
+                    ? ` / ${escapeHtml(
+                        test.subject
+                      )}`
+                    : ""
+                }
+
               </option>
 
             `
@@ -193,13 +262,6 @@
       }
 
     `;
-
-
-    selectedTest =
-      null;
-
-
-    renderStatus();
 
   }
 
@@ -210,7 +272,7 @@
 
   function setupEvents() {
 
-    testSelect.addEventListener(
+    testSelect?.addEventListener(
       "change",
       () => {
 
@@ -229,13 +291,13 @@
     );
 
 
-    publishButton.addEventListener(
+    publishButton?.addEventListener(
       "click",
       publishTest
     );
 
 
-    unpublishButton.addEventListener(
+    unpublishButton?.addEventListener(
       "click",
       unpublishTest
     );
@@ -262,7 +324,7 @@
     if (!selectedTest) {
 
       statusElement.className =
-        "publish-status";
+        "status";
 
 
       statusElement.textContent =
@@ -288,7 +350,7 @@
     ) {
 
       statusElement.className =
-        "publish-status public";
+        "status public";
 
 
       statusElement.innerHTML = `
@@ -323,7 +385,7 @@
 
 
     statusElement.className =
-      "publish-status private";
+      "status private";
 
 
     statusElement.innerHTML = `
@@ -334,7 +396,7 @@
 
       <br>
 
-      生徒には成績・答案を公開していません。
+      現在、生徒には公開されていません。
 
     `;
 
@@ -362,6 +424,10 @@
     }
 
 
+    /*
+      最終確認
+    */
+
     const confirmed =
       window.confirm(
         `「${selectedTest.name}」の成績・答案を公開しますか？`
@@ -369,9 +435,7 @@
 
 
     if (!confirmed) {
-
       return;
-
     }
 
 
@@ -411,6 +475,9 @@
           .select(`
             id,
             name,
+            subject,
+            grade,
+            class_name,
             results_published,
             results_published_at,
             created_at
@@ -419,9 +486,7 @@
 
 
       if (error) {
-
         throw error;
-
       }
 
 
@@ -437,6 +502,21 @@
               ? data
               : test
         );
+
+
+      /*
+        URLにもテストIDを残す。
+
+        /teacher/tests/publish?test=UUID
+      */
+
+      history.replaceState(
+        null,
+        "",
+        `/teacher/tests/publish?test=${encodeURIComponent(
+          data.id
+        )}`
+      );
 
 
       renderStatus();
@@ -458,15 +538,6 @@
 
 
     } finally {
-
-      setButtonsDisabled(
-        false
-      );
-
-
-      /*
-        現在状態を再反映。
-      */
 
       renderStatus();
 
@@ -495,9 +566,7 @@
 
 
     if (!confirmed) {
-
       return;
-
     }
 
 
@@ -532,6 +601,9 @@
           .select(`
             id,
             name,
+            subject,
+            grade,
+            class_name,
             results_published,
             results_published_at,
             created_at
@@ -540,9 +612,7 @@
 
 
       if (error) {
-
         throw error;
-
       }
 
 
@@ -580,11 +650,6 @@
 
     } finally {
 
-      setButtonsDisabled(
-        false
-      );
-
-
       renderStatus();
 
     }
@@ -593,23 +658,34 @@
 
 
   /* =======================================================
-     BUTTON STATE
+     BUTTONS
   ======================================================= */
 
   function setButtonsDisabled(
     disabled
   ) {
 
+    if (!selectedTest) {
+
+      publishButton.disabled =
+        true;
+
+      unpublishButton.disabled =
+        true;
+
+      return;
+
+    }
+
+
     publishButton.disabled =
       disabled ||
-      !selectedTest ||
       selectedTest.results_published ===
         true;
 
 
     unpublishButton.disabled =
       disabled ||
-      !selectedTest ||
       selectedTest.results_published !==
         true;
 
@@ -626,7 +702,7 @@
   ) {
 
     statusElement.className =
-      "publish-status";
+      "status";
 
 
     if (
@@ -656,9 +732,7 @@
   ) {
 
     if (!value) {
-
       return "-";
-
     }
 
 
@@ -712,8 +786,7 @@
   ) {
 
     return String(
-      value ??
-      ""
+      value ?? ""
     )
       .replaceAll(
         "&",

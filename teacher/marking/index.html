@@ -8,11 +8,11 @@
 
   <meta
     name="viewport"
-    content="width=device-width, initial-scale=1.0"
+    content="width=device-width,initial-scale=1"
   >
 
   <title>
-    採点答案選択 - テスト成績システム
+    採点 - テスト成績システム
   </title>
 
   <link
@@ -22,217 +22,120 @@
 
   <style>
 
-    .marking-index-main {
-
-      max-width:1200px;
-
-      margin:0 auto;
-
-      padding:25px;
-
+    .marking-main {
+      max-width: 1500px;
+      margin: 0 auto;
+      padding: 22px;
     }
-
 
     .page-header {
-
-      margin-bottom:20px;
-
+      margin-bottom: 20px;
     }
-
 
     .page-header h1 {
-
-      margin:0;
-
-      font-size:24px;
-
+      margin: 0;
+      font-size: 24px;
     }
-
 
     .page-header p {
-
-      margin:7px 0 0;
-
-      color:#666;
-
-      font-size:13px;
-
+      margin: 7px 0 0;
+      color: #666;
+      font-size: 13px;
     }
-
 
     .toolbar {
-
-      display:flex;
-
-      flex-wrap:wrap;
-
-      gap:10px;
-
-      align-items:center;
-
-      margin-bottom:15px;
-
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 15px;
     }
-
 
     .toolbar select {
-
-      min-width:320px;
-
-      height:40px;
-
-      padding:0 10px;
-
+      min-width: 360px;
+      height: 40px;
+      padding: 0 10px;
     }
-
-
-    .answer-grid {
-
-      display:grid;
-
-      grid-template-columns:
-        repeat(
-          3,
-          minmax(
-            0,
-            1fr
-          )
-        );
-
-      gap:15px;
-
-    }
-
-
-    .answer-card {
-
-      background:#fff;
-
-      border:
-        1px solid #d0d6dc;
-
-      border-radius:5px;
-
-      padding:16px;
-
-    }
-
-
-    .answer-card-title {
-
-      font-weight:700;
-
-      font-size:16px;
-
-      margin-bottom:8px;
-
-    }
-
-
-    .answer-card-meta {
-
-      color:#666;
-
-      font-size:13px;
-
-      line-height:1.8;
-
-    }
-
-
-    .answer-card-actions {
-
-      margin-top:15px;
-
-    }
-
-
-    .answer-card-actions a {
-
-      display:block;
-
-      text-align:center;
-
-      text-decoration:none;
-
-    }
-
 
     .status {
-
-      margin-bottom:15px;
-
-      padding:10px 12px;
-
-      background:#f5f6f7;
-
-      border:
-        1px solid #d5dbe0;
-
-      font-size:13px;
-
+      padding: 10px 12px;
+      margin-bottom: 15px;
+      background: #f5f6f7;
+      border: 1px solid #d5dbe0;
+      font-size: 13px;
     }
 
+    .table-wrap {
+      width: 100%;
+      overflow-x: auto;
+      background: #fff;
+      border: 1px solid #d0d6dc;
+    }
+
+    .marking-table {
+      width: 100%;
+      min-width: 900px;
+      border-collapse: collapse;
+    }
+
+    .marking-table th,
+    .marking-table td {
+      border: 1px solid #d0d6dc;
+      padding: 9px 10px;
+      font-size: 13px;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    .marking-table th {
+      background: #f3f5f7;
+      font-weight: 700;
+    }
+
+    .student-no {
+      font-weight: 700;
+    }
+
+    .score-cell {
+      text-align: center;
+    }
+
+    .unmarked {
+      color: #b42318;
+    }
+
+    .marked {
+      color: #1769aa;
+      font-weight: 700;
+    }
+
+    .total-cell {
+      font-weight: 700;
+    }
 
     .empty {
-
-      grid-column:1 / -1;
-
-      padding:50px;
-
-      text-align:center;
-
-      color:#777;
-
-      background:#fff;
-
-      border:
-        1px solid #d0d6dc;
-
+      padding: 50px;
+      text-align: center;
+      color: #777;
+      background: #fff;
     }
 
-
-    @media(max-width:900px) {
-
-      .answer-grid {
-
-        grid-template-columns:
-          repeat(
-            2,
-            minmax(
-              0,
-              1fr
-            )
-          );
-
-      }
-
+    .detail-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 70px;
     }
 
+    @media (max-width: 700px) {
 
-    @media(max-width:600px) {
-
-      .marking-index-main {
-
-        padding:15px;
-
+      .marking-main {
+        padding: 14px;
       }
-
-
-      .answer-grid {
-
-        grid-template-columns:
-          1fr;
-
-      }
-
 
       .toolbar select {
-
-        width:100%;
-
-        min-width:0;
-
+        width: 100%;
+        min-width: 0;
       }
 
     }
@@ -251,14 +154,11 @@
     テスト成績システム
   </div>
 
-
   <div class="topbar-space"></div>
-
 
   <span id="teacherName">
     -
   </span>
-
 
   <button
     id="logoutButton"
@@ -271,37 +171,25 @@
 </header>
 
 
-
-<main
-  class="marking-index-main"
->
+<main class="marking-main">
 
 
-  <section
-    class="page-header"
-  >
+  <div class="page-header">
 
     <h1>
       採点
     </h1>
 
-
     <p>
-      採点する答案を選択してください。
-      解答用紙に設定した枠から自動生成された解答欄を採点します。
+      テストを選択すると、そのテストの答案を生徒ごとに一覧表示します。
     </p>
 
-  </section>
+  </div>
 
 
+  <div class="toolbar">
 
-  <div
-    class="toolbar"
-  >
-
-    <select
-      id="testSelect"
-    >
+    <select id="testSelect">
 
       <option value="">
         テストを選択してください
@@ -321,7 +209,6 @@
   </div>
 
 
-
   <div
     id="status"
     class="status"
@@ -330,43 +217,30 @@
   </div>
 
 
-
-  <section
-    id="answerGrid"
-    class="answer-grid"
+  <div
+    id="markingTableWrap"
+    class="table-wrap"
   >
 
-    <div
-      class="empty"
-    >
+    <div class="empty">
       テストを選択してください。
     </div>
 
-  </section>
+  </div>
 
 
 </main>
-
 
 
 <script
   src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
 ></script>
 
+<script src="/js/config.js"></script>
 
-<script
-  src="/js/config.js"
-></script>
+<script src="/js/auth.js"></script>
 
-
-<script
-  src="/js/auth.js"
-></script>
-
-
-<script
-  src="/js/teacher/marking-index.js"
-></script>
+<script src="/js/teacher/marking-index.js"></script>
 
 
 </body>

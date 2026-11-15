@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>
+    ダッシュボード - テスト成績システム
+  </title>
+
+  <link
+    rel="stylesheet"
+    href="/css/common.css"
+  >
+
+</head>
+
+<body>
+
+  <header class="topbar">
+
+    <div class="system-name">
+      テスト成績システム
+    </div>
+
+    <div class="topbar-space"></div>
+
+    <span id="teacherName">
+      -
+    </span>
+
+    <button
+      id="logoutButton"
+      class="logout-button"
+    >
+      ログアウト
+    </button>
+
+  </header>
+
+
+  <div class="teacher-layout">
+
+
+    <!-- 左メニュー -->
+
+    <aside class="sidebar">
+
+      <div class="sidebar-title">
+        管理
+      </div>
+
+      <a
+        href="/teacher/dashboard"
+        class="menu-link active"
+      >
+        ダッシュボード
+      </a>
+
+
+      <div class="sidebar-title">
+        生徒
+      </div>
+
+      <a
+        href="/teacher/students"
+        class="menu-link"
+      >
+        生徒一覧
+      </a>
+
+      <a
+        href="/teacher/students/new"
+        class="menu-link"
+      >
+        生徒登録
+      </a>
+
+      <a
+        href="/teacher/students/qr"
+        class="menu-link"
+      >
+        QRシール発行
+      </a>
+
+
+      <div class="sidebar-title">
+        クラス
+      </div>
+
+      <a
+        href="/teacher/classes"
+        class="menu-link"
+      >
+        クラス管理
+      </a>
+
+
+      <div class="sidebar-title">
+        テスト
+      </div>
+
+      <a
+        href="/teacher/tests"
+        class="menu-link"
+      >
+        テスト一覧
+      </a>
+
+      <a
+        href="/teacher/tests/new"
+        class="menu-link"
+      >
+        テスト作成
+      </a>
+
+
+      <div class="sidebar-title">
+        答案
+      </div>
+
+      <a
+        href="/teacher/answers/upload"
+        class="menu-link"
+      >
+        答案アップロード
+      </a>
+
+      <a
+        href="/teacher/answers/unmatched"
+        class="menu-link"
+      >
+        未紐付け答案
+      </a>
+
+
+      <div class="sidebar-title">
+        採点
+      </div>
+
+      <a
+        href="/teacher/marking"
+        class="menu-link"
+      >
+        デジタル採点
+      </a>
+
+
+      <div class="sidebar-title">
+        成績
+      </div>
+
+      <a
+        href="/teacher/results"
+        class="menu-link"
+      >
+        結果総括表
+      </a>
+
+      <a
+        href="/teacher/return"
+        class="menu-link"
+      >
+        答案返却
+      </a>
+
+    </aside>
+
+
+    <!-- メイン -->
+
+    <main class="main-content">
+
+      <div class="page-header">
+
+        <h1>
+          ダッシュボード
+        </h1>
+
+      </div>
+
+
+      <!-- 集計 -->
+
+      <div class="dashboard-grid">
+
+
+        <div class="dashboard-card">
+
+          <div class="dashboard-label">
+            生徒数
+          </div>
+
+          <div
+            id="studentCount"
+            class="dashboard-number"
+          >
+            -
+          </div>
+
+          <a
+            href="/teacher/students"
+            class="dashboard-link"
+          >
+            生徒一覧
+          </a>
+
+        </div>
+
+
+        <div class="dashboard-card">
+
+          <div class="dashboard-label">
+            テスト数
+          </div>
+
+          <div
+            id="testCount"
+            class="dashboard-number"
+          >
+            -
+          </div>
+
+          <a
+            href="/teacher/tests"
+            class="dashboard-link"
+          >
+            テスト一覧
+          </a>
+
+        </div>
+
+
+        <div class="dashboard-card">
+
+          <div class="dashboard-label">
+            未採点答案
+          </div>
+
+          <div
+            id="unmarkedCount"
+            class="dashboard-number"
+          >
+            -
+          </div>
+
+          <a
+            href="/teacher/marking"
+            class="dashboard-link"
+          >
+            採点する
+          </a>
+
+        </div>
+
+
+        <div class="dashboard-card">
+
+          <div class="dashboard-label">
+            公開済みテスト
+          </div>
+
+          <div
+            id="publishedCount"
+            class="dashboard-number"
+          >
+            -
+          </div>
+
+          <a
+            href="/teacher/return"
+            class="dashboard-link"
+          >
+            答案返却
+          </a>
+
+        </div>
+
+      </div>
+
+
+      <!-- クイック操作 -->
+
+      <div class="dashboard-section">
+
+        <h2>
+          クイック操作
+        </h2>
+
+
+        <div class="quick-actions">
+
+          <a
+            href="/teacher/students/new"
+            class="quick-button"
+          >
+            生徒登録
+          </a>
+
+
+          <a
+            href="/teacher/students/qr"
+            class="quick-button"
+          >
+            QRシール発行
+          </a>
+
+
+          <a
+            href="/teacher/tests/new"
+            class="quick-button"
+          >
+            テスト作成
+          </a>
+
+
+          <a
+            href="/teacher/answers/upload"
+            class="quick-button"
+          >
+            答案アップロード
+          </a>
+
+
+          <a
+            href="/teacher/marking"
+            class="quick-button primary"
+          >
+            採点開始
+          </a>
+
+
+          <a
+            href="/teacher/results"
+            class="quick-button"
+          >
+            結果総括表
+          </a>
+
+        </div>
+
+      </div>
+
+
+    </main>
+
+  </div>
+
+
+  <script
+    src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+  ></script>
+
+  <script src="/js/config.js"></script>
+
+  <script src="/js/auth.js"></script>
+
+  <script src="/js/teacher/dashboard.js"></script>
+
+</body>
+
+</html>

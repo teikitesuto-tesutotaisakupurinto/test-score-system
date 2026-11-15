@@ -33,6 +33,10 @@
     );
 
 
+  /* =====================================================
+     INIT
+  ===================================================== */
+
   document.addEventListener(
     "DOMContentLoaded",
     initialize
@@ -81,7 +85,7 @@
       }
 
 
-      testSelect.addEventListener(
+      testSelect?.addEventListener(
         "change",
         async () => {
 
@@ -89,15 +93,15 @@
             testSelect.value ||
             "";
 
-          await loadMarkingTable();
+          await loadAnswers();
 
         }
       );
 
 
-      refreshButton.addEventListener(
+      refreshButton?.addEventListener(
         "click",
-        loadMarkingTable
+        loadAnswers
       );
 
 
@@ -130,12 +134,14 @@
     } catch (error) {
 
       console.error(
+        "marking index initialize:",
         error
       );
 
+
       showStatus(
         error.message ||
-        "初期化に失敗しました。",
+        "採点画面の初期化に失敗しました。",
         true
       );
 
@@ -143,6 +149,10 @@
 
   }
 
+
+  /* =====================================================
+     TESTS
+  ===================================================== */
 
   async function loadTests() {
 
@@ -163,14 +173,16 @@
         .order(
           "created_at",
           {
-            ascending:false
+            ascending: false
           }
         );
 
 
     if (error) {
 
-      throw error;
+      throw new Error(
+        `テスト一覧の取得に失敗しました: ${error.message}`
+      );
 
     }
 
@@ -205,7 +217,12 @@
           test.subject,
           test.grade
         ]
-          .filter(Boolean)
+          .filter(
+            value =>
+              value !== null &&
+              value !== undefined &&
+              String(value).trim() !== ""
+          )
           .join(
             " / "
           );
@@ -220,7 +237,11 @@
   }
 
 
-  async function loadMarkingTable() {
+  /* =====================================================
+     ANSWERS
+  ===================================================== */
+
+  async function loadAnswers() {
 
     if (!currentTestId) {
 
@@ -232,9 +253,11 @@
 
       `;
 
+
       showStatus(
         "テストを選択してください。"
       );
+
 
       return;
 
@@ -250,12 +273,17 @@
     `;
 
 
+    showStatus(
+      "答案を取得しています..."
+    );
+
+
     try {
 
       /*
-       * -----------------------------------------------
-       * 答案
-       * -----------------------------------------------
+       * =================================================
+       * ANSWER SHEETS
+       * =================================================
        */
 
       const {
@@ -268,10 +296,13 @@
             id,
             test_id,
             student_id,
+            original_file_path,
+            rendered_file_path,
             page_count,
             qr_value,
             status,
-            uploaded_at
+            uploaded_at,
+            created_at
           `)
           .eq(
             "test_id",
@@ -280,31 +311,44 @@
           .order(
             "uploaded_at",
             {
-              ascending:false
+              ascending: false
             }
           );
 
 
       if (answerError) {
 
-        throw answerError;
+        throw new Error(
+          `答案取得エラー: ${answerError.message}`
+        );
 
       }
 
 
-      if (!answers?.length) {
+      console.log(
+        "marking answers:",
+        answers
+      );
+
+
+      if (
+        !answers ||
+        !answers.length
+      ) {
 
         tableWrap.innerHTML = `
 
           <div class="empty">
-            このテストには答案がありません。
+            このテストには答案が登録されていません。
           </div>
 
         `;
 
+
         showStatus(
           "答案がありません。"
         );
+
 
         return;
 
@@ -312,9 +356,9 @@
 
 
       /*
-       * -----------------------------------------------
-       * 生徒
-       * -----------------------------------------------
+       * =================================================
+       * STUDENTS
+       * =================================================
        */
 
       const studentIds =
@@ -334,11 +378,13 @@
         new Map();
 
 
-      if (studentIds.length) {
+      if (
+        studentIds.length
+      ) {
 
         const {
-          data,
-          error
+          data: studentData,
+          error: studentError
         } =
           await supabaseClient
             .from("students")
@@ -353,31 +399,35 @@
             );
 
 
-        if (error) {
+        if (studentError) {
 
-          throw error;
+          throw new Error(
+            `生徒情報取得エラー: ${studentError.message}`
+          );
 
         }
 
 
         studentMap =
           new Map(
-            (data || [])
-              .map(
-                student => [
-                  student.id,
-                  student
-                ]
-              )
+            (
+              studentData ||
+              []
+            ).map(
+              student => [
+                student.id,
+                student
+              ]
+            )
           );
 
       }
 
 
       /*
-       * -----------------------------------------------
-       * 枠
-       * -----------------------------------------------
+       * =================================================
+       * LAYOUT BOXES
+       * =================================================
        */
 
       const {
@@ -392,6 +442,10 @@
             page_no,
             box_type,
             label,
+            x,
+            y,
+            width,
+            height,
             question_id,
             points
           `)
@@ -402,37 +456,44 @@
           .order(
             "page_no",
             {
-              ascending:true
+              ascending: true
             }
           )
           .order(
             "created_at",
             {
-              ascending:true
+              ascending: true
             }
           );
 
 
       if (boxError) {
 
-        throw boxError;
+        throw new Error(
+          `枠設定取得エラー: ${boxError.message}`
+        );
 
       }
 
 
       /*
-       * 採点対象だけ
+       * 採点対象
        */
 
       const questionBoxes =
-        (boxes || [])
+        (
+          boxes ||
+          []
+        )
           .filter(
             box =>
               String(
                 box.box_type ||
                 ""
-              ).toLowerCase() ===
-              "answer" &&
+              )
+                .trim()
+                .toLowerCase() ===
+                "answer" &&
               Boolean(
                 box.question_id
               )
@@ -440,9 +501,9 @@
 
 
       /*
-       * -----------------------------------------------
-       * scores
-       * -----------------------------------------------
+       * =================================================
+       * SCORES
+       * =================================================
        */
 
       const answerIds =
@@ -474,13 +535,11 @@
 
       if (scoreError) {
 
-        throw scoreError;
+        throw new Error(
+          `採点データ取得エラー: ${scoreError.message}`
+        );
 
       }
-
-
-      const scores =
-        scoreData || [];
 
 
       const scoreMap =
@@ -489,7 +548,8 @@
 
       for (
         const score
-        of scores
+        of scoreData ||
+        []
       ) {
 
         scoreMap.set(
@@ -499,6 +559,12 @@
 
       }
 
+
+      /*
+       * =================================================
+       * TABLE
+       * =================================================
+       */
 
       renderTable(
         answers,
@@ -516,6 +582,7 @@
     } catch (error) {
 
       console.error(
+        "loadAnswers:",
         error
       );
 
@@ -523,10 +590,15 @@
       tableWrap.innerHTML = `
 
         <div class="empty">
+
+          答案の取得に失敗しました。
+
+          <br><br>
+
           ${escapeHtml(
-            error.message ||
-            "答案の取得に失敗しました。"
+            error.message
           )}
+
         </div>
 
       `;
@@ -543,6 +615,10 @@
   }
 
 
+  /* =====================================================
+     TABLE
+  ===================================================== */
+
   function renderTable(
     answers,
     studentMap,
@@ -550,205 +626,197 @@
     scoreMap
   ) {
 
-    /*
-     * 問題列
-     */
-
-    const questionColumns =
-      questionBoxes.map(
-        box => {
-
-          const label =
-            box.label ||
-            "設問";
-
-
-          return `
+    const questionHeaders =
+      questionBoxes
+        .map(
+          box => `
 
             <th>
-              ${escapeHtml(label)}
+
+              ${escapeHtml(
+                box.label ||
+                "設問"
+              )}
+
               <br>
-              <span style="font-weight:400">
-                ${Number(
+
+              <span
+                style="
+                  font-weight:400;
+                "
+              >
+                ${formatPoints(
                   box.points
-                ) || 0}点
+                )}点
               </span>
+
             </th>
 
-          `;
-
-        }
-      ).join("");
+          `
+        )
+        .join("");
 
 
     const rows =
-      answers.map(
-        answer => {
+      answers
+        .map(
+          answer => {
 
-          const student =
-            studentMap.get(
-              answer.student_id
-            );
-
-
-          let markedCount =
-            0;
-
-
-          let totalScore =
-            0;
-
-
-          for (
-            const box
-            of questionBoxes
-          ) {
-
-            const score =
-              scoreMap.get(
-                `${answer.id}:${box.id}`
+            const student =
+              studentMap.get(
+                answer.student_id
               );
 
 
-            if (
-              score &&
-              score.status ===
-                "marked"
-            ) {
-
-              markedCount +=
-                1;
+            let markedCount =
+              0;
 
 
-              totalScore +=
-                Number(
-                  score.score
-                ) || 0;
+            let totalScore =
+              0;
 
-            }
+
+            const cells =
+              questionBoxes
+                .map(
+                  box => {
+
+                    const score =
+                      scoreMap.get(
+                        `${answer.id}:${box.id}`
+                      );
+
+
+                    if (
+                      score &&
+                      score.status ===
+                        "marked"
+                    ) {
+
+                      markedCount +=
+                        1;
+
+
+                      totalScore +=
+                        Number(
+                          score.score
+                        ) ||
+                        0;
+
+
+                      return `
+
+                        <td
+                          class="score-cell marked"
+                        >
+                          ${escapeHtml(
+                            String(
+                              score.score
+                            )
+                          )}
+                        </td>
+
+                      `;
+
+                    }
+
+
+                    return `
+
+                      <td
+                        class="score-cell unmarked"
+                      >
+                        未採点
+                      </td>
+
+                    `;
+
+                  }
+                )
+                .join("");
+
+
+            const totalQuestions =
+              questionBoxes.length;
+
+
+            const status =
+              totalQuestions > 0 &&
+              markedCount ===
+                totalQuestions
+                ? "全設問採点済み"
+                : `採点中 ${markedCount}/${totalQuestions}`;
+
+
+            return `
+
+              <tr>
+
+                <td>
+
+                  <div class="student-no">
+
+                    ${escapeHtml(
+                      student?.student_no ||
+                      "未紐付け"
+                    )}
+
+                  </div>
+
+                </td>
+
+
+                <td>
+
+                  ${escapeHtml(
+                    student?.name ||
+                    "-"
+                  )}
+
+                </td>
+
+
+                ${cells}
+
+
+                <td class="total-cell">
+
+                  ${formatNumber(
+                    totalScore
+                  )}点
+
+                </td>
+
+
+                <td>
+
+                  ${escapeHtml(
+                    status
+                  )}
+
+                </td>
+
+
+                <td>
+
+                  <a
+                    class="btn btn-primary detail-link"
+                    href="/teacher/marking/mark?answer=${encodeURIComponent(
+                      answer.id
+                    )}"
+                  >
+                    詳細
+                  </a>
+
+                </td>
+
+              </tr>
+
+            `;
 
           }
-
-
-          const totalQuestions =
-            questionBoxes.length;
-
-
-          const allMarked =
-            totalQuestions > 0 &&
-            markedCount ===
-              totalQuestions;
-
-
-          const cells =
-            questionBoxes.map(
-              box => {
-
-                const score =
-                  scoreMap.get(
-                    `${answer.id}:${box.id}`
-                  );
-
-
-                if (
-                  score &&
-                  score.status ===
-                    "marked"
-                ) {
-
-                  return `
-
-                    <td class="question-marked">
-                      ${escapeHtml(
-                        String(
-                          score.score
-                        )
-                      )}
-                    </td>
-
-                  `;
-
-                }
-
-
-                return `
-
-                  <td class="question-unmarked">
-                    未採点
-                  </td>
-
-                `;
-
-              }
-            ).join("");
-
-
-          const status =
-            allMarked
-              ? "全設問採点済み"
-              : `採点中 ${markedCount}/${totalQuestions}`;
-
-
-          return `
-
-            <tr>
-
-              <td>
-
-                <div class="student-name">
-                  ${escapeHtml(
-                    student
-                      ? student.student_no
-                      : "未紐付け"
-                  )}
-                </div>
-
-              </td>
-
-
-              <td>
-
-                ${escapeHtml(
-                  student
-                    ? student.name
-                    : "-"
-                )}
-
-              </td>
-
-
-              ${cells}
-
-
-              <td class="total-score">
-                ${totalScore}点
-              </td>
-
-
-              <td>
-                ${escapeHtml(status)}
-              </td>
-
-
-              <td>
-
-                <a
-                  class="btn btn-primary detail-button"
-                  href="/teacher/marking/mark?answer=${encodeURIComponent(
-                    answer.id
-                  )}"
-                >
-                  詳細
-                </a>
-
-              </td>
-
-            </tr>
-
-          `;
-
-        }
-      ).join("");
+        )
+        .join("");
 
 
     tableWrap.innerHTML = `
@@ -767,7 +835,7 @@
               生徒名
             </th>
 
-            ${questionColumns}
+            ${questionHeaders}
 
             <th>
               合計
@@ -787,7 +855,9 @@
 
 
         <tbody>
+
           ${rows}
+
         </tbody>
 
       </table>
@@ -797,10 +867,87 @@
   }
 
 
+  /* =====================================================
+     HELPERS
+  ===================================================== */
+
+  function formatPoints(
+    value
+  ) {
+
+    if (
+      value === null ||
+      value === undefined ||
+      value === ""
+    ) {
+
+      return "0";
+
+    }
+
+
+    const number =
+      Number(
+        value
+      );
+
+
+    return Number.isFinite(
+      number
+    )
+      ? String(
+          number
+        )
+      : "0";
+
+  }
+
+
+  function formatNumber(
+    value
+  ) {
+
+    const number =
+      Number(
+        value
+      );
+
+
+    if (
+      !Number.isFinite(
+        number
+      )
+    ) {
+
+      return "0";
+
+    }
+
+
+    return Number.isInteger(
+      number
+    )
+      ? String(
+          number
+        )
+      : number.toFixed(
+          1
+        );
+
+  }
+
+
   function showStatus(
     text,
     error = false
   ) {
+
+    if (!statusElement) {
+
+      return;
+
+    }
+
 
     statusElement.textContent =
       text;
@@ -844,5 +991,6 @@
       );
 
   }
+
 
 })();

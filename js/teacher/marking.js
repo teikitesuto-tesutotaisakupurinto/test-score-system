@@ -1,31 +1,60 @@
 /* =========================================================
-   デジタル採点
+   テスト成績システム
+   デジタル採点 完全版
 
-   採点単位:
-   answer_sheet
-      ↓
-   layout_box
-      ↓
-   answer_region
-
-   表示:
-   answer_region.image_path
-
-   保存:
+   採点単位
+   answer_sheets
+        ↓
+   answer_regions
+        ↓
+   layout_box_id
+        ↓
    scores
+        ↓
    mark_objects
 
-   キー:
-   L = ○
-   K = ×
-   数字 = 点数
+
+   キーボード
+   L       → ○
+   K       → ×
+   数字    → 点数入力
+   Enter   → 点数確定
+
+
+   点数ルール
+   --------------------------------
+   配点 5点の場合
+
+   0～4   → 保存可能
+   5以上  → 警告・保存不可
+
+
+   表示
+   --------------------------------
+   左   → 模範解答
+   右   → 生徒答案2列
+
+
+   採点後
+   --------------------------------
+   保存成功
+      ↓
+   次の未採点答案へ自動移動
 ========================================================= */
 
+
+/* =========================================================
+   IIFE
+========================================================= */
 
 (function () {
 
   "use strict";
 
+
+  /* =======================================================
+     URL
+  ======================================================= */
 
   const params =
     new URLSearchParams(
@@ -40,6 +69,10 @@
   const boxId =
     params.get("box");
 
+
+  /* =======================================================
+     状態
+  ======================================================= */
 
   let currentTest =
     null;
@@ -65,9 +98,17 @@
     1;
 
 
-  /* =====================================================
+  /*
+    数字キー入力中の点数
+  */
+
+  let scoreInputValue =
+    "";
+
+
+  /* =======================================================
      初期化
-  ===================================================== */
+  ======================================================= */
 
   async function initialize() {
 
@@ -77,7 +118,7 @@
 
     if (!profile) {
 
-      location.replace(
+      window.location.replace(
         "/login"
       );
 
@@ -91,7 +132,7 @@
       profile.role !== "admin"
     ) {
 
-      location.replace(
+      window.location.replace(
         "/student/dashboard"
       );
 
@@ -110,7 +151,7 @@
       );
 
 
-      location.replace(
+      window.location.replace(
         "/teacher/marking"
       );
 
@@ -136,10 +177,10 @@
 
       updateProgress();
 
-
     } catch (error) {
 
       console.error(
+        "採点画面初期化:",
         error
       );
 
@@ -154,9 +195,9 @@
   }
 
 
-  /* =====================================================
-     テスト
-  ===================================================== */
+  /* =======================================================
+     テスト取得
+  ======================================================= */
 
   async function loadTest() {
 
@@ -170,7 +211,10 @@
           id,
           name,
           subject,
-          max_score
+          grade,
+          class_name,
+          max_score,
+          status
         `)
         .eq(
           "id",
@@ -201,9 +245,9 @@
   }
 
 
-  /* =====================================================
-     解答欄
-  ===================================================== */
+  /* =======================================================
+     解答欄取得
+  ======================================================= */
 
   async function loadBox() {
 
@@ -250,7 +294,7 @@
     if (!data) {
 
       throw new Error(
-        "解答欄が見つかりません。"
+        "指定された解答欄が見つかりません。"
       );
 
     }
@@ -281,9 +325,9 @@
   }
 
 
-  /* =====================================================
-     答案
-  ===================================================== */
+  /* =======================================================
+     答案取得
+  ======================================================= */
 
   async function loadAnswers() {
 
@@ -330,16 +374,16 @@
       data || [];
 
 
-    /*
-      answer_regionsを取得
-    */
-
     const answerIds =
       answers.map(
         answer =>
           answer.id
       );
 
+
+    /*
+      答案なし
+    */
 
     if (!answerIds.length) {
 
@@ -350,6 +394,11 @@
     }
 
 
+    /*
+      現在の解答欄に対応する
+      answer_regions
+    */
+
     const {
       data:
         regions,
@@ -357,9 +406,7 @@
         regionError
     } =
       await supabaseClient
-        .from(
-          "answer_regions"
-        )
+        .from("answer_regions")
         .select(`
           id,
           answer_sheet_id,
@@ -424,9 +471,9 @@
   }
 
 
-  /* =====================================================
+  /* =======================================================
      答案表示
-  ===================================================== */
+  ======================================================= */
 
   function renderAnswers() {
 
@@ -466,7 +513,7 @@
 
 
     /*
-      画像URL
+      画像・既存採点・既存記号
     */
 
     answers.forEach(
@@ -495,9 +542,9 @@
   }
 
 
-  /* =====================================================
+  /* =======================================================
      答案カード
-  ===================================================== */
+  ======================================================= */
 
   function createAnswerCard(
     answer
@@ -507,7 +554,9 @@
 
       <article
         class="answer-card"
-        data-answer-id="${escapeHtml(answer.id)}"
+        data-answer-id="${escapeHtml(
+          answer.id
+        )}"
       >
 
 
@@ -556,6 +605,10 @@
                   alt="生徒答案"
                 >
 
+                <canvas
+                  class="answer-canvas"
+                ></canvas>
+
               `
 
               :
@@ -573,17 +626,7 @@
                 </div>
 
               `
-          }
 
-
-          ${
-            answer.region
-              ? `
-                <canvas
-                  class="answer-canvas"
-                ></canvas>
-              `
-              : ""
           }
 
         </div>
@@ -594,7 +637,14 @@
           class="answer-score-bar"
         >
 
-          ${[0,1,2,3,4,5]
+          ${[
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
             .map(
               score => `
 
@@ -620,9 +670,9 @@
   }
 
 
-  /* =====================================================
-     画像
-  ===================================================== */
+  /* =======================================================
+     切り出し画像
+  ======================================================= */
 
   async function loadRegionImage(
     answer
@@ -655,8 +705,19 @@
     if (error) {
 
       console.error(
+        "答案領域画像:",
         error
       );
+
+
+      return;
+
+    }
+
+
+    if (
+      !data?.signedUrl
+    ) {
 
       return;
 
@@ -721,9 +782,9 @@
   }
 
 
-  /* =====================================================
-     既存score
-  ===================================================== */
+  /* =======================================================
+     既存採点
+  ======================================================= */
 
   async function loadScore(
     answer
@@ -755,8 +816,10 @@
     if (error) {
 
       console.error(
+        "既存採点:",
         error
       );
+
 
       return;
 
@@ -780,21 +843,24 @@
       );
 
 
-    if (card) {
+    if (!card) {
 
-      markDone(
-        card,
-        data.score
-      );
+      return;
 
     }
+
+
+    markDone(
+      card,
+      data.score
+    );
 
   }
 
 
-  /* =====================================================
-     既存mark_objects
-  ===================================================== */
+  /* =======================================================
+     既存記号
+  ======================================================= */
 
   async function loadMarks(
     answer
@@ -829,15 +895,20 @@
           boxId
         )
         .order(
-          "created_at"
+          "created_at",
+          {
+            ascending: true
+          }
         );
 
 
     if (error) {
 
       console.error(
+        "既存記号:",
         error
       );
+
 
       return;
 
@@ -870,9 +941,9 @@
   }
 
 
-  /* =====================================================
-     イベント
-  ===================================================== */
+  /* =======================================================
+     答案イベント
+  ======================================================= */
 
   function setupAnswerEvents() {
 
@@ -886,6 +957,11 @@
           card.addEventListener(
             "click",
             event => {
+
+              /*
+                点数ボタンなら
+                カードクリック処理をしない
+              */
 
               if (
                 event.target.closest(
@@ -920,7 +996,7 @@
 
                 button.addEventListener(
                   "click",
-                  event => {
+                  async event => {
 
                     event.stopPropagation();
 
@@ -930,11 +1006,15 @@
                     );
 
 
-                    setScore(
-                      card,
+                    const score =
                       Number(
                         button.dataset.score
-                      )
+                      );
+
+
+                    await setScore(
+                      card,
+                      score
                     );
 
                   }
@@ -949,9 +1029,9 @@
   }
 
 
-  /* =====================================================
-     採点保存
-  ===================================================== */
+  /* =======================================================
+     点数保存
+  ======================================================= */
 
   async function setScore(
     card,
@@ -959,39 +1039,34 @@
   ) {
 
     /*
-      数字点数チェック
+      数値
     */
 
-    const max =
+    score =
       Number(
-        currentBox.points
+        score
       );
 
 
     if (
-      Number.isFinite(max)
+      !Number.isFinite(
+        score
+      )
     ) {
 
-      /*
-        ユーザー指定:
-        設定点数以上は禁止
-      */
-
-      if (
-        score >= max
-      ) {
-
-        alert(
-          `設定点数は ${max}点です。\n${max}点以上は設定できません。`
-        );
+      alert(
+        "正しい点数を入力してください。"
+      );
 
 
-        return false;
-
-      }
+      return false;
 
     }
 
+
+    /*
+      0未満禁止
+    */
 
     if (
       score < 0
@@ -1007,13 +1082,52 @@
     }
 
 
+    /*
+      配点
+    */
+
+    const max =
+      Number(
+        currentBox?.points
+      );
+
+
+    /*
+      ユーザー指定:
+
+      設定点数以上
+      ↓
+      警告
+      ↓
+      保存しない
+    */
+
+    if (
+      Number.isFinite(max) &&
+      score >= max
+    ) {
+
+      alert(
+        `設定点数は ${max}点です。\n\n${max}点以上は設定できません。`
+      );
+
+
+      return false;
+
+    }
+
+
+    /*
+      ログイン確認
+    */
+
     const session =
       await getSession();
 
 
     if (!session) {
 
-      location.replace(
+      window.location.replace(
         "/login"
       );
 
@@ -1026,6 +1140,10 @@
     const answerId =
       card.dataset.answerId;
 
+
+    /*
+      保存
+    */
 
     const {
       error
@@ -1046,7 +1164,9 @@
             layout_box_id:
               boxId,
 
-            score,
+            score:
+
+              score,
 
             status:
               "marked",
@@ -1071,6 +1191,7 @@
     if (error) {
 
       console.error(
+        "採点保存:",
         error
       );
 
@@ -1086,18 +1207,37 @@
     }
 
 
+    /*
+      表示
+    */
+
     markDone(
       card,
       score
     );
 
 
+    /*
+      答案状態
+    */
+
     await updateAnswerStatus(
       answerId
     );
 
 
+    /*
+      進捗
+    */
+
     updateProgress();
+
+
+    /*
+      入力欄クリア
+    */
+
+    clearScoreInput();
 
 
     /*
@@ -1114,9 +1254,9 @@
   }
 
 
-  /* =====================================================
+  /* =======================================================
      答案状態
-  ===================================================== */
+  ======================================================= */
 
   async function updateAnswerStatus(
     answerId
@@ -1144,6 +1284,7 @@
     if (error) {
 
       console.error(
+        "答案状態更新:",
         error
       );
 
@@ -1152,9 +1293,9 @@
   }
 
 
-  /* =====================================================
-     完了
-  ===================================================== */
+  /* =======================================================
+     採点済み表示
+  ======================================================= */
 
   function markDone(
     card,
@@ -1182,9 +1323,9 @@
   }
 
 
-  /* =====================================================
-     選択
-  ===================================================== */
+  /* =======================================================
+     カード選択
+  ======================================================= */
 
   function selectCard(
     card
@@ -1213,9 +1354,9 @@
   }
 
 
-  /* =====================================================
-     次へ
-  ===================================================== */
+  /* =======================================================
+     次の未採点
+  ======================================================= */
 
   function focusNext(
     current
@@ -1237,7 +1378,7 @@
 
 
     /*
-      後ろ
+      現在より後
     */
 
     for (
@@ -1258,11 +1399,13 @@
 
 
         cards[i].scrollIntoView({
+
           behavior:
             "smooth",
 
           block:
             "center"
+
         });
 
 
@@ -1295,11 +1438,13 @@
 
 
         cards[i].scrollIntoView({
+
           behavior:
             "smooth",
 
           block:
             "center"
+
         });
 
 
@@ -1311,7 +1456,7 @@
 
 
     /*
-      全員終了
+      全部採点済み
     */
 
     alert(
@@ -1321,160 +1466,9 @@
   }
 
 
-  /* =====================================================
-     キーボード
-  ===================================================== */
-
-  function setupKeyboard() {
-
-    document.addEventListener(
-      "keydown",
-      event => {
-
-        const tag =
-          event.target.tagName;
-
-
-        if (
-          tag === "INPUT" ||
-          tag === "TEXTAREA" ||
-          tag === "SELECT"
-        ) {
-
-          return;
-
-        }
-
-
-        const key =
-          event.key.toLowerCase();
-
-
-        /*
-          L = ○
-        */
-
-        if (
-          key === "l"
-        ) {
-
-          event.preventDefault();
-
-
-          if (!selectedCard) {
-
-            selectFirst();
-
-            return;
-
-          }
-
-
-          drawSymbol(
-            selectedCard,
-            "○"
-          );
-
-
-          saveMark(
-            selectedCard,
-            "circle"
-          );
-
-
-          return;
-
-        }
-
-
-        /*
-          K = ×
-        */
-
-        if (
-          key === "k"
-        ) {
-
-          event.preventDefault();
-
-
-          if (!selectedCard) {
-
-            selectFirst();
-
-            return;
-
-          }
-
-
-          drawSymbol(
-            selectedCard,
-            "×"
-          );
-
-
-          saveMark(
-            selectedCard,
-            "x"
-          );
-
-
-          /*
-            ×は0点
-          */
-
-          setScore(
-            selectedCard,
-            0
-          );
-
-
-          return;
-
-        }
-
-
-        /*
-          数字
-        */
-
-        if (
-          /^[0-9]$/.test(
-            key
-          )
-        ) {
-
-          event.preventDefault();
-
-
-          if (!selectedCard) {
-
-            selectFirst();
-
-            return;
-
-          }
-
-
-          setScore(
-            selectedCard,
-            Number(key)
-          );
-
-
-          return;
-
-        }
-
-      }
-    );
-
-  }
-
-
-  /* =====================================================
+  /* =======================================================
      最初の未採点
-  ===================================================== */
+  ======================================================= */
 
   function selectFirst() {
 
@@ -1495,11 +1489,15 @@
   }
 
 
-  /* =====================================================
+  /* =======================================================
      ツールバー
-  ===================================================== */
+  ======================================================= */
 
   function setupToolbar() {
+
+    /*
+      ツール
+    */
 
     document
       .querySelectorAll(
@@ -1539,6 +1537,10 @@
       );
 
 
+    /*
+      クイック点数
+    */
+
     document
       .querySelectorAll(
         ".footer-score"
@@ -1548,7 +1550,7 @@
 
           button.addEventListener(
             "click",
-            () => {
+            async () => {
 
               if (!selectedCard) {
 
@@ -1559,7 +1561,7 @@
               }
 
 
-              setScore(
+              await setScore(
                 selectedCard,
                 Number(
                   button.dataset.score
@@ -1572,6 +1574,28 @@
         }
       );
 
+
+    /*
+      点数確定
+    */
+
+    document
+      .getElementById(
+        "scoreApply"
+      )
+      .addEventListener(
+        "click",
+        async () => {
+
+          await applyScoreInput();
+
+        }
+      );
+
+
+    /*
+      次の未採点
+    */
 
     document
       .getElementById(
@@ -1598,6 +1622,10 @@
       );
 
 
+    /*
+      終了
+    */
+
     document
       .getElementById(
         "exitMarking"
@@ -1606,12 +1634,16 @@
         "click",
         () => {
 
-          location.href =
+          window.location.href =
             `/teacher/marking/select?test=${encodeURIComponent(testId)}`;
 
         }
       );
 
+
+    /*
+      ズーム
+    */
 
     document
       .getElementById(
@@ -1624,7 +1656,7 @@
           zoom =
             Math.min(
               2,
-              zoom + .1
+              zoom + 0.1
             );
 
 
@@ -1644,8 +1676,8 @@
 
           zoom =
             Math.max(
-              .5,
-              zoom - .1
+              0.5,
+              zoom - 0.1
             );
 
 
@@ -1675,9 +1707,504 @@
   }
 
 
-  /* =====================================================
+  /* =======================================================
+     点数入力
+  ======================================================= */
+
+  async function applyScoreInput() {
+
+    if (!selectedCard) {
+
+      selectFirst();
+
+
+      if (!selectedCard) {
+
+        alert(
+          "答案を選択してください。"
+        );
+
+
+        return;
+
+      }
+
+    }
+
+
+    const input =
+      document.getElementById(
+        "scoreInput"
+      );
+
+
+    const value =
+      input.value.trim();
+
+
+    if (!value) {
+
+      alert(
+        "点数を入力してください。"
+      );
+
+
+      return;
+
+    }
+
+
+    const score =
+      Number(
+        value
+      );
+
+
+    if (
+      !Number.isFinite(
+        score
+      )
+    ) {
+
+      alert(
+        "正しい点数を入力してください。"
+      );
+
+
+      return;
+
+    }
+
+
+    const saved =
+      await setScore(
+        selectedCard,
+        score
+      );
+
+
+    if (saved) {
+
+      input.value =
+        "";
+
+
+      scoreInputValue =
+        "";
+
+    }
+
+  }
+
+
+  /* =======================================================
+     点数入力欄クリア
+  ======================================================= */
+
+  function clearScoreInput() {
+
+    const input =
+      document.getElementById(
+        "scoreInput"
+      );
+
+
+    if (input) {
+
+      input.value =
+        "";
+
+    }
+
+
+    scoreInputValue =
+      "";
+
+  }
+
+
+  /* =======================================================
+     キーボード
+  ======================================================= */
+
+  function setupKeyboard() {
+
+    document.addEventListener(
+      "keydown",
+      async event => {
+
+        const tag =
+          event.target.tagName;
+
+
+        /*
+          実際の入力欄を操作している場合
+          ショートカットを奪わない
+        */
+
+        if (
+          tag === "TEXTAREA" ||
+          tag === "SELECT"
+        ) {
+
+          return;
+
+        }
+
+
+        /*
+          テキスト入力欄は
+          数字キー入力の対象外
+        */
+
+        if (
+          tag === "INPUT" &&
+          event.target.id !==
+            "scoreInput"
+        ) {
+
+          return;
+
+        }
+
+
+        /*
+          -------------------------------------------------
+          L → ○
+          -------------------------------------------------
+        */
+
+        if (
+          event.key.toLowerCase() ===
+          "l"
+        ) {
+
+          event.preventDefault();
+
+
+          if (!selectedCard) {
+
+            selectFirst();
+
+          }
+
+
+          if (
+            selectedCard
+          ) {
+
+            drawSymbol(
+              selectedCard,
+              "○"
+            );
+
+
+            await saveMark(
+              selectedCard,
+              "circle"
+            );
+
+          }
+
+
+          return;
+
+        }
+
+
+        /*
+          -------------------------------------------------
+          K → ×
+          -------------------------------------------------
+        */
+
+        if (
+          event.key.toLowerCase() ===
+          "k"
+        ) {
+
+          event.preventDefault();
+
+
+          if (!selectedCard) {
+
+            selectFirst();
+
+          }
+
+
+          if (
+            selectedCard
+          ) {
+
+            drawSymbol(
+              selectedCard,
+              "×"
+            );
+
+
+            await saveMark(
+              selectedCard,
+              "x"
+            );
+
+
+            /*
+              × = 0点
+            */
+
+            await setScore(
+              selectedCard,
+              0
+            );
+
+          }
+
+
+          return;
+
+        }
+
+
+        /*
+          -------------------------------------------------
+          数字キー
+          -------------------------------------------------
+
+          例:
+
+          1
+          2
+
+          ↓
+
+          12
+
+          Enter
+
+          ↓
+
+          12点確定
+        */
+
+        if (
+          /^[0-9]$/.test(
+            event.key
+          )
+        ) {
+
+          event.preventDefault();
+
+
+          /*
+            scoreInputへ追加
+          */
+
+          const input =
+            document.getElementById(
+              "scoreInput"
+            );
+
+
+          if (!input) {
+
+            return;
+
+          }
+
+
+          /*
+            先頭0を整理
+          */
+
+          if (
+            input.value === "0"
+          ) {
+
+            input.value =
+              event.key;
+
+          } else {
+
+            input.value +=
+              event.key;
+
+          }
+
+
+          scoreInputValue =
+            input.value;
+
+
+          /*
+            数字入力だけでは
+            まだ採点確定しない。
+
+            Enterで確定。
+          */
+
+          return;
+
+        }
+
+
+        /*
+          -------------------------------------------------
+          Backspace
+          -------------------------------------------------
+        */
+
+        if (
+          event.key ===
+          "Backspace"
+        ) {
+
+          /*
+            scoreInputがフォーカスされていない
+            ときだけ独自処理
+          */
+
+          if (
+            event.target.id !==
+            "scoreInput"
+          ) {
+
+            event.preventDefault();
+
+
+            const input =
+              document.getElementById(
+                "scoreInput"
+              );
+
+
+            if (input) {
+
+              input.value =
+                input.value.slice(
+                  0,
+                  -1
+                );
+
+
+              scoreInputValue =
+                input.value;
+
+            }
+
+          }
+
+
+          return;
+
+        }
+
+
+        /*
+          -------------------------------------------------
+          Enter → 点数確定
+          -------------------------------------------------
+        */
+
+        if (
+          event.key ===
+          "Enter"
+        ) {
+
+          /*
+            scoreInput自体に
+            フォーカスがある場合も処理
+          */
+
+          if (
+            document.activeElement?.id ===
+            "scoreInput" ||
+            scoreInputValue
+          ) {
+
+            event.preventDefault();
+
+
+            await applyScoreInput();
+
+          }
+
+          return;
+
+        }
+
+
+        /*
+          -------------------------------------------------
+          Escape
+          -------------------------------------------------
+        */
+
+        if (
+          event.key ===
+          "Escape"
+        ) {
+
+          clearScoreInput();
+
+          return;
+
+        }
+
+      }
+    );
+
+
+    /*
+      scoreInput直接入力にも対応
+    */
+
+    const scoreInput =
+      document.getElementById(
+        "scoreInput"
+      );
+
+
+    if (scoreInput) {
+
+      scoreInput.addEventListener(
+        "input",
+        () => {
+
+          scoreInputValue =
+            scoreInput.value;
+
+        }
+      );
+
+
+      scoreInput.addEventListener(
+        "keydown",
+        async event => {
+
+          if (
+            event.key ===
+            "Enter"
+          ) {
+
+            event.preventDefault();
+
+
+            await applyScoreInput();
+
+          }
+
+        }
+      );
+
+    }
+
+  }
+
+
+  /* =======================================================
      ツール処理
-  ===================================================== */
+  ======================================================= */
 
   function handleTool(
     card
@@ -1692,6 +2219,10 @@
 
     }
 
+
+    /*
+      ○
+    */
 
     if (
       activeTool ===
@@ -1714,6 +2245,10 @@
 
     }
 
+
+    /*
+      ×
+    */
 
     if (
       activeTool ===
@@ -1743,6 +2278,10 @@
     }
 
 
+    /*
+      △
+    */
+
     if (
       activeTool ===
       "triangle"
@@ -1764,6 +2303,10 @@
 
     }
 
+
+    /*
+      ◎
+    */
 
     if (
       activeTool ===
@@ -1787,59 +2330,36 @@
     }
 
 
+    /*
+      数字
+    */
+
     if (
       activeTool ===
       "number"
     ) {
 
-      const value =
-        prompt(
-          "点数を入力してください。"
+      const input =
+        document.getElementById(
+          "scoreInput"
         );
 
 
-      if (
-        value ===
-        null
-      ) {
+      if (input) {
 
-        return;
+        input.focus();
 
       }
-
-
-      const score =
-        Number(
-          value
-        );
-
-
-      if (
-        !Number.isFinite(
-          score
-        )
-      ) {
-
-        alert(
-          "数字を入力してください。"
-        );
-
-
-        return;
-
-      }
-
-
-      setScore(
-        card,
-        score
-      );
 
 
       return;
 
     }
 
+
+    /*
+      テキスト
+    */
 
     if (
       activeTool ===
@@ -1856,6 +2376,10 @@
     }
 
 
+    /*
+      描画
+    */
+
     if (
       activeTool ===
       "pen"
@@ -1870,9 +2394,9 @@
   }
 
 
-  /* =====================================================
-     記号描画
-  ===================================================== */
+  /* =======================================================
+     ○ × △ ◎
+  ======================================================= */
 
   function drawSymbol(
     card,
@@ -1909,7 +2433,7 @@
         document.getElementById(
           "markSize"
         ).value
-      );
+      ) || 42;
 
 
     context.strokeStyle =
@@ -1932,8 +2456,13 @@
       canvas.height / 2;
 
 
+    /*
+      ○
+    */
+
     if (
-      symbol === "○"
+      symbol ===
+      "○"
     ) {
 
       context.beginPath();
@@ -1956,8 +2485,13 @@
     }
 
 
+    /*
+      ×
+    */
+
     if (
-      symbol === "×"
+      symbol ===
+      "×"
     ) {
 
       context.beginPath();
@@ -1995,8 +2529,13 @@
     }
 
 
+    /*
+      △
+    */
+
     if (
-      symbol === "△"
+      symbol ===
+      "△"
     ) {
 
       context.beginPath();
@@ -2031,8 +2570,13 @@
     }
 
 
+    /*
+      ◎
+    */
+
     if (
-      symbol === "◎"
+      symbol ===
+      "◎"
     ) {
 
       context.font =
@@ -2050,9 +2594,9 @@
   }
 
 
-  /* =====================================================
+  /* =======================================================
      mark_objects保存
-  ===================================================== */
+  ======================================================= */
 
   async function saveMark(
     card,
@@ -2070,10 +2614,6 @@
     }
 
 
-    const answerId =
-      card.dataset.answerId;
-
-
     const color =
       document.getElementById(
         "markColor"
@@ -2085,7 +2625,7 @@
         document.getElementById(
           "markSize"
         ).value
-      );
+      ) || 42;
 
 
     const {
@@ -2098,7 +2638,7 @@
         .insert({
 
           answer_sheet_id:
-            answerId,
+            card.dataset.answerId,
 
           question_id:
             null,
@@ -2153,18 +2693,22 @@
   }
 
 
-  /* =====================================================
+  /* =======================================================
      テキスト
-  ===================================================== */
+  ======================================================= */
 
   function drawText(
     card
   ) {
 
-    const text =
+    const input =
       document.getElementById(
         "markText"
-      ).value.trim();
+      );
+
+
+    const text =
+      input.value.trim();
 
 
     if (!text) {
@@ -2209,7 +2753,7 @@
         document.getElementById(
           "markSize"
         ).value
-      );
+      ) || 42;
 
 
     context.fillStyle =
@@ -2296,6 +2840,12 @@
           y:
             size,
 
+          width:
+            null,
+
+          height:
+            null,
+
           points:
             null,
 
@@ -2308,6 +2858,7 @@
     if (error) {
 
       console.error(
+        "テキスト保存:",
         error
       );
 
@@ -2316,9 +2867,9 @@
   }
 
 
-  /* =====================================================
+  /* =======================================================
      ペン
-  ===================================================== */
+  ======================================================= */
 
   function enablePen(
     card
@@ -2364,11 +2915,13 @@
         points = [
 
           {
+
             x:
               event.offsetX,
 
             y:
               event.offsetY
+
           }
 
         ];
@@ -2457,6 +3010,32 @@
 
       };
 
+
+    canvas.onpointerleave =
+      async () => {
+
+        if (!drawing) {
+
+          return;
+
+        }
+
+
+        drawing =
+          false;
+
+
+        canvas.style.pointerEvents =
+          "none";
+
+
+        await savePenMark(
+          card,
+          points
+        );
+
+      };
+
   }
 
 
@@ -2470,6 +3049,16 @@
 
 
     if (!session) {
+
+      return;
+
+    }
+
+
+    if (
+      !points ||
+      !points.length
+    ) {
 
       return;
 
@@ -2497,6 +3086,9 @@
           object_type:
             "pen",
 
+          text_value:
+            null,
+
           color:
             document.getElementById(
               "markColor"
@@ -2520,9 +3112,7 @@
           height:
             null,
 
-          points:
-
-            points,
+          points,
 
           created_by:
             session.user.id
@@ -2533,6 +3123,7 @@
     if (error) {
 
       console.error(
+        "ペン保存:",
         error
       );
 
@@ -2541,9 +3132,9 @@
   }
 
 
-  /* =====================================================
-     保存済み記号
-  ===================================================== */
+  /* =======================================================
+     保存済み記号描画
+  ======================================================= */
 
   function drawStoredMark(
     card,
@@ -2577,8 +3168,7 @@
     const size =
       Number(
         mark.font_size
-      ) ||
-      42;
+      ) || 42;
 
 
     context.strokeStyle =
@@ -2592,8 +3182,7 @@
     context.lineWidth =
       Number(
         mark.stroke_width
-      ) ||
-      3;
+      ) || 3;
 
 
     const x =
@@ -2609,6 +3198,10 @@
       ) ||
       canvas.height / 2;
 
+
+    /*
+      ○
+    */
 
     if (
       mark.object_type ===
@@ -2634,6 +3227,10 @@
 
     }
 
+
+    /*
+      ×
+    */
 
     if (
       mark.object_type ===
@@ -2675,6 +3272,10 @@
     }
 
 
+    /*
+      △
+    */
+
     if (
       mark.object_type ===
       "triangle"
@@ -2712,6 +3313,10 @@
     }
 
 
+    /*
+      ◎
+    */
+
     if (
       mark.object_type ===
       "double_circle"
@@ -2732,6 +3337,10 @@
 
     }
 
+
+    /*
+      テキスト
+    */
 
     if (
       mark.object_type ===
@@ -2754,6 +3363,10 @@
 
     }
 
+
+    /*
+      描画
+    */
 
     if (
       mark.object_type ===
@@ -2813,16 +3426,11 @@
   }
 
 
-  /* =====================================================
+  /* =======================================================
      模範解答
-  ===================================================== */
+  ======================================================= */
 
   async function loadModelAnswer() {
-
-    /*
-      現在はpage_no=999を
-      模範解答として使用。
-    */
 
     const {
       data,
@@ -2849,6 +3457,7 @@
     if (error) {
 
       console.error(
+        "模範解答:",
         error
       );
 
@@ -2918,9 +3527,9 @@
   }
 
 
-  /* =====================================================
+  /* =======================================================
      ズーム
-  ===================================================== */
+  ======================================================= */
 
   function applyZoom() {
 
@@ -2952,9 +3561,9 @@
   }
 
 
-  /* =====================================================
+  /* =======================================================
      進捗
-  ===================================================== */
+  ======================================================= */
 
   function updateProgress() {
 
@@ -2978,9 +3587,9 @@
   }
 
 
-  /* =====================================================
+  /* =======================================================
      HTML escape
-  ===================================================== */
+  ======================================================= */
 
   function escapeHtml(
     value
@@ -3020,6 +3629,10 @@
 
   }
 
+
+  /* =======================================================
+     START
+  ======================================================= */
 
   initialize();
 

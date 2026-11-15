@@ -15,6 +15,7 @@
   解答用紙・枠設定 - テスト成績システム
 </title>
 
+
 <link
   rel="stylesheet"
   href="/css/common.css"
@@ -23,20 +24,31 @@
 
 <style>
 
-/* =====================================================
+/* =========================================================
    BASE
-===================================================== */
+========================================================= */
 
 * {
   box-sizing: border-box;
 }
 
 
+html,
 body {
   margin: 0;
-  background: #f3f5f7;
+  padding: 0;
 }
 
+
+body {
+  background: #f3f5f7;
+  color: #222;
+}
+
+
+/* =========================================================
+   MAIN
+========================================================= */
 
 .main {
   width: 100%;
@@ -46,18 +58,19 @@ body {
 }
 
 
-/* =====================================================
-   HEADER
-===================================================== */
+/* =========================================================
+   PAGE HEADER
+========================================================= */
 
 .page-header {
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 
 
 .page-header h1 {
   margin: 0;
   font-size: 24px;
+  line-height: 1.4;
 }
 
 
@@ -65,146 +78,255 @@ body {
   margin: 5px 0 0;
   color: #666;
   font-size: 13px;
+  line-height: 1.6;
 }
 
 
-/* =====================================================
+/* =========================================================
    TOOLBAR
-===================================================== */
+========================================================= */
 
 .toolbar {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
+
   padding: 12px;
+
   margin-bottom: 12px;
+
   background: #fff;
-  border: 1px solid #d5dbe0;
+
+  border:
+    1px solid #d5dbe0;
 }
 
 
 .toolbar input[type="file"] {
-  max-width: 280px;
+  max-width: 300px;
 }
 
 
 .toolbar-status {
   width: 100%;
-  margin-top: 3px;
-  padding: 8px 10px;
-  background: #f5f6f7;
-  border: 1px solid #e1e5e8;
-  color: #555;
-  font-size: 12px;
+
+  padding:
+    8px 10px;
+
+  margin-top: 2px;
+
+  background:
+    #f5f6f7;
+
+  border:
+    1px solid #e1e5e8;
+
+  color:
+    #555;
+
+  font-size:
+    12px;
+
+  line-height:
+    1.6;
 }
 
 
-/* =====================================================
+/* =========================================================
    VIEWER
-===================================================== */
+========================================================= */
 
 .viewer {
+  position: relative;
+
   min-height: 600px;
+
   padding: 20px;
-  background: #dfe3e8;
-  border: 1px solid #ccd2d7;
-  overflow: auto;
+
+  background:
+    #dfe3e8;
+
+  border:
+    1px solid #ccd2d7;
+
+  overflow:
+    auto;
 }
 
 
 .page {
   position: relative;
-  width: min(100%, 1000px);
-  margin: 0 auto 25px;
-  background: #fff;
+
+  width:
+    min(100%, 1000px);
+
+  margin:
+    0 auto 30px;
+
+  background:
+    #fff;
+
   box-shadow:
-    0 2px 10px rgba(0, 0, 0, .15);
+    0 2px 12px
+    rgba(0, 0, 0, .15);
 }
 
 
 .page canvas {
   display: block;
+
   width: 100%;
+
   height: auto;
 }
 
 
 .page .layer {
   position: absolute;
+
   inset: 0;
+
+  user-select: none;
 }
 
 
-/* =====================================================
+/* =========================================================
    BOX
-===================================================== */
+========================================================= */
 
 .box {
   position: absolute;
+
   min-width: 8px;
+
   min-height: 8px;
+
   cursor: move;
+
   z-index: 10;
 }
 
 
 .box.selected {
-  outline: 3px solid #111;
-  outline-offset: 1px;
+  outline:
+    3px solid #111;
+
+  outline-offset:
+    1px;
 }
 
 
 .box-label {
   position: absolute;
-  top: -24px;
+
+  top: -25px;
+
   left: 0;
-  padding: 3px 6px;
-  background: #222;
-  color: #fff;
-  font-size: 11px;
-  line-height: 1.3;
-  white-space: nowrap;
-  pointer-events: none;
+
+  padding:
+    3px 7px;
+
+  background:
+    #222;
+
+  color:
+    #fff;
+
+  font-size:
+    11px;
+
+  line-height:
+    1.3;
+
+  white-space:
+    nowrap;
+
+  pointer-events:
+    none;
 }
 
 
 .resize {
   position: absolute;
+
   right: -5px;
+
   bottom: -5px;
+
   width: 11px;
+
   height: 11px;
-  background: #222;
-  cursor: nwse-resize;
+
+  background:
+    #222;
+
+  cursor:
+    nwse-resize;
 }
 
 
-/* =====================================================
+/* =========================================================
+   DRAGGING PREVIEW
+========================================================= */
+
+.drawing-box {
+  position: absolute !important;
+
+  display: block !important;
+
+  border:
+    2px dashed #d00000 !important;
+
+  background:
+    rgba(208, 0, 0, .10) !important;
+
+  pointer-events:
+    none !important;
+
+  z-index:
+    9999 !important;
+
+  box-shadow:
+    0 0 0 1px
+    rgba(255,255,255,.8);
+}
+
+
+/* =========================================================
    EMPTY
-===================================================== */
+========================================================= */
 
 .empty-view {
-  padding: 70px 20px;
-  text-align: center;
-  color: #666;
+  padding:
+    80px 20px;
+
+  text-align:
+    center;
+
+  color:
+    #666;
 }
 
 
 .empty-view strong {
-  display: block;
-  margin-bottom: 8px;
-  color: #333;
+  display:
+    block;
+
+  margin-bottom:
+    8px;
+
+  color:
+    #333;
 }
 
 
-/* =====================================================
-   BOX SETTINGS
+/* =========================================================
+   BOX SETTINGS PANEL
    上部固定
-===================================================== */
+========================================================= */
 
 .box-settings-panel {
-
   position: fixed;
 
   top: 64px;
@@ -215,16 +337,18 @@ body {
 
   width: 100%;
 
-  background: #fff;
+  background:
+    #fff;
 
   border-bottom:
     1px solid #cbd1d6;
 
   box-shadow:
-    0 3px 12px rgba(0, 0, 0, .12);
+    0 3px 14px
+    rgba(0, 0, 0, .14);
 
-  z-index: 1000;
-
+  z-index:
+    1000;
 }
 
 
@@ -233,162 +357,159 @@ body {
 }
 
 
-/* =====================================================
+/* =========================================================
    PANEL HEADER
-===================================================== */
+========================================================= */
 
 .box-settings-header {
-
   display: flex;
 
   align-items: center;
 
-  gap: 18px;
+  gap: 14px;
+
+  min-height: 42px;
 
   padding:
-    9px 16px;
+    7px 16px;
 
   background:
     #f4f6f8;
 
   border-bottom:
     1px solid #e0e4e7;
-
 }
 
 
 .box-settings-title {
-
   margin: 0;
 
-  font-size: 15px;
+  font-size:
+    15px;
 
-  white-space: nowrap;
+  font-weight:
+    700;
 
+  white-space:
+    nowrap;
 }
 
 
 .panel-close {
-
   margin-left: auto;
 
-  border: 0;
+  padding:
+    5px 10px;
 
-  background: transparent;
+  border:
+    0;
 
-  cursor: pointer;
+  background:
+    transparent;
 
-  padding: 5px 8px;
+  color:
+    #555;
 
-  font-size: 12px;
+  cursor:
+    pointer;
 
+  font-size:
+    12px;
 }
 
 
-/* =====================================================
+.panel-close:hover {
+  background:
+    #e7eaed;
+}
+
+
+/* =========================================================
    PANEL BODY
-===================================================== */
+========================================================= */
 
 .box-settings-body {
-
   display: flex;
 
   align-items: center;
 
   flex-wrap: wrap;
 
-  gap: 12px;
+  gap: 10px;
 
   padding:
-    10px 16px;
-
+    9px 16px;
 }
 
 
-.setting-group {
+/* =========================================================
+   ROLE
+========================================================= */
 
+.setting-group {
   display: flex;
 
   align-items: center;
 
   gap: 7px;
-
 }
 
 
 .setting-group label {
+  font-size:
+    12px;
 
-  font-size: 12px;
+  font-weight:
+    700;
 
-  font-weight: 700;
-
-  white-space: nowrap;
-
+  white-space:
+    nowrap;
 }
 
 
 .box-role-select {
+  width:
+    150px;
 
-  width: 150px;
-
-  height: 36px;
+  height:
+    36px;
 
   padding:
-    0 8px;
+    0 9px;
 
   border:
     1px solid #c8ced4;
 
-  background: #fff;
+  background:
+    #fff;
 
-  font-size: 13px;
-
+  font-size:
+    13px;
 }
 
 
-.label-group {
+.box-role-select:focus {
+  outline:
+    2px solid #dce8f2;
 
-  display: none;
-
-  align-items: center;
-
-  gap: 7px;
-
+  border-color:
+    #6d8eaa;
 }
 
 
-.label-group.show {
-
-  display: flex;
-
-}
-
-
-.label-input {
-
-  width: 180px;
-
-  height: 36px;
-
-  padding:
-    0 8px;
-
-  border:
-    1px solid #c8ced4;
-
-  background: #fff;
-
-  font-size: 13px;
-
-}
-
+/* =========================================================
+   PARENT INFO
+========================================================= */
 
 .parent-info {
+  min-width:
+    230px;
 
-  min-width: 220px;
+  max-width:
+    400px;
 
   padding:
-    7px 9px;
+    7px 10px;
 
   background:
     #f5f6f7;
@@ -396,100 +517,143 @@ body {
   border:
     1px solid #e0e4e7;
 
-  color: #666;
+  color:
+    #666;
 
-  font-size: 11px;
+  font-size:
+    11px;
 
+  line-height:
+    1.5;
 }
 
 
+/* =========================================================
+   ACTIONS
+========================================================= */
+
 .setting-actions {
+  display:
+    flex;
 
-  display: flex;
+  align-items:
+    center;
 
-  gap: 7px;
-
+  gap:
+    7px;
 }
 
 
 .setting-actions button {
+  min-height:
+    36px;
 
-  min-height: 36px;
-
+  white-space:
+    nowrap;
 }
 
 
-/* =====================================================
-   ROLE GUIDEは表示しない
-===================================================== */
+.delete-box-button {
+  border:
+    1px solid #c94b43;
 
-.role-guide {
+  background:
+    #fff;
 
-  display: none;
-
+  color:
+    #b42318;
 }
 
 
-/* =====================================================
+.delete-box-button:hover {
+  background:
+    #fff5f3;
+}
+
+
+/* =========================================================
+   HIDDEN OLD ELEMENTS
+   配点・設問ID・表示名はこの画面では使用しない
+========================================================= */
+
+#label,
+#points,
+#questionId,
+#labelGroup,
+#pointsGroup,
+#questionIdGroup {
+  display: none !important;
+}
+
+
+/* =========================================================
    MOBILE
-===================================================== */
+========================================================= */
 
 @media (
   max-width: 700px
 ) {
 
+  .main {
+    padding:
+      12px;
+  }
+
+
+  .viewer {
+    padding:
+      8px;
+  }
+
+
   .box-settings-panel {
-
-    top: 56px;
-
+    top:
+      56px;
   }
 
 
   .box-settings-body {
+    align-items:
+      stretch;
 
-    align-items: stretch;
-
-    flex-direction: column;
-
+    flex-direction:
+      column;
   }
 
 
-  .setting-group,
-  .label-group {
-
-    width: 100%;
-
+  .setting-group {
+    width:
+      100%;
   }
 
 
-  .box-role-select,
-  .label-input {
+  .box-role-select {
+    flex:
+      1;
 
-    flex: 1;
-
-    width: auto;
-
+    width:
+      auto;
   }
 
 
   .parent-info {
+    width:
+      100%;
 
-    width: 100%;
-
+    max-width:
+      none;
   }
 
 
   .setting-actions {
-
-    width: 100%;
-
+    width:
+      100%;
   }
 
 
   .setting-actions button {
-
-    flex: 1;
-
+    flex:
+      1;
   }
 
 }
@@ -502,9 +666,9 @@ body {
 <body>
 
 
-<!-- =====================================================
+<!-- =======================================================
      TOPBAR
-===================================================== -->
+======================================================= -->
 
 <header class="topbar">
 
@@ -532,10 +696,10 @@ body {
 </header>
 
 
-<!-- =====================================================
+<!-- =======================================================
      BOX SETTINGS
-     上部に表示
-===================================================== -->
+     上部固定
+======================================================= -->
 
 <aside
   id="panel"
@@ -544,7 +708,9 @@ body {
 >
 
 
-  <div class="box-settings-header">
+  <header
+    class="box-settings-header"
+  >
 
     <h2
       class="box-settings-title"
@@ -561,15 +727,21 @@ body {
       閉じる
     </button>
 
-  </div>
+  </header>
 
 
-  <div class="box-settings-body">
+  <div
+    class="box-settings-body"
+  >
 
 
-    <!-- 枠種類 -->
+    <!-- =================================================
+         枠種類
+    ================================================== -->
 
-    <div class="setting-group">
+    <div
+      class="setting-group"
+    >
 
       <label
         for="boxRole"
@@ -624,44 +796,25 @@ body {
     </div>
 
 
-    <!-- 表示名
-         大問・小問だけ表示 -->
-
-    <div
-      id="labelGroup"
-      class="label-group"
-    >
-
-      <label
-        for="label"
-      >
-        表示名
-      </label>
-
-
-      <input
-        id="label"
-        class="label-input"
-        type="text"
-        placeholder="大問1 / 問1"
-      >
-
-    </div>
-
-
-    <!-- 親大問情報 -->
+    <!-- =================================================
+         親大問情報
+    ================================================== -->
 
     <div
       id="parentInfo"
       class="parent-info"
     >
-      枠を選択してください。
+      枠を設定してください。
     </div>
 
 
-    <!-- 操作 -->
+    <!-- =================================================
+         ACTIONS
+    ================================================== -->
 
-    <div class="setting-actions">
+    <div
+      class="setting-actions"
+    >
 
       <button
         id="applyButton"
@@ -675,7 +828,7 @@ body {
       <button
         id="deleteButton"
         type="button"
-        class="btn"
+        class="delete-box-button"
       >
         選択枠を削除
       </button>
@@ -687,31 +840,38 @@ body {
 </aside>
 
 
-<!-- =====================================================
+<!-- =======================================================
      MAIN
-===================================================== -->
+======================================================= -->
 
 <main class="main">
 
 
-  <header class="page-header">
+  <header
+    class="page-header"
+  >
 
     <h1>
       解答用紙・枠設定
     </h1>
 
-    <p class="page-description">
-      解答用紙を登録し、大問・小問・QR・小計・合計などの位置を設定します。
+
+    <p
+      class="page-description"
+    >
+      解答用紙を登録し、大問・小問・QR・小計・合計などの枠を設定します。
     </p>
 
   </header>
 
 
-  <!-- ===================================================
+  <!-- =====================================================
        TOOLBAR
-  ==================================================== -->
+  ====================================================== -->
 
-  <section class="toolbar">
+  <section
+    class="toolbar"
+  >
 
 
     <input
@@ -740,15 +900,6 @@ body {
 
 
     <button
-      id="deleteButton"
-      type="button"
-      class="btn"
-    >
-      選択枠を削除
-    </button>
-
-
-    <button
       id="backButton"
       type="button"
       class="btn"
@@ -767,16 +918,18 @@ body {
   </section>
 
 
-  <!-- ===================================================
+  <!-- =====================================================
        VIEWER
-  ==================================================== -->
+  ====================================================== -->
 
   <section
     id="viewer"
     class="viewer"
   >
 
-    <div class="empty-view">
+    <div
+      class="empty-view"
+    >
 
       <strong>
         解答用紙がありません
@@ -792,9 +945,9 @@ body {
 </main>
 
 
-<!-- =====================================================
+<!-- =======================================================
      SCRIPTS
-===================================================== -->
+======================================================= -->
 
 <script
   src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
@@ -819,7 +972,12 @@ body {
 <script>
 
 /* =========================================================
-   UI制御
+   UI
+
+   ・表示名は存在しない
+   ・配点は存在しない
+   ・設問IDは存在しない
+   ・枠種類変更時の説明だけ更新
 ========================================================= */
 
 (function () {
@@ -830,108 +988,100 @@ body {
     );
 
 
-  const labelGroup =
-    document.getElementById(
-      "labelGroup"
-    );
-
-
-  const labelInput =
-    document.getElementById(
-      "label"
-    );
-
-
   const parentInfo =
     document.getElementById(
       "parentInfo"
     );
 
 
-  const deleteButton =
-    document.getElementById(
-      "deleteButton"
-    );
+  function updateRoleInfo() {
 
+    if (!roleSelect ||
+        !parentInfo) {
 
-  /*
-    大問・小問だけ表示名を出す。
-  */
-
-  function updateRoleUI() {
-
-    const role =
-      roleSelect?.value ||
-      "";
-
-
-    const showLabel =
-      role === "major" ||
-      role === "minor";
-
-
-    if (showLabel) {
-
-      labelGroup?.classList.add(
-        "show"
-      );
-
-    } else {
-
-      labelGroup?.classList.remove(
-        "show"
-      );
-
-
-      if (labelInput) {
-
-        labelInput.value =
-          "";
-
-      }
+      return;
 
     }
 
 
-    if (
-      role === "minor"
+    const role =
+      roleSelect.value;
+
+
+    switch (
+      role
     ) {
 
-      parentInfo.textContent =
-        "大問枠の内側に置いた小問だけ、その大問へ自動登録されます。";
+      case "major":
 
-    } else if (
-      role === "major"
-    ) {
+        parentInfo.textContent =
+          "大問の範囲をドラッグしてください。";
 
-      parentInfo.textContent =
-        "大問の範囲を設定します。";
+        break;
 
-    } else if (
-      role === "qr"
-    ) {
 
-      parentInfo.textContent =
-        "答案のQR読み取り範囲です。";
+      case "minor":
 
-    } else if (
-      role === "subtotal"
-    ) {
+        parentInfo.textContent =
+          "大問の内側に置いた場合、その大問の小問として自動登録されます。";
 
-      parentInfo.textContent =
-        "小問の点数から小計を自動計算します。";
+        break;
 
-    } else if (
-      role === "total"
-    ) {
 
-      parentInfo.textContent =
-        "小計などから合計点を自動計算します。";
+      case "qr":
 
-    } else {
+        parentInfo.textContent =
+          "答案のQRコードを読み取る範囲を設定します。";
 
-      parentInfo.textContent =
-        "";
+        break;
+
+
+      case "subtotal":
+
+        parentInfo.textContent =
+          "小問の点数から小計を自動計算する範囲です。";
+
+        break;
+
+
+      case "total":
+
+        parentInfo.textContent =
+          "小計などから合計点を自動計算する範囲です。";
+
+        break;
+
+
+      case "name":
+
+        parentInfo.textContent =
+          "氏名を読み取る範囲です。";
+
+        break;
+
+
+      case "student_no":
+
+        parentInfo.textContent =
+          "生徒番号を読み取る範囲です。";
+
+        break;
+
+
+      case "instruction":
+
+        parentInfo.textContent =
+          "説明・指示などの範囲です。";
+
+        break;
+
+
+      default:
+
+        parentInfo.textContent =
+          "その他の範囲です。";
+
+        break;
 
     }
 
@@ -940,24 +1090,15 @@ body {
 
   roleSelect?.addEventListener(
     "change",
-    updateRoleUI
+    updateRoleInfo
   );
 
 
-  /*
-    初期状態
-  */
-
-  updateRoleUI();
+  updateRoleInfo();
 
 
   /*
-    非問題枠の削除ボタンも
-    上部の共通削除ボタンを利用。
-  */
-
-  /*
-    Escapeでパネルを閉じる
+    Escapeでパネルを閉じる。
   */
 
   document.addEventListener(
@@ -979,7 +1120,6 @@ body {
 
     }
   );
-
 
 })();
 

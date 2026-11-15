@@ -1,129 +1,40 @@
 
 "use strict";
 
-
 /* =========================================================
+   テスト成績システム
    共通認証
 ========================================================= */
 
-const {
-  SUPABASE_URL,
-  SUPABASE_ANON_KEY
-} =
-  window.APP_CONFIG || {};
-
-
-const sb =
-  (
-    SUPABASE_URL &&
-    SUPABASE_ANON_KEY &&
-    SUPABASE_URL.startsWith("http") &&
-    SUPABASE_ANON_KEY.startsWith("ey")
-  )
-    ? window.supabase.createClient(
-        SUPABASE_URL,
-        SUPABASE_ANON_KEY
-      )
-    : null;
-
 
 /* =========================================================
-   PROFILE
-   ---------------------------------------------------------
-   今のDBには profiles.student_id が無い。
-   role と name だけ取得する。
+   Supabase
 ========================================================= */
 
-async function getProfile() {
-
-  if (!sb) {
-
-    throw new Error(
-      "Supabase設定がありません。"
-    );
-
-  }
+const DB =
+  window.supabaseClient;
 
 
-  const {
-    data: {
-      user
-    },
-    error: userError
-  } =
-    await sb.auth.getUser();
+if (!DB) {
 
-
-  if (userError) {
-
-    throw userError;
-
-  }
-
-
-  if (!user) {
-
-    return null;
-
-  }
-
-
-  const {
-    data,
-    error
-  } =
-    await sb
-      .from("profiles")
-      .select(`
-        id,
-        name,
-        role
-      `)
-      .eq(
-        "id",
-        user.id
-      )
-      .maybeSingle();
-
-
-  if (error) {
-
-    throw new Error(
-      `プロフィール取得エラー: ${error.message}`
-    );
-
-  }
-
-
-  return {
-
-    id:
-      user.id,
-
-    name:
-      data?.name ||
-      "先生",
-
-    role:
-      data?.role ||
-      null,
-
-    user
-
-  };
+  console.error(
+    "Supabase Clientが初期化されていません。"
+  );
 
 }
 
 
 /* =========================================================
-   SESSION
+   Session
 ========================================================= */
 
 async function getSession() {
 
-  if (!sb) {
+  if (!DB) {
 
-    return null;
+    throw new Error(
+      "Supabase接続がありません。"
+    );
 
   }
 
@@ -132,7 +43,7 @@ async function getSession() {
     data,
     error
   } =
-    await sb.auth.getSession();
+    await DB.auth.getSession();
 
 
   if (error) {
@@ -151,14 +62,16 @@ async function getSession() {
 
 
 /* =========================================================
-   USER
+   Current User
 ========================================================= */
 
 async function getCurrentUser() {
 
-  if (!sb) {
+  if (!DB) {
 
-    return null;
+    throw new Error(
+      "Supabase接続がありません。"
+    );
 
   }
 
@@ -167,7 +80,7 @@ async function getCurrentUser() {
     data,
     error
   } =
-    await sb.auth.getUser();
+    await DB.auth.getUser();
 
 
   if (error) {
@@ -186,171 +99,344 @@ async function getCurrentUser() {
 
 
 /* =========================================================
-   ROLE
+   Profile
 ========================================================= */
 
-window.requireRole =
-  async function (
-    role
-  ) {
+async function getProfile() {
 
-    if (!sb) {
+  if (!DB) {
 
-      throw new Error(
-        "Supabase設定がありません。"
-      );
+    throw new Error(
+      "Supabase接続がありません。"
+    );
 
-    }
+  }
 
 
-    const {
-      data: {
-        user
-      },
-      error: userError
-    } =
-      await sb.auth.getUser();
+  const user =
+    await getCurrentUser();
 
 
-    if (userError) {
+  if (!user) {
 
-      throw userError;
+    return null;
 
-    }
-
-
-    if (!user) {
-
-      location.replace(
-        "/login"
-      );
-
-      return null;
-
-    }
+  }
 
 
-    /*
-     * student_id は絶対に取得しない。
-     */
+  /*
+   * profilesには
+   *
+   * id
+   * name
+   * role
+   *
+   * を使用。
+   *
+   * student_idは取得しない。
+   */
 
-    const {
-      data: profile,
-      error: profileError
-    } =
-      await sb
-        .from("profiles")
-        .select(`
-          id,
-          name,
-          role
-        `)
-        .eq(
-          "id",
-          user.id
-        )
-        .maybeSingle();
-
-
-    if (profileError) {
-
-      throw new Error(
-        `プロフィール取得エラー: ${profileError.message}`
-      );
-
-    }
-
-
-    if (!profile) {
-
-      throw new Error(
-        "プロフィールが登録されていません。"
-      );
-
-    }
+  const {
+    data,
+    error
+  } =
+    await DB
+      .from(
+        "profiles"
+      )
+      .select(
+        `
+        id,
+        name,
+        role
+        `
+      )
+      .eq(
+        "id",
+        user.id
+      )
+      .maybeSingle();
 
 
-    const allowed =
-      profile.role === role ||
-      profile.role === "admin";
+  if (error) {
+
+    throw new Error(
+      `プロフィール取得エラー: ${error.message}`
+    );
+
+  }
 
 
-    if (!allowed) {
-
-      if (
-        profile.role ===
-        "student"
-      ) {
-
-        location.replace(
-          "/student.html"
-        );
-
-      } else {
-
-        location.replace(
-          "/login"
-        );
-
-      }
-
-
-      return null;
-
-    }
-
+  if (!data) {
 
     return {
 
-      user,
+      id:
+        user.id,
 
-      profile
+      name:
+        user.email ||
+        "先生",
+
+      role:
+        null,
+
+      user
 
     };
 
+  }
+
+
+  return {
+
+    ...data,
+
+    user
+
   };
+
+}
 
 
 /* =========================================================
-   LOGOUT
+   Require Role
 ========================================================= */
 
-window.signOut =
-  async function () {
+async function requireRole(
+  requiredRole
+) {
 
-    if (sb) {
+  const user =
+    await getCurrentUser();
 
-      await sb.auth.signOut();
 
-    }
-
+  if (!user) {
 
     location.replace(
       "/login"
     );
 
+    return null;
+
+  }
+
+
+  const profile =
+    await getProfile();
+
+
+  if (!profile) {
+
+    location.replace(
+      "/login"
+    );
+
+    return null;
+
+  }
+
+
+  const actualRole =
+    profile.role;
+
+
+  /*
+   * teacher画面
+   *
+   * adminも利用可能。
+   */
+
+  if (
+    requiredRole ===
+    "teacher"
+  ) {
+
+    if (
+      actualRole !==
+        "teacher" &&
+      actualRole !==
+        "admin"
+    ) {
+
+      redirectByRole(
+        actualRole
+      );
+
+      return null;
+
+    }
+
+  }
+
+
+  /*
+   * admin
+   */
+
+  else if (
+    requiredRole ===
+    "admin"
+  ) {
+
+    if (
+      actualRole !==
+      "admin"
+    ) {
+
+      redirectByRole(
+        actualRole
+      );
+
+      return null;
+
+    }
+
+  }
+
+
+  /*
+   * student
+   */
+
+  else if (
+    requiredRole ===
+    "student"
+  ) {
+
+    if (
+      actualRole !==
+      "student"
+    ) {
+
+      redirectByRole(
+        actualRole
+      );
+
+      return null;
+
+    }
+
+  }
+
+
+  return {
+
+    user,
+
+    profile
+
   };
 
-
-window.logout =
-  window.signOut;
+}
 
 
 /* =========================================================
-   GLOBAL
+   Role Redirect
 ========================================================= */
 
-window.SB =
-  sb;
+function redirectByRole(
+  role
+) {
+
+  if (
+    role ===
+    "student"
+  ) {
+
+    location.replace(
+      "/student.html"
+    );
+
+    return;
+
+  }
 
 
-window.supabaseClient =
-  sb;
+  if (
+    role ===
+      "teacher" ||
+    role ===
+      "admin"
+  ) {
+
+    location.replace(
+      "/teacher.html"
+    );
+
+    return;
+
+  }
 
 
-window.getProfile =
-  getProfile;
+  location.replace(
+    "/login"
+  );
 
+}
+
+
+/* =========================================================
+   Logout
+========================================================= */
+
+async function signOut() {
+
+  if (!DB) {
+
+    location.replace(
+      "/login"
+    );
+
+    return;
+
+  }
+
+
+  try {
+
+    const {
+      error
+    } =
+      await DB.auth.signOut();
+
+
+    if (error) {
+
+      console.error(
+        "signOut:",
+        error
+      );
+
+    }
+
+  } catch (error) {
+
+    console.error(
+      "signOut:",
+      error
+    );
+
+  }
+
+
+  location.replace(
+    "/login"
+  );
+
+}
+
+
+async function logout() {
+
+  await signOut();
+
+}
+
+
+/* =========================================================
+   Global
+========================================================= */
 
 window.getSession =
   getSession;
@@ -358,3 +444,29 @@ window.getSession =
 
 window.getCurrentUser =
   getCurrentUser;
+
+
+window.getProfile =
+  getProfile;
+
+
+window.requireRole =
+  requireRole;
+
+
+window.signOut =
+  signOut;
+
+
+window.logout =
+  logout;
+
+
+/*
+ * config.jsで作られた
+ * supabaseClientをそのまま使用。
+ */
+
+window.SB =
+  DB;
+

@@ -1,3 +1,50 @@
+/* =========================================================
+   テスト成績システム
+   テスト全体採点
+
+   URL:
+     /teacher/marking/mark?test=TEST_UUID
+
+   採点単位:
+     答案ではない。
+     テスト全体。
+
+   順番:
+     問1
+       ↓
+     全生徒
+       ↓
+     問2
+       ↓
+     全生徒
+       ↓
+     ...
+       ↓
+     全設問・全答案完了
+
+   答案画像:
+     answer_sheet_pages
+       ↓
+     answer-files
+       ↓
+     signed URL
+       ↓
+     img
+
+   Canvas / toBlob:
+     使用しない。
+
+   source_page_id:
+     使用しない。
+
+   student-answers:
+     使用しない。
+
+   注意:
+     このファイルでは公開しない。
+     成績・偏差値・順位計算完了後の
+     最終公開処理は別処理で行う。
+========================================================= */
 
 (function () {
 
@@ -26,8 +73,6 @@ let scores = [];
 
 let currentQuestionIndex = 0;
 
-let started = false;
-
 let saving = false;
 
 
@@ -37,87 +82,62 @@ let saving = false;
 
 const teacherName =
 document.getElementById(
-  "teacherName"
-);
-
-const testSelect =
-document.getElementById(
-  "testSelect"
-);
-
-const startButton =
-document.getElementById(
-  "startButton"
-);
-
-const refreshButton =
-document.getElementById(
-  "refreshButton"
+"teacherName"
 );
 
 const statusElement =
 document.getElementById(
-  "status"
-);
-
-const answerSummary =
-document.getElementById(
-  "answerSummary"
-);
-
-const answerSummaryBody =
-document.getElementById(
-  "answerSummaryBody"
+"status"
 );
 
 const progressArea =
 document.getElementById(
-  "progressArea"
+"progressArea"
 );
 
 const progressBar =
 document.getElementById(
-  "progressBar"
+"progressBar"
 );
 
 const progressText =
 document.getElementById(
-  "progressText"
-);
-
-const questionArea =
-document.getElementById(
-  "questionArea"
+"progressText"
 );
 
 const questionTitle =
 document.getElementById(
-  "questionTitle"
+"questionTitle"
 );
 
 const questionMeta =
 document.getElementById(
-  "questionMeta"
+"questionMeta"
 );
 
 const previousButton =
 document.getElementById(
-  "previousButton"
+"previousButton"
 );
 
 const nextButton =
 document.getElementById(
-  "nextButton"
+"nextButton"
 );
 
 const answerTableWrap =
 document.getElementById(
-  "answerTableWrap"
+"answerTableWrap"
 );
 
 const completeArea =
 document.getElementById(
-  "completeArea"
+"completeArea"
+);
+
+const refreshButton =
+document.getElementById(
+"refreshButton"
 );
 
 
@@ -126,8 +146,8 @@ document.getElementById(
 ===================================================== */
 
 document.addEventListener(
-  "DOMContentLoaded",
-  initialize
+"DOMContentLoaded",
+initialize
 );
 
 
@@ -136,10 +156,28 @@ async function initialize() {
 try {
 
 const profile =
-await requireTeacher();
+await getProfile();
 
 
 if (!profile) {
+
+location.replace(
+"/login"
+);
+
+return;
+
+}
+
+
+if (
+profile.role !== "teacher" &&
+profile.role !== "admin"
+) {
+
+location.replace(
+"/student/dashboard"
+);
 
 return;
 
@@ -157,7 +195,32 @@ profile.name ||
 
 setupEvents();
 
-await loadTests();
+
+const params =
+new URLSearchParams(
+window.location.search
+);
+
+
+testId =
+params.get(
+"test"
+);
+
+
+if (!testId) {
+
+showStatus(
+"テストが指定されていません。",
+true
+);
+
+return;
+
+}
+
+
+await loadTest();
 
 
 } catch (error) {
@@ -169,7 +232,7 @@ error
 
 showStatus(
 error.message ||
-"採点画面の初期化に失敗しました。",
+"採点画面を読み込めませんでした。",
 true
 );
 
@@ -183,99 +246,6 @@ true
 ===================================================== */
 
 function setupEvents() {
-
-
-testSelect?.addEventListener(
-"change",
-async () => {
-
-testId =
-testSelect.value ||
-null;
-
-
-resetState();
-
-
-if (!testId) {
-
-showStatus(
-"テストを選択してください。"
-);
-
-return;
-
-}
-
-
-try {
-
-await loadTestPreview();
-
-
-} catch (error) {
-
-console.error(
-error
-);
-
-
-showStatus(
-error.message ||
-"答案を取得できませんでした。",
-true
-);
-
-}
-
-}
-);
-
-
-startButton?.addEventListener(
-"click",
-startMarking
-);
-
-
-refreshButton?.addEventListener(
-"click",
-async () => {
-
-if (!testId) {
-
-await loadTests();
-
-return;
-
-}
-
-
-try {
-
-await loadTestPreview();
-
-
-if (started) {
-
-await loadTestData();
-
-await renderCurrentQuestion();
-
-}
-
-} catch (error) {
-
-showStatus(
-error.message ||
-"更新できませんでした。",
-true
-);
-
-}
-
-}
-);
 
 
 previousButton?.addEventListener(
@@ -306,6 +276,28 @@ nextQuestion
 );
 
 
+refreshButton?.addEventListener(
+"click",
+async () => {
+
+try {
+
+await loadTest();
+
+} catch (error) {
+
+showStatus(
+error.message ||
+"更新できませんでした。",
+true
+);
+
+}
+
+}
+);
+
+
 document
 .getElementById(
 "logoutButton"
@@ -333,113 +325,15 @@ await logout();
 
 
 /* =====================================================
-   TESTS
+   LOAD TEST
 ===================================================== */
 
-async function loadTests() {
-
-const {
-data,
-error
-} =
-await supabaseClient
-.from(
-"tests"
-)
-.select(
-`
-id,
-name,
-subject,
-grade,
-class_name,
-created_at
-`
-)
-.order(
-"created_at",
-{
-ascending:false
-}
-);
-
-
-if (error) {
-
-throw new Error(
-`テスト一覧の取得に失敗しました: ${error.message}`
-);
-
-}
-
-
-testSelect.innerHTML = `
-
-<option value="">
-テストを選択してください
-</option>
-
-`;
-
-
-for (
-const item
-of data || []
-) {
-
-const option =
-document.createElement(
-"option"
-);
-
-
-option.value =
-item.id;
-
-
-option.textContent =
-[
-item.name,
-item.subject,
-item.grade
-]
-.filter(
-value =>
-value !== null &&
-value !== undefined &&
-String(value).trim() !== ""
-)
-.join(
-" / "
-);
-
-
-testSelect.appendChild(
-option
-);
-
-}
-
-}
-
-
-/* =====================================================
-   TEST PREVIEW
-   テスト選択直後に答案を表示
-===================================================== */
-
-async function loadTestPreview() {
-
-if (!testId) {
-
-return;
-
-}
+async function loadTest() {
 
 
 const {
-data,
-error
+data: testData,
+error: testError
 } =
 await supabaseClient
 .from(
@@ -461,21 +355,21 @@ testId
 .single();
 
 
-if (error) {
+if (testError) {
 
 throw new Error(
-`テスト情報の取得に失敗しました: ${error.message}`
+`テスト情報を取得できませんでした: ${testError.message}`
 );
 
 }
 
 
 test =
-data;
+testData;
 
 
 /* -----------------------------------------------------
-   答案
+   ANSWERS
 ----------------------------------------------------- */
 
 const {
@@ -504,7 +398,7 @@ testId
 .order(
 "uploaded_at",
 {
-ascending:false
+ascending:true
 }
 );
 
@@ -512,7 +406,7 @@ ascending:false
 if (answerError) {
 
 throw new Error(
-`答案の取得に失敗しました: ${answerError.message}`
+`答案を取得できませんでした: ${answerError.message}`
 );
 
 }
@@ -522,43 +416,190 @@ answers =
 answerData || [];
 
 
+if (!answers.length) {
+
+throw new Error(
+"このテストには答案が登録されていません。"
+);
+
+}
+
+
 /* -----------------------------------------------------
-   生徒
+   STUDENTS
 ----------------------------------------------------- */
 
 await loadStudents();
 
 
 /* -----------------------------------------------------
-   一覧表示
+   PAGES
 ----------------------------------------------------- */
 
-renderAnswerSummary();
+await loadPages();
 
 
-if (!answers.length) {
+/* -----------------------------------------------------
+   LAYOUT BOXES
+----------------------------------------------------- */
 
-startButton.disabled =
-true;
-
-
-showStatus(
-"このテストには答案が登録されていません。",
-true
+const {
+data: boxData,
+error: boxError
+} =
+await supabaseClient
+.from(
+"layout_boxes"
+)
+.select(
+`
+id,
+test_id,
+page_no,
+box_type,
+label,
+x,
+y,
+width,
+height,
+question_id,
+created_at,
+points
+`
+)
+.eq(
+"test_id",
+testId
+)
+.order(
+"page_no",
+{
+ascending:true
+}
+)
+.order(
+"created_at",
+{
+ascending:true
+}
 );
 
-return;
+
+if (boxError) {
+
+throw new Error(
+`設問枠を取得できませんでした: ${boxError.message}`
+);
 
 }
 
 
-startButton.disabled =
-false;
+boxes =
+boxData || [];
 
 
-showStatus(
-`${test.name} / 答案 ${answers.length}件。採点開始でテスト全体の採点を開始できます。`
+/* -----------------------------------------------------
+   QUESTIONS
+----------------------------------------------------- */
+
+questions =
+boxes
+.filter(
+box => {
+
+const type =
+String(
+box.box_type ||
+""
+)
+.trim()
+.toLowerCase();
+
+
+return (
+type ===
+"answer" &&
+Boolean(
+box.question_id
+)
 );
+
+}
+)
+.map(
+box => ({
+
+id:
+box.id,
+
+label:
+box.label ||
+"設問",
+
+pageNo:
+Number(
+box.page_no
+),
+
+x:
+Number(
+box.x
+) || 0,
+
+y:
+Number(
+box.y
+) || 0,
+
+width:
+Number(
+box.width
+) || 1,
+
+height:
+Number(
+box.height
+) || 1,
+
+questionId:
+box.question_id,
+
+points:
+Number(
+box.points
+) || 0
+
+})
+);
+
+
+if (!questions.length) {
+
+throw new Error(
+"採点対象の設問がありません。"
+);
+
+}
+
+
+/* -----------------------------------------------------
+   SCORES
+----------------------------------------------------- */
+
+await loadScores();
+
+
+currentQuestionIndex =
+0;
+
+
+progressArea?.classList.add(
+"show"
+);
+
+
+await renderCurrentQuestion();
+
 
 }
 
@@ -617,7 +658,7 @@ ids
 if (error) {
 
 throw new Error(
-`生徒情報の取得に失敗しました: ${error.message}`
+`生徒情報を取得できませんでした: ${error.message}`
 );
 
 }
@@ -639,299 +680,32 @@ student
 
 
 /* =====================================================
-   ANSWER SUMMARY
+   PAGES
 ===================================================== */
 
-function renderAnswerSummary() {
-
-if (!answerSummary ||
-!answerSummaryBody) {
-
-return;
-
-}
-
-
-answerSummary.classList.add(
-"show"
-);
-
-
-answerSummaryBody.innerHTML =
-"";
-
-
-for (
-const answer
-of answers
-) {
-
-const student =
-students.get(
-answer.student_id
-);
-
-
-const row =
-document.createElement(
-"tr"
-);
-
-
-const no =
-document.createElement(
-"td"
-);
-
-
-no.textContent =
-student?.student_no ||
-"未紐付け";
-
-
-const name =
-document.createElement(
-"td"
-);
-
-
-name.textContent =
-student?.name ||
-"-";
-
-
-const pageCount =
-document.createElement(
-"td"
-);
-
-
-pageCount.textContent =
-String(
-answer.page_count ||
-0
-);
-
-
-const status =
-document.createElement(
-"td"
-);
-
-
-status.textContent =
-getAnswerStatus(
-answer.status
-);
-
-
-row.appendChild(
-no
-);
-
-row.appendChild(
-name
-);
-
-row.appendChild(
-pageCount
-);
-
-row.appendChild(
-status
-);
-
-
-answerSummaryBody.appendChild(
-row
-);
-
-}
-
-}
-
-
-/* =====================================================
-   START
-===================================================== */
-
-async function startMarking() {
-
-if (!testId) {
-
-showStatus(
-"テストを選択してください。",
-true
-);
-
-return;
-
-}
-
-
-if (!answers.length) {
-
-showStatus(
-"答案がありません。",
-true
-);
-
-return;
-
-}
-
-
-try {
-
-setBusy(
-true
-);
-
-
-showStatus(
-"テスト全体の採点データを読み込んでいます..."
-);
-
-
-await loadTestData();
-
-
-if (!questions.length) {
-
-throw new Error(
-"採点対象の設問がありません。"
-);
-
-}
-
-
-started =
-true;
-
-
-currentQuestionIndex =
-0;
-
-
-questionArea.classList.add(
-"show"
-);
-
-
-progressArea.classList.add(
-"show"
-);
-
-
-startButton.textContent =
-"採点中";
-
-
-await renderCurrentQuestion();
-
-
-} catch (error) {
-
-console.error(
-error
-);
-
-
-showStatus(
-error.message ||
-"採点を開始できませんでした。",
-true
-);
-
-} finally {
-
-setBusy(
-false
-);
-
-}
-
-}
-
-
-/* =====================================================
-   LOAD TEST DATA
-===================================================== */
-
-async function loadTestData() {
-
-
-/* -----------------------------------------------------
-   答案を最新取得
------------------------------------------------------ */
-
-const {
-data: answerData,
-error: answerError
-} =
-await supabaseClient
-.from(
-"answer_sheets"
-)
-.select(
-`
-id,
-test_id,
-student_id,
-page_count,
-qr_value,
-status,
-uploaded_at
-`
-)
-.eq(
-"test_id",
-testId
-)
-.order(
-"uploaded_at",
-{
-ascending:true
-}
-);
-
-
-if (answerError) {
-
-throw new Error(
-`答案の取得に失敗しました: ${answerError.message}`
-);
-
-}
-
-
-answers =
-answerData || [];
-
-
-await loadStudents();
-
-
-/* -----------------------------------------------------
-   Pages
------------------------------------------------------ */
+async function loadPages() {
 
 pages =
 new Map();
 
 
-const answerIds =
+const ids =
 answers.map(
 answer =>
 answer.id
 );
 
 
-if (answerIds.length) {
+if (!ids.length) {
+
+return;
+
+}
+
 
 const {
-data: pageData,
-error: pageError
+data,
+error
 } =
 await supabaseClient
 .from(
@@ -950,7 +724,7 @@ height_px
 )
 .in(
 "answer_sheet_id",
-answerIds
+ids
 )
 .order(
 "page_no",
@@ -960,10 +734,10 @@ ascending:true
 );
 
 
-if (pageError) {
+if (error) {
 
 throw new Error(
-`答案ページの取得に失敗しました: ${pageError.message}`
+`答案ページを取得できませんでした: ${error.message}`
 );
 
 }
@@ -971,7 +745,7 @@ throw new Error(
 
 for (
 const page
-of pageData || []
+of data || []
 ) {
 
 if (
@@ -1001,152 +775,33 @@ page
 }
 
 
-/* -----------------------------------------------------
-   Layout boxes
------------------------------------------------------ */
+/* =====================================================
+   SCORES
+===================================================== */
 
-const {
-data: boxData,
-error: boxError
-} =
-await supabaseClient
-.from(
-"layout_boxes"
-)
-.select(
-`
-id,
-test_id,
-page_no,
-box_type,
-label,
-x,
-y,
-width,
-height,
-question_id,
-created_at,
-points
-`
-)
-.eq(
-"test_id",
-testId
-)
-.order(
-"page_no",
-{
-ascending:true
-}
-)
-.order(
-"created_at",
-{
-ascending:true
-}
-);
-
-
-if (boxError) {
-
-throw new Error(
-`枠設定の取得に失敗しました: ${boxError.message}`
-);
-
-}
-
-
-boxes =
-boxData || [];
-
-
-/* -----------------------------------------------------
-   Questions
------------------------------------------------------ */
-
-questions =
-boxes
-.filter(
-box => {
-
-const type =
-String(
-box.box_type ||
-""
-)
-.trim()
-.toLowerCase();
-
-
-return (
-type === "answer" &&
-Boolean(
-box.question_id
-)
-);
-
-}
-)
-.map(
-box => ({
-
-id:
-box.id,
-
-label:
-box.label ||
-"設問",
-
-pageNo:
-Number(
-box.page_no
-),
-
-x:
-Number(
-box.x
-),
-
-y:
-Number(
-box.y
-),
-
-width:
-Number(
-box.width
-),
-
-height:
-Number(
-box.height
-),
-
-questionId:
-box.question_id,
-
-points:
-Number(
-box.points
-) || 0
-
-})
-);
-
-
-/* -----------------------------------------------------
-   Scores
------------------------------------------------------ */
+async function loadScores() {
 
 scores =
 [];
 
 
-if (answerIds.length) {
+const ids =
+answers.map(
+answer =>
+answer.id
+);
+
+
+if (!ids.length) {
+
+return;
+
+}
+
 
 const {
-data: scoreData,
-error: scoreError
+data,
+error
 } =
 await supabaseClient
 .from(
@@ -1165,42 +820,30 @@ marked_at
 )
 .in(
 "answer_sheet_id",
-answerIds
+ids
 );
 
 
-if (scoreError) {
+if (error) {
 
 throw new Error(
-`採点結果の取得に失敗しました: ${scoreError.message}`
+`採点結果を取得できませんでした: ${error.message}`
 );
 
 }
 
 
 scores =
-scoreData || [];
-
-}
-
-
-updateProgress();
+data || [];
 
 }
 
 
 /* =====================================================
-   QUESTION
+   RENDER QUESTION
 ===================================================== */
 
 async function renderCurrentQuestion() {
-
-if (!questions.length) {
-
-return;
-
-}
-
 
 const question =
 questions[
@@ -1208,14 +851,21 @@ currentQuestionIndex
 ];
 
 
+if (!question) {
+
+return;
+
+}
+
+
 questionTitle.textContent =
 question.label;
 
 
 questionMeta.textContent =
-`配点 ${formatNumber(
+`${test.name} / 配点 ${formatNumber(
 question.points
-)}点 / 問題 ${
+)}点 / ${
 currentQuestionIndex + 1
 } / ${
 questions.length
@@ -1344,7 +994,7 @@ document.createElement(
 
 
 /* -----------------------------------------------------
-   Student
+   STUDENT
 ----------------------------------------------------- */
 
 const studentCell =
@@ -1403,7 +1053,7 @@ name
 
 
 /* -----------------------------------------------------
-   Image
+   ANSWER IMAGE
 ----------------------------------------------------- */
 
 const answerCell =
@@ -1428,6 +1078,7 @@ question
 answerCell.appendChild(
 viewer
 );
+
 
 } catch (error) {
 
@@ -1454,7 +1105,7 @@ missing
 
 
 /* -----------------------------------------------------
-   Score
+   SCORE
 ----------------------------------------------------- */
 
 const scoreCell =
@@ -1483,24 +1134,19 @@ document.createElement(
 input.type =
 "number";
 
-
 input.step =
 "0.1";
 
-
 input.min =
 "0";
-
 
 input.max =
 String(
 question.points
 );
 
-
 input.className =
 "score-input";
-
 
 input.value =
 existing
@@ -1517,10 +1163,8 @@ document.createElement(
 save.type =
 "button";
 
-
 save.className =
-"btn btn-primary score-save-button";
-
+"btn btn-primary score-save";
 
 save.textContent =
 "保存";
@@ -1536,23 +1180,23 @@ state.className =
 "score-state";
 
 
-state.textContent =
-existing &&
-existing.status ===
-"marked"
-? "採点済み"
-: "未採点";
-
-
 if (
 existing &&
 existing.status ===
 "marked"
 ) {
 
+state.textContent =
+"採点済み";
+
 state.classList.add(
 "marked"
 );
+
+} else {
+
+state.textContent =
+"未採点";
 
 }
 
@@ -1571,7 +1215,7 @@ input.addEventListener(
 "input",
 () => {
 
-validateInput(
+validateScoreInput(
 input,
 warning,
 question.points
@@ -1621,7 +1265,7 @@ warning
 
 
 /* -----------------------------------------------------
-   Status
+   STATUS
 ----------------------------------------------------- */
 
 const statusCell =
@@ -1676,7 +1320,7 @@ return row;
 
 
 /* =====================================================
-   ANSWER IMAGE
+   ANSWER VIEWER
 ===================================================== */
 
 async function createAnswerViewer(
@@ -1721,7 +1365,7 @@ throw new Error(
 
 
 /* -----------------------------------------------------
-   Storage
+   STORAGE
 ----------------------------------------------------- */
 
 const {
@@ -1758,7 +1402,7 @@ throw new Error(
 
 
 /* -----------------------------------------------------
-   Viewer
+   VIEWER
 ----------------------------------------------------- */
 
 const viewer =
@@ -1780,10 +1424,8 @@ document.createElement(
 image.src =
 data.signedUrl;
 
-
 image.alt =
 "答案";
-
 
 image.draggable =
 false;
@@ -1795,7 +1437,7 @@ image
 
 
 /* -----------------------------------------------------
-   Scale
+   SCALE
 ----------------------------------------------------- */
 
 const pageWidth =
@@ -1937,6 +1579,13 @@ warning,
 state
 ) {
 
+if (saving) {
+
+return;
+
+}
+
+
 const value =
 Number(
 input.value
@@ -1989,18 +1638,6 @@ return;
 }
 
 
-warning.classList.remove(
-"show"
-);
-
-
-if (saving) {
-
-return;
-
-}
-
-
 saving =
 true;
 
@@ -2008,7 +1645,7 @@ true;
 try {
 
 /* ---------------------------------------------------
-   Existing
+   EXISTING
 --------------------------------------------------- */
 
 const {
@@ -2036,14 +1673,14 @@ question.id
 if (existingError) {
 
 throw new Error(
-`既存採点確認失敗: ${existingError.message}`
+`既存採点確認に失敗しました: ${existingError.message}`
 );
 
 }
 
 
 /* ---------------------------------------------------
-   Update
+   UPDATE
 --------------------------------------------------- */
 
 if (existing?.id) {
@@ -2079,7 +1716,7 @@ existing.id
 if (error) {
 
 throw new Error(
-`採点更新失敗: ${error.message}`
+`採点更新に失敗しました: ${error.message}`
 );
 
 }
@@ -2096,7 +1733,7 @@ value
 
 
 /* ---------------------------------------------------
-   Insert
+   INSERT
 --------------------------------------------------- */
 
 else {
@@ -2139,7 +1776,7 @@ new Date().toISOString()
 if (error) {
 
 throw new Error(
-`採点登録失敗: ${error.message}`
+`採点登録に失敗しました: ${error.message}`
 );
 
 }
@@ -2156,8 +1793,13 @@ value
 
 
 /* ---------------------------------------------------
-   Status
+   STATE
 --------------------------------------------------- */
+
+warning.classList.remove(
+"show"
+);
+
 
 state.textContent =
 "採点済み";
@@ -2314,14 +1956,13 @@ return;
 
 currentQuestionIndex++;
 
-
 await renderCurrentQuestion();
 
 }
 
 
 /* =====================================================
-   COMPLETE
+   FINISH
 ===================================================== */
 
 async function finishMarking() {
@@ -2351,18 +1992,21 @@ showStatus(
 true
 );
 
-
 return;
 
 }
 
 
+/*
+ * ここでは公開しない。
+ *
+ * answer_sheets.statusも
+ * markedへ変更しない。
+ */
+
 completeArea.classList.add(
 "show"
 );
-
-
-updateProgress();
 
 
 showStatus(
@@ -2370,14 +2014,7 @@ showStatus(
 );
 
 
-/*
- * ここでは
- * answer_sheets.status = marked
- * に変更しない。
- *
- * 成績・偏差値・順位が完了してから
- * 最終確定処理で変更する。
- */
+updateProgress();
 
 }
 
@@ -2455,7 +2092,7 @@ return;
 }
 
 
-let completed =
+let complete =
 0;
 
 
@@ -2487,7 +2124,7 @@ score.status ===
 "marked"
 ) {
 
-completed++;
+complete++;
 
 }
 
@@ -2498,7 +2135,7 @@ completed++;
 
 const percent =
 Math.round(
-completed /
+complete /
 total *
 100
 );
@@ -2509,7 +2146,7 @@ progressBar.style.width =
 
 
 progressText.textContent =
-`${completed} / ${total} 設問答案を採点済み (${percent}%)`;
+`${complete} / ${total} 設問答案を採点済み (${percent}%)`;
 
 }
 
@@ -2518,7 +2155,7 @@ progressText.textContent =
    VALIDATE
 ===================================================== */
 
-function validateInput(
+function validateScoreInput(
 input,
 warning,
 max
@@ -2583,42 +2220,6 @@ text;
 element.classList.add(
 "show"
 );
-
-}
-
-
-/* =====================================================
-   STATUS
-===================================================== */
-
-function getAnswerStatus(
-status
-) {
-
-switch (
-String(
-status ||
-""
-)
-.toLowerCase()
-) {
-
-case "matched":
-return "採点前";
-
-case "uploaded":
-return "採点前";
-
-case "marking":
-return "採点中";
-
-case "marked":
-return "採点完了・成績処理待ち";
-
-default:
-return status || "未処理";
-
-}
 
 }
 
@@ -2693,167 +2294,6 @@ new Error(
 
 
 /* =====================================================
-   RESET
-===================================================== */
-
-function resetState() {
-
-test =
-null;
-
-answers =
-[];
-
-students =
-new Map();
-
-pages =
-new Map();
-
-boxes =
-[];
-
-questions =
-[];
-
-scores =
-[];
-
-currentQuestionIndex =
-0;
-
-started =
-false;
-
-
-answerSummary?.classList.remove(
-"show"
-);
-
-
-questionArea?.classList.remove(
-"show"
-);
-
-
-progressArea?.classList.remove(
-"show"
-);
-
-
-completeArea?.classList.remove(
-"show"
-);
-
-
-if (startButton) {
-
-startButton.disabled =
-true;
-
-startButton.textContent =
-"採点開始";
-
-}
-
-
-if (answerSummaryBody) {
-
-answerSummaryBody.innerHTML =
-"";
-
-}
-
-
-if (answerTableWrap) {
-
-answerTableWrap.innerHTML = `
-
-<div class="empty">
-テストを選択してください。
-</div>
-
-`;
-
-}
-
-}
-
-
-/* =====================================================
-   BUSY
-===================================================== */
-
-function setBusy(
-busy
-) {
-
-if (testSelect) {
-
-testSelect.disabled =
-busy;
-
-}
-
-
-if (startButton) {
-
-startButton.disabled =
-busy ||
-!testId;
-
-}
-
-
-if (refreshButton) {
-
-refreshButton.disabled =
-busy;
-
-}
-
-}
-
-
-/* =====================================================
-   FORMAT
-===================================================== */
-
-function formatNumber(
-value
-) {
-
-const number =
-Number(
-value
-);
-
-
-if (
-!Number.isFinite(
-number
-)
-) {
-
-return "0";
-
-}
-
-
-return Number.isInteger(
-number
-)
-? String(
-number
-)
-: number.toFixed(
-1
-);
-
-}
-
-
-/* =====================================================
    STATUS
 ===================================================== */
 
@@ -2879,5 +2319,39 @@ error
 : "#333";
 
 }
+
+
+/* =====================================================
+   RESET
+===================================================== */
+
+function reset() {
+
+test =
+null;
+
+answers =
+[];
+
+students =
+new Map();
+
+pages =
+new Map();
+
+boxes =
+[];
+
+questions =
+[];
+
+scores =
+[];
+
+currentQuestionIndex =
+0;
+
+}
+
 
 })();

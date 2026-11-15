@@ -21,222 +21,221 @@
 <style>
 
 .marking-main {
-  max-width: 1500px;
-  margin: 0 auto;
-  padding: 22px;
+  max-width:1500px;
+  margin:0 auto;
+  padding:22px;
 }
 
 .toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-  margin-bottom: 15px;
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  align-items:center;
+  margin-bottom:15px;
 }
 
 .status {
-  padding: 10px 12px;
-  margin-bottom: 15px;
-  background: #f5f6f7;
-  border: 1px solid #d5dbe0;
-  font-size: 13px;
+  padding:10px 12px;
+  margin-bottom:15px;
+  background:#f5f6f7;
+  border:1px solid #d5dbe0;
+  font-size:13px;
 }
 
 .progress {
-  display: none;
-  margin-bottom: 15px;
-  padding: 14px;
-  background: #fff;
-  border: 1px solid #d0d6dc;
+  display:none;
+  margin-bottom:15px;
+  padding:14px;
+  background:#fff;
+  border:1px solid #d0d6dc;
 }
 
 .progress.show {
-  display: block;
+  display:block;
 }
 
 .progress-track {
-  height: 8px;
-  background: #e1e5e8;
-  border-radius: 4px;
-  overflow: hidden;
+  height:8px;
+  background:#e1e5e8;
+  border-radius:4px;
+  overflow:hidden;
 }
 
 .progress-bar {
-  height: 100%;
-  width: 0;
-  background: #1769aa;
-  transition: width .2s;
+  height:100%;
+  width:0;
+  background:#1769aa;
+  transition:width .2s;
 }
 
 .progress-text {
-  margin-top: 7px;
-  font-size: 12px;
-  color: #666;
+  margin-top:7px;
+  color:#666;
+  font-size:12px;
 }
 
 .question-header {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 15px;
-  padding: 15px;
-  background: #fff;
-  border: 1px solid #d0d6dc;
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+  padding:15px;
+  margin-bottom:15px;
+  background:#fff;
+  border:1px solid #d0d6dc;
 }
 
 .question-title {
-  font-size: 20px;
-  font-weight: 700;
+  font-size:20px;
+  font-weight:700;
 }
 
 .question-meta {
-  margin-top: 5px;
-  color: #666;
-  font-size: 13px;
+  margin-top:5px;
+  color:#666;
+  font-size:13px;
 }
 
 .navigation {
-  display: flex;
-  gap: 8px;
+  display:flex;
+  gap:8px;
 }
 
 .answer-table-wrap {
-  overflow-x: auto;
-  background: #fff;
-  border: 1px solid #d0d6dc;
+  overflow-x:auto;
+  background:#fff;
+  border:1px solid #d0d6dc;
 }
 
 .answer-table {
-  width: 100%;
-  border-collapse: collapse;
-  min-width: 1050px;
+  width:100%;
+  border-collapse:collapse;
+  min-width:1050px;
 }
 
 .answer-table th,
 .answer-table td {
-  border: 1px solid #d0d6dc;
-  padding: 9px;
-  vertical-align: top;
-  font-size: 13px;
+  border:1px solid #d0d6dc;
+  padding:9px;
+  vertical-align:top;
+  font-size:13px;
 }
 
 .answer-table th {
-  background: #f3f5f7;
-  white-space: nowrap;
+  background:#f3f5f7;
 }
 
 .student-cell {
-  width: 150px;
-  min-width: 150px;
+  width:150px;
+  min-width:150px;
 }
 
 .student-no {
-  font-weight: 700;
+  font-weight:700;
 }
 
 .student-name {
-  margin-top: 4px;
-  color: #555;
+  margin-top:4px;
+  color:#555;
 }
 
 .answer-cell {
-  width: 520px;
-  min-width: 520px;
+  width:520px;
+  min-width:520px;
 }
 
 .answer-viewer {
-  position: relative;
-  overflow: hidden;
-  width: 100%;
-  min-height: 160px;
-  background: #f7f8f9;
-  border: 1px solid #dfe3e6;
+  position:relative;
+  overflow:hidden;
+  width:100%;
+  min-height:160px;
+  background:#f7f8f9;
+  border:1px solid #e0e3e6;
 }
 
 .answer-viewer img {
-  position: absolute;
-  max-width: none;
-  max-height: none;
-  margin: 0;
+  position:absolute;
+  max-width:none;
+  max-height:none;
+  margin:0;
 }
 
 .answer-error {
-  padding: 40px 10px;
-  text-align: center;
-  color: #b42318;
+  padding:40px 10px;
+  text-align:center;
+  color:#b42318;
 }
 
 .score-cell {
-  width: 150px;
-  min-width: 150px;
-  text-align: center;
+  width:150px;
+  min-width:150px;
+  text-align:center;
 }
 
 .score-input {
-  width: 90px;
-  height: 40px;
-  padding: 0 8px;
-  font-size: 17px;
-  text-align: center;
+  width:90px;
+  height:40px;
+  padding:0 8px;
+  font-size:17px;
+  text-align:center;
 }
 
 .score-save {
-  margin-top: 7px;
+  margin-top:7px;
 }
 
 .score-state {
-  margin-top: 7px;
-  font-size: 12px;
-  color: #666;
+  margin-top:7px;
+  font-size:12px;
+  color:#666;
 }
 
 .score-state.marked {
-  color: #1769aa;
-  font-weight: 700;
+  color:#1769aa;
+  font-weight:700;
 }
 
 .score-state.error {
-  color: #b42318;
+  color:#b42318;
 }
 
 .warning {
-  display: none;
-  margin-top: 7px;
-  padding: 7px;
-  color: #b42318;
-  background: #fff4f2;
-  border: 1px solid #efc2bc;
-  font-size: 12px;
+  display:none;
+  margin-top:7px;
+  padding:7px;
+  color:#b42318;
+  background:#fff4f2;
+  border:1px solid #efc2bc;
+  font-size:12px;
 }
 
 .warning.show {
-  display: block;
+  display:block;
 }
 
 .complete {
-  display: none;
-  margin-top: 15px;
-  padding: 18px;
-  background: #fff;
-  border: 1px solid #d0d6dc;
+  display:none;
+  margin-top:15px;
+  padding:18px;
+  background:#fff;
+  border:1px solid #d0d6dc;
 }
 
 .complete.show {
-  display: block;
+  display:block;
 }
 
 .complete-title {
-  font-size: 18px;
-  font-weight: 700;
-  margin-bottom: 8px;
+  font-size:18px;
+  font-weight:700;
+  margin-bottom:8px;
 }
 
 .empty {
-  padding: 50px;
-  text-align: center;
-  color: #777;
+  padding:50px;
+  text-align:center;
+  color:#777;
 }
 
 </style>
@@ -282,6 +281,7 @@ class="btn"
 採点一覧へ戻る
 </a>
 
+
 <button
 id="refreshButton"
 class="btn"
@@ -297,7 +297,7 @@ type="button"
 id="status"
 class="status"
 >
-初期化しています...
+起動しています...
 </div>
 
 
@@ -356,6 +356,7 @@ disabled
 >
 前の問題
 </button>
+
 
 <button
 id="nextButton"
@@ -418,29 +419,75 @@ src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
 
 
 /* =====================================================
-   DB
+   DOM
 ===================================================== */
 
-const DB =
-  window.SB ||
-  window.supabaseClient ||
-  window.sb;
+const statusEl =
+document.getElementById(
+"status"
+);
 
+const teacherName =
+document.getElementById(
+"teacherName"
+);
 
-if (!DB) {
+const answerTable =
+document.getElementById(
+"answerTableWrap"
+);
 
-  showFatal(
-    "Supabase接続が初期化されていません。js/config.js を確認してください。"
-  );
+const questionTitle =
+document.getElementById(
+"questionTitle"
+);
 
-  return;
+const questionMeta =
+document.getElementById(
+"questionMeta"
+);
 
-}
+const previousButton =
+document.getElementById(
+"previousButton"
+);
+
+const nextButton =
+document.getElementById(
+"nextButton"
+);
+
+const refreshButton =
+document.getElementById(
+"refreshButton"
+);
+
+const progress =
+document.getElementById(
+"progress"
+);
+
+const progressBar =
+document.getElementById(
+"progressBar"
+);
+
+const progressText =
+document.getElementById(
+"progressText"
+);
+
+const complete =
+document.getElementById(
+"complete"
+);
 
 
 /* =====================================================
    STATE
 ===================================================== */
+
+let DB = null;
 
 let testId = null;
 
@@ -462,123 +509,55 @@ let saving = false;
 
 
 /* =====================================================
-   DOM
+   START
 ===================================================== */
 
-const teacherName =
-  document.getElementById(
-    "teacherName"
-  );
+if (
+document.readyState ===
+"loading"
+) {
 
-const status =
-  document.getElementById(
-    "status"
-  );
+document.addEventListener(
+"DOMContentLoaded",
+start
+);
 
-const answerTableWrap =
-  document.getElementById(
-    "answerTableWrap"
-  );
+} else {
 
-const questionTitle =
-  document.getElementById(
-    "questionTitle"
-  );
+start();
 
-const questionMeta =
-  document.getElementById(
-    "questionMeta"
-  );
-
-const previousButton =
-  document.getElementById(
-    "previousButton"
-  );
-
-const nextButton =
-  document.getElementById(
-    "nextButton"
-  );
-
-const refreshButton =
-  document.getElementById(
-    "refreshButton"
-  );
-
-const progress =
-  document.getElementById(
-    "progress"
-  );
-
-const progressBar =
-  document.getElementById(
-    "progressBar"
-  );
-
-const progressText =
-  document.getElementById(
-    "progressText"
-  );
-
-const complete =
-  document.getElementById(
-    "complete"
-  );
+}
 
 
 /* =====================================================
-   INIT
+   START
 ===================================================== */
 
-document.addEventListener(
-  "DOMContentLoaded",
-  init
-);
-
-
-async function init() {
+async function start() {
 
 try {
 
 setStatus(
-"ログイン状態を確認しています..."
+"Supabase接続を確認しています..."
 );
 
 
 /* -----------------------------------------------------
-   AUTH
+   Supabase
 ----------------------------------------------------- */
 
-if (
-typeof window.requireRole ===
-"function"
-) {
+DB =
+window.SB ||
+window.supabaseClient ||
+window.sb ||
+null;
 
-const result =
-await window.requireRole(
-"teacher"
+
+if (!DB) {
+
+throw new Error(
+"Supabaseクライアントがありません。config.js / auth.js の読み込みを確認してください。"
 );
-
-
-if (!result) {
-
-return;
-
-}
-
-
-const profile =
-result.profile ||
-result;
-
-
-if (teacherName) {
-
-teacherName.textContent =
-profile.name ||
-"先生";
-
-}
 
 }
 
@@ -589,7 +568,7 @@ profile.name ||
 
 const params =
 new URLSearchParams(
-location.search
+window.location.search
 );
 
 
@@ -608,32 +587,156 @@ throw new Error(
 }
 
 
+testId =
+String(
+testId
+).trim();
+
+
 /* -----------------------------------------------------
-   EVENTS
+   Auth
+   認証が5秒以上止まった場合も画面を止めない。
+----------------------------------------------------- */
+
+setStatus(
+"ログイン状態を確認しています..."
+);
+
+
+await checkAuth();
+
+
+/* -----------------------------------------------------
+   Events
 ----------------------------------------------------- */
 
 setupEvents();
 
 
 /* -----------------------------------------------------
-   LOAD
+   Main
 ----------------------------------------------------- */
 
-await loadEverything();
+await loadAll();
 
 
 } catch (error) {
 
 console.error(
-"MARKING ERROR:",
+"MARKING START ERROR",
 error
 );
 
 
 showFatal(
 error.message ||
-"採点画面の読み込みに失敗しました。"
+"採点画面を起動できませんでした。"
 );
+
+}
+
+}
+
+
+/* =====================================================
+   AUTH
+===================================================== */
+
+async function checkAuth() {
+
+try {
+
+if (
+!DB.auth ||
+typeof DB.auth.getSession !==
+"function"
+) {
+
+return;
+
+}
+
+
+const result =
+await withTimeout(
+DB.auth.getSession(),
+5000,
+"認証サーバーへの接続がタイムアウトしました。"
+);
+
+
+const session =
+result?.data?.session;
+
+
+if (!session) {
+
+throw new Error(
+"ログインセッションがありません。ログインし直してください。"
+);
+
+}
+
+
+if (teacherName) {
+
+try {
+
+const {
+data,
+error
+} =
+await withTimeout(
+DB
+.from("profiles")
+.select(
+"name,role"
+)
+.eq(
+"id",
+session.user.id
+)
+.maybeSingle(),
+5000,
+"プロフィール取得がタイムアウトしました。"
+);
+
+
+if (!error && data) {
+
+if (
+data.role !==
+"teacher" &&
+data.role !==
+"admin"
+) {
+
+throw new Error(
+"先生・管理者権限がありません。"
+);
+
+}
+
+
+teacherName.textContent =
+data.name ||
+"先生";
+
+}
+
+} catch (profileError) {
+
+console.warn(
+"profile:",
+profileError
+);
+
+/*
+ * プロフィール取得だけ失敗しても
+ * 採点データ取得自体は続行する。
+ */
+
+}
 
 }
 
@@ -652,12 +755,14 @@ previousButton.addEventListener(
 async () => {
 
 if (
-questionIndex <= 0
+questionIndex <=
+0
 ) {
 
 return;
 
 }
+
 
 questionIndex--;
 
@@ -679,13 +784,16 @@ async () => {
 
 try {
 
-await loadEverything();
+setStatus(
+"更新しています..."
+);
+
+await loadAll();
 
 } catch (error) {
 
 showFatal(
-error.message ||
-"更新に失敗しました。"
+error.message
 );
 
 }
@@ -709,6 +817,18 @@ typeof window.signOut ===
 
 await window.signOut();
 
+return;
+
+}
+
+
+if (
+typeof window.logout ===
+"function"
+) {
+
+await window.logout();
+
 }
 
 }
@@ -718,28 +838,23 @@ await window.signOut();
 
 
 /* =====================================================
-   LOAD EVERYTHING
+   LOAD ALL
 ===================================================== */
 
-async function loadEverything() {
+async function loadAll() {
 
 setStatus(
 "テスト情報を取得しています..."
 );
 
 
-/* -----------------------------------------------------
-   TEST
------------------------------------------------------ */
-
 const {
 data: testData,
 error: testError
 } =
-await DB
-.from(
-"tests"
-)
+await query(
+DB
+.from("tests")
 .select(
 `
 id,
@@ -753,7 +868,9 @@ class_name
 "id",
 testId
 )
-.maybeSingle();
+.maybeSingle(),
+"テスト情報取得"
+);
 
 
 if (testError) {
@@ -779,7 +896,7 @@ testData;
 
 
 /* -----------------------------------------------------
-   ANSWERS
+   Answers
 ----------------------------------------------------- */
 
 setStatus(
@@ -791,10 +908,9 @@ const {
 data: answerData,
 error: answerError
 } =
-await DB
-.from(
-"answer_sheets"
-)
+await query(
+DB
+.from("answer_sheets")
 .select(
 `
 id,
@@ -815,6 +931,8 @@ testId
 {
 ascending:true
 }
+),
+"答案取得"
 );
 
 
@@ -828,7 +946,8 @@ throw new Error(
 
 
 answers =
-answerData || [];
+answerData ||
+[];
 
 
 if (!answers.length) {
@@ -841,7 +960,7 @@ throw new Error(
 
 
 /* -----------------------------------------------------
-   STUDENTS
+   Students
 ----------------------------------------------------- */
 
 setStatus(
@@ -853,11 +972,11 @@ await loadStudents();
 
 
 /* -----------------------------------------------------
-   PAGES
+   Pages
 ----------------------------------------------------- */
 
 setStatus(
-"答案画像情報を取得しています..."
+"答案ページを取得しています..."
 );
 
 
@@ -865,7 +984,7 @@ await loadPages();
 
 
 /* -----------------------------------------------------
-   LAYOUT
+   Boxes
 ----------------------------------------------------- */
 
 setStatus(
@@ -874,13 +993,12 @@ setStatus(
 
 
 const {
-data: boxData,
-error: boxError
+data: boxes,
+error: boxesError
 } =
-await DB
-.from(
-"layout_boxes"
-)
+await query(
+DB
+.from("layout_boxes")
 .select(
 `
 id,
@@ -912,24 +1030,26 @@ ascending:true
 {
 ascending:true
 }
+),
+"採点枠取得"
 );
 
 
-if (boxError) {
+if (boxesError) {
 
 throw new Error(
-`採点枠取得エラー: ${boxError.message}`
+`採点枠取得エラー: ${boxesError.message}`
 );
 
 }
 
 
 /* -----------------------------------------------------
-   QUESTION
+   Questions
 ----------------------------------------------------- */
 
 questions =
-(boxData || [])
+(boxes || [])
 .filter(
 box => {
 
@@ -938,12 +1058,13 @@ String(
 box.box_type ||
 ""
 )
-.toLowerCase()
-.trim();
+.trim()
+.toLowerCase();
 
 
 return (
-type === "answer" &&
+type ===
+"answer" &&
 Boolean(
 box.question_id
 )
@@ -1008,7 +1129,7 @@ throw new Error(
 
 
 /* -----------------------------------------------------
-   SCORES
+   Scores
 ----------------------------------------------------- */
 
 setStatus(
@@ -1018,6 +1139,10 @@ setStatus(
 
 await loadScores();
 
+
+/* -----------------------------------------------------
+   Render
+----------------------------------------------------- */
 
 questionIndex =
 0;
@@ -1032,7 +1157,7 @@ await renderQuestion();
 
 
 setStatus(
-`${test.name} / 答案${answers.length}件 / ${questions.length}問`
+`${test.name} / 答案 ${answers.length}件 / 設問 ${questions.length}問`
 );
 
 }
@@ -1053,8 +1178,8 @@ const ids =
 ...new Set(
 answers
 .map(
-answer =>
-answer.student_id
+item =>
+item.student_id
 )
 .filter(Boolean)
 )
@@ -1072,10 +1197,9 @@ const {
 data,
 error
 } =
-await DB
-.from(
-"students"
-)
+await query(
+DB
+.from("students")
 .select(
 `
 id,
@@ -1086,6 +1210,8 @@ name
 .in(
 "id",
 ids
+),
+"生徒情報取得"
 );
 
 
@@ -1099,13 +1225,13 @@ throw new Error(
 
 
 for (
-const student
+const item
 of data || []
 ) {
 
 students.set(
-student.id,
-student
+item.id,
+item
 );
 
 }
@@ -1125,8 +1251,8 @@ new Map();
 
 const ids =
 answers.map(
-answer =>
-answer.id
+item =>
+item.id
 );
 
 
@@ -1134,10 +1260,9 @@ const {
 data,
 error
 } =
-await DB
-.from(
-"answer_sheet_pages"
-)
+await query(
+DB
+.from("answer_sheet_pages")
 .select(
 `
 answer_sheet_id,
@@ -1158,6 +1283,8 @@ ids
 {
 ascending:true
 }
+),
+"答案ページ取得"
 );
 
 
@@ -1214,8 +1341,8 @@ scores =
 
 const ids =
 answers.map(
-answer =>
-answer.id
+item =>
+item.id
 );
 
 
@@ -1223,10 +1350,9 @@ const {
 data,
 error
 } =
-await DB
-.from(
-"scores"
-)
+await query(
+DB
+.from("scores")
 .select(
 `
 id,
@@ -1241,6 +1367,8 @@ marked_at
 .in(
 "answer_sheet_id",
 ids
+),
+"採点結果取得"
 );
 
 
@@ -1254,7 +1382,9 @@ throw new Error(
 
 
 scores =
-data || [];
+data ||
+[];
+
 
 }
 
@@ -1283,7 +1413,7 @@ question.label;
 
 
 questionMeta.textContent =
-`${test.name} / 配点 ${format(
+`${test.name} / 配点 ${formatNumber(
 question.points
 )}点 / 問題 ${
 questionIndex + 1
@@ -1293,7 +1423,8 @@ questions.length
 
 
 previousButton.disabled =
-questionIndex <= 0;
+questionIndex <=
+0;
 
 
 nextButton.textContent =
@@ -1306,7 +1437,7 @@ questions.length - 1
 answerTableWrap.innerHTML = `
 
 <div class="empty">
-答案を読み込んでいます...
+答案を表示しています...
 </div>
 
 `;
@@ -1364,11 +1495,15 @@ const answer
 of answers
 ) {
 
-tbody.appendChild(
+const row =
 await createRow(
 answer,
 question
-)
+);
+
+
+tbody.appendChild(
+row
 );
 
 }
@@ -1403,13 +1538,12 @@ document.createElement(
 );
 
 
-/* STUDENT */
+/* Student */
 
 const studentCell =
 document.createElement(
 "td"
 );
-
 
 studentCell.className =
 "student-cell";
@@ -1426,10 +1560,8 @@ document.createElement(
 "div"
 );
 
-
 no.className =
 "student-no";
-
 
 no.textContent =
 student?.student_no ||
@@ -1441,10 +1573,8 @@ document.createElement(
 "div"
 );
 
-
 name.className =
 "student-name";
-
 
 name.textContent =
 student?.name ||
@@ -1457,13 +1587,12 @@ name
 );
 
 
-/* ANSWER */
+/* Answer */
 
 const answerCell =
 document.createElement(
 "td"
 );
-
 
 answerCell.className =
 "answer-cell";
@@ -1480,34 +1609,30 @@ question
 
 } catch (error) {
 
-const errorBox =
+const box =
 document.createElement(
 "div"
 );
 
-
-errorBox.className =
+box.className =
 "answer-error";
 
-
-errorBox.textContent =
+box.textContent =
 error.message;
 
-
 answerCell.appendChild(
-errorBox
+box
 );
 
 }
 
 
-/* SCORE */
+/* Score */
 
 const scoreCell =
 document.createElement(
 "td"
 );
-
 
 scoreCell.className =
 "score-cell";
@@ -1524,7 +1649,6 @@ const input =
 document.createElement(
 "input"
 );
-
 
 input.type =
 "number";
@@ -1554,7 +1678,6 @@ document.createElement(
 "button"
 );
 
-
 save.type =
 "button";
 
@@ -1570,10 +1693,8 @@ document.createElement(
 "div"
 );
 
-
 state.className =
 "score-state";
-
 
 state.textContent =
 existing &&
@@ -1601,7 +1722,6 @@ document.createElement(
 "div"
 );
 
-
 warning.className =
 "warning";
 
@@ -1610,7 +1730,7 @@ input.addEventListener(
 "input",
 () => {
 
-validate(
+validateScore(
 input,
 warning,
 question.points
@@ -1645,13 +1765,12 @@ warning
 );
 
 
-/* STATUS */
+/* Status */
 
 const statusCell =
 document.createElement(
 "td"
 );
-
 
 if (
 existing &&
@@ -1726,11 +1845,21 @@ throw new Error(
 }
 
 
+if (!page.file_path) {
+
+throw new Error(
+"答案ページのfile_pathがありません。"
+);
+
+}
+
+
 const {
 data,
 error
 } =
-await DB
+await query(
+DB
 .storage
 .from(
 "answer-files"
@@ -1738,6 +1867,8 @@ await DB
 .createSignedUrl(
 page.file_path,
 600
+),
+"答案画像URL取得"
 );
 
 
@@ -1753,7 +1884,7 @@ throw new Error(
 if (!data?.signedUrl) {
 
 throw new Error(
-"答案画像URLを取得できませんでした。"
+"答案画像の署名URLを取得できませんでした。"
 );
 
 }
@@ -1764,7 +1895,6 @@ document.createElement(
 "div"
 );
 
-
 viewer.className =
 "answer-viewer";
 
@@ -1774,15 +1904,11 @@ document.createElement(
 "img"
 );
 
-
 image.src =
 data.signedUrl;
 
 image.alt =
 "答案";
-
-image.draggable =
-false;
 
 
 await waitImage(
@@ -1914,7 +2040,7 @@ return viewer;
 
 
 /* =====================================================
-   SAVE SCORE
+   SAVE
 ===================================================== */
 
 async function saveScore(
@@ -1993,13 +2119,10 @@ const {
 data: existing,
 error: findError
 } =
-await DB
-.from(
-"scores"
-)
-.select(
-"id"
-)
+await query(
+DB
+.from("scores")
+.select("id")
 .eq(
 "answer_sheet_id",
 answer.id
@@ -2008,7 +2131,9 @@ answer.id
 "layout_box_id",
 question.id
 )
-.maybeSingle();
+.maybeSingle(),
+"既存採点確認"
+);
 
 
 if (findError) {
@@ -2025,10 +2150,9 @@ if (existing?.id) {
 const {
 error
 } =
-await DB
-.from(
-"scores"
-)
+await query(
+DB
+.from("scores")
 .update({
 
 question_id:
@@ -2047,6 +2171,8 @@ new Date().toISOString()
 .eq(
 "id",
 existing.id
+),
+"採点更新"
 );
 
 
@@ -2059,7 +2185,7 @@ throw new Error(
 }
 
 
-updateScore(
+updateLocalScore(
 existing.id,
 answer.id,
 question,
@@ -2072,10 +2198,9 @@ const {
 data,
 error
 } =
-await DB
-.from(
-"scores"
-)
+await query(
+DB
+.from("scores")
 .insert({
 
 answer_sheet_id:
@@ -2097,10 +2222,10 @@ marked_at:
 new Date().toISOString()
 
 })
-.select(
-"id"
-)
-.single();
+.select("id")
+.single(),
+"採点登録"
+);
 
 
 if (error) {
@@ -2112,7 +2237,7 @@ throw new Error(
 }
 
 
-updateScore(
+updateLocalScore(
 data.id,
 answer.id,
 question,
@@ -2122,17 +2247,15 @@ value
 }
 
 
-warning.classList.remove(
-"show"
-);
-
-
 state.textContent =
 "採点済み";
 
-
 state.className =
 "score-state marked";
+
+warning.classList.remove(
+"show"
+);
 
 
 updateProgress();
@@ -2152,20 +2275,18 @@ error
 );
 
 
+state.textContent =
+"保存失敗";
+
+state.className =
+"score-state error";
+
+
 showWarning(
 warning,
 error.message ||
 "採点保存に失敗しました。"
 );
-
-
-state.textContent =
-"保存失敗";
-
-
-state.className =
-"score-state error";
-
 
 } finally {
 
@@ -2173,64 +2294,6 @@ saving =
 false;
 
 }
-
-}
-
-
-/* =====================================================
-   UPDATE LOCAL SCORE
-===================================================== */
-
-function updateScore(
-id,
-answerId,
-question,
-value
-) {
-
-const old =
-findScore(
-answerId,
-question.id
-);
-
-
-if (old) {
-
-old.id =
-id;
-
-old.score =
-value;
-
-old.status =
-"marked";
-
-return;
-
-}
-
-
-scores.push({
-
-id,
-
-answer_sheet_id:
-answerId,
-
-layout_box_id:
-question.id,
-
-question_id:
-question.questionId,
-
-score:
-value,
-
-status:
-"marked"
-
-});
 
 }
 
@@ -2248,7 +2311,7 @@ questionIndex
 
 
 if (
-!isQuestionComplete(
+!isComplete(
 question
 )
 ) {
@@ -2296,7 +2359,7 @@ function finish() {
 const all =
 questions.every(
 question =>
-isQuestionComplete(
+isComplete(
 question
 )
 );
@@ -2304,17 +2367,8 @@ question
 
 if (!all) {
 
-const remain =
-questions.filter(
-question =>
-!isQuestionComplete(
-question
-)
-).length;
-
-
 showStatus(
-`まだ未採点があります。残り ${remain} 問です。`,
+"まだ未採点の答案があります。",
 true
 );
 
@@ -2333,26 +2387,20 @@ showStatus(
 );
 
 
-updateProgress();
-
-
 nextButton.disabled =
 true;
 
 
-/*
- * 絶対にここでは公開しない。
- * answer_sheets.statusもmarkedに変更しない。
- */
+updateProgress();
 
 }
 
 
 /* =====================================================
-   QUESTION COMPLETE
+   COMPLETE
 ===================================================== */
 
-function isQuestionComplete(
+function isComplete(
 question
 ) {
 
@@ -2375,25 +2423,6 @@ score.status ===
 }
 );
 
-}
-
-
-/* =====================================================
-   FIND SCORE
-===================================================== */
-
-function findScore(
-answerId,
-questionId
-) {
-
-return scores.find(
-score =>
-score.answer_sheet_id ===
-answerId &&
-score.layout_box_id ===
-questionId
-) || null;
 
 }
 
@@ -2466,10 +2495,89 @@ progressText.textContent =
 
 
 /* =====================================================
+   FIND SCORE
+===================================================== */
+
+function findScore(
+answerId,
+questionId
+) {
+
+return scores.find(
+score =>
+score.answer_sheet_id ===
+answerId &&
+score.layout_box_id ===
+questionId
+) ||
+null;
+
+}
+
+
+/* =====================================================
+   LOCAL SCORE
+===================================================== */
+
+function updateLocalScore(
+id,
+answerId,
+question,
+value
+) {
+
+const existing =
+findScore(
+answerId,
+question.id
+);
+
+
+if (existing) {
+
+existing.id =
+id;
+
+existing.score =
+value;
+
+existing.status =
+"marked";
+
+return;
+
+}
+
+
+scores.push({
+
+id,
+
+answer_sheet_id:
+answerId,
+
+layout_box_id:
+question.id,
+
+question_id:
+question.questionId,
+
+score:
+value,
+
+status:
+"marked"
+
+});
+
+}
+
+
+/* =====================================================
    VALIDATE
 ===================================================== */
 
-function validate(
+function validateScore(
 input,
 warning,
 max
@@ -2520,7 +2628,79 @@ warning.classList.remove(
 
 
 /* =====================================================
-   WAIT IMAGE
+   QUERY TIMEOUT
+===================================================== */
+
+async function query(
+promise,
+label
+) {
+
+return await withTimeout(
+promise,
+10000,
+`${label}が10秒以上応答しません。Supabaseの接続・RLS・権限を確認してください。`
+);
+
+}
+
+
+async function withTimeout(
+promise,
+ms,
+message
+) {
+
+let timer;
+
+
+const timeout =
+new Promise(
+(
+resolve,
+reject
+) => {
+
+timer =
+setTimeout(
+() => {
+
+reject(
+new Error(
+message
+)
+);
+
+},
+ms
+);
+
+}
+);
+
+
+try {
+
+return await Promise.race(
+[
+promise,
+timeout
+]
+);
+
+} finally {
+
+clearTimeout(
+timer
+);
+
+}
+
+}
+
+
+/* =====================================================
+   IMAGE
 ===================================================== */
 
 function waitImage(
@@ -2562,6 +2742,60 @@ new Error(
 
 
 /* =====================================================
+   STATUS
+===================================================== */
+
+function showStatus(
+message,
+error = false
+) {
+
+statusEl.textContent =
+message;
+
+statusEl.style.color =
+error
+? "#b42318"
+: "#333";
+
+}
+
+
+function showFatal(
+message
+) {
+
+showStatus(
+message,
+true
+);
+
+
+answerTable.innerHTML = `
+
+<div class="empty">
+
+${escapeHtml(
+message
+)}
+
+<br><br>
+
+<a
+href="/teacher/marking"
+class="btn"
+>
+採点一覧へ戻る
+</a>
+
+</div>
+
+`;
+
+}
+
+
+/* =====================================================
    HELPERS
 ===================================================== */
 
@@ -2590,14 +2824,19 @@ answer.student_id
 );
 
 
-return student
-? `${student.student_no || ""} / ${student.name || ""}`
-: "未紐付け";
+if (!student) {
+
+return "未紐付け";
 
 }
 
 
-function format(
+return `${student.student_no || ""} / ${student.name || ""}`;
+
+}
+
+
+function formatNumber(
 value
 ) {
 
@@ -2618,9 +2857,7 @@ return "0";
 }
 
 
-return Number.isInteger(
-n
-)
+return Number.isInteger(n)
 ? String(n)
 : n.toFixed(1);
 
@@ -2632,47 +2869,13 @@ message,
 error = false
 ) {
 
-status.textContent =
+statusEl.textContent =
 message;
 
-status.style.color =
+statusEl.style.color =
 error
 ? "#b42318"
 : "#333";
-
-}
-
-
-function showFatal(
-message
-) {
-
-setStatus(
-message,
-true
-);
-
-
-answerTableWrap.innerHTML = `
-
-<div class="empty">
-
-${escapeHtml(
-message
-)}
-
-<br><br>
-
-<a
-href="/teacher/marking"
-class="btn"
->
-採点一覧へ戻る
-</a>
-
-</div>
-
-`;
 
 }
 

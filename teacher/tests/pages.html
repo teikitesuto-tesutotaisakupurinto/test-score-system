@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>
+    解答用紙登録 - テスト成績システム
+  </title>
+
+  <link
+    rel="stylesheet"
+    href="/css/common.css"
+  >
+
+</head>
+
+<body>
+
+<header class="topbar">
+
+  <div class="system-name">
+    テスト成績システム
+  </div>
+
+  <div class="topbar-space"></div>
+
+  <span id="teacherName">-</span>
+
+  <button
+    id="logoutButton"
+    class="logout-button"
+  >
+    ログアウト
+  </button>
+
+</header>
+
+
+<div class="teacher-layout">
+
+  <aside class="sidebar">
+
+    <div class="sidebar-title">
+      テスト設定
+    </div>
+
+    <a
+      href="/teacher/tests"
+      class="menu-link"
+    >
+      テスト一覧
+    </a>
+
+    <a
+      id="testEditLink"
+      href="#"
+      class="menu-link"
+    >
+      テスト情報
+    </a>
+
+    <a
+      id="pagesLink"
+      href="#"
+      class="menu-link active"
+    >
+      解答用紙登録
+    </a>
+
+    <a
+      id="layoutLink"
+      href="#"
+      class="menu-link"
+    >
+      枠設定
+    </a>
+
+    <a
+      id="questionsLink"
+      href="#"
+      class="menu-link"
+    >
+      問題設定
+    </a>
+
+  </aside>
+
+
+  <main class="main-content">
+
+    <div class="page-header">
+
+      <h1>
+        解答用紙登録
+      </h1>
+
+    </div>
+
+
+    <div
+      id="testInformation"
+      class="card"
+    >
+      読み込み中...
+    </div>
+
+
+    <div class="card">
+
+      <h3>
+        解答用紙画像
+      </h3>
+
+      <p>
+        解答用紙のページ画像を登録してください。
+        PDFの場合はページごとの画像に変換して登録する構成にします。
+      </p>
+
+
+      <div class="form-group">
+
+        <label>
+          ページ画像
+        </label>
+
+        <input
+          id="pageFile"
+          type="file"
+          accept="image/*"
+        >
+
+      </div>
+
+
+      <div
+        style="
+          display:flex;
+          gap:8px;
+        "
+      >
+
+        <button
+          id="addPageButton"
+          class="btn btn-primary"
+        >
+          ページを追加
+        </button>
+
+        <button
+          id="saveButton"
+          class="btn"
+        >
+          設定を保存
+        </button>
+
+      </div>
+
+
+      <div
+        id="message"
+        style="
+          margin-top:12px;
+          min-height:22px;
+        "
+      ></div>
+
+    </div>
+
+
+    <div class="card">
+
+      <h3>
+        登録ページ
+      </h3>
+
+
+      <div
+        id="pageList"
+        style="
+          display:grid;
+          grid-template-columns:
+            repeat(4,minmax(0,1fr));
+          gap:12px;
+        "
+      >
+
+        <div
+          style="
+            grid-column:1/-1;
+            text-align:center;
+            color:#777;
+            padding:30px;
+          "
+        >
+          読み込み中...
+        </div>
+
+      </div>
+
+    </div>
+
+  </main>
+
+</div>
+
+
+<script
+  src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+></script>
+
+<script src="/js/config.js"></script>
+
+<script src="/js/auth.js"></script>
+
+<script src="/js/teacher/test-pages.js"></script>
+
+</body>
+
+</html>

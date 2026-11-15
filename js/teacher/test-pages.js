@@ -3,75 +3,53 @@
    テスト成績システム
    js/teacher/test-pages.js
 
-   解答用紙・枠設定
+   解答用紙レイアウトエディタ
 
-   URL
+   DB
    ---------------------------------------------------------
-   /teacher/tests/pages?test=UUID
-
    test_pages
-   ---------------------------------------------------------
-   id
-   test_id
-   page_no
-   image_path
-   width_px
-   height_px
-   created_at
-   file_path
-   file_type
-   original_name
+     id
+     test_id
+     page_no
+     image_path
+     width_px
+     height_px
+     original_name
 
    layout_boxes
-   ---------------------------------------------------------
-   id
-   test_id
-   page_no
-   box_type
-   label
-   x
-   y
-   width
-   height
-   question_id
-   created_at
-   points
-   parent_box_id
-   major_no
-   minor_no
-   box_role
-   sort_order
-   subtotal_group
+     id
+     test_id
+     page_no
+     box_type
+     label
+     x
+     y
+     width
+     height
+     points
+     parent_box_id
+     major_no
+     minor_no
+     box_role
+     sort_order
+     subtotal_group
 
-   source_page_id は使用しない。
-
-   ページ対応
+   この画面では
    ---------------------------------------------------------
-   test_pages.page_no
-          ↓
-   layout_boxes.page_no
+   配点 → 設定しない
+   設問ID → 設定しない
 
    枠種類
    ---------------------------------------------------------
-   major       大問
-   minor       小問
-   qr          QR
-   subtotal    小計
-   total       合計
-   name        氏名
-   student_no  生徒番号
-   instruction 説明
-   other       その他
-
-   小問
-   ---------------------------------------------------------
-   大問の中に小問を置く
-          ↓
-   親大問を自動判定
-          ↓
-   parent_box_id
-   major_no
-   minor_no
+   major
+   minor
+   qr
+   subtotal
+   total
+   name
+   student_no
+   instruction
+   other
 ========================================================= */
 
 (function () {
@@ -85,88 +63,47 @@
 
   let selectedTestId = null;
 
-  let tests = [];
-
   let pages = [];
 
   let boxes = [];
 
-  let selectedBox = null;
+  let selectedBoxId = null;
+
+  let activePointerId = null;
 
   let drawing = false;
 
-  let drawingStart = null;
+  let drawStart = null;
 
-  let drawingPage = null;
+  let drawPage = null;
 
-  let drawingLayer = null;
+  let drawLayer = null;
 
-  let temporaryBox = null;
+  let drawPreview = null;
+
+  let dragMode = null;
+
+  let dragBoxId = null;
+
+  let dragStart = null;
+
+  let dragOriginal = null;
 
   let pdfPromise = null;
-
-
-  /* =======================================================
-     BOX ROLES
-  ======================================================= */
-
-  const BOX_ROLES = {
-
-    major: {
-      label: "大問",
-      defaultBoxType: "question"
-    },
-
-    minor: {
-      label: "小問",
-      defaultBoxType: "answer"
-    },
-
-    qr: {
-      label: "QR",
-      defaultBoxType: "qr"
-    },
-
-    subtotal: {
-      label: "小計",
-      defaultBoxType: "subtotal"
-    },
-
-    total: {
-      label: "合計",
-      defaultBoxType: "total"
-    },
-
-    name: {
-      label: "氏名",
-      defaultBoxType: "name"
-    },
-
-    student_no: {
-      label: "生徒番号",
-      defaultBoxType: "student_no"
-    },
-
-    instruction: {
-      label: "説明",
-      defaultBoxType: "instruction"
-    },
-
-    other: {
-      label: "その他",
-      defaultBoxType: "other"
-    }
-
-  };
 
 
   /* =======================================================
      DOM
   ======================================================= */
 
-  const testSelect =
+  const viewer =
     document.getElementById(
-      "testSelect"
+      "viewer"
+    );
+
+  const statusElement =
+    document.getElementById(
+      "status"
     );
 
   const answerFile =
@@ -184,44 +121,24 @@
       "saveButton"
     );
 
-  const deleteButton =
-    document.getElementById(
-      "deleteButton"
-    );
-
   const backButton =
     document.getElementById(
       "backButton"
     );
 
-  const viewer =
+  const boxPanel =
     document.getElementById(
-      "viewer"
+      "boxPanel"
     );
 
-  const statusElement =
+  const boxRole =
     document.getElementById(
-      "status"
+      "boxRole"
     );
 
-  const panel =
+  const parentInfo =
     document.getElementById(
-      "panel"
-    );
-
-  const labelInput =
-    document.getElementById(
-      "label"
-    );
-
-  const pointsInput =
-    document.getElementById(
-      "points"
-    );
-
-  const questionIdInput =
-    document.getElementById(
-      "questionId"
+      "parentInfo"
     );
 
   const applyButton =
@@ -229,14 +146,73 @@
       "applyButton"
     );
 
-  const closeButton =
+  const deleteSelectedButton =
     document.getElementById(
-      "closeButton"
+      "deleteSelectedButton"
+    );
+
+  const closePanelButton =
+    document.getElementById(
+      "closePanelButton"
     );
 
 
   /* =======================================================
-     INITIALIZE
+     ROLES
+  ======================================================= */
+
+  const ROLE_INFO = {
+
+    major: {
+      label: "大問",
+      type: "question"
+    },
+
+    minor: {
+      label: "小問",
+      type: "answer"
+    },
+
+    qr: {
+      label: "QR",
+      type: "qr"
+    },
+
+    subtotal: {
+      label: "小計",
+      type: "subtotal"
+    },
+
+    total: {
+      label: "合計",
+      type: "total"
+    },
+
+    name: {
+      label: "氏名",
+      type: "name"
+    },
+
+    student_no: {
+      label: "生徒番号",
+      type: "student_no"
+    },
+
+    instruction: {
+      label: "説明",
+      type: "instruction"
+    },
+
+    other: {
+      label: "その他",
+      type: "other"
+    }
+
+  };
+
+
+  /* =======================================================
+     INIT
   ======================================================= */
 
   async function initialize() {
@@ -267,67 +243,17 @@
       }
 
 
-      /*
-        URL:
-        /teacher/tests/pages?test=UUID
-      */
-
-      const urlTestId =
+      selectedTestId =
         new URLSearchParams(
           window.location.search
         ).get(
           "test"
-        );
-
-
-      selectedTestId =
-        urlTestId ||
+        ) ||
         window.__TEST_ID__ ||
         null;
 
 
-      setupRoleControls();
-
       setupEvents();
-
-
-      /*
-        testSelectがある場合だけ
-        テスト一覧を読み込む。
-      */
-
-      if (testSelect) {
-
-        await loadTests();
-
-
-        if (selectedTestId) {
-
-          const exists =
-            tests.some(
-              test =>
-                test.id ===
-                selectedTestId
-            );
-
-
-          if (!exists) {
-
-            setStatus(
-              "指定されたテストが見つかりません。"
-            );
-
-            return;
-
-          }
-
-
-          testSelect.value =
-            selectedTestId;
-
-        }
-
-      }
 
 
       if (!selectedTestId) {
@@ -341,152 +267,26 @@
       }
 
 
-      await loadTestPages();
+      openBoxPanel();
+
+
+      await loadLayout();
 
 
     } catch (error) {
 
       console.error(
-        "test-pages initialize:",
+        "test-pages:",
         error
       );
 
 
       showError(
         error.message ||
-        "解答用紙設定画面を読み込めませんでした。"
+        "枠設定画面を読み込めませんでした。"
       );
 
     }
-
-  }
-
-
-  /* =======================================================
-     ROLE CONTROL
-  ======================================================= */
-
-  function setupRoleControls() {
-
-    if (!panel) {
-      return;
-    }
-
-
-    if (
-      document.getElementById(
-        "boxRole"
-      )
-    ) {
-
-      return;
-
-    }
-
-
-    const roleLabel =
-      document.createElement(
-        "label"
-      );
-
-
-    roleLabel.textContent =
-      "枠種類";
-
-
-    const roleSelect =
-      document.createElement(
-        "select"
-      );
-
-
-    roleSelect.id =
-      "boxRole";
-
-
-    roleSelect.style.width =
-      "100%";
-
-
-    roleSelect.style.height =
-      "36px";
-
-
-    roleSelect.style.boxSizing =
-      "border-box";
-
-
-    roleSelect.style.padding =
-      "0 8px";
-
-
-    roleSelect.innerHTML =
-      Object.entries(
-        BOX_ROLES
-      )
-        .map(
-          (
-            [
-              value,
-              role
-            ]
-          ) => `
-
-            <option value="${value}">
-              ${role.label}
-            </option>
-
-          `
-        )
-        .join("");
-
-
-    const help =
-      document.createElement(
-        "div"
-      );
-
-
-    help.id =
-      "boxRoleHelp";
-
-
-    help.style.marginTop =
-      "6px";
-
-
-    help.style.marginBottom =
-      "10px";
-
-
-    help.style.fontSize =
-      "11px";
-
-
-    help.style.color =
-      "#666";
-
-
-    help.textContent =
-      "小問を大問の内側に置くと、その大問へ自動登録されます。";
-
-
-    panel.insertBefore(
-      roleLabel,
-      panel.firstChild
-    );
-
-
-    panel.insertBefore(
-      roleSelect,
-      roleLabel.nextSibling
-    );
-
-
-    panel.insertBefore(
-      help,
-      roleSelect.nextSibling
-    );
 
   }
 
@@ -496,28 +296,6 @@
   ======================================================= */
 
   function setupEvents() {
-
-    testSelect?.addEventListener(
-      "change",
-      async () => {
-
-        selectedTestId =
-          testSelect.value ||
-          null;
-
-
-        selectedBox =
-          null;
-
-
-        closePanel();
-
-
-        await loadTestPages();
-
-      }
-    );
-
 
     uploadButton?.addEventListener(
       "click",
@@ -531,9 +309,9 @@
     );
 
 
-    deleteButton?.addEventListener(
+    backButton?.addEventListener(
       "click",
-      deleteSelectedBox
+      goBack
     );
 
 
@@ -543,15 +321,21 @@
     );
 
 
-    closeButton?.addEventListener(
+    deleteSelectedButton?.addEventListener(
       "click",
-      closePanel
+      deleteSelectedBox
     );
 
 
-    backButton?.addEventListener(
+    closePanelButton?.addEventListener(
       "click",
-      goBack
+      closeBoxPanel
+    );
+
+
+    boxRole?.addEventListener(
+      "change",
+      updateRoleHelp
     );
 
 
@@ -564,148 +348,29 @@
         logout
       );
 
-  }
 
-
-  /* =======================================================
-     LOAD TESTS
-  ======================================================= */
-
-  async function loadTests() {
-
-    const {
-      data,
-      error
-    } =
-      await supabaseClient
-        .from(
-          "tests"
-        )
-        .select(`
-          id,
-          name,
-          subject,
-          grade,
-          class_name,
-          created_at
-        `)
-        .order(
-          "created_at",
-          {
-            ascending:
-              false
-          }
-        );
-
-
-    if (error) {
-      throw error;
-    }
-
-
-    tests =
-      data || [];
-
-
-    if (!testSelect) {
-      return;
-    }
-
-
-    testSelect.innerHTML = `
-
-      <option value="">
-        テストを選択してください
-      </option>
-
-      ${
-        tests
-          .map(
-            test => `
-
-              <option
-                value="${escapeHtml(
-                  test.id
-                )}"
-              >
-                ${escapeHtml(
-                  test.name
-                )}
-
-                ${
-                  test.subject
-                    ? ` / ${escapeHtml(
-                        test.subject
-                      )}`
-                    : ""
-                }
-              </option>
-
-            `
-          )
-          .join("")
-      }
-
-    `;
+    document.addEventListener(
+      "keydown",
+      handleKeyboard
+    );
 
   }
 
 
   /* =======================================================
-     LOAD PAGES
+     LOAD LAYOUT
   ======================================================= */
 
-  async function loadTestPages() {
-
-    if (!viewer) {
-      return;
-    }
-
-
-    viewer.innerHTML =
-      "";
-
-
-    pages =
-      [];
-
-    boxes =
-      [];
-
-    selectedBox =
-      null;
-
-
-    closePanel();
-
-
-    if (!selectedTestId) {
-
-      setStatus(
-        "テストIDが指定されていません。"
-      );
-
-      return;
-
-    }
-
+  async function loadLayout() {
 
     setStatus(
       "解答用紙を読み込んでいます..."
     );
 
 
-    /*
-      =====================================================
-      test_pages
-      =====================================================
-    */
-
     const {
-      data:
-        pageData,
-      error:
-        pageError
+      data: pageData,
+      error: pageError
     } =
       await supabaseClient
         .from(
@@ -727,8 +392,7 @@
         .order(
           "page_no",
           {
-            ascending:
-              true
+            ascending: true
           }
         );
 
@@ -742,20 +406,9 @@
       pageData || [];
 
 
-    /*
-      =====================================================
-      layout_boxes
-
-      source_page_idは使わない。
-      page_noでページを紐付ける。
-      =====================================================
-    */
-
     const {
-      data:
-        boxData,
-      error:
-        boxError
+      data: boxData,
+      error: boxError
     } =
       await supabaseClient
         .from(
@@ -771,28 +424,17 @@
           y,
           width,
           height,
-          question_id,
           points,
           parent_box_id,
           major_no,
           minor_no,
           box_role,
           sort_order,
-          subtotal_group,
-          created_at
+          subtotal_group
         `)
         .eq(
           "test_id",
           selectedTestId
-        )
-        .order(
-          "sort_order",
-          {
-            ascending:
-              true,
-            nullsFirst:
-              false
-          }
         );
 
 
@@ -805,29 +447,16 @@
       boxData || [];
 
 
-    boxes.forEach(
-      box => {
-
-        if (!box.box_role) {
-
-          box.box_role =
-            inferRoleFromBox(
-              box
-            );
-
-        }
-
-      }
-    );
+    normalizeBoxes();
 
 
-    await renderPages();
+    await renderAllPages();
 
 
     if (!pages.length) {
 
       setStatus(
-        "解答用紙がありません。PDFまたは画像を登録してください。"
+        "解答用紙を登録してください。"
       );
 
       return;
@@ -836,285 +465,80 @@
 
 
     setStatus(
-      "枠をドラッグして設定してください。"
+      "枠種類を選択して、解答用紙上をドラッグしてください。"
     );
 
   }
 
 
   /* =======================================================
-     UPLOAD ANSWER SHEET
+     NORMALIZE
   ======================================================= */
 
-  async function uploadAnswerSheet() {
+  function normalizeBoxes() {
 
-    if (!selectedTestId) {
+    boxes.forEach(
+      box => {
 
-      alert(
-        "テストIDがありません。"
-      );
+        if (
+          !box.box_role
+        ) {
 
-      return;
-
-    }
-
-
-    const file =
-      answerFile?.files?.[0];
-
-
-    if (!file) {
-
-      alert(
-        "解答用紙を選択してください。"
-      );
-
-      return;
-
-    }
-
-
-    const extension =
-      getExtension(
-        file.name
-      );
-
-
-    if (
-      ![
-        "pdf",
-        "jpg",
-        "jpeg",
-        "png",
-        "webp"
-      ].includes(
-        extension
-      )
-    ) {
-
-      alert(
-        "PDF、JPG、JPEG、PNG、WEBPに対応しています。"
-      );
-
-      return;
-
-    }
-
-
-    try {
-
-      setStatus(
-        "解答用紙を処理しています..."
-      );
-
-
-      const pageImages =
-        await fileToPages(
-          file
-        );
-
-
-      if (!pageImages.length) {
-
-        throw new Error(
-          "解答用紙のページを取得できませんでした。"
-        );
-
-      }
-
-
-      /*
-        古いページを削除
-      */
-
-      const {
-        error:
-          pageDeleteError
-      } =
-        await supabaseClient
-          .from(
-            "test_pages"
-          )
-          .delete()
-          .eq(
-            "test_id",
-            selectedTestId
-          );
-
-
-      if (pageDeleteError) {
-        throw pageDeleteError;
-      }
-
-
-      /*
-        古い枠を削除
-      */
-
-      const {
-        error:
-          boxDeleteError
-      } =
-        await supabaseClient
-          .from(
-            "layout_boxes"
-          )
-          .delete()
-          .eq(
-            "test_id",
-            selectedTestId
-          );
-
-
-      if (boxDeleteError) {
-        throw boxDeleteError;
-      }
-
-
-      let pageNo =
-        1;
-
-
-      for (
-        const page
-        of pageImages
-      ) {
-
-        const path =
-          [
-            selectedTestId,
-            "answer-sheet",
-            `page-${String(
-              pageNo
-            ).padStart(
-              3,
-              "0"
-            )}.png`
-          ].join("/");
-
-
-        const blob =
-          await canvasToBlob(
-            page.canvas,
-            "image/png"
-          );
-
-
-        const {
-          error:
-            uploadError
-        } =
-          await supabaseClient
-            .storage
-            .from(
-              "answer-files"
-            )
-            .upload(
-              path,
-              blob,
-              {
-                contentType:
-                  "image/png",
-
-                upsert:
-                  true
-              }
+          box.box_role =
+            inferRole(
+              box
             );
 
-
-        if (uploadError) {
-          throw uploadError;
         }
 
 
-        const {
-          error:
-            insertError
-        } =
-          await supabaseClient
-            .from(
-              "test_pages"
-            )
-            .insert({
+        if (
+          !box.box_type
+        ) {
 
-              test_id:
-                selectedTestId,
+          box.box_type =
+            ROLE_INFO[
+              box.box_role
+            ]?.type ||
+            "other";
 
-              page_no:
-                pageNo,
-
-              image_path:
-                path,
-
-              width_px:
-                page.width,
-
-              height_px:
-                page.height,
-
-              original_name:
-                file.name
-
-            });
-
-
-        if (insertError) {
-          throw insertError;
         }
 
-
-        pageNo++;
-
       }
-
-
-      if (answerFile) {
-
-        answerFile.value =
-          "";
-
-      }
-
-
-      await loadTestPages();
-
-
-      setStatus(
-        "解答用紙を登録しました。"
-      );
-
-
-    } catch (error) {
-
-      console.error(
-        "uploadAnswerSheet:",
-        error
-      );
-
-
-      showError(
-        error.message ||
-        "解答用紙の登録に失敗しました。"
-      );
-
-    }
+    );
 
   }
 
 
   /* =======================================================
-     RENDER PAGES
+     RENDER ALL PAGES
   ======================================================= */
 
-  async function renderPages() {
-
-    if (!viewer) {
-      return;
-    }
-
+  async function renderAllPages() {
 
     viewer.innerHTML =
       "";
+
+
+    if (!pages.length) {
+
+      viewer.innerHTML = `
+
+        <div class="empty-view">
+
+          <strong>
+            解答用紙がありません
+          </strong>
+
+          PDFまたは画像を登録してください。
+
+        </div>
+
+      `;
+
+      return;
+
+    }
 
 
     for (
@@ -1149,14 +573,6 @@
       "page";
 
 
-    wrapper.dataset.pageId =
-      page.id;
-
-
-    wrapper.style.position =
-      "relative";
-
-
     const canvas =
       document.createElement(
         "canvas"
@@ -1170,27 +586,7 @@
 
 
     layer.className =
-      "layer";
-
-
-    layer.style.position =
-      "absolute";
-
-
-    layer.style.left =
-      "0";
-
-
-    layer.style.top =
-      "0";
-
-
-    layer.style.right =
-      "0";
-
-
-    layer.style.bottom =
-      "0";
+      "page-layer";
 
 
     wrapper.appendChild(
@@ -1242,7 +638,7 @@
     ) {
 
       throw new Error(
-        `ページ${page.page_no}の画像URLを取得できませんでした。`
+        `ページ${page.page_no}の画像が見つかりません。`
       );
 
     }
@@ -1262,22 +658,8 @@
       image.naturalHeight;
 
 
-    canvas.style.display =
-      "block";
-
-
-    canvas.style.width =
-      "100%";
-
-
-    canvas.style.height =
-      "auto";
-
-
     canvas
-      .getContext(
-        "2d"
-      )
+      .getContext("2d")
       .drawImage(
         image,
         0,
@@ -1285,28 +667,33 @@
       );
 
 
+    /*
+      ドラッグによる新規枠
+    */
+
     setupDrawing(
-      wrapper,
       layer,
       page
     );
 
 
+    /*
+      既存枠
+    */
+
     boxes
       .filter(
         box =>
-          Number(
-            box.page_no
-          ) ===
-          Number(
-            page.page_no
-          )
+          Number(box.page_no) ===
+          Number(page.page_no)
+      )
+      .sort(
+        compareBoxes
       )
       .forEach(
         box => {
 
           renderBox(
-            wrapper,
             layer,
             page,
             box
@@ -1319,86 +706,99 @@
 
 
   /* =======================================================
-     DRAW NEW BOX
+     DRAWING
   ======================================================= */
 
   function setupDrawing(
-    wrapper,
     layer,
     page
   ) {
 
     layer.addEventListener(
-      "mousedown",
+      "pointerdown",
       event => {
 
+        /*
+          既存枠を押した場合は
+          新規枠を作らない。
+        */
+
         if (
-          event.target !==
-          layer
+          event.target !== layer
         ) {
 
           return;
 
         }
+
+
+        if (
+          event.button !== 0 &&
+          event.pointerType !== "touch"
+        ) {
+
+          return;
+
+        }
+
+
+        event.preventDefault();
+
+
+        activePointerId =
+          event.pointerId;
+
+
+        layer.setPointerCapture(
+          event.pointerId
+        );
+
+
+        const rect =
+          layer.getBoundingClientRect();
+
+
+        drawStart =
+          getPoint(
+            event,
+            rect
+          );
+
+
+        drawPage =
+          page;
+
+
+        drawLayer =
+          layer;
 
 
         drawing =
           true;
 
 
-        drawingPage =
-          page;
+        /*
+          ドラッグ開始直後から
+          仮枠を表示。
+        */
 
-
-        drawingLayer =
-          layer;
-
-
-        const rect =
-          layer.getBoundingClientRect();
-
-
-        drawingStart =
-          getLayerPoint(
-            event,
-            rect
-          );
-
-
-        temporaryBox =
+        drawPreview =
           document.createElement(
             "div"
           );
 
 
-        temporaryBox.className =
-          "box";
-
-
-        temporaryBox.style.left =
-          `${(
-            drawingStart.x /
-            rect.width
-          ) * 100}%`;
-
-
-        temporaryBox.style.top =
-          `${(
-            drawingStart.y /
-            rect.height
-          ) * 100}%`;
-
-
-        temporaryBox.style.width =
-          "0%";
-
-
-        temporaryBox.style.height =
-          "0%";
+        drawPreview.className =
+          "drag-preview";
 
 
         layer.appendChild(
-          temporaryBox
+          drawPreview
+        );
+
+
+        updateDrawPreview(
+          event
         );
 
       }
@@ -1406,13 +806,13 @@
 
 
     layer.addEventListener(
-      "mousemove",
+      "pointermove",
       event => {
 
         if (
           !drawing ||
-          !temporaryBox ||
-          !drawingStart
+          event.pointerId !==
+            activePointerId
         ) {
 
           return;
@@ -1420,84 +820,25 @@
         }
 
 
-        const rect =
-          layer.getBoundingClientRect();
+        event.preventDefault();
 
 
-        const current =
-          getLayerPoint(
-            event,
-            rect
-          );
-
-
-        const x =
-          Math.min(
-            drawingStart.x,
-            current.x
-          );
-
-
-        const y =
-          Math.min(
-            drawingStart.y,
-            current.y
-          );
-
-
-        const width =
-          Math.abs(
-            current.x -
-            drawingStart.x
-          );
-
-
-        const height =
-          Math.abs(
-            current.y -
-            drawingStart.y
-          );
-
-
-        temporaryBox.style.left =
-          `${(
-            x /
-            rect.width
-          ) * 100}%`;
-
-
-        temporaryBox.style.top =
-          `${(
-            y /
-            rect.height
-          ) * 100}%`;
-
-
-        temporaryBox.style.width =
-          `${(
-            width /
-            rect.width
-          ) * 100}%`;
-
-
-        temporaryBox.style.height =
-          `${(
-            height /
-            rect.height
-          ) * 100}%`;
+        updateDrawPreview(
+          event
+        );
 
       }
     );
 
 
     layer.addEventListener(
-      "mouseup",
+      "pointerup",
       event => {
 
         if (
           !drawing ||
-          !temporaryBox ||
-          !drawingStart
+          event.pointerId !==
+            activePointerId
         ) {
 
           return;
@@ -1505,191 +846,884 @@
         }
 
 
-        drawing =
-          false;
+        event.preventDefault();
 
 
-        const rect =
-          layer.getBoundingClientRect();
+        finishDrawing(
+          event
+        );
+
+      }
+    );
 
 
-        const current =
-          getLayerPoint(
-            event,
-            rect
-          );
-
-
-        const x =
-          Math.min(
-            drawingStart.x,
-            current.x
-          );
-
-
-        const y =
-          Math.min(
-            drawingStart.y,
-            current.y
-          );
-
-
-        const width =
-          Math.abs(
-            current.x -
-            drawingStart.x
-          );
-
-
-        const height =
-          Math.abs(
-            current.y -
-            drawingStart.y
-          );
-
-
-        temporaryBox.remove();
-
-
-        temporaryBox =
-          null;
-
-
-        drawingPage =
-          null;
-
-
-        drawingLayer =
-          null;
-
-
-        drawingStart =
-          null;
-
+    layer.addEventListener(
+      "pointercancel",
+      event => {
 
         if (
-          width < 10 ||
-          height < 10
+          event.pointerId !==
+          activePointerId
         ) {
 
           return;
 
         }
+
+
+        cancelDrawing();
+
+      }
+    );
+
+  }
+
+
+  /* =======================================================
+     UPDATE DRAW PREVIEW
+  ======================================================= */
+
+  function updateDrawPreview(
+    event
+  ) {
+
+    if (
+      !drawPreview ||
+      !drawLayer ||
+      !drawStart
+    ) {
+
+      return;
+
+    }
+
+
+    const rect =
+      drawLayer.getBoundingClientRect();
+
+
+    const current =
+      getPoint(
+        event,
+        rect
+      );
+
+
+    const x =
+      Math.min(
+        drawStart.x,
+        current.x
+      );
+
+
+    const y =
+      Math.min(
+        drawStart.y,
+        current.y
+      );
+
+
+    const width =
+      Math.abs(
+        current.x -
+        drawStart.x
+      );
+
+
+    const height =
+      Math.abs(
+        current.y -
+        drawStart.y
+      );
+
+
+    drawPreview.style.left =
+      `${(
+        x /
+        rect.width
+      ) * 100}%`;
+
+
+    drawPreview.style.top =
+      `${(
+        y /
+        rect.height
+      ) * 100}%`;
+
+
+    drawPreview.style.width =
+      `${(
+        width /
+        rect.width
+      ) * 100}%`;
+
+
+    drawPreview.style.height =
+      `${(
+        height /
+        rect.height
+      ) * 100}%`;
+
+  }
+
+
+  /* =======================================================
+     FINISH DRAWING
+  ======================================================= */
+
+  function finishDrawing(
+    event
+  ) {
+
+    if (
+      !drawing ||
+      !drawLayer ||
+      !drawPage ||
+      !drawStart
+    ) {
+
+      cancelDrawing();
+
+      return;
+
+    }
+
+
+    const rect =
+      drawLayer.getBoundingClientRect();
+
+
+    const current =
+      getPoint(
+        event,
+        rect
+      );
+
+
+    const x =
+      Math.min(
+        drawStart.x,
+        current.x
+      );
+
+
+    const y =
+      Math.min(
+        drawStart.y,
+        current.y
+      );
+
+
+    const width =
+      Math.abs(
+        current.x -
+        drawStart.x
+      );
+
+
+    const height =
+      Math.abs(
+        current.y -
+        drawStart.y
+      );
+
+
+    if (drawPreview) {
+
+      drawPreview.remove();
+
+    }
+
+
+    const page =
+      drawPage;
+
+
+    const layer =
+      drawLayer;
+
+
+    const canvas =
+      layer.parentElement
+        ?.querySelector(
+          "canvas"
+        );
+
+
+    /*
+      画面上の座標から
+      原画像座標へ変換。
+    */
+
+    if (!canvas) {
+
+      cancelDrawing();
+
+      return;
+
+    }
+
+
+    const canvasRect =
+      canvas.getBoundingClientRect();
+
+
+    const scaleX =
+      canvas.width /
+      canvasRect.width;
+
+
+    const scaleY =
+      canvas.height /
+      canvasRect.height;
+
+
+    drawing =
+      false;
+
+
+    activePointerId =
+      null;
+
+
+    drawStart =
+      null;
+
+
+    drawPage =
+      null;
+
+
+    drawLayer =
+      null;
+
+
+    drawPreview =
+      null;
+
+
+    if (
+      width < 8 ||
+      height < 8
+    ) {
+
+      return;
+
+    }
+
+
+    const role =
+      boxRole?.value ||
+      "minor";
+
+
+    const box = {
+
+      id:
+        crypto.randomUUID(),
+
+      test_id:
+        selectedTestId,
+
+      page_no:
+        Number(
+          page.page_no
+        ),
+
+      box_type:
+        ROLE_INFO[
+          role
+        ]?.type ||
+        "other",
+
+      label:
+        automaticLabel(
+          role
+        ),
+
+      x:
+        x *
+        scaleX,
+
+      y:
+        y *
+        scaleY,
+
+      width:
+        width *
+        scaleX,
+
+      height:
+        height *
+        scaleY,
+
+      points:
+        0,
+
+      parent_box_id:
+        null,
+
+      major_no:
+        null,
+
+      minor_no:
+        null,
+
+      box_role:
+        role,
+
+      sort_order:
+        boxes.length,
+
+      subtotal_group:
+        null
+
+    };
+
+
+    /*
+      親子関係を自動判定。
+    */
+
+    assignHierarchy(
+      box
+    );
+
+
+    boxes.push(
+      box
+    );
+
+
+    renderBox(
+      layer,
+      page,
+      box
+    );
+
+
+    selectBox(
+      box.id
+    );
+
+
+    updateRoleHelp();
+
+  }
+
+
+  /* =======================================================
+     CANCEL DRAWING
+  ======================================================= */
+
+  function cancelDrawing() {
+
+    if (drawPreview) {
+
+      drawPreview.remove();
+
+    }
+
+
+    drawing =
+      false;
+
+    activePointerId =
+      null;
+
+    drawStart =
+      null;
+
+    drawPage =
+      null;
+
+    drawLayer =
+      null;
+
+    drawPreview =
+      null;
+
+  }
+
+
+  /* =======================================================
+     RENDER BOX
+  ======================================================= */
+
+  function renderBox(
+    layer,
+    page,
+    box
+  ) {
+
+    const element =
+      document.createElement(
+        "div"
+      );
+
+
+    element.className =
+      "layout-box";
+
+
+    element.dataset.boxId =
+      box.id;
+
+
+    applyRoleStyle(
+      element,
+      box.box_role
+    );
+
+
+    updateBoxElement(
+      element,
+      page,
+      box
+    );
+
+
+    const label =
+      document.createElement(
+        "div"
+      );
+
+
+    label.className =
+      "layout-box-label";
+
+
+    label.textContent =
+      automaticLabel(
+        box.box_role,
+        box
+      );
+
+
+    element.appendChild(
+      label
+    );
+
+
+    const resize =
+      document.createElement(
+        "div"
+      );
+
+
+    resize.className =
+      "resize-handle";
+
+
+    element.appendChild(
+      resize
+    );
+
+
+    layer.appendChild(
+      element
+    );
+
+
+    setupBoxPointerEvents(
+      element,
+      resize,
+      page,
+      box
+    );
+
+  }
+
+
+  /* =======================================================
+     ROLE STYLE
+  ======================================================= */
+
+  function applyRoleStyle(
+    element,
+    role
+  ) {
+
+    /*
+      大問
+    */
+
+    if (
+      role ===
+      "major"
+    ) {
+
+      element.style.border =
+        "3px solid #2468a8";
+
+      element.style.background =
+        "rgba(36,104,168,.07)";
+
+      return;
+
+    }
+
+
+    /*
+      小問
+    */
+
+    if (
+      role ===
+      "minor"
+    ) {
+
+      element.style.border =
+        "2px solid #d00000";
+
+      element.style.background =
+        "rgba(208,0,0,.06)";
+
+      return;
+
+    }
+
+
+    /*
+      QR
+    */
+
+    if (
+      role ===
+      "qr"
+    ) {
+
+      element.style.border =
+        "3px dashed #333";
+
+      element.style.background =
+        "rgba(0,0,0,.06)";
+
+      return;
+
+    }
+
+
+    /*
+      小計
+    */
+
+    if (
+      role ===
+      "subtotal"
+    ) {
+
+      element.style.border =
+        "2px dashed #555";
+
+      element.style.background =
+        "rgba(0,0,0,.04)";
+
+      return;
+
+    }
+
+
+    /*
+      合計
+    */
+
+    if (
+      role ===
+      "total"
+    ) {
+
+      element.style.border =
+        "3px double #333";
+
+      element.style.background =
+        "rgba(0,0,0,.05)";
+
+      return;
+
+    }
+
+
+    /*
+      その他
+    */
+
+    element.style.border =
+      "2px solid #666";
+
+    element.style.background =
+      "rgba(0,0,0,.03)";
+
+  }
+
+
+  /* =======================================================
+     BOX POINTER EVENTS
+  ======================================================= */
+
+  function setupBoxPointerEvents(
+    element,
+    resizeHandle,
+    page,
+    box
+  ) {
+
+    element.addEventListener(
+      "pointerdown",
+      event => {
+
+        event.stopPropagation();
+
+        event.preventDefault();
+
+
+        selectBox(
+          box.id
+        );
+
+
+        const mode =
+          event.target ===
+          resizeHandle
+            ? "resize"
+            : "move";
+
+
+        dragMode =
+          mode;
+
+
+        dragBoxId =
+          box.id;
+
+
+        activePointerId =
+          event.pointerId;
+
+
+        element.setPointerCapture(
+          event.pointerId
+        );
 
 
         const canvas =
-          wrapper.querySelector(
-            "canvas"
-          );
+          element
+            .parentElement
+            ?.parentElement
+            ?.querySelector(
+              "canvas"
+            );
 
 
-        const canvasRect =
+        if (!canvas) {
+          return;
+        }
+
+
+        const rect =
           canvas.getBoundingClientRect();
 
 
-        const scaleX =
-          canvas.width /
-          canvasRect.width;
-
-
-        const scaleY =
-          canvas.height /
-          canvasRect.height;
-
-
-        const role =
-          getCurrentRole();
-
-
-        const box = {
-
-          id:
-            crypto.randomUUID(),
-
-          test_id:
-            selectedTestId,
-
-          page_no:
-            Number(
-              page.page_no
-            ),
-
-          box_type:
-            BOX_ROLES[
-              role
-            ]?.defaultBoxType ||
-            "other",
-
-          box_role:
-            role,
-
-          label:
-            createDefaultLabel(
-              role
-            ),
-
-          points:
-            role ===
-              "minor"
-              ? 0
-              : 0,
+        dragStart = {
 
           x:
-            x *
-            scaleX,
+            event.clientX,
 
           y:
-            y *
-            scaleY,
+            event.clientY,
 
-          width:
-            width *
-            scaleX,
+          scaleX:
+            canvas.width /
+            rect.width,
 
-          height:
-            height *
-            scaleY,
-
-          question_id:
-            null,
-
-          parent_box_id:
-            null,
-
-          major_no:
-            null,
-
-          minor_no:
-            null,
-
-          sort_order:
-            boxes.length,
-
-          subtotal_group:
-            null
+          scaleY:
+            canvas.height /
+            rect.height
 
         };
 
 
-        assignHierarchy(
-          box
-        );
+        dragOriginal = {
+
+          x:
+            Number(
+              box.x
+            ),
+
+          y:
+            Number(
+              box.y
+            ),
+
+          width:
+            Number(
+              box.width
+            ),
+
+          height:
+            Number(
+              box.height
+            )
+
+        };
+
+      }
+    );
 
 
-        boxes.push(
-          box
-        );
+    element.addEventListener(
+      "pointermove",
+      event => {
+
+        if (
+          dragBoxId !==
+          box.id ||
+          !dragStart ||
+          !dragOriginal ||
+          event.pointerId !==
+            activePointerId
+        ) {
+
+          return;
+
+        }
 
 
-        renderBox(
-          wrapper,
-          layer,
+        event.preventDefault();
+
+
+        const dx =
+          (
+            event.clientX -
+            dragStart.x
+          ) *
+          dragStart.scaleX;
+
+
+        const dy =
+          (
+            event.clientY -
+            dragStart.y
+          ) *
+          dragStart.scaleY;
+
+
+        if (
+          dragMode ===
+          "move"
+        ) {
+
+          box.x =
+            Math.max(
+              0,
+              dragOriginal.x +
+                dx
+            );
+
+
+          box.y =
+            Math.max(
+              0,
+              dragOriginal.y +
+                dy
+            );
+
+        }
+
+
+        if (
+          dragMode ===
+          "resize"
+        ) {
+
+          box.width =
+            Math.max(
+              8,
+              dragOriginal.width +
+                dx
+            );
+
+
+          box.height =
+            Math.max(
+              8,
+              dragOriginal.height +
+                dy
+            );
+
+        }
+
+
+        /*
+          小問を移動したら
+          親大問を再判定。
+        */
+
+        if (
+          box.box_role ===
+          "minor"
+        ) {
+
+          updateParent(
+            box
+          );
+
+        }
+
+
+        updatePageBoxElement(
+          element,
           page,
           box
         );
 
 
-        selectBox(
+        updateAllLabels();
+
+      }
+    );
+
+
+    element.addEventListener(
+      "pointerup",
+      event => {
+
+        if (
+          event.pointerId !==
+          activePointerId
+        ) {
+
+          return;
+
+        }
+
+
+        event.preventDefault();
+
+
+        finishBoxDrag(
+          box
+        );
+
+      }
+    );
+
+
+    element.addEventListener(
+      "pointercancel",
+      event => {
+
+        if (
+          event.pointerId !==
+          activePointerId
+        ) {
+
+          return;
+
+        }
+
+
+        finishBoxDrag(
           box
         );
 
@@ -1700,71 +1734,345 @@
 
 
   /* =======================================================
-     CURRENT ROLE
+     FINISH BOX DRAG
   ======================================================= */
 
-  function getCurrentRole() {
+  function finishBoxDrag(
+    box
+  ) {
 
-    const roleSelect =
-      document.getElementById(
-        "boxRole"
+    if (
+      box.box_role ===
+      "minor"
+    ) {
+
+      updateParent(
+        box
+      );
+
+      renumberMinors();
+
+    }
+
+
+    dragMode =
+      null;
+
+    dragBoxId =
+      null;
+
+    activePointerId =
+      null;
+
+    dragStart =
+      null;
+
+    dragOriginal =
+      null;
+
+
+    updateAllLabels();
+
+    updateRoleHelp();
+
+  }
+
+
+  /* =======================================================
+     SELECT BOX
+  ======================================================= */
+
+  function selectBox(
+    boxId
+  ) {
+
+    selectedBoxId =
+      boxId;
+
+
+    document
+      .querySelectorAll(
+        ".layout-box"
+      )
+      .forEach(
+        element => {
+
+          element.classList.toggle(
+            "selected",
+            element.dataset.boxId ===
+              boxId
+          );
+
+        }
       );
 
 
-    return (
-      roleSelect?.value ||
-      "minor"
+    openBoxPanel();
+
+    updateRoleHelp();
+
+  }
+
+
+  /* =======================================================
+     OPEN PANEL
+  ======================================================= */
+
+  function openBoxPanel() {
+
+    boxPanel?.classList.add(
+      "open"
+    );
+
+    updateRoleHelp();
+
+  }
+
+
+  /* =======================================================
+     CLOSE PANEL
+  ======================================================= */
+
+  function closeBoxPanel() {
+
+    boxPanel?.classList.remove(
+      "open"
     );
 
   }
 
 
   /* =======================================================
-     DEFAULT LABEL
+     APPLY SELECTED BOX
   ======================================================= */
 
-  function createDefaultLabel(
-    role
-  ) {
+  function applySelectedBox() {
 
-    switch (
-      role
-    ) {
+    if (!selectedBoxId) {
 
-      case "major":
-        return `大問${getNextMajorNumber()}`;
-
-      case "minor":
-        return "小問";
-
-      case "qr":
-        return "QR";
-
-      case "subtotal":
-        return "小計";
-
-      case "total":
-        return "合計";
-
-      case "name":
-        return "氏名";
-
-      case "student_no":
-        return "生徒番号";
-
-      case "instruction":
-        return "説明";
-
-      default:
-        return "その他";
+      return;
 
     }
+
+
+    const box =
+      getSelectedBox();
+
+
+    if (!box) {
+
+      return;
+
+    }
+
+
+    const role =
+      boxRole?.value ||
+      box.box_role ||
+      "minor";
+
+
+    box.box_role =
+      role;
+
+
+    box.box_type =
+      ROLE_INFO[
+        role
+      ]?.type ||
+      "other";
+
+
+    /*
+      表示名は入力しない。
+
+      常に自動生成。
+    */
+
+    if (
+      role ===
+      "major"
+    ) {
+
+      box.parent_box_id =
+        null;
+
+      box.minor_no =
+        null;
+
+      if (
+        !box.major_no
+      ) {
+
+        box.major_no =
+          getNextMajorNumber(
+            box.id
+          );
+
+      }
+
+    }
+
+
+    else if (
+      role ===
+      "minor"
+    ) {
+
+      updateParent(
+        box
+      );
+
+    }
+
+
+    else {
+
+      box.parent_box_id =
+        null;
+
+      box.major_no =
+        null;
+
+      box.minor_no =
+        null;
+
+    }
+
+
+    if (
+      role ===
+      "subtotal"
+    ) {
+
+      const parent =
+        findContainingMajor(
+          box
+        );
+
+
+      if (parent) {
+
+        box.subtotal_group =
+          parent.major_no;
+
+      } else {
+
+        box.subtotal_group =
+          null;
+
+      }
+
+    } else {
+
+      box.subtotal_group =
+        null;
+
+    }
+
+
+    renumberMajors();
+
+    renumberMinors();
+
+
+    updateAllLabels();
+
+    updateRoleHelp();
 
   }
 
 
   /* =======================================================
-     HIERARCHY
+     DELETE SELECTED
+  ======================================================= */
+
+  function deleteSelectedBox() {
+
+    if (!selectedBoxId) {
+
+      return;
+
+    }
+
+
+    const targetId =
+      selectedBoxId;
+
+
+    /*
+      子小問の親を解除
+    */
+
+    boxes
+      .filter(
+        box =>
+          box.parent_box_id ===
+          targetId
+      )
+      .forEach(
+        child => {
+
+          child.parent_box_id =
+            null;
+
+          child.major_no =
+            null;
+
+          child.minor_no =
+            null;
+
+        }
+      );
+
+
+    boxes =
+      boxes.filter(
+        box =>
+          box.id !==
+          targetId
+      );
+
+
+    document
+      .querySelectorAll(
+        ".layout-box"
+      )
+      .forEach(
+        element => {
+
+          if (
+            element.dataset.boxId ===
+            targetId
+          ) {
+
+            element.remove();
+
+          }
+
+        }
+      );
+
+
+    selectedBoxId =
+      null;
+
+
+    renumberMajors();
+
+    renumberMinors();
+
+
+    closeBoxPanel();
+
+
+    updateAllLabels();
+
+  }
+
+
+  /* =======================================================
+     ASSIGN HIERARCHY
   ======================================================= */
 
   function assignHierarchy(
@@ -1776,13 +2084,13 @@
       "major"
     ) {
 
+      box.parent_box_id =
+        null;
+
       box.major_no =
         getNextMajorNumber();
 
       box.minor_no =
-        null;
-
-      box.parent_box_id =
         null;
 
       return;
@@ -1801,16 +2109,18 @@
         );
 
 
+      /*
+        大問が実際に存在するときだけ
+        親子関係を作る。
+      */
+
       if (parent) {
 
         box.parent_box_id =
           parent.id;
 
         box.major_no =
-          parent.major_no ||
-          getMajorNumber(
-            parent
-          );
+          parent.major_no;
 
         box.minor_no =
           getNextMinorNumber(
@@ -1819,14 +2129,18 @@
 
       } else {
 
+        /*
+          大問を勝手に作らない。
+        */
+
         box.parent_box_id =
           null;
 
         box.major_no =
-          getNextMajorNumber();
+          null;
 
         box.minor_no =
-          1;
+          null;
 
       }
 
@@ -1849,16 +2163,13 @@
 
       if (parent) {
 
-        box.major_no =
-          parent.major_no;
-
         box.subtotal_group =
           parent.major_no;
 
       } else {
 
         box.subtotal_group =
-          getNextSubtotalGroup();
+          null;
 
       }
 
@@ -1871,21 +2182,86 @@
     box.parent_box_id =
       null;
 
+    box.major_no =
+      null;
+
+    box.minor_no =
+      null;
+
   }
 
 
   /* =======================================================
-     FIND PARENT MAJOR
+     UPDATE PARENT
+  ======================================================= */
+
+  function updateParent(
+    box
+  ) {
+
+    const parent =
+      findContainingMajor(
+        box
+      );
+
+
+    if (!parent) {
+
+      /*
+        大問がなければ
+        勝手に大問を作らない。
+      */
+
+      box.parent_box_id =
+        null;
+
+      box.major_no =
+        null;
+
+      box.minor_no =
+        null;
+
+      return;
+
+    }
+
+
+    box.parent_box_id =
+      parent.id;
+
+    box.major_no =
+      parent.major_no;
+
+    box.minor_no =
+      getNextMinorNumberIgnoringSelf(
+        parent.id,
+        box.id
+      );
+
+  }
+
+
+  /* =======================================================
+     FIND CONTAINING MAJOR
   ======================================================= */
 
   function findContainingMajor(
     box
   ) {
 
+    const center =
+      getCenter(
+        box
+      );
+
+
     const candidates =
       boxes
         .filter(
           candidate =>
+
+            candidate.id !==
+              box.id &&
 
             candidate.box_role ===
               "major" &&
@@ -1897,10 +2273,8 @@
               box.page_no
             ) &&
 
-            isPointInsideBox(
-              getBoxCenter(
-                box
-              ),
+            pointInside(
+              center,
               candidate
             )
         );
@@ -1914,7 +2288,8 @@
 
 
     /*
-      複数候補なら最小の大問を親にする。
+      大問が重なっている場合は
+      最小の大問を優先。
     */
 
     candidates.sort(
@@ -1939,10 +2314,35 @@
 
 
   /* =======================================================
-     POINT IN BOX
+     GET CENTER
   ======================================================= */
 
-  function isPointInsideBox(
+  function getCenter(
+    box
+  ) {
+
+    return {
+
+      x:
+        Number(box.x) +
+        Number(box.width) /
+        2,
+
+      y:
+        Number(box.y) +
+        Number(box.height) /
+        2
+
+    };
+
+  }
+
+
+  /* =======================================================
+     POINT INSIDE
+  ======================================================= */
+
+  function pointInside(
     point,
     box
   ) {
@@ -1969,42 +2369,21 @@
 
 
   /* =======================================================
-     CENTER
-  ======================================================= */
-
-  function getBoxCenter(
-    box
-  ) {
-
-    return {
-
-      x:
-        Number(box.x) +
-        Number(box.width) /
-        2,
-
-      y:
-        Number(box.y) +
-        Number(box.height) /
-        2
-
-    };
-
-  }
-
-
-  /* =======================================================
      MAJOR NUMBER
   ======================================================= */
 
-  function getNextMajorNumber() {
+  function getNextMajorNumber(
+    ignoreId = null
+  ) {
 
     const numbers =
       boxes
         .filter(
           box =>
             box.box_role ===
-            "major"
+              "major" &&
+            box.id !==
+              ignoreId
         )
         .map(
           box =>
@@ -2020,20 +2399,6 @@
         ...numbers
       ) +
       1
-    );
-
-  }
-
-
-  function getMajorNumber(
-    box
-  ) {
-
-    return (
-      Number(
-        box.major_no
-      ) ||
-      getNextMajorNumber()
     );
 
   }
@@ -2075,613 +2440,6 @@
   }
 
 
-  /* =======================================================
-     SUBTOTAL GROUP
-  ======================================================= */
-
-  function getNextSubtotalGroup() {
-
-    const groups =
-      boxes
-        .map(
-          box =>
-            Number(
-              box.subtotal_group
-            ) || 0
-        );
-
-
-    return (
-      Math.max(
-        0,
-        ...groups
-      ) +
-      1
-    );
-
-  }
-
-
-  /* =======================================================
-     RENDER BOX
-  ======================================================= */
-
-  function renderBox(
-    wrapper,
-    layer,
-    page,
-    box
-  ) {
-
-    const element =
-      document.createElement(
-        "div"
-      );
-
-
-    element.className =
-      "box";
-
-
-    element.dataset.boxId =
-      box.id;
-
-
-    const role =
-      box.box_role ||
-      inferRoleFromBox(
-        box
-      );
-
-
-    element.dataset.role =
-      role;
-
-
-    applyRoleStyle(
-      element,
-      role
-    );
-
-
-    updateBoxElement(
-      element,
-      page,
-      box
-    );
-
-
-    const label =
-      document.createElement(
-        "div"
-      );
-
-
-    label.className =
-      "box-label";
-
-
-    label.textContent =
-      createBoxDisplayLabel(
-        box
-      );
-
-
-    element.appendChild(
-      label
-    );
-
-
-    const resize =
-      document.createElement(
-        "div"
-      );
-
-
-    resize.className =
-      "resize";
-
-
-    element.appendChild(
-      resize
-    );
-
-
-    layer.appendChild(
-      element
-    );
-
-
-    enableBoxInteraction(
-      element,
-      resize,
-      wrapper,
-      page,
-      box
-    );
-
-  }
-
-
-  /* =======================================================
-     ROLE STYLE
-  ======================================================= */
-
-  function applyRoleStyle(
-    element,
-    role
-  ) {
-
-    if (
-      role ===
-      "major"
-    ) {
-
-      element.style.border =
-        "3px solid #2468a8";
-
-      element.style.background =
-        "rgba(36,104,168,.08)";
-
-      return;
-
-    }
-
-
-    if (
-      role ===
-      "minor"
-    ) {
-
-      element.style.border =
-        "2px solid #d00000";
-
-      element.style.background =
-        "rgba(208,0,0,.06)";
-
-      return;
-
-    }
-
-
-    if (
-      role ===
-      "qr"
-    ) {
-
-      element.style.border =
-        "3px dashed #333";
-
-      element.style.background =
-        "rgba(0,0,0,.06)";
-
-      return;
-
-    }
-
-
-    if (
-      role ===
-      "subtotal"
-    ) {
-
-      element.style.border =
-        "2px dashed #555";
-
-      element.style.background =
-        "rgba(0,0,0,.04)";
-
-      return;
-
-    }
-
-
-    if (
-      role ===
-      "total"
-    ) {
-
-      element.style.border =
-        "3px double #333";
-
-      element.style.background =
-        "rgba(0,0,0,.05)";
-
-      return;
-
-    }
-
-
-    element.style.border =
-      "2px solid #555";
-
-    element.style.background =
-      "rgba(0,0,0,.03)";
-
-  }
-
-
-  /* =======================================================
-     DISPLAY LABEL
-  ======================================================= */
-
-  function createBoxDisplayLabel(
-    box
-  ) {
-
-    const role =
-      box.box_role ||
-      inferRoleFromBox(
-        box
-      );
-
-
-    if (
-      role ===
-      "major"
-    ) {
-
-      return `大問${
-        box.major_no || "?"
-      }`;
-
-    }
-
-
-    if (
-      role ===
-      "minor"
-    ) {
-
-      const major =
-        box.major_no
-          ? `大問${box.major_no} `
-          : "";
-
-
-      const minor =
-        box.minor_no
-          ? `問${box.minor_no}`
-          : "小問";
-
-
-      return `${major}${minor} ${
-        Number(
-          box.points
-        ) || 0
-      }点`;
-
-    }
-
-
-    if (
-      role ===
-      "qr"
-    ) {
-
-      return "QR";
-
-    }
-
-
-    if (
-      role ===
-      "subtotal"
-    ) {
-
-      return `小計${
-        box.subtotal_group || ""
-      }`;
-
-    }
-
-
-    if (
-      role ===
-      "total"
-    ) {
-
-      return "合計";
-
-    }
-
-
-    return (
-      box.label ||
-      BOX_ROLES[
-        role
-      ]?.label ||
-      "その他"
-    );
-
-  }
-
-
-  /* =======================================================
-     MOVE / RESIZE
-  ======================================================= */
-
-  function enableBoxInteraction(
-    element,
-    resize,
-    wrapper,
-    page,
-    box
-  ) {
-
-    let moving =
-      false;
-
-    let resizing =
-      false;
-
-    let startClientX =
-      0;
-
-    let startClientY =
-      0;
-
-    let original =
-      null;
-
-
-    element.addEventListener(
-      "mousedown",
-      event => {
-
-        event.stopPropagation();
-
-
-        selectBox(
-          box
-        );
-
-
-        moving =
-          event.target !==
-          resize;
-
-
-        resizing =
-          event.target ===
-          resize;
-
-
-        startClientX =
-          event.clientX;
-
-
-        startClientY =
-          event.clientY;
-
-
-        original = {
-
-          x:
-            Number(
-              box.x
-            ),
-
-          y:
-            Number(
-              box.y
-            ),
-
-          width:
-            Number(
-              box.width
-            ),
-
-          height:
-            Number(
-              box.height
-            )
-
-        };
-
-      }
-    );
-
-
-    const move =
-      event => {
-
-        if (
-          !moving &&
-          !resizing
-        ) {
-
-          return;
-
-        }
-
-
-        const canvas =
-          wrapper.querySelector(
-            "canvas"
-          );
-
-
-        const rect =
-          canvas.getBoundingClientRect();
-
-
-        const scaleX =
-          canvas.width /
-          rect.width;
-
-
-        const scaleY =
-          canvas.height /
-          rect.height;
-
-
-        const dx =
-          (
-            event.clientX -
-            startClientX
-          ) *
-          scaleX;
-
-
-        const dy =
-          (
-            event.clientY -
-            startClientY
-          ) *
-          scaleY;
-
-
-        if (moving) {
-
-          box.x =
-            clamp(
-              original.x +
-                dx,
-              0,
-              canvas.width -
-                box.width
-            );
-
-
-          box.y =
-            clamp(
-              original.y +
-                dy,
-              0,
-              canvas.height -
-                box.height
-            );
-
-        }
-
-
-        if (resizing) {
-
-          box.width =
-            clamp(
-              original.width +
-                dx,
-              10,
-              canvas.width -
-                box.x
-            );
-
-
-          box.height =
-            clamp(
-              original.height +
-                dy,
-              10,
-              canvas.height -
-                box.y
-            );
-
-        }
-
-
-        /*
-          小問を移動・サイズ変更したら
-          親大問を再判定。
-        */
-
-        if (
-          box.box_role ===
-          "minor"
-        ) {
-
-          updateParentForMinor(
-            box
-          );
-
-        }
-
-
-        updateBoxElement(
-          element,
-          page,
-          box
-        );
-
-
-        updateAllBoxLabels();
-
-      };
-
-
-    const stop =
-      () => {
-
-        moving =
-          false;
-
-        resizing =
-          false;
-
-      };
-
-
-    document.addEventListener(
-      "mousemove",
-      move
-    );
-
-
-    document.addEventListener(
-      "mouseup",
-      stop
-    );
-
-  }
-
-
-  /* =======================================================
-     UPDATE PARENT
-  ======================================================= */
-
-  function updateParentForMinor(
-    box
-  ) {
-
-    const parent =
-      findContainingMajor(
-        box
-      );
-
-
-    if (parent) {
-
-      box.parent_box_id =
-        parent.id;
-
-      box.major_no =
-        parent.major_no ||
-        getMajorNumber(
-          parent
-        );
-
-      box.minor_no =
-        getNextMinorNumberIgnoringSelf(
-          parent.id,
-          box.id
-        );
-
-    } else {
-
-      box.parent_box_id =
-        null;
-
-      box.major_no =
-        null;
-
-      box.minor_no =
-        null;
-
-    }
-
-  }
-
-
   function getNextMinorNumberIgnoringSelf(
     parentId,
     selfId
@@ -2718,757 +2476,6 @@
 
 
   /* =======================================================
-     UPDATE BOX ELEMENT
-  ======================================================= */
-
-  function updateBoxElement(
-    element,
-    page,
-    box
-  ) {
-
-    const pageWidth =
-      Number(
-        page.width_px
-      );
-
-
-    const pageHeight =
-      Number(
-        page.height_px
-      );
-
-
-    if (
-      !pageWidth ||
-      !pageHeight
-    ) {
-
-      return;
-
-    }
-
-
-    element.style.left =
-      `${
-        Number(box.x) /
-        pageWidth *
-        100
-      }%`;
-
-
-    element.style.top =
-      `${
-        Number(box.y) /
-        pageHeight *
-        100
-      }%`;
-
-
-    element.style.width =
-      `${
-        Number(box.width) /
-        pageWidth *
-        100
-      }%`;
-
-
-    element.style.height =
-      `${
-        Number(box.height) /
-        pageHeight *
-        100
-      }%`;
-
-  }
-
-
-  /* =======================================================
-     SELECT BOX
-  ======================================================= */
-
-  function selectBox(
-    box
-  ) {
-
-    selectedBox =
-      box;
-
-
-    document
-      .querySelectorAll(
-        ".box"
-      )
-      .forEach(
-        element => {
-
-          element.classList.toggle(
-            "selected",
-            element.dataset.boxId ===
-              box.id
-          );
-
-        }
-      );
-
-
-    if (!panel) {
-      return;
-    }
-
-
-    panel.hidden =
-      false;
-
-
-    const roleSelect =
-      document.getElementById(
-        "boxRole"
-      );
-
-
-    if (roleSelect) {
-
-      roleSelect.value =
-        box.box_role ||
-        inferRoleFromBox(
-          box
-        );
-
-    }
-
-
-    if (labelInput) {
-
-      labelInput.value =
-        box.label ||
-        "";
-
-    }
-
-
-    if (pointsInput) {
-
-      pointsInput.value =
-        box.points ??
-        0;
-
-    }
-
-
-    if (questionIdInput) {
-
-      questionIdInput.value =
-        box.question_id ||
-        "";
-
-    }
-
-  }
-
-
-  /* =======================================================
-     APPLY
-  ======================================================= */
-
-  function applySelectedBox() {
-
-    if (!selectedBox) {
-      return;
-    }
-
-
-    const role =
-      getCurrentRole();
-
-
-    selectedBox.box_role =
-      role;
-
-
-    selectedBox.box_type =
-      BOX_ROLES[
-        role
-      ]?.defaultBoxType ||
-      "other";
-
-
-    /*
-      小問だけ配点を使用。
-    */
-
-    if (
-      role ===
-      "minor"
-    ) {
-
-      const points =
-        Number(
-          pointsInput?.value
-        );
-
-
-      if (
-        !Number.isFinite(
-          points
-        ) ||
-        points < 0
-      ) {
-
-        throw new Error(
-          "小問の配点は0以上の数値を入力してください。"
-        );
-
-      }
-
-
-      selectedBox.points =
-        points;
-
-    } else {
-
-      selectedBox.points =
-        0;
-
-    }
-
-
-    selectedBox.label =
-      labelInput?.value.trim() ||
-      createDefaultLabel(
-        role
-      );
-
-
-    selectedBox.question_id =
-      questionIdInput?.value.trim() ||
-      null;
-
-
-    if (
-      role ===
-      "major"
-    ) {
-
-      if (
-        !selectedBox.major_no
-      ) {
-
-        selectedBox.major_no =
-          getNextMajorNumber();
-
-      }
-
-
-      selectedBox.parent_box_id =
-        null;
-
-
-      selectedBox.minor_no =
-        null;
-
-    }
-
-
-    if (
-      role ===
-      "minor"
-    ) {
-
-      updateParentForMinor(
-        selectedBox
-      );
-
-    }
-
-
-    if (
-      role ===
-      "subtotal"
-    ) {
-
-      const parent =
-        findContainingMajor(
-          selectedBox
-        );
-
-
-      if (parent) {
-
-        selectedBox.major_no =
-          parent.major_no;
-
-        selectedBox.subtotal_group =
-          parent.major_no;
-
-      } else {
-
-        selectedBox.subtotal_group =
-          selectedBox.subtotal_group ||
-          getNextSubtotalGroup();
-
-      }
-
-    }
-
-
-    if (
-      role !==
-        "minor" &&
-      role !==
-        "major" &&
-      role !==
-        "subtotal"
-    ) {
-
-      selectedBox.parent_box_id =
-        null;
-
-    }
-
-
-    updateBoxStylesAndLabels();
-
-  }
-
-
-  /* =======================================================
-     UPDATE ALL STYLES / LABELS
-  ======================================================= */
-
-  function updateBoxStylesAndLabels() {
-
-    boxes.forEach(
-      box => {
-
-        const element =
-          document.querySelector(
-            `[data-box-id="${cssEscape(
-              box.id
-            )}"]`
-          );
-
-
-        if (!element) {
-          return;
-        }
-
-
-        applyRoleStyle(
-          element,
-          box.box_role
-        );
-
-
-        const label =
-          element.querySelector(
-            ".box-label"
-          );
-
-
-        if (label) {
-
-          label.textContent =
-            createBoxDisplayLabel(
-              box
-            );
-
-        }
-
-
-        element.dataset.role =
-          box.box_role;
-
-      }
-    );
-
-  }
-
-
-  function updateAllBoxLabels() {
-
-    boxes.forEach(
-      box => {
-
-        const element =
-          document.querySelector(
-            `[data-box-id="${cssEscape(
-              box.id
-            )}"]`
-          );
-
-
-        if (!element) {
-          return;
-        }
-
-
-        const label =
-          element.querySelector(
-            ".box-label"
-          );
-
-
-        if (label) {
-
-          label.textContent =
-            createBoxDisplayLabel(
-              box
-            );
-
-        }
-
-      }
-    );
-
-  }
-
-
-  /* =======================================================
-     DELETE
-  ======================================================= */
-
-  function deleteSelectedBox() {
-
-    if (!selectedBox) {
-      return;
-    }
-
-
-    /*
-      親大問を削除した場合、
-      子小問は親なしへ。
-    */
-
-    boxes
-      .filter(
-        box =>
-          box.parent_box_id ===
-          selectedBox.id
-      )
-      .forEach(
-        child => {
-
-          child.parent_box_id =
-            null;
-
-          child.major_no =
-            null;
-
-          child.minor_no =
-            null;
-
-        }
-      );
-
-
-    boxes =
-      boxes.filter(
-        box =>
-          box.id !==
-          selectedBox.id
-      );
-
-
-    document
-      .querySelectorAll(
-        ".box"
-      )
-      .forEach(
-        element => {
-
-          if (
-            element.dataset.boxId ===
-            selectedBox.id
-          ) {
-
-            element.remove();
-
-          }
-
-        }
-      );
-
-
-    selectedBox =
-      null;
-
-
-    closePanel();
-
-
-    updateAllBoxLabels();
-
-  }
-
-
-  /* =======================================================
-     SAVE BOXES
-  ======================================================= */
-
-  async function saveBoxes() {
-
-    if (!selectedTestId) {
-
-      alert(
-        "テストIDがありません。"
-      );
-
-      return;
-
-    }
-
-
-    try {
-
-      /*
-        現在選択中の枠を反映
-      */
-
-      applySelectedBox();
-
-
-      /*
-        全小問の親を再判定
-      */
-
-      boxes
-        .filter(
-          box =>
-            box.box_role ===
-            "minor"
-        )
-        .forEach(
-          box => {
-
-            updateParentForMinor(
-              box
-            );
-
-          }
-        );
-
-
-      /*
-        大問番号
-      */
-
-      renumberMajors();
-
-
-      /*
-        小問番号
-      */
-
-      renumberMinors();
-
-
-      /*
-        小計グループ
-      */
-
-      assignSubtotalGroups();
-
-
-      /*
-        並び順
-      */
-
-      boxes
-        .sort(
-          compareBoxes
-        )
-        .forEach(
-          (
-            box,
-            index
-          ) => {
-
-            box.sort_order =
-              index;
-
-          }
-        );
-
-
-      validateBoxes();
-
-
-      saveButton.disabled =
-        true;
-
-
-      setStatus(
-        "枠設定を保存しています..."
-      );
-
-
-      /*
-        既存枠削除
-      */
-
-      const {
-        error:
-          deleteError
-      } =
-        await supabaseClient
-          .from(
-            "layout_boxes"
-          )
-          .delete()
-          .eq(
-            "test_id",
-            selectedTestId
-          );
-
-
-      if (deleteError) {
-        throw deleteError;
-      }
-
-
-      /*
-        INSERT
-      */
-
-      if (boxes.length) {
-
-        const rows =
-          boxes.map(
-            box => ({
-
-              id:
-                box.id,
-
-              test_id:
-                selectedTestId,
-
-              page_no:
-                Number(
-                  box.page_no
-                ),
-
-              box_type:
-                box.box_type ||
-                "other",
-
-              label:
-                box.label ||
-                null,
-
-              x:
-                Number(
-                  box.x
-                ),
-
-              y:
-                Number(
-                  box.y
-                ),
-
-              width:
-                Number(
-                  box.width
-                ),
-
-              height:
-                Number(
-                  box.height
-                ),
-
-              question_id:
-                box.question_id ||
-                null,
-
-              points:
-                Number(
-                  box.points
-                ) || 0,
-
-              parent_box_id:
-                box.parent_box_id ||
-                null,
-
-              major_no:
-                box.major_no ||
-                null,
-
-              minor_no:
-                box.minor_no ||
-                null,
-
-              box_role:
-                box.box_role ||
-                "other",
-
-              sort_order:
-                box.sort_order,
-
-              subtotal_group:
-                box.subtotal_group ||
-                null
-
-            })
-          );
-
-
-        const {
-          error:
-            insertError
-        } =
-          await supabaseClient
-            .from(
-              "layout_boxes"
-            )
-            .insert(
-              rows
-            );
-
-
-        if (insertError) {
-          throw insertError;
-        }
-
-      }
-
-
-      await loadTestPages();
-
-
-      setStatus(
-        "枠設定を保存しました。"
-      );
-
-
-      alert(
-        "枠設定を保存しました。"
-      );
-
-
-    } catch (error) {
-
-      console.error(
-        "saveBoxes:",
-        error
-      );
-
-
-      showError(
-        error.message ||
-        "枠設定の保存に失敗しました。"
-      );
-
-    } finally {
-
-      saveButton.disabled =
-        false;
-
-    }
-
-  }
-
-
-  /* =======================================================
      RENUMBER MAJORS
   ======================================================= */
 
@@ -3488,11 +2495,11 @@
 
     majors.forEach(
       (
-        box,
+        major,
         index
       ) => {
 
-        box.major_no =
+        major.major_no =
           index + 1;
 
       }
@@ -3556,82 +2563,609 @@
 
 
     /*
-      大問の外にある小問。
+      大問が存在しない小問は
+      大問番号を持たない。
     */
 
-    const orphanMinors =
-      boxes
-        .filter(
-          box =>
-            box.box_role ===
-              "minor" &&
-            !box.parent_box_id
-        )
-        .sort(
-          compareBoxes
-        );
+    boxes
+      .filter(
+        box =>
+          box.box_role ===
+            "minor" &&
+          !box.parent_box_id
+      )
+      .forEach(
+        box => {
+
+          box.major_no =
+            null;
+
+          box.minor_no =
+            null;
+
+        }
+      );
+
+  }
 
 
-    orphanMinors.forEach(
-      (
-        child,
-        index
-      ) => {
+  /* =======================================================
+     AUTOMATIC LABEL
+  ======================================================= */
 
-        child.major_no =
-          majors.length +
-          index +
-          1;
+  function automaticLabel(
+    role,
+    box = null
+  ) {
 
-        child.minor_no =
-          1;
+    switch (
+      role
+    ) {
 
-      }
+      case "major":
+
+        return `大問${
+          box?.major_no ||
+          getNextMajorNumber()
+        }`;
+
+
+      case "minor":
+
+        if (
+          box?.minor_no
+        ) {
+
+          return `問${box.minor_no}`;
+
+        }
+
+        return "小問";
+
+
+      case "qr":
+        return "QR";
+
+
+      case "subtotal":
+        return "小計";
+
+
+      case "total":
+        return "合計";
+
+
+      case "name":
+        return "氏名";
+
+
+      case "student_no":
+        return "生徒番号";
+
+
+      case "instruction":
+        return "説明";
+
+
+      default:
+        return "その他";
+
+    }
+
+  }
+
+
+  /* =======================================================
+     UPDATE ALL LABELS
+  ======================================================= */
+
+  function updateAllLabels() {
+
+    document
+      .querySelectorAll(
+        ".layout-box"
+      )
+      .forEach(
+        element => {
+
+          const box =
+            boxes.find(
+              item =>
+                item.id ===
+                element.dataset.boxId
+            );
+
+
+          if (!box) {
+            return;
+          }
+
+
+          const label =
+            element.querySelector(
+              ".layout-box-label"
+            );
+
+
+          if (label) {
+
+            label.textContent =
+              automaticLabel(
+                box.box_role,
+                box
+              );
+
+          }
+
+
+          applyRoleStyle(
+            element,
+            box.box_role
+          );
+
+        }
+      );
+
+  }
+
+
+  /* =======================================================
+     UPDATE ELEMENT
+  ======================================================= */
+
+  function updatePageBoxElement(
+    element,
+    page,
+    box
+  ) {
+
+    const pageWidth =
+      Number(
+        page.width_px
+      );
+
+
+    const pageHeight =
+      Number(
+        page.height_px
+      );
+
+
+    if (
+      !pageWidth ||
+      !pageHeight
+    ) {
+
+      return;
+
+    }
+
+
+    element.style.left =
+      `${(
+        Number(box.x) /
+        pageWidth
+      ) * 100}%`;
+
+
+    element.style.top =
+      `${(
+        Number(box.y) /
+        pageHeight
+      ) * 100}%`;
+
+
+    element.style.width =
+      `${(
+        Number(box.width) /
+        pageWidth
+      ) * 100}%`;
+
+
+    element.style.height =
+      `${(
+        Number(box.height) /
+        pageHeight
+      ) * 100}%`;
+
+  }
+
+
+  function updateBoxElement(
+    element,
+    page,
+    box
+  ) {
+
+    updatePageBoxElement(
+      element,
+      page,
+      box
     );
 
   }
 
 
   /* =======================================================
-     SUBTOTAL GROUPS
+     SELECTED BOX
   ======================================================= */
 
-  function assignSubtotalGroups() {
+  function getSelectedBox() {
 
-    boxes
-      .filter(
+    if (!selectedBoxId) {
+      return null;
+    }
+
+
+    return (
+      boxes.find(
         box =>
-          box.box_role ===
-          "subtotal"
-      )
-      .forEach(
-        subtotal => {
+          box.id ===
+          selectedBoxId
+      ) ||
+      null
+    );
 
-          const parent =
-            findContainingMajor(
-              subtotal
+  }
+
+
+  /* =======================================================
+     ROLE HELP
+  ======================================================= */
+
+  function updateRoleHelp() {
+
+    if (!parentInfo) {
+      return;
+    }
+
+
+    const selected =
+      getSelectedBox();
+
+
+    const role =
+      selected?.box_role ||
+      boxRole?.value ||
+      "minor";
+
+
+    if (
+      role ===
+      "major"
+    ) {
+
+      parentInfo.textContent =
+        "大問の範囲です。";
+
+      return;
+
+    }
+
+
+    if (
+      role ===
+      "minor"
+    ) {
+
+      if (selected) {
+
+        const parent =
+          findContainingMajor(
+            selected
+          );
+
+
+        if (parent) {
+
+          parentInfo.textContent =
+            `大問${parent.major_no}の小問として登録されます。`;
+
+        } else {
+
+          parentInfo.textContent =
+            "大問の外にあるため、大問には登録されません。";
+
+        }
+
+      } else {
+
+        parentInfo.textContent =
+          "大問の内側にドラッグすると、その大問の小問になります。";
+
+      }
+
+      return;
+
+    }
+
+
+    if (
+      role ===
+      "qr"
+    ) {
+
+      parentInfo.textContent =
+        "この範囲をQR読み取り範囲として使用します。";
+
+      return;
+
+    }
+
+
+    if (
+      role ===
+      "subtotal"
+    ) {
+
+      parentInfo.textContent =
+        "対応する小問の点数から小計を計算します。";
+
+      return;
+
+    }
+
+
+    if (
+      role ===
+      "total"
+    ) {
+
+      parentInfo.textContent =
+        "小計などから合計点を計算します。";
+
+      return;
+
+    }
+
+
+    if (
+      role ===
+      "name"
+    ) {
+
+      parentInfo.textContent =
+        "氏名読み取り範囲です。";
+
+      return;
+
+    }
+
+
+    if (
+      role ===
+      "student_no"
+    ) {
+
+      parentInfo.textContent =
+        "生徒番号読み取り範囲です。";
+
+      return;
+
+    }
+
+
+    parentInfo.textContent =
+      "この範囲を登録します。";
+
+  }
+
+
+  /* =======================================================
+     SAVE
+  ======================================================= */
+
+  async function saveBoxes() {
+
+    if (!selectedTestId) {
+
+      alert(
+        "テストIDがありません。"
+      );
+
+      return;
+
+    }
+
+
+    try {
+
+      renumberMajors();
+
+      renumberMinors();
+
+
+      /*
+        sort_order
+      */
+
+      boxes
+        .sort(
+          compareBoxes
+        )
+        .forEach(
+          (
+            box,
+            index
+          ) => {
+
+            box.sort_order =
+              index;
+
+          }
+        );
+
+
+      validateBoxes();
+
+
+      saveButton.disabled =
+        true;
+
+
+      setStatus(
+        "枠設定を保存しています..."
+      );
+
+
+      const {
+        error:
+          deleteError
+      } =
+        await supabaseClient
+          .from(
+            "layout_boxes"
+          )
+          .delete()
+          .eq(
+            "test_id",
+            selectedTestId
+          );
+
+
+      if (deleteError) {
+        throw deleteError;
+      }
+
+
+      if (boxes.length) {
+
+        const rows =
+          boxes.map(
+            box => ({
+
+              id:
+                box.id,
+
+              test_id:
+                selectedTestId,
+
+              page_no:
+                Number(
+                  box.page_no
+                ),
+
+              box_type:
+                box.box_type ||
+                "other",
+
+              label:
+                automaticLabel(
+                  box.box_role,
+                  box
+                ),
+
+              x:
+                Number(
+                  box.x
+                ),
+
+              y:
+                Number(
+                  box.y
+                ),
+
+              width:
+                Number(
+                  box.width
+                ),
+
+              height:
+                Number(
+                  box.height
+                ),
+
+              /*
+                この画面では
+                配点設定しない。
+              */
+
+              points:
+                0,
+
+              /*
+                設問IDも使用しない。
+              */
+
+              question_id:
+                null,
+
+              parent_box_id:
+                box.parent_box_id ||
+                null,
+
+              major_no:
+                box.major_no ||
+                null,
+
+              minor_no:
+                box.minor_no ||
+                null,
+
+              box_role:
+                box.box_role ||
+                "other",
+
+              sort_order:
+                Number(
+                  box.sort_order
+                ) || 0,
+
+              subtotal_group:
+                box.subtotal_group ||
+                null
+
+            })
+          );
+
+
+        const {
+          error:
+            insertError
+        } =
+          await supabaseClient
+            .from(
+              "layout_boxes"
+            )
+            .insert(
+              rows
             );
 
 
-          if (parent) {
-
-            subtotal.major_no =
-              parent.major_no;
-
-            subtotal.subtotal_group =
-              parent.major_no;
-
-          } else if (
-            !subtotal.subtotal_group
-          ) {
-
-            subtotal.subtotal_group =
-              getNextSubtotalGroup();
-
-          }
-
+        if (insertError) {
+          throw insertError;
         }
+
+      }
+
+
+      await loadLayout();
+
+
+      setStatus(
+        "枠設定を保存しました。"
       );
+
+
+    } catch (error) {
+
+      console.error(
+        "saveBoxes:",
+        error
+      );
+
+
+      showError(
+        error.message ||
+        "枠設定の保存に失敗しました。"
+      );
+
+    } finally {
+
+      saveButton.disabled =
+        false;
+
+    }
 
   }
 
@@ -3676,44 +3210,23 @@
         ) {
 
           throw new Error(
-            `${box.label || "枠"}のページ番号が不正です。`
+            "ページ番号が不正です。"
           );
 
         }
 
 
         if (
-          Number(
-            box.width
-          ) <= 0 ||
-          Number(
-            box.height
-          ) <= 0
+          Number(box.width) <= 0 ||
+          Number(box.height) <= 0
         ) {
 
           throw new Error(
-            `${box.label || "枠"}のサイズが不正です。`
+            "枠のサイズが不正です。"
           );
 
         }
 
-
-        if (
-          Number(
-            box.points
-          ) < 0
-        ) {
-
-          throw new Error(
-            `${box.label || "枠"}の配点が不正です。`
-          );
-
-        }
-
-
-        /*
-          親がある場合
-        */
 
         if (
           box.parent_box_id
@@ -3730,7 +3243,7 @@
           if (!parent) {
 
             throw new Error(
-              `${box.label || "小問"}の親大問が見つかりません。`
+              "親大問が見つかりません。"
             );
 
           }
@@ -3742,7 +3255,7 @@
           ) {
 
             throw new Error(
-              `${box.label || "小問"}の親が大問ではありません。`
+              "小問の親が大問ではありません。"
             );
 
           }
@@ -3758,7 +3271,7 @@
           ) {
 
             throw new Error(
-              `${box.label || "小問"}と親大問のページが違います。`
+              "小問と大問のページが一致していません。"
             );
 
           }
@@ -3818,13 +3331,12 @@
      INFER ROLE
   ======================================================= */
 
-  function inferRoleFromBox(
+  function inferRole(
     box
   ) {
 
     if (
-      box.box_role &&
-      BOX_ROLES[
+      ROLE_INFO[
         box.box_role
       ]
     ) {
@@ -3834,63 +3346,106 @@
     }
 
 
-    if (
-      box.box_type ===
-      "qr"
+    switch (
+      box.box_type
     ) {
 
-      return "qr";
+      case "question":
+        return "major";
+
+      case "answer":
+        return "minor";
+
+      case "qr":
+        return "qr";
+
+      case "subtotal":
+        return "subtotal";
+
+      case "total":
+        return "total";
+
+      case "name":
+        return "name";
+
+      case "student_no":
+        return "student_no";
+
+      case "instruction":
+        return "instruction";
+
+      default:
+        return "other";
+
+    }
+
+  }
+
+
+  /* =======================================================
+     KEYBOARD
+  ======================================================= */
+
+  function handleKeyboard(
+    event
+  ) {
+
+    /*
+      入力欄ではDeleteを横取りしない。
+    */
+
+    const tag =
+      event.target?.tagName;
+
+
+    if (
+      tag === "INPUT" ||
+      tag === "TEXTAREA" ||
+      tag === "SELECT"
+    ) {
+
+      return;
 
     }
 
 
     if (
-      box.box_type ===
-      "subtotal"
+      event.key ===
+      "Delete"
     ) {
 
-      return "subtotal";
+      if (selectedBoxId) {
+
+        event.preventDefault();
+
+        deleteSelectedBox();
+
+      }
 
     }
 
 
     if (
-      box.box_type ===
-      "total"
+      event.key ===
+      "Escape"
     ) {
 
-      return "total";
+      cancelDrawing();
+
+      closeBoxPanel();
 
     }
-
-
-    if (
-      box.box_type ===
-      "question"
-    ) {
-
-      return "major";
-
-    }
-
-
-    return "minor";
 
   }
 
 
   /* =======================================================
      BACK
-     
-     これを明示的に定義。
-     goBack is not defined 対策。
   ======================================================= */
 
   function goBack() {
 
-    if (
-      selectedTestId
-    ) {
+    if (selectedTestId) {
 
       window.location.href =
         `/teacher/tests/edit?id=${encodeURIComponent(
@@ -3904,41 +3459,6 @@
 
     window.location.href =
       "/teacher/tests";
-
-  }
-
-
-  /* =======================================================
-     FILE → PAGES
-  ======================================================= */
-
-  async function fileToPages(
-    file
-  ) {
-
-    const extension =
-      getExtension(
-        file.name
-      );
-
-
-    if (
-      extension ===
-      "pdf"
-    ) {
-
-      return convertPdf(
-        file
-      );
-
-    }
-
-
-    return [
-      await convertImage(
-        file
-      )
-    ];
 
   }
 
@@ -4037,6 +3557,41 @@
   }
 
 
+  /* =======================================================
+     FILE → PAGES
+  ======================================================= */
+
+  async function fileToPages(
+    file
+  ) {
+
+    const extension =
+      getExtension(
+        file.name
+      );
+
+
+    if (
+      extension ===
+      "pdf"
+    ) {
+
+      return convertPdf(
+        file
+      );
+
+    }
+
+
+    return [
+      await convertImage(
+        file
+      )
+    ];
+
+  }
+
+
   async function convertPdf(
     file
   ) {
@@ -4076,7 +3631,7 @@
 
       const base =
         page.getViewport({
-          scale:1
+          scale: 1
         });
 
 
@@ -4221,10 +3776,281 @@
 
 
   /* =======================================================
+     UPLOAD ANSWER SHEET
+  ======================================================= */
+
+  async function uploadAnswerSheet() {
+
+    if (!selectedTestId) {
+
+      alert(
+        "テストIDがありません。"
+      );
+
+      return;
+
+    }
+
+
+    const file =
+      answerFile?.files?.[0];
+
+
+    if (!file) {
+
+      alert(
+        "解答用紙を選択してください。"
+      );
+
+      return;
+
+    }
+
+
+    const extension =
+      getExtension(
+        file.name
+      );
+
+
+    if (
+      ![
+        "pdf",
+        "jpg",
+        "jpeg",
+        "png",
+        "webp"
+      ].includes(
+        extension
+      )
+    ) {
+
+      alert(
+        "PDF、JPG、JPEG、PNG、WEBPに対応しています。"
+      );
+
+      return;
+
+    }
+
+
+    try {
+
+      uploadButton.disabled =
+        true;
+
+
+      setStatus(
+        "解答用紙を処理しています..."
+      );
+
+
+      const pageImages =
+        await fileToPages(
+          file
+        );
+
+
+      if (!pageImages.length) {
+
+        throw new Error(
+          "解答用紙のページを取得できませんでした。"
+        );
+
+      }
+
+
+      /*
+        DBの古いページ削除
+      */
+
+      const {
+        error:
+          pageDeleteError
+      } =
+        await supabaseClient
+          .from(
+            "test_pages"
+          )
+          .delete()
+          .eq(
+            "test_id",
+            selectedTestId
+          );
+
+
+      if (pageDeleteError) {
+        throw pageDeleteError;
+      }
+
+
+      /*
+        古い枠削除
+      */
+
+      const {
+        error:
+          boxDeleteError
+      } =
+        await supabaseClient
+          .from(
+            "layout_boxes"
+          )
+          .delete()
+          .eq(
+            "test_id",
+            selectedTestId
+          );
+
+
+      if (boxDeleteError) {
+        throw boxDeleteError;
+      }
+
+
+      let pageNo =
+        1;
+
+
+      for (
+        const page
+        of pageImages
+      ) {
+
+        const path =
+          [
+            selectedTestId,
+            "answer-sheet",
+            `page-${String(
+              pageNo
+            ).padStart(
+              3,
+              "0"
+            )}.png`
+          ].join("/");
+
+
+        const blob =
+          await canvasToBlob(
+            page.canvas,
+            "image/png"
+          );
+
+
+        const {
+          error:
+            uploadError
+        } =
+          await supabaseClient
+            .storage
+            .from(
+              "answer-files"
+            )
+            .upload(
+              path,
+              blob,
+              {
+                contentType:
+                  "image/png",
+
+                upsert:
+                  true
+              }
+            );
+
+
+        if (uploadError) {
+          throw uploadError;
+        }
+
+
+        const {
+          error:
+            insertError
+        } =
+          await supabaseClient
+            .from(
+              "test_pages"
+            )
+            .insert({
+
+              test_id:
+                selectedTestId,
+
+              page_no:
+                pageNo,
+
+              image_path:
+                path,
+
+              width_px:
+                page.width,
+
+              height_px:
+                page.height,
+
+              original_name:
+                file.name
+
+            });
+
+
+        if (insertError) {
+          throw insertError;
+        }
+
+
+        pageNo++;
+
+      }
+
+
+      if (answerFile) {
+        answerFile.value =
+          "";
+      }
+
+
+      selectedBoxId =
+        null;
+
+
+      await loadLayout();
+
+
+      setStatus(
+        "解答用紙を登録しました。枠種類を選択して枠を設定してください。"
+      );
+
+
+    } catch (error) {
+
+      console.error(
+        "uploadAnswerSheet:",
+        error
+      );
+
+
+      showError(
+        error.message ||
+        "解答用紙の登録に失敗しました。"
+      );
+
+    } finally {
+
+      uploadButton.disabled =
+        false;
+
+    }
+
+  }
+
+
+  /* =======================================================
      HELPERS
   ======================================================= */
 
-  function getLayerPoint(
+  function getPoint(
     event,
     rect
   ) {
@@ -4232,19 +4058,23 @@
     return {
 
       x:
-        clamp(
-          event.clientX -
-            rect.left,
+        Math.max(
           0,
-          rect.width
+          Math.min(
+            rect.width,
+            event.clientX -
+              rect.left
+          )
         ),
 
       y:
-        clamp(
-          event.clientY -
-            rect.top,
+        Math.max(
           0,
-          rect.height
+          Math.min(
+            rect.height,
+            event.clientY -
+              rect.top
+          )
         )
 
     };
@@ -4368,34 +4198,10 @@
 
 
     return parts.length > 1
-      ? parts.pop().toLowerCase()
+      ? parts
+          .pop()
+          .toLowerCase()
       : "";
-
-  }
-
-
-  function closePanel() {
-
-    if (panel) {
-
-      panel.hidden =
-        true;
-
-    }
-
-  }
-
-
-  function setStatus(
-    message
-  ) {
-
-    if (statusElement) {
-
-      statusElement.textContent =
-        message;
-
-    }
 
   }
 
@@ -4411,59 +4217,16 @@
   }
 
 
-  function cssEscape(
-    value
+  function setStatus(
+    message
   ) {
 
-    if (
-      window.CSS &&
-      typeof window.CSS.escape ===
-        "function"
-    ) {
+    if (statusElement) {
 
-      return window.CSS.escape(
-        String(value)
-      );
+      statusElement.textContent =
+        message;
 
     }
-
-
-    return String(value)
-      .replace(
-        /["\\]/g,
-        "\\$&"
-      );
-
-  }
-
-
-  function escapeHtml(
-    value
-  ) {
-
-    return String(
-      value ?? ""
-    )
-      .replaceAll(
-        "&",
-        "&amp;"
-      )
-      .replaceAll(
-        "<",
-        "&lt;"
-      )
-      .replaceAll(
-        ">",
-        "&gt;"
-      )
-      .replaceAll(
-        '"',
-        "&quot;"
-      )
-      .replaceAll(
-        "'",
-        "&#039;"
-      );
 
   }
 

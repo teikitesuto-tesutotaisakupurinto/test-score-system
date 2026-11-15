@@ -1,7 +1,9 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 
 <head>
+
   <meta charset="UTF-8">
 
   <meta
@@ -10,7 +12,7 @@
   >
 
   <title>
-    紐付け済み答案 - テスト成績システム
+    答案確認・紐付け - テスト成績システム
   </title>
 
   <link
@@ -18,9 +20,199 @@
     href="/css/common.css"
   >
 
+  <style>
+
+    .matched-main {
+
+      max-width:1400px;
+
+      margin:0 auto;
+
+      padding:20px;
+
+    }
+
+
+    .toolbar {
+
+      display:flex;
+
+      flex-wrap:wrap;
+
+      gap:10px;
+
+      align-items:center;
+
+      margin-bottom:15px;
+
+    }
+
+
+    .toolbar select {
+
+      min-width:300px;
+
+      height:40px;
+
+      padding:0 10px;
+
+    }
+
+
+    .status {
+
+      padding:10px 12px;
+
+      margin-bottom:15px;
+
+      background:#f5f6f7;
+
+      border:1px solid #d5dbe0;
+
+      font-size:13px;
+
+    }
+
+
+    .answer-table-wrap {
+
+      overflow:auto;
+
+      background:#fff;
+
+      border:1px solid #d5dbe0;
+
+    }
+
+
+    .answer-table {
+
+      width:100%;
+
+      min-width:900px;
+
+      border-collapse:collapse;
+
+    }
+
+
+    .answer-table th {
+
+      padding:10px;
+
+      background:#f1f3f5;
+
+      border-bottom:1px solid #d5dbe0;
+
+      text-align:left;
+
+      white-space:nowrap;
+
+    }
+
+
+    .answer-table td {
+
+      padding:10px;
+
+      border-bottom:1px solid #e3e6e8;
+
+      vertical-align:middle;
+
+    }
+
+
+    .status-badge {
+
+      display:inline-block;
+
+      padding:4px 8px;
+
+      border-radius:3px;
+
+      font-size:12px;
+
+    }
+
+
+    .status-matched {
+
+      background:#edf8ef;
+
+      color:#26743b;
+
+      border:1px solid #b7d9c0;
+
+    }
+
+
+    .status-unmatched {
+
+      background:#fff4f2;
+
+      color:#b42318;
+
+      border:1px solid #efc2bc;
+
+    }
+
+
+    .student-select {
+
+      min-width:220px;
+
+      height:36px;
+
+      padding:0 8px;
+
+    }
+
+
+    .qr-value {
+
+      max-width:260px;
+
+      overflow:hidden;
+
+      text-overflow:ellipsis;
+
+      white-space:nowrap;
+
+      font-family:monospace;
+
+      font-size:12px;
+
+    }
+
+
+    .actions {
+
+      display:flex;
+
+      gap:7px;
+
+      flex-wrap:wrap;
+
+    }
+
+
+    .empty {
+
+      padding:50px;
+
+      text-align:center;
+
+      color:#777;
+
+    }
+
+  </style>
+
 </head>
 
+
 <body>
+
 
 <header class="topbar">
 
@@ -28,13 +220,19 @@
     テスト成績システム
   </div>
 
+
   <div class="topbar-space"></div>
 
-  <span id="teacherName">-</span>
+
+  <span id="teacherName">
+    -
+  </span>
+
 
   <button
     id="logoutButton"
     class="logout-button"
+    type="button"
   >
     ログアウト
   </button>
@@ -42,163 +240,131 @@
 </header>
 
 
-<div class="teacher-layout">
 
-  <aside class="sidebar">
+<main class="matched-main">
 
-    <div class="sidebar-title">
-      答案
-    </div>
 
-    <a
-      href="/teacher/answers/upload"
-      class="menu-link"
+  <div class="toolbar">
+
+    <select id="testSelect">
+
+      <option value="">
+        テストを選択してください
+      </option>
+
+    </select>
+
+
+    <select id="statusSelect">
+
+      <option value="all">
+        すべて
+      </option>
+
+      <option value="uploaded">
+        紐付け済み
+      </option>
+
+      <option value="unmatched">
+        未紐付け
+      </option>
+
+    </select>
+
+
+    <button
+      id="reloadButton"
+      class="btn"
+      type="button"
     >
-      答案アップロード
-    </a>
+      更新
+    </button>
 
-    <a
-      href="/teacher/answers/processing"
-      class="menu-link"
+  </div>
+
+
+
+  <div
+    id="status"
+    class="status"
+  >
+    テストを選択してください。
+  </div>
+
+
+
+  <div class="answer-table-wrap">
+
+    <table
+      class="answer-table"
     >
-      処理状況
-    </a>
 
-    <a
-      href="/teacher/answers/unmatched"
-      class="menu-link"
-    >
-      未紐付け答案
-    </a>
+      <thead>
 
-    <a
-      href="/teacher/answers/matched"
-      class="menu-link active"
-    >
-      紐付け済み答案
-    </a>
+        <tr>
 
-  </aside>
+          <th>
+            状態
+          </th>
+
+          <th>
+            生徒番号
+          </th>
+
+          <th>
+            氏名
+          </th>
+
+          <th>
+            QR
+          </th>
+
+          <th>
+            答案ID
+          </th>
+
+          <th>
+            登録日時
+          </th>
+
+          <th>
+            操作
+          </th>
+
+        </tr>
+
+      </thead>
 
 
-  <main class="main-content">
-
-    <div class="page-header">
-
-      <h1>
-        紐付け済み答案
-      </h1>
-
-    </div>
-
-
-    <div class="card">
-
-      <div
-        style="
-          display:flex;
-          gap:10px;
-          flex-wrap:wrap;
-        "
+      <tbody
+        id="answerTableBody"
       >
 
-        <select
-          id="testFilter"
-          style="max-width:300px;"
-        >
+        <tr>
 
-          <option value="">
-            全テスト
-          </option>
+          <td
+            colspan="7"
+            class="empty"
+          >
+            テストを選択してください。
+          </td>
 
-        </select>
+        </tr>
 
+      </tbody>
 
-        <input
-          id="studentSearch"
-          type="search"
-          placeholder="生徒番号・氏名で検索"
-          style="max-width:300px;"
-        >
+    </table>
+
+  </div>
 
 
-        <button
-          id="reloadButton"
-          class="btn"
-        >
-          更新
-        </button>
-
-      </div>
-
-    </div>
+</main>
 
 
-    <div class="card">
 
-      <div style="overflow:auto;">
-
-        <table class="table">
-
-          <thead>
-
-            <tr>
-
-              <th>
-                テスト
-              </th>
-
-              <th>
-                生徒番号
-              </th>
-
-              <th>
-                氏名
-              </th>
-
-              <th>
-                紐付け方法
-              </th>
-
-              <th>
-                状態
-              </th>
-
-              <th>
-                操作
-              </th>
-
-            </tr>
-
-          </thead>
-
-          <tbody id="answerRows">
-
-            <tr>
-
-              <td
-                colspan="6"
-                style="text-align:center;"
-              >
-                読み込み中...
-              </td>
-
-            </tr>
-
-          </tbody>
-
-        </table>
-
-      </div>
-
-    </div>
-
-  </main>
-
-</div>
-
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script
+  src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+></script>
 
 <script src="/js/config.js"></script>
 
@@ -206,5 +372,7 @@
 
 <script src="/js/teacher/answer-matched.js"></script>
 
+
 </body>
+
 </html>

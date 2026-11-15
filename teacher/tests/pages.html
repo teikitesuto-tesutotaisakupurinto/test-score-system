@@ -2,6 +2,7 @@
 <html lang="ja">
 
 <head>
+
   <meta charset="UTF-8">
 
   <meta
@@ -30,11 +31,14 @@
 
   <div class="topbar-space"></div>
 
-  <span id="teacherName">-</span>
+  <span id="teacherName">
+    -
+  </span>
 
   <button
     id="logoutButton"
     class="logout-button"
+    type="button"
   >
     ログアウト
   </button>
@@ -58,14 +62,6 @@
     </a>
 
     <a
-      id="testEditLink"
-      href="#"
-      class="menu-link"
-    >
-      テスト情報
-    </a>
-
-    <a
       id="pagesLink"
       href="#"
       class="menu-link active"
@@ -82,11 +78,19 @@
     </a>
 
     <a
-      id="questionsLink"
+      id="modelAnswerLink"
       href="#"
       class="menu-link"
     >
-      問題設定
+      模範解答
+    </a>
+
+    <a
+      id="previewLink"
+      href="#"
+      class="menu-link"
+    >
+      テスト確認
     </a>
 
   </aside>
@@ -111,28 +115,74 @@
     </div>
 
 
+    <!-- アップロード -->
+
     <div class="card">
 
       <h3>
-        解答用紙画像
+        解答用紙ファイル
       </h3>
 
       <p>
-        解答用紙のページ画像を登録してください。
-        PDFの場合はページごとの画像に変換して登録する構成にします。
+        解答用紙をアップロードしてください。
       </p>
+
+
+      <div
+        style="
+          background:#f3f5f7;
+          border:1px solid #d0d6dc;
+          padding:14px;
+          margin-bottom:15px;
+        "
+      >
+
+        <strong>
+          対応形式
+        </strong>
+
+        <p>
+          JPG / JPEG / PNG / WEBP / GIF / BMP / PDF / ZIP
+        </p>
+
+        <p>
+          ZIPの場合、複数の画像・PDFをまとめて登録できます。
+        </p>
+
+        <p>
+          複数ページの解答用紙にも対応します。
+        </p>
+
+      </div>
 
 
       <div class="form-group">
 
-        <label>
-          ページ画像
+        <label for="pageFile">
+          ファイル
         </label>
 
         <input
           id="pageFile"
           type="file"
-          accept="image/*"
+          multiple
+          accept="
+            .jpg,
+            .jpeg,
+            .png,
+            .webp,
+            .gif,
+            .bmp,
+            .pdf,
+            .zip,
+            image/jpeg,
+            image/png,
+            image/webp,
+            image/gif,
+            image/bmp,
+            application/pdf,
+            application/zip
+          "
         >
 
       </div>
@@ -142,21 +192,24 @@
         style="
           display:flex;
           gap:8px;
+          flex-wrap:wrap;
         "
       >
 
         <button
           id="addPageButton"
           class="btn btn-primary"
+          type="button"
         >
-          ページを追加
+          解答用紙を登録
         </button>
 
         <button
-          id="saveButton"
+          id="clearButton"
           class="btn"
+          type="button"
         >
-          設定を保存
+          選択解除
         </button>
 
       </div>
@@ -165,19 +218,43 @@
       <div
         id="message"
         style="
-          margin-top:12px;
-          min-height:22px;
+          margin-top:14px;
+          min-height:24px;
         "
-      ></div>
+      >
+      </div>
 
     </div>
 
 
+    <!-- 登録済みページ -->
+
     <div class="card">
 
-      <h3>
-        登録ページ
-      </h3>
+      <div
+        style="
+          display:flex;
+          align-items:center;
+          justify-content:space-between;
+          margin-bottom:12px;
+        "
+      >
+
+        <h3 style="margin:0;">
+          登録済み解答用紙
+        </h3>
+
+        <span
+          id="pageCount"
+          style="
+            color:#666;
+            font-size:13px;
+          "
+        >
+          0ページ
+        </span>
+
+      </div>
 
 
       <div
@@ -185,8 +262,8 @@
         style="
           display:grid;
           grid-template-columns:
-            repeat(4,minmax(0,1fr));
-          gap:12px;
+            repeat(3,minmax(0,1fr));
+          gap:15px;
         "
       >
 
@@ -210,9 +287,19 @@
 </div>
 
 
+<!-- ZIP -->
+
+<script
+  src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"
+></script>
+
+
+<!-- Supabase -->
+
 <script
   src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
 ></script>
+
 
 <script src="/js/config.js"></script>
 

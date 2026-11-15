@@ -1,162 +1,118 @@
-/* =========================================================
-   テスト成績システム
-   答案切り出し
+(function () {
 
-   構造
-
-   answer_sheets
-        ↓
-   answer_sheet_pages
-        ↓
-   layout_boxes
-        ↓
-   answer_regions
-        ↓
-   student-answers Storage
+  "use strict";
 
 
-   1答案
-   ├─ page 1
-   ├─ page 2
-   ├─ page 3
-   └─ ...
+  let tests = [];
 
-   各ページの解答欄を
-   layout_box単位で切り出す。
-========================================================= */
+  let selectedTestId = null;
+
+  let resultCount = 0;
 
 
-/* =========================================================
-   状態
-========================================================= */
+  /* =====================================================
+     初期化
+  ===================================================== */
 
-let regionTests = [];
+  async function initialize() {
 
-let selectedTestId = null;
-
-let resultCount = 0;
-
-
-/* =========================================================
-   初期化
-========================================================= */
-
-async function initializeRegions() {
-
-  const profile =
-    await getProfile();
+    const profile =
+      await getProfile();
 
 
-  if (!profile) {
+    if (!profile) {
 
-    location.replace(
-      "/login"
-    );
+      location.replace("/login");
 
-    return;
+      return;
 
-  }
+    }
 
 
-  if (
-    profile.role !== "teacher" &&
-    profile.role !== "admin"
-  ) {
+    if (
+      profile.role !== "teacher" &&
+      profile.role !== "admin"
+    ) {
 
-    location.replace(
-      "/student/dashboard"
-    );
+      location.replace(
+        "/student/dashboard"
+      );
 
-    return;
+      return;
 
-  }
+    }
 
 
-  const teacherName =
     document.getElementById(
       "teacherName"
-    );
+    ).textContent =
+      profile.name || "先生";
 
 
-  if (teacherName) {
-
-    teacherName.textContent =
-      profile.name ||
-      "先生";
+    await loadTests();
 
   }
 
 
-  await loadTests();
+  /* =====================================================
+     テスト一覧
+  ===================================================== */
 
-}
+  async function loadTests() {
+
+    const {
+      data,
+      error
+    } =
+      await supabaseClient
+        .from("tests")
+        .select(`
+          id,
+          name,
+          subject,
+          grade,
+          class_name
+        `)
+        .order(
+          "created_at",
+          {
+            ascending: false
+          }
+        );
 
 
-/* =========================================================
-   テスト一覧
-========================================================= */
+    if (error) {
 
-async function loadTests() {
+      console.error(error);
 
-  const {
-    data,
-    error
-  } =
-    await supabaseClient
-      .from("tests")
-      .select(`
-        id,
-        name,
-        subject,
-        grade,
-        class_name
-      `)
-      .order(
-        "created_at",
-        {
-          ascending: false
-        }
+      showMessage(
+        "テスト一覧を取得できませんでした。",
+        true
+      );
+
+      return;
+
+    }
+
+
+    tests =
+      data || [];
+
+
+    const select =
+      document.getElementById(
+        "testSelect"
       );
 
 
-  if (error) {
+    select.innerHTML = `
 
-    console.error(
-      "テスト取得エラー:",
-      error
-    );
+      <option value="">
+        テストを選択してください
+      </option>
 
-
-    showMessage(
-      "テスト一覧を取得できませんでした。",
-      true
-    );
-
-
-    return;
-
-  }
-
-
-  regionTests =
-    data || [];
-
-
-  const select =
-    document.getElementById(
-      "testSelect"
-    );
-
-
-  select.innerHTML = `
-
-    <option value="">
-      テストを選択してください
-    </option>
-
-    ${
-      regionTests
-        .map(
+      ${
+        tests.map(
           test => `
 
             <option
@@ -171,183 +127,302 @@ async function loadTests() {
                   : ""
               }
 
-              ${
-                test.grade
-                  ? ` / ${escapeHtml(test.grade)}`
-                  : ""
-              }
-
             </option>
 
           `
-        )
-        .join("")
-    }
-
-  `;
-
-}
-
-
-/* =========================================================
-   テスト選択
-========================================================= */
-
-document
-  .getElementById(
-    "testSelect"
-  )
-  .addEventListener(
-    "change",
-    async event => {
-
-      selectedTestId =
-        event.target.value ||
-        null;
-
-
-      const button =
-        document.getElementById(
-          "executeButton"
-        );
-
-
-      if (!selectedTestId) {
-
-        button.disabled =
-          true;
-
-
-        document.getElementById(
-          "summary"
-        ).style.display =
-          "none";
-
-
-        document.getElementById(
-          "testInformation"
-        ).innerHTML =
-          "";
-
-
-        return;
-
+        ).join("")
       }
 
-
-      button.disabled =
-        false;
-
-
-      await loadTestInformation();
-
-      await loadSummary();
-
-    }
-  );
-
-
-/* =========================================================
-   テスト情報
-========================================================= */
-
-async function loadTestInformation() {
-
-  const test =
-    regionTests.find(
-      item =>
-        item.id ===
-        selectedTestId
-    );
-
-
-  if (!test) {
-
-    return;
+    `;
 
   }
 
 
-  document.getElementById(
-    "testInformation"
-  ).innerHTML = `
+  /* =====================================================
+     テスト選択
+  ===================================================== */
 
-    <strong>
-      ${escapeHtml(
-        test.name
-      )}
-    </strong>
+  document
+    .getElementById("testSelect")
+    .addEventListener(
+      "change",
+      async event => {
 
-    <br>
-
-    教科：
-    ${escapeHtml(
-      test.subject || "-"
-    )}
-
-    ／
-
-    学年：
-    ${escapeHtml(
-      test.grade || "-"
-    )}
-
-    ／
-
-    クラス：
-    ${escapeHtml(
-      test.class_name || "-"
-    )}
-
-  `;
-
-}
+        selectedTestId =
+          event.target.value ||
+          null;
 
 
-/* =========================================================
-   処理対象概要
-========================================================= */
+        const button =
+          document.getElementById(
+            "executeButton"
+          );
 
-async function loadSummary() {
 
-  const [
-    boxesResult,
-    answersResult,
-    pagesResult
-  ] =
-    await Promise.all([
+        if (!selectedTestId) {
 
-      supabaseClient
-        .from("layout_boxes")
-        .select(
-          "id",
-          {
-            count:
-              "exact",
-            head:
-              true
-          }
-        )
-        .eq(
-          "test_id",
+          button.disabled =
+            true;
+
+
+          document.getElementById(
+            "summary"
+          ).style.display =
+            "none";
+
+
+          return;
+
+        }
+
+
+        button.disabled =
+          false;
+
+
+        await loadTestInformation();
+
+        await loadSummary();
+
+      }
+    );
+
+
+  /* =====================================================
+     テスト情報
+  ===================================================== */
+
+  async function loadTestInformation() {
+
+    const test =
+      tests.find(
+        item =>
+          item.id ===
           selectedTestId
-        )
-        .eq(
-          "box_type",
-          "answer"
-        ),
+      );
 
-      supabaseClient
+
+    if (!test) {
+
+      return;
+
+    }
+
+
+    document.getElementById(
+      "testInformation"
+    ).innerHTML = `
+
+      <strong>
+        ${escapeHtml(test.name)}
+      </strong>
+
+      <br>
+
+      教科：
+      ${escapeHtml(
+        test.subject || "-"
+      )}
+
+      ／
+
+      学年：
+      ${escapeHtml(
+        test.grade || "-"
+      )}
+
+      ／
+
+      クラス：
+      ${escapeHtml(
+        test.class_name || "-"
+      )}
+
+    `;
+
+  }
+
+
+  /* =====================================================
+     概要
+  ===================================================== */
+
+  async function loadSummary() {
+
+    const [
+      boxesResult,
+      answersResult,
+      pagesResult,
+      regionsResult
+    ] =
+      await Promise.all([
+
+        supabaseClient
+          .from("layout_boxes")
+          .select(
+            "id",
+            {
+              count:
+                "exact",
+              head:
+                true
+            }
+          )
+          .eq(
+            "test_id",
+            selectedTestId
+          )
+          .eq(
+            "box_type",
+            "answer"
+          ),
+
+        supabaseClient
+          .from("answer_sheets")
+          .select(
+            "id",
+            {
+              count:
+                "exact",
+              head:
+                true
+            }
+          )
+          .eq(
+            "test_id",
+            selectedTestId
+          )
+          .neq(
+            "status",
+            "unmatched"
+          ),
+
+        supabaseClient
+          .from("answer_sheet_pages")
+          .select(
+            "id",
+            {
+              count:
+                "exact",
+              head:
+                true
+            }
+          )
+          .in(
+            "answer_sheet_id",
+            await getMatchedAnswerIds()
+          ),
+
+        supabaseClient
+          .from("answer_regions")
+          .select(
+            "id",
+            {
+              count:
+                "exact",
+              head:
+                true
+            }
+          )
+
+      ]);
+
+
+    const boxCount =
+      boxesResult.count || 0;
+
+
+    const answerCount =
+      answersResult.count || 0;
+
+
+    const pageCount =
+      pagesResult.count || 0;
+
+
+    const regionCount =
+      regionsResult.count || 0;
+
+
+    document.getElementById(
+      "summary"
+    ).style.display =
+      "block";
+
+
+    document.getElementById(
+      "summary"
+    ).innerHTML = `
+
+      <div
+        style="
+          display:grid;
+          grid-template-columns:
+            repeat(4,minmax(0,1fr));
+          gap:12px;
+        "
+      >
+
+        <div>
+          <div style="color:#777;font-size:12px;">
+            解答欄
+          </div>
+          <strong>
+            ${boxCount}
+          </strong>
+          個
+        </div>
+
+        <div>
+          <div style="color:#777;font-size:12px;">
+            答案
+          </div>
+          <strong>
+            ${answerCount}
+          </strong>
+          枚
+        </div>
+
+        <div>
+          <div style="color:#777;font-size:12px;">
+            答案ページ
+          </div>
+          <strong>
+            ${pageCount}
+          </strong>
+          ページ
+        </div>
+
+        <div>
+          <div style="color:#777;font-size:12px;">
+            切り出し済み
+          </div>
+          <strong>
+            ${regionCount}
+          </strong>
+          件
+        </div>
+
+      </div>
+
+    `;
+
+  }
+
+
+  /* =====================================================
+     紐付け済み答案ID
+  ===================================================== */
+
+  async function getMatchedAnswerIds() {
+
+    const {
+      data,
+      error
+    } =
+      await supabaseClient
         .from("answer_sheets")
-        .select(
-          "id",
-          {
-            count:
-              "exact",
-            head:
-              true
-          }
-        )
+        .select("id")
         .eq(
           "test_id",
           selectedTestId
@@ -355,376 +430,228 @@ async function loadSummary() {
         .neq(
           "status",
           "unmatched"
-        ),
-
-      supabaseClient
-        .from("test_pages")
-        .select(
-          "id",
-          {
-            count:
-              "exact",
-            head:
-              true
-          }
-        )
-        .eq(
-          "test_id",
-          selectedTestId
-        )
-        .neq(
-          "page_no",
-          999
-        )
-
-    ]);
-
-
-  const boxCount =
-    boxesResult.count || 0;
-
-
-  const answerCount =
-    answersResult.count || 0;
-
-
-  const pageCount =
-    pagesResult.count || 0;
-
-
-  const summary =
-    document.getElementById(
-      "summary"
-    );
-
-
-  summary.style.display =
-    "block";
-
-
-  summary.innerHTML = `
-
-    <div
-      style="
-        display:grid;
-        grid-template-columns:
-          repeat(3,minmax(0,1fr));
-        gap:12px;
-      "
-    >
-
-      <div>
-
-        <div
-          style="
-            color:#777;
-            font-size:12px;
-          "
-        >
-          解答用紙ページ
-        </div>
-
-        <strong>
-          ${pageCount}
-        </strong>
-        ページ
-
-      </div>
-
-
-      <div>
-
-        <div
-          style="
-            color:#777;
-            font-size:12px;
-          "
-        >
-          解答欄
-        </div>
-
-        <strong>
-          ${boxCount}
-        </strong>
-        個
-
-      </div>
-
-
-      <div>
-
-        <div
-          style="
-            color:#777;
-            font-size:12px;
-          "
-        >
-          紐付け済み答案
-        </div>
-
-        <strong>
-          ${answerCount}
-        </strong>
-        枚
-
-      </div>
-
-    </div>
-
-  `;
-
-}
-
-
-/* =========================================================
-   切り出し開始
-========================================================= */
-
-document
-  .getElementById(
-    "executeButton"
-  )
-  .addEventListener(
-    "click",
-    async () => {
-
-      if (!selectedTestId) {
-
-        return;
-
-      }
-
-
-      const button =
-        document.getElementById(
-          "executeButton"
         );
 
 
-      button.disabled =
-        true;
+    if (error) {
+
+      throw error;
+
+    }
 
 
-      button.textContent =
-        "切り出し中...";
+    return (
+      data || []
+    ).map(
+      item =>
+        item.id
+    );
+
+  }
 
 
-      clearResults();
+  /* =====================================================
+     実行
+  ===================================================== */
+
+  document
+    .getElementById("executeButton")
+    .addEventListener(
+      "click",
+      async () => {
+
+        if (!selectedTestId) {
+
+          return;
+
+        }
 
 
-      try {
-
-        const count =
-          await buildAnswerRegions(
-            selectedTestId
+        const button =
+          document.getElementById(
+            "executeButton"
           );
 
 
-        showMessage(
-          `${count}件の答案領域を作成しました。`
-        );
+        button.disabled =
+          true;
 
 
-      } catch (error) {
-
-        console.error(
-          "答案切り出しエラー:",
-          error
-        );
+        button.textContent =
+          "切り出し中...";
 
 
-        showMessage(
-          error.message ||
-          "答案切り出しに失敗しました。",
-          true
-        );
+        clearResults();
+
+
+        try {
+
+          const count =
+            await buildRegions(
+              selectedTestId
+            );
+
+
+          showMessage(
+            `${count}件の答案領域を作成しました。`
+          );
+
+
+          await loadSummary();
+
+
+        } catch (error) {
+
+          console.error(error);
+
+
+          showMessage(
+            error.message ||
+            "切り出しに失敗しました。",
+            true
+          );
+
+        }
+
+
+        button.disabled =
+          false;
+
+
+        button.textContent =
+          "答案を問題別に切り出す";
 
       }
-
-
-      button.disabled =
-        false;
-
-
-      button.textContent =
-        "答案を問題別に切り出す";
-
-
-    }
-  );
-
-
-/* =========================================================
-   答案領域作成
-========================================================= */
-
-async function buildAnswerRegions(
-  testId
-) {
-
-  /*
-    解答欄
-  */
-
-  const {
-    data: boxes,
-    error: boxError
-  } =
-    await supabaseClient
-      .from("layout_boxes")
-      .select(`
-        id,
-        page_no,
-        x,
-        y,
-        width,
-        height,
-        points,
-        label
-      `)
-      .eq(
-        "test_id",
-        testId
-      )
-      .eq(
-        "box_type",
-        "answer"
-      )
-      .order(
-        "page_no",
-        {
-          ascending: true
-        }
-      );
-
-
-  if (boxError) {
-
-    throw boxError;
-
-  }
-
-
-  if (!boxes?.length) {
-
-    throw new Error(
-      "解答欄が設定されていません。"
     );
 
-  }
 
+  /* =====================================================
+     本体
+  ===================================================== */
 
-  /*
-    紐付け済み答案
-  */
-
-  const {
-    data: answers,
-    error: answerError
-  } =
-    await supabaseClient
-      .from("answer_sheets")
-      .select(`
-        id,
-        student_id,
-        original_file_path,
-        status,
-        students(
-          student_no,
-          name
-        )
-      `)
-      .eq(
-        "test_id",
-        testId
-      )
-      .neq(
-        "status",
-        "unmatched"
-      );
-
-
-  if (answerError) {
-
-    throw answerError;
-
-  }
-
-
-  if (!answers?.length) {
-
-    throw new Error(
-      "紐付け済み答案がありません。"
-    );
-
-  }
-
-
-  /*
-    すべての答案を処理
-  */
-
-  let created =
-    0;
-
-
-  for (
-    const answer
-    of answers
+  async function buildRegions(
+    testId
   ) {
 
-    const pages =
-      await loadAnswerPages(
-        answer.id
+    /*
+      解答欄
+    */
+
+    const {
+      data: boxes,
+      error: boxError
+    } =
+      await supabaseClient
+        .from("layout_boxes")
+        .select(`
+          id,
+          page_no,
+          x,
+          y,
+          width,
+          height,
+          points,
+          label
+        `)
+        .eq(
+          "test_id",
+          testId
+        )
+        .eq(
+          "box_type",
+          "answer"
+        )
+        .order(
+          "page_no"
+        );
+
+
+    if (boxError) {
+
+      throw boxError;
+
+    }
+
+
+    if (!boxes?.length) {
+
+      throw new Error(
+        "解答欄が設定されていません。"
       );
-
-
-    if (!pages.length) {
-
-      addResult(
-        answer,
-        null,
-        "答案ページなし",
-        true
-      );
-
-
-      continue;
 
     }
 
 
     /*
-      各解答欄
+      答案
     */
 
-    for (
-      const box
-      of boxes
-    ) {
-
-      /*
-        該当ページ
-      */
-
-      const page =
-        pages.find(
-          item =>
-            Number(
-              item.page_no
-            ) ===
-            Number(
-              box.page_no
-            )
+    const {
+      data: answers,
+      error: answerError
+    } =
+      await supabaseClient
+        .from("answer_sheets")
+        .select(`
+          id,
+          student_id,
+          status,
+          students(
+            student_no,
+            name
+          )
+        `)
+        .eq(
+          "test_id",
+          testId
+        )
+        .neq(
+          "status",
+          "unmatched"
         );
 
 
-      if (!page) {
+    if (answerError) {
+
+      throw answerError;
+
+    }
+
+
+    if (!answers?.length) {
+
+      throw new Error(
+        "紐付け済み答案がありません。"
+      );
+
+    }
+
+
+    let created =
+      0;
+
+
+    /*
+      各答案
+    */
+
+    for (
+      const answer
+      of answers
+    ) {
+
+      const pages =
+        await loadAnswerPages(
+          answer.id
+        );
+
+
+      if (!pages.length) {
 
         addResult(
           answer,
-          box,
-          "該当ページなし",
+          null,
+          "答案ページなし",
           true
         );
 
@@ -734,21 +661,37 @@ async function buildAnswerRegions(
       }
 
 
-      try {
+      /*
+        各解答欄
+      */
 
-        const blob =
-          await cropAnswerImage(
-            page.file_path,
-            box
+      for (
+        const box
+        of boxes
+      ) {
+
+        /*
+          該当ページを探す
+        */
+
+        const page =
+          pages.find(
+            item =>
+              Number(
+                item.page_no
+              ) ===
+              Number(
+                box.page_no
+              )
           );
 
 
-        if (!blob) {
+        if (!page) {
 
           addResult(
             answer,
             box,
-            "画像切り出し失敗",
+            "該当ページなし",
             true
           );
 
@@ -758,414 +701,273 @@ async function buildAnswerRegions(
         }
 
 
-        const storagePath =
-          `${testId}/${answer.id}/${box.id}.png`;
+        try {
 
+          /*
+            既存なら再利用
+          */
 
-        /*
-          Storage
-        */
-
-        const {
-          error:
-            uploadError
-        } =
-          await supabaseClient
-            .storage
-            .from(
-              "student-answers"
-            )
-            .upload(
-              storagePath,
-              blob,
-              {
-
-                contentType:
-                  "image/png",
-
-                upsert:
-                  true
-
-              }
+          const existing =
+            await getExistingRegion(
+              answer.id,
+              box.id
             );
 
 
-        if (uploadError) {
+          /*
+            画像切り出し
+          */
 
-          throw uploadError;
+          const blob =
+            await cropAnswerImage(
+              page.file_path,
+              box
+            );
+
+
+          if (!blob) {
+
+            throw new Error(
+              "画像切り出しに失敗しました。"
+            );
+
+          }
+
+
+          /*
+            Storage
+          */
+
+          const storagePath =
+            `${testId}/${answer.id}/${box.id}.png`;
+
+
+          const {
+            error:
+              uploadError
+          } =
+            await supabaseClient
+              .storage
+              .from(
+                "student-answers"
+              )
+              .upload(
+                storagePath,
+                blob,
+                {
+
+                  contentType:
+                    "image/png",
+
+                  upsert:
+                    true
+
+                }
+              );
+
+
+          if (uploadError) {
+
+            throw uploadError;
+
+          }
+
+
+          /*
+            DB
+          */
+
+          const values = {
+
+            answer_sheet_id:
+              answer.id,
+
+            question_id:
+              null,
+
+            layout_box_id:
+              box.id,
+
+            page_no:
+              box.page_no,
+
+            image_path:
+              storagePath,
+
+            x:
+              box.x,
+
+            y:
+              box.y,
+
+            width:
+              box.width,
+
+            height:
+              box.height
+
+          };
+
+
+          if (existing) {
+
+            const {
+              error
+            } =
+              await supabaseClient
+                .from(
+                  "answer_regions"
+                )
+                .update(
+                  values
+                )
+                .eq(
+                  "id",
+                  existing.id
+                );
+
+
+            if (error) {
+
+              throw error;
+
+            }
+
+          } else {
+
+            const {
+              error
+            } =
+              await supabaseClient
+                .from(
+                  "answer_regions"
+                )
+                .insert(
+                  values
+                );
+
+
+            if (error) {
+
+              throw error;
+
+            }
+
+          }
+
+
+          created++;
+
+
+          addResult(
+            answer,
+            box,
+            "完了"
+          );
+
+
+        } catch (error) {
+
+          console.error(
+            error
+          );
+
+
+          addResult(
+            answer,
+            box,
+            error.message ||
+            "失敗",
+            true
+          );
 
         }
-
-
-        /*
-          answer_regions
-        */
-
-        await saveAnswerRegion({
-
-          answerSheetId:
-            answer.id,
-
-          box,
-
-          storagePath
-
-        });
-
-
-        created++;
-
-
-        addResult(
-          answer,
-          box,
-          "完了"
-        );
-
-
-      } catch (error) {
-
-        console.error(
-          error
-        );
-
-
-        addResult(
-          answer,
-          box,
-          error.message ||
-          "失敗",
-          true
-        );
 
       }
 
     }
 
-  }
 
-
-  return created;
-
-}
-
-
-/* =========================================================
-   答案ページ取得
-========================================================= */
-
-async function loadAnswerPages(
-  answerId
-) {
-
-  const {
-    data,
-    error
-  } =
-    await supabaseClient
-      .from(
-        "answer_sheet_pages"
-      )
-      .select(`
-        id,
-        page_no,
-        file_path,
-        file_type,
-        original_name,
-        width_px,
-        height_px
-      `)
-      .eq(
-        "answer_sheet_id",
-        answerId
-      )
-      .order(
-        "page_no",
-        {
-          ascending: true
-        }
-      );
-
-
-  if (error) {
-
-    throw error;
+    return created;
 
   }
 
 
-  return data || [];
+  /* =====================================================
+     answer_sheet_pages
+  ===================================================== */
 
-}
-
-
-/* =========================================================
-   画像切り出し
-========================================================= */
-
-async function cropAnswerImage(
-  storagePath,
-  box
-) {
-
-  const {
-    data,
-    error
-  } =
-    await supabaseClient
-      .storage
-      .from(
-        "answer-files"
-      )
-      .createSignedUrl(
-        storagePath,
-        3600
-      );
-
-
-  if (error) {
-
-    throw error;
-
-  }
-
-
-  if (
-    !data?.signedUrl
+  async function loadAnswerPages(
+    answerSheetId
   ) {
-
-    throw new Error(
-      "答案画像URLを取得できませんでした。"
-    );
-
-  }
-
-
-  const image =
-    await loadImage(
-      data.signedUrl
-    );
-
-
-  /*
-    座標
-  */
-
-  const x =
-    Math.max(
-      0,
-      Number(box.x) || 0
-    );
-
-
-  const y =
-    Math.max(
-      0,
-      Number(box.y) || 0
-    );
-
-
-  const width =
-    Number(box.width) || 1;
-
-
-  const height =
-    Number(box.height) || 1;
-
-
-  /*
-    元画像内に収める
-  */
-
-  const cropWidth =
-    Math.min(
-      width,
-      image.naturalWidth - x
-    );
-
-
-  const cropHeight =
-    Math.min(
-      height,
-      image.naturalHeight - y
-    );
-
-
-  if (
-    cropWidth <= 0 ||
-    cropHeight <= 0
-  ) {
-
-    throw new Error(
-      "解答欄が画像範囲外です。"
-    );
-
-  }
-
-
-  const canvas =
-    document.createElement(
-      "canvas"
-    );
-
-
-  canvas.width =
-    Math.round(
-      cropWidth
-    );
-
-
-  canvas.height =
-    Math.round(
-      cropHeight
-    );
-
-
-  const context =
-    canvas.getContext(
-      "2d"
-    );
-
-
-  context.drawImage(
-
-    image,
-
-    x,
-    y,
-
-    cropWidth,
-    cropHeight,
-
-    0,
-    0,
-
-    cropWidth,
-    cropHeight
-
-  );
-
-
-  return await canvasToBlob(
-    canvas
-  );
-
-}
-
-
-/* =========================================================
-   answer_regions保存
-========================================================= */
-
-async function saveAnswerRegion({
-  answerSheetId,
-  box,
-  storagePath
-}) {
-
-  /*
-    既存確認
-  */
-
-  const {
-    data: existing,
-    error:
-      existingError
-  } =
-    await supabaseClient
-      .from(
-        "answer_regions"
-      )
-      .select(
-        "id"
-      )
-      .eq(
-        "answer_sheet_id",
-        answerSheetId
-      )
-      .eq(
-        "layout_box_id",
-        box.id
-      )
-      .maybeSingle();
-
-
-  if (existingError) {
-
-    throw existingError;
-
-  }
-
-
-  const values = {
-
-    answer_sheet_id:
-      answerSheetId,
-
-    question_id:
-      null,
-
-    layout_box_id:
-      box.id,
-
-    page_no:
-      box.page_no,
-
-    image_path:
-      storagePath,
-
-    x:
-      box.x,
-
-    y:
-      box.y,
-
-    width:
-      box.width,
-
-    height:
-      box.height
-
-  };
-
-
-  if (existing) {
 
     const {
+      data,
+      error
+    } =
+      await supabaseClient
+        .from(
+          "answer_sheet_pages"
+        )
+        .select(`
+          id,
+          page_no,
+          file_path,
+          file_type,
+          original_name,
+          width_px,
+          height_px
+        `)
+        .eq(
+          "answer_sheet_id",
+          answerSheetId
+        )
+        .order(
+          "page_no"
+        );
+
+
+    if (error) {
+
+      throw error;
+
+    }
+
+
+    return data || [];
+
+  }
+
+
+  /* =====================================================
+     既存region
+  ===================================================== */
+
+  async function getExistingRegion(
+    answerSheetId,
+    layoutBoxId
+  ) {
+
+    const {
+      data,
       error
     } =
       await supabaseClient
         .from(
           "answer_regions"
         )
-        .update(
-          values
+        .select(
+          "id"
         )
         .eq(
-          "id",
-          existing.id
-        );
-
-
-    if (error) {
-
-      throw error;
-
-    }
-
-
-  } else {
-
-    const {
-      error
-    } =
-      await supabaseClient
-        .from(
-          "answer_regions"
+          "answer_sheet_id",
+          answerSheetId
         )
-        .insert(
-          values
-        );
+        .eq(
+          "layout_box_id",
+          layoutBoxId
+        )
+        .maybeSingle();
 
 
     if (error) {
@@ -1173,270 +975,374 @@ async function saveAnswerRegion({
       throw error;
 
     }
+
+
+    return data || null;
 
   }
 
-}
 
+  /* =====================================================
+     画像切り出し
+  ===================================================== */
 
-/* =========================================================
-   Blob → Image
-========================================================= */
+  async function cropAnswerImage(
+    filePath,
+    box
+  ) {
 
-function loadImage(
-  src
-) {
-
-  return new Promise(
-    (
-      resolve,
-      reject
-    ) => {
-
-      const image =
-        new Image();
-
-
-      image.onload =
-        () => resolve(
-          image
+    const {
+      data,
+      error
+    } =
+      await supabaseClient
+        .storage
+        .from(
+          "answer-files"
+        )
+        .createSignedUrl(
+          filePath,
+          3600
         );
 
 
-      image.onerror =
-        () => reject(
-          new Error(
-            "画像を読み込めませんでした。"
-          )
-        );
+    if (error) {
 
-
-      image.src =
-        src;
+      throw error;
 
     }
-  );
-
-}
 
 
-/* =========================================================
-   Canvas → PNG
-========================================================= */
+    if (
+      !data?.signedUrl
+    ) {
 
-function canvasToBlob(
-  canvas
-) {
+      throw new Error(
+        "答案画像URLを取得できませんでした。"
+      );
 
-  return new Promise(
-    (
-      resolve,
-      reject
-    ) => {
+    }
 
-      canvas.toBlob(
-        blob => {
 
-          if (!blob) {
+    const image =
+      await loadImage(
+        data.signedUrl
+      );
 
+
+    const x =
+      Math.max(
+        0,
+        Number(box.x) || 0
+      );
+
+
+    const y =
+      Math.max(
+        0,
+        Number(box.y) || 0
+      );
+
+
+    const width =
+      Number(box.width) || 1;
+
+
+    const height =
+      Number(box.height) || 1;
+
+
+    const cropWidth =
+      Math.min(
+        width,
+        image.naturalWidth - x
+      );
+
+
+    const cropHeight =
+      Math.min(
+        height,
+        image.naturalHeight - y
+      );
+
+
+    if (
+      cropWidth <= 0 ||
+      cropHeight <= 0
+    ) {
+
+      throw new Error(
+        "解答欄が画像範囲外です。"
+      );
+
+    }
+
+
+    const canvas =
+      document.createElement(
+        "canvas"
+      );
+
+
+    canvas.width =
+      Math.round(
+        cropWidth
+      );
+
+
+    canvas.height =
+      Math.round(
+        cropHeight
+      );
+
+
+    const context =
+      canvas.getContext(
+        "2d"
+      );
+
+
+    context.drawImage(
+
+      image,
+
+      x,
+      y,
+
+      cropWidth,
+      cropHeight,
+
+      0,
+      0,
+
+      cropWidth,
+      cropHeight
+
+    );
+
+
+    return await canvasToBlob(
+      canvas
+    );
+
+  }
+
+
+  /* =====================================================
+     Image
+  ===================================================== */
+
+  function loadImage(
+    src
+  ) {
+
+    return new Promise(
+      (
+        resolve,
+        reject
+      ) => {
+
+        const image =
+          new Image();
+
+
+        image.onload =
+          () =>
+            resolve(
+              image
+            );
+
+
+        image.onerror =
+          () =>
             reject(
               new Error(
-                "画像変換に失敗しました。"
+                "画像を読み込めませんでした。"
               )
             );
 
-            return;
 
-          }
+        image.src =
+          src;
 
-
-          resolve(
-            blob
-          );
-
-        },
-        "image/png"
-      );
-
-    }
-  );
-
-}
-
-
-/* =========================================================
-   結果表示
-========================================================= */
-
-function addResult(
-  answer,
-  box,
-  status,
-  error = false
-) {
-
-  const container =
-    document.getElementById(
-      "resultList"
+      }
     );
-
-
-  const item =
-    document.createElement(
-      "div"
-    );
-
-
-  item.style.cssText = `
-
-    padding:9px;
-
-    border-bottom:
-      1px solid #d0d6dc;
-
-    color:
-      ${error
-        ? "#c62828"
-        : "#16834b"};
-
-  `;
-
-
-  item.textContent =
-
-    `${answer.students?.student_no || ""}` +
-
-    " - " +
-
-    `${answer.students?.name || ""}` +
-
-    " ／ " +
-
-    `${box?.label || "解答欄"}` +
-
-    " ／ " +
-
-    status;
-
-
-  container.appendChild(
-    item
-  );
-
-
-  resultCount++;
-
-
-  document.getElementById(
-    "resultCount"
-  ).textContent =
-    `${resultCount}件`;
-
-}
-
-
-function clearResults() {
-
-  resultCount =
-    0;
-
-
-  document.getElementById(
-    "resultList"
-  ).innerHTML =
-    "";
-
-
-  document.getElementById(
-    "resultCount"
-  ).textContent =
-    "0件";
-
-}
-
-
-function showMessage(
-  text,
-  error = false
-) {
-
-  const element =
-    document.getElementById(
-      "message"
-    );
-
-
-  element.textContent =
-    text;
-
-
-  element.style.color =
-    error
-      ? "#c62828"
-      : "#16834b";
-
-}
-
-
-/* =========================================================
-   Logout
-========================================================= */
-
-document
-  .getElementById(
-    "logoutButton"
-  )
-  .addEventListener(
-    "click",
-    logout
-  );
-
-
-/* =========================================================
-   HTML escape
-========================================================= */
-
-function escapeHtml(
-  value
-) {
-
-  if (
-    value === null ||
-    value === undefined
-  ) {
-
-    return "";
 
   }
 
 
-  return String(value)
-    .replaceAll(
-      "&",
-      "&amp;"
-    )
-    .replaceAll(
-      "<",
-      "&lt;"
-    )
-    .replaceAll(
-      ">",
-      "&gt;"
-    )
-    .replaceAll(
-      '"',
-      "&quot;"
-    )
-    .replaceAll(
-      "'",
-      "&#039;"
+  /* =====================================================
+     Canvas → PNG
+  ===================================================== */
+
+  function canvasToBlob(
+    canvas
+  ) {
+
+    return new Promise(
+      (
+        resolve,
+        reject
+      ) => {
+
+        canvas.toBlob(
+          blob => {
+
+            if (!blob) {
+
+              reject(
+                new Error(
+                  "PNG変換に失敗しました。"
+                )
+              );
+
+              return;
+
+            }
+
+
+            resolve(
+              blob
+            );
+
+          },
+          "image/png"
+        );
+
+      }
     );
 
-}
+  }
 
 
-/* =========================================================
-   START
-========================================================= */
+  /* =====================================================
+     結果
+  ===================================================== */
 
-initializeRegions();
+  function addResult(
+    answer,
+    box,
+    status,
+    isError = false
+  ) {
+
+    const container =
+      document.getElementById(
+        "resultList"
+      );
+
+
+    const item =
+      document.createElement(
+        "div"
+      );
+
+
+    item.style.cssText = `
+
+      padding:9px;
+
+      border-bottom:
+        1px solid #d0d6dc;
+
+      color:
+        ${isError
+          ? "#c62828"
+          : "#16834b"};
+
+    `;
+
+
+    item.textContent =
+
+      `${answer.students?.student_no || ""}` +
+
+      " - " +
+
+      `${answer.students?.name || ""}` +
+
+      " ／ " +
+
+      `${box?.label || "解答欄"}` +
+
+      " ／ " +
+
+      status;
+
+
+    container.appendChild(
+      item
+    );
+
+
+    resultCount++;
+
+
+    document.getElementById(
+      "resultCount"
+    ).textContent =
+      `${resultCount}件`;
+
+  }
+
+
+  function clearResults() {
+
+    resultCount =
+      0;
+
+
+    document.getElementById(
+      "resultList"
+    ).innerHTML =
+      "";
+
+
+    document.getElementById(
+      "resultCount"
+    ).textContent =
+      "0件";
+
+  }
+
+
+  function showMessage(
+    message,
+    isError = false
+  ) {
+
+    const element =
+      document.getElementById(
+        "message"
+      );
+
+
+    element.textContent =
+      message;
+
+
+    element.style.color =
+      isError
+        ? "#c62828"
+        : "#16834b";
+
+  }
+
+
+  /* =====================================================
+     Logout
+  ===================================================== */
+
+  document
+    .getElementById(
+      "logoutButton"
+    )
+    .addEventListener(
+      "click",
+      logout
+    );
+
+
+  initialize();
+
+})();

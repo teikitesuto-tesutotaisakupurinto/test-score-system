@@ -1,0 +1,202 @@
+.return-actions {
+
+  display:flex;
+
+  gap:8px;
+
+  margin-top:15px;
+
+}
+
+
+.return-preview {
+
+  background:#dfe5ea;
+
+  min-height:500px;
+
+}
+
+
+.return-page {
+
+  width:210mm;
+
+  min-height:297mm;
+
+  margin:0 auto 15px;
+
+  padding:10mm;
+
+  background:#fff;
+
+  box-shadow:
+    0 1px 5px
+    rgba(
+      0,
+      0,
+      0,
+      .15
+    );
+
+}
+
+
+.return-header {
+
+  display:flex;
+
+  justify-content:space-between;
+
+  align-items:flex-start;
+
+  border-bottom:
+    1px solid #333;
+
+  padding-bottom:6px;
+
+  margin-bottom:10px;
+
+}
+
+
+.return-title {
+
+  font-size:18px;
+
+  font-weight:700;
+
+}
+
+
+.return-student {
+
+  text-align:right;
+
+  font-size:13px;
+
+}
+
+
+.return-answer {
+
+  position:relative;
+
+  width:100%;
+
+}
+
+
+.return-answer-page {
+
+  position:relative;
+
+  width:100%;
+
+  margin-bottom:8px;
+
+}
+
+
+.return-answer-page img {
+
+  display:block;
+
+  width:100%;
+
+  height:auto;
+
+}
+
+
+.return-score {
+
+  margin-top:10px;
+
+  padding:8px;
+
+  border:
+    1px solid #ccc;
+
+}
+
+
+@media print {
+
+  @page {
+
+    size:A4;
+
+    margin:0;
+
+  }
+
+
+  html,
+  body {
+
+    background:#fff;
+
+    overflow:visible;
+
+  }
+
+
+  .topbar,
+  .sidebar,
+  .page-header,
+  .card:not(.return-preview) {
+
+    display:none !important;
+
+  }
+
+
+  .teacher-layout {
+
+    display:block;
+
+  }
+
+
+  .main-content {
+
+    margin:0;
+
+    padding:0;
+
+  }
+
+
+  .return-preview {
+
+    display:block !important;
+
+    padding:0;
+
+    margin:0;
+
+    background:#fff;
+
+    box-shadow:none;
+
+  }
+
+
+  .return-page {
+
+    width:210mm;
+
+    min-height:297mm;
+
+    margin:0;
+
+    padding:10mm;
+
+    box-shadow:none;
+
+    page-break-after:always;
+
+  }
+
+}

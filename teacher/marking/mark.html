@@ -29,14 +29,47 @@
 
 <body>
 
+
 <div class="marking-page">
 
+
+  <!-- =====================================================
+       上部ツールバー
+  ====================================================== -->
 
   <header class="marking-toolbar">
 
 
+    <!-- 1段目 -->
+
     <div class="marking-toolbar-row">
 
+
+      <!-- 問題移動 -->
+
+      <div class="toolbar-group">
+
+        <button
+          id="previousQuestion"
+          class="mark-tool"
+          type="button"
+        >
+          ← 前
+        </button>
+
+
+        <button
+          id="nextQuestion"
+          class="mark-tool"
+          type="button"
+        >
+          次 →
+        </button>
+
+      </div>
+
+
+      <!-- 選択 -->
 
       <div class="toolbar-group">
 
@@ -50,6 +83,8 @@
 
       </div>
 
+
+      <!-- 採点記号 -->
 
       <div class="toolbar-group">
 
@@ -91,7 +126,10 @@
       </div>
 
 
+      <!-- 点数 -->
+
       <div class="toolbar-group">
+
 
         <button
           class="mark-tool"
@@ -107,11 +145,9 @@
           type="number"
           min="0"
           step="0.5"
+          inputmode="decimal"
           placeholder="点数"
-          style="
-            width:75px;
-            height:32px;
-          "
+          autocomplete="off"
         >
 
 
@@ -126,7 +162,10 @@
       </div>
 
 
+      <!-- テキスト -->
+
       <div class="toolbar-group">
+
 
         <button
           class="mark-tool"
@@ -141,14 +180,13 @@
           id="markText"
           type="text"
           placeholder="入力"
-          style="
-            width:140px;
-            height:32px;
-          "
+          autocomplete="off"
         >
 
       </div>
 
+
+      <!-- 描画 -->
 
       <div class="toolbar-group">
 
@@ -163,9 +201,14 @@
       </div>
 
 
+      <!-- 色 -->
+
       <div class="toolbar-group">
 
-        <label class="toolbar-label">
+        <label
+          class="toolbar-label"
+          for="markColor"
+        >
           色
         </label>
 
@@ -179,9 +222,14 @@
       </div>
 
 
+      <!-- サイズ -->
+
       <div class="toolbar-group">
 
-        <label class="toolbar-label">
+        <label
+          class="toolbar-label"
+          for="markSize"
+        >
           サイズ
         </label>
 
@@ -192,13 +240,15 @@
           value="42"
           min="10"
           max="150"
-          style="width:65px;"
+          step="1"
         >
 
       </div>
 
 
-      <div class="toolbar-group">
+      <!-- ショートカット -->
+
+      <div class="toolbar-group shortcut-help">
 
         <strong>
           L
@@ -216,11 +266,21 @@
           ×
         </span>
 
+        <span>
+          数字
+        </span>
+
+        <span>
+          Enter
+        </span>
+
       </div>
 
 
     </div>
 
+
+    <!-- 2段目 -->
 
     <div class="marking-toolbar-row">
 
@@ -261,6 +321,12 @@
 
 
       <span
+        class="toolbar-separator"
+      >
+      </span>
+
+
+      <span
         id="questionInfo"
         class="question-info"
       >
@@ -290,10 +356,18 @@
   </header>
 
 
+
+  <!-- =====================================================
+       採点本体
+  ====================================================== -->
+
   <main class="marking-content">
 
 
+    <!-- 左：模範解答 -->
+
     <aside class="model-pane">
+
 
       <div class="model-title">
         模範解答
@@ -307,10 +381,15 @@
         読み込み中...
       </div>
 
+
     </aside>
 
 
+
+    <!-- 右：答案2列 -->
+
     <section class="answer-area">
+
 
       <div
         id="answerGrid"
@@ -319,73 +398,81 @@
         読み込み中...
       </div>
 
+
     </section>
 
 
   </main>
 
 
+
+  <!-- =====================================================
+       下部
+  ====================================================== -->
+
   <footer class="marking-footer">
 
 
-    <button
-      id="quick0"
-      class="footer-score"
-      data-score="0"
-      type="button"
+    <div
+      class="quick-score-group"
     >
-      0
-    </button>
 
 
-    <button
-      id="quick1"
-      class="footer-score"
-      data-score="1"
-      type="button"
-    >
-      1
-    </button>
+      <button
+        class="footer-score"
+        data-score="0"
+        type="button"
+      >
+        0
+      </button>
 
 
-    <button
-      id="quick2"
-      class="footer-score"
-      data-score="2"
-      type="button"
-    >
-      2
-    </button>
+      <button
+        class="footer-score"
+        data-score="1"
+        type="button"
+      >
+        1
+      </button>
 
 
-    <button
-      id="quick3"
-      class="footer-score"
-      data-score="3"
-      type="button"
-    >
-      3
-    </button>
+      <button
+        class="footer-score"
+        data-score="2"
+        type="button"
+      >
+        2
+      </button>
 
 
-    <button
-      id="quick4"
-      class="footer-score"
-      data-score="4"
-      type="button"
-    >
-      4
-    </button>
+      <button
+        class="footer-score"
+        data-score="3"
+        type="button"
+      >
+        3
+      </button>
 
 
-    <button
-      id="quick5"
-      class="footer-score"
-      data-score="5"
-      type="button"
-    >
-      5
-    </button>
+      <button
+        class="footer-score"
+        data-score="4"
+        type="button"
+      >
+        4
+      </button>
+
+
+      <button
+        class="footer-score"
+        data-score="5"
+        type="button"
+      >
+        5
+      </button>
+
+
+    </div>
 
 
     <button
@@ -402,7 +489,7 @@
       class="btn"
       type="button"
     >
-      終了
+      採点終了
     </button>
 
 
@@ -410,6 +497,7 @@
 
 
 </div>
+
 
 
 <script
@@ -422,5 +510,7 @@
 
 <script src="/js/teacher/marking.js"></script>
 
+
 </body>
+
 </html>

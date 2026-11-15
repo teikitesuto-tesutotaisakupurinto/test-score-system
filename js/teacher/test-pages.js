@@ -9,22 +9,19 @@
    ---------------------------------------------------------
    /teacher/tests/pages?test=UUID
 
+   DB
+   ---------------------------------------------------------
+   test_pages.image_path
+   layout_boxes
+
    重要
    ---------------------------------------------------------
-   ・testSelect がHTMLに存在しなくても動作する
+   ・testSelectがなくても動作
    ・URL ?test=UUID を最優先
    ・解答用紙にだけ枠を設定
    ・枠は原画像のピクセル座標で保存
    ・答案側には枠を設定しない
-   ・答案アップロード時にこの枠を自動適用する
-
-   対応
-   ---------------------------------------------------------
-   PDF
-   JPG
-   JPEG
-   PNG
-   WEBP
+   ・答案アップロード時にlayout_boxesを自動適用
 ========================================================= */
 
 (function () {
@@ -133,11 +130,6 @@
       "closeButton"
     );
 
-  const teacherName =
-    document.getElementById(
-      "teacherName"
-    );
-
 
   /* =======================================================
      INITIALIZE
@@ -147,19 +139,19 @@
 
     try {
 
-      /*
-        Teacher認証
-      */
-
       const profile =
         await requireTeacher();
 
 
       if (!profile) {
-
         return;
-
       }
+
+
+      const teacherName =
+        document.getElementById(
+          "teacherName"
+        );
 
 
       if (teacherName) {
@@ -172,8 +164,7 @@
 
 
       /*
-        URLからtest ID取得
-
+        URL:
         /teacher/tests/pages?test=UUID
       */
 
@@ -186,17 +177,14 @@
 
 
       /*
-        testSelectがある古い画面にも対応。
+        URLを最優先。
+        古いHTMLからwindow.__TEST_ID__が
+        渡された場合にも対応。
       */
 
       selectedTestId =
         urlTestId ||
         window.__TEST_ID__ ||
-        (
-          testSelect
-            ? testSelect.value
-            : null
-        ) ||
         null;
 
 
@@ -204,8 +192,7 @@
 
 
       /*
-        testSelectがある場合のみ
-        テスト一覧を読み込む。
+        testSelectが存在する古いHTMLにも対応。
       */
 
       if (testSelect) {
@@ -233,13 +220,6 @@
 
           }
 
-
-          /*
-            ここがnullエラー対策。
-
-            testSelectが存在する場合だけ
-            valueを設定する。
-          */
 
           testSelect.value =
             selectedTestId;
@@ -277,86 +257,6 @@
       );
 
     }
-
-  }
-
-
-  /* =======================================================
-     EVENTS
-  ======================================================= */
-
-  function setupEvents() {
-
-    /*
-      testSelectが存在する場合のみ。
-    */
-
-    testSelect?.addEventListener(
-      "change",
-      async () => {
-
-        selectedTestId =
-          testSelect.value ||
-          null;
-
-
-        selectedBox =
-          null;
-
-
-        closePanel();
-
-
-        await loadTestPages();
-
-      }
-    );
-
-
-    uploadButton?.addEventListener(
-      "click",
-      uploadAnswerSheet
-    );
-
-
-    saveButton?.addEventListener(
-      "click",
-      saveBoxes
-    );
-
-
-    deleteButton?.addEventListener(
-      "click",
-      deleteSelectedBox
-    );
-
-
-    applyButton?.addEventListener(
-      "click",
-      applySelectedBox
-    );
-
-
-    closeButton?.addEventListener(
-      "click",
-      closePanel
-    );
-
-
-    backButton?.addEventListener(
-      "click",
-      goBack
-    );
-
-
-    document
-      .getElementById(
-        "logoutButton"
-      )
-      ?.addEventListener(
-        "click",
-        logout
-      );
 
   }
 
@@ -452,6 +352,86 @@
 
 
   /* =======================================================
+     EVENTS
+  ======================================================= */
+
+  function setupEvents() {
+
+    /*
+      testSelectが存在する場合だけ。
+    */
+
+    testSelect?.addEventListener(
+      "change",
+      async () => {
+
+        selectedTestId =
+          testSelect.value ||
+          null;
+
+
+        selectedBox =
+          null;
+
+
+        closePanel();
+
+
+        await loadTestPages();
+
+      }
+    );
+
+
+    uploadButton?.addEventListener(
+      "click",
+      uploadAnswerSheet
+    );
+
+
+    saveButton?.addEventListener(
+      "click",
+      saveBoxes
+    );
+
+
+    deleteButton?.addEventListener(
+      "click",
+      deleteSelectedBox
+    );
+
+
+    applyButton?.addEventListener(
+      "click",
+      applySelectedBox
+    );
+
+
+    closeButton?.addEventListener(
+      "click",
+      closePanel
+    );
+
+
+    backButton?.addEventListener(
+      "click",
+      goBack
+    );
+
+
+    document
+      .getElementById(
+        "logoutButton"
+      )
+      ?.addEventListener(
+        "click",
+        logout
+      );
+
+  }
+
+
+  /* =======================================================
      LOAD TEST PAGES
   ======================================================= */
 
@@ -498,7 +478,11 @@
 
 
     /*
+      =====================================================
       test_pages
+
+      正式な画像パスは image_path
+      =====================================================
     */
 
     const {
@@ -515,11 +499,10 @@
           id,
           test_id,
           page_no,
-          file_path,
-          file_type,
-          original_name,
+          image_path,
           width_px,
-          height_px
+          height_px,
+          original_name
         `)
         .eq(
           "test_id",
@@ -546,7 +529,9 @@
 
 
     /*
+      =====================================================
       layout_boxes
+      =====================================================
     */
 
     const {
@@ -596,10 +581,6 @@
     boxes =
       boxData || [];
 
-
-    /*
-      表示
-    */
 
     await renderPages();
 
@@ -689,7 +670,7 @@
 
 
       /*
-        ファイルをページ化
+        PDF / 画像 → ページ
       */
 
       const pageImages =
@@ -708,7 +689,9 @@
 
 
       /*
-        既存test_pages削除
+        ===================================================
+        古いページ削除
+        ===================================================
       */
 
       const {
@@ -734,7 +717,7 @@
 
 
       /*
-        解答用紙を入れ替えるので
+        解答用紙を差し替えるため、
         古い枠も削除。
       */
 
@@ -761,7 +744,9 @@
 
 
       /*
-        Storageへ保存
+        ===================================================
+        Storage + test_pages
+        ===================================================
       */
 
       let pageNo =
@@ -792,6 +777,10 @@
             "image/png"
           );
 
+
+        /*
+          Storage
+        */
 
         const {
           error:
@@ -825,6 +814,9 @@
 
         /*
           DB
+
+          正式列：
+          image_path
         */
 
         const {
@@ -843,20 +835,17 @@
               page_no:
                 pageNo,
 
-              file_path:
+              image_path:
                 path,
-
-              file_type:
-                "image/png",
-
-              original_name:
-                file.name,
 
               width_px:
                 page.width,
 
               height_px:
-                page.height
+                page.height,
+
+              original_name:
+                file.name
 
             });
 
@@ -996,8 +985,17 @@
 
 
     /*
-      Signed URL
+      image_pathを使用
     */
+
+    if (!page.image_path) {
+
+      throw new Error(
+        `解答用紙ページ${page.page_no}のimage_pathがありません。`
+      );
+
+    }
+
 
     const {
       data,
@@ -1009,7 +1007,7 @@
           "answer-files"
         )
         .createSignedUrl(
-          page.file_path,
+          page.image_path,
           3600
         );
 
@@ -1026,7 +1024,7 @@
     ) {
 
       throw new Error(
-        "解答用紙画像URLを取得できませんでした。"
+        `解答用紙ページ${page.page_no}の画像URLを取得できませんでした。`
       );
 
     }
@@ -1039,7 +1037,7 @@
 
 
     /*
-      原画像サイズ
+      元画像サイズを維持
     */
 
     canvas.width =
@@ -1050,17 +1048,15 @@
       image.naturalHeight;
 
 
-    const context =
-      canvas.getContext(
+    canvas
+      .getContext(
         "2d"
+      )
+      .drawImage(
+        image,
+        0,
+        0
       );
-
-
-    context.drawImage(
-      image,
-      0,
-      0
-    );
 
 
     /*
@@ -1101,7 +1097,7 @@
 
 
   /* =======================================================
-     NEW BOX DRAWING
+     DRAW
   ======================================================= */
 
   function setupDrawing(
@@ -1113,11 +1109,6 @@
     layer.addEventListener(
       "mousedown",
       event => {
-
-        /*
-          既存枠をクリックした場合は
-          新規枠を作らない。
-        */
 
         if (
           event.target !==
@@ -1370,10 +1361,6 @@
         }
 
 
-        /*
-          表示座標 → 原画像座標
-        */
-
         const canvas =
           wrapper.querySelector(
             "canvas"
@@ -1503,7 +1490,9 @@
 
     label.textContent =
       `${box.label || "設問"} ${
-        Number(box.points) || 0
+        Number(
+          box.points
+        ) || 0
       }点`;
 
 
@@ -1567,7 +1556,8 @@
     let startClientY =
       0;
 
-    let original = null;
+    let original =
+      null;
 
 
     element.addEventListener(
@@ -1749,7 +1739,7 @@
 
 
   /* =======================================================
-     UPDATE BOX
+     UPDATE BOX ELEMENT
   ======================================================= */
 
   function updateBoxElement(
@@ -1904,7 +1894,9 @@
 
 
     if (
-      !Number.isFinite(points) ||
+      !Number.isFinite(
+        points
+      ) ||
       points < 0
     ) {
 
@@ -1969,9 +1961,7 @@
   function deleteSelectedBox() {
 
     if (!selectedBox) {
-
       return;
-
     }
 
 
@@ -2032,14 +2022,14 @@
     try {
 
       /*
-        選択中の設定も反映
+        選択中の枠を反映
       */
 
       applySelectedBox();
 
 
       /*
-        全枠チェック
+        座標・サイズ・配点チェック
       */
 
       for (
@@ -2211,8 +2201,10 @@
 
 
       /*
-        保存後にDBのUUIDを
-        正しいものへ再取得。
+        DBから再取得。
+
+        保存時にUUIDが変わるため、
+        画面上の古いIDを残さない。
       */
 
       await loadTestPages();
@@ -2359,15 +2351,12 @@
 
 
           script.onerror =
-            () => {
-
+            () =>
               reject(
                 new Error(
                   "PDF.jsの読み込みに失敗しました。"
                 )
               );
-
-            };
 
 
           document.head.appendChild(
@@ -2425,10 +2414,6 @@
           scale:1
         });
 
-
-      /*
-        最大3500px程度。
-      */
 
       const scale =
         Math.min(

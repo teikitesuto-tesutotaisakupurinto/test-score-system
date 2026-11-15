@@ -1,18 +1,78 @@
 /* =========================================================
-   解答用紙ページ登録
+   テスト成績システム
+   解答用紙登録
+
+   対応:
+   JPG
+   JPEG
+   PNG
+   WEBP
+   GIF
+   BMP
+   PDF
+   ZIP
+
+   ZIP
+   ↓
+   展開
+   ↓
+   画像 / PDF
+   ↓
+   ページ画像
+   ↓
+   Supabase Storage
+   ↓
+   test_pages
+
+   PDFはページごとにPNGへ変換して保存
 ========================================================= */
 
-const testParams =
+
+/* =========================================================
+   状態
+========================================================= */
+
+const pageParams =
   new URLSearchParams(
     window.location.search
   );
 
-const testId =
-  testParams.get("id");
+const pageTestId =
+  pageParams.get("id");
 
 
 let currentTest = null;
 
+let registeredPages = [];
+
+
+/* =========================================================
+   対応拡張子
+========================================================= */
+
+const IMAGE_EXTENSIONS = [
+  "jpg",
+  "jpeg",
+  "png",
+  "webp",
+  "gif",
+  "bmp"
+];
+
+
+const PDF_EXTENSIONS = [
+  "pdf"
+];
+
+
+const ZIP_EXTENSIONS = [
+  "zip"
+];
+
+
+/* =========================================================
+   初期化
+========================================================= */
 
 async function initializeTestPages() {
 
@@ -22,8 +82,9 @@ async function initializeTestPages() {
 
   if (!profile) {
 
-    window.location.href =
-      "/login";
+    window.location.replace(
+      "/login"
+    );
 
     return;
 
@@ -35,8 +96,9 @@ async function initializeTestPages() {
     profile.role !== "admin"
   ) {
 
-    window.location.href =
-      "/student/dashboard";
+    window.location.replace(
+      "/student/dashboard"
+    );
 
     return;
 
@@ -46,60 +108,71 @@ async function initializeTestPages() {
   document.getElementById(
     "teacherName"
   ).textContent =
-    profile.name || "先生";
+    profile.name ||
+    "先生";
 
 
-  if (!testId) {
+  if (!pageTestId) {
 
     alert(
       "テストが指定されていません。"
     );
 
-    window.location.href =
-      "/teacher/tests";
+    window.location.replace(
+      "/teacher/tests"
+    );
 
     return;
 
   }
 
 
-  setLinks();
+  setNavigation();
 
 
   await loadTest();
+
 
   await loadPages();
 
 }
 
 
-function setLinks() {
+/* =========================================================
+   ナビゲーション
+========================================================= */
 
-  document.getElementById(
-    "testEditLink"
-  ).href =
-    `/teacher/tests/edit?id=${encodeURIComponent(testId)}`;
-
+function setNavigation() {
 
   document.getElementById(
     "pagesLink"
   ).href =
-    `/teacher/tests/pages?id=${encodeURIComponent(testId)}`;
+    `/teacher/tests/pages?id=${encodeURIComponent(pageTestId)}`;
 
 
   document.getElementById(
     "layoutLink"
   ).href =
-    `/teacher/tests/layout?id=${encodeURIComponent(testId)}`;
+    `/teacher/tests/layout?id=${encodeURIComponent(pageTestId)}`;
 
 
   document.getElementById(
-    "questionsLink"
+    "modelAnswerLink"
   ).href =
-    `/teacher/tests/questions?id=${encodeURIComponent(testId)}`;
+    `/teacher/tests/model-answer?id=${encodeURIComponent(pageTestId)}`;
+
+
+  document.getElementById(
+    "previewLink"
+  ).href =
+    `/teacher/tests/preview?id=${encodeURIComponent(pageTestId)}`;
 
 }
 
+
+/* =========================================================
+   テスト取得
+========================================================= */
 
 async function loadTest() {
 
@@ -121,19 +194,22 @@ async function loadTest() {
       `)
       .eq(
         "id",
-        testId
+        pageTestId
       )
       .maybeSingle();
 
 
   if (error) {
 
-    console.error(error);
+    console.error(
+      "テスト取得エラー:",
+      error
+    );
 
-    document.getElementById(
-      "testInformation"
-    ).textContent =
-      "テスト情報を取得できませんでした。";
+    showMessage(
+      "テスト情報を取得できませんでした。",
+      true
+    );
 
     return;
 
@@ -142,10 +218,10 @@ async function loadTest() {
 
   if (!data) {
 
-    document.getElementById(
-      "testInformation"
-    ).textContent =
-      "指定されたテストがありません。";
+    showMessage(
+      "指定されたテストが見つかりません。",
+      true
+    );
 
     return;
 
@@ -170,14 +246,21 @@ async function loadTest() {
 
     教科：
     ${escapeHtml(
-      data.subject || ""
+      data.subject || "-"
     )}
 
     ／
 
     学年：
     ${escapeHtml(
-      data.grade || ""
+      data.grade || "-"
+    )}
+
+    ／
+
+    クラス：
+    ${escapeHtml(
+      data.class_name || "-"
     )}
 
     ／
@@ -189,6 +272,10 @@ async function loadTest() {
 
 }
 
+
+/* =========================================================
+   登録済みページ取得
+========================================================= */
 
 async function loadPages() {
 
@@ -207,21 +294,51 @@ async function loadPages() {
       `)
       .eq(
         "test_id",
-        testId
+        pageTestId
+      )
+      .neq(
+        "page_no",
+        999
       )
       .order(
-        "page_no"
+        "page_no",
+        {
+          ascending: true
+        }
       );
 
 
   if (error) {
 
-    console.error(error);
+    console.error(
+      "ページ取得エラー:",
+      error
+    );
+
+    showMessage(
+      "登録済みページを取得できませんでした。",
+      true
+    );
 
     return;
 
   }
 
+
+  registeredPages =
+    data || [];
+
+
+  renderPages();
+
+}
+
+
+/* =========================================================
+   ページ表示
+========================================================= */
+
+async function renderPages() {
 
   const container =
     document.getElementById(
@@ -229,7 +346,13 @@ async function loadPages() {
     );
 
 
-  if (!data || !data.length) {
+  document.getElementById(
+    "pageCount"
+  ).textContent =
+    `${registeredPages.length}ページ`;
+
+
+  if (!registeredPages.length) {
 
     container.innerHTML = `
 
@@ -237,11 +360,11 @@ async function loadPages() {
         style="
           grid-column:1/-1;
           text-align:center;
+          padding:35px;
           color:#777;
-          padding:30px;
         "
       >
-        まだページが登録されていません。
+        解答用紙が登録されていません。
       </div>
 
     `;
@@ -252,7 +375,7 @@ async function loadPages() {
 
 
   container.innerHTML =
-    data
+    registeredPages
       .map(
         page => `
 
@@ -266,17 +389,32 @@ async function loadPages() {
 
             <div
               style="
-                font-weight:bold;
+                display:flex;
+                align-items:center;
+                justify-content:space-between;
                 margin-bottom:8px;
               "
             >
-              ${page.page_no}ページ
+
+              <strong>
+                ${page.page_no}ページ
+              </strong>
+
+              <button
+                type="button"
+                class="btn"
+                data-delete-page="${page.id}"
+              >
+                削除
+              </button>
+
             </div>
 
 
             <div
+              id="page-preview-${page.id}"
               style="
-                height:220px;
+                height:300px;
                 border:1px solid #d0d6dc;
                 background:#f5f6f7;
                 display:flex;
@@ -285,23 +423,23 @@ async function loadPages() {
                 overflow:hidden;
               "
             >
+              読み込み中...
+            </div>
+
+
+            <div
+              style="
+                margin-top:7px;
+                font-size:12px;
+                color:#777;
+              "
+            >
 
               ${
-                page.image_path
-                  ? `
-
-                    <img
-                      src="${escapeHtml(page.image_path)}"
-                      style="
-                        max-width:100%;
-                        max-height:100%;
-                        object-fit:contain;
-                      "
-                    >
-
-                  `
-                  :
-                  "画像なし"
+                page.width_px &&
+                page.height_px
+                  ? `${page.width_px} × ${page.height_px}px`
+                  : ""
               }
 
             </div>
@@ -312,8 +450,114 @@ async function loadPages() {
       )
       .join("");
 
+
+  /*
+    画像URL取得
+  */
+
+  for (
+    const page
+    of registeredPages
+  ) {
+
+    await renderPageImage(
+      page
+    );
+
+  }
+
+
+  /*
+    削除イベント
+  */
+
+  container
+    .querySelectorAll(
+      "[data-delete-page]"
+    )
+    .forEach(
+      button => {
+
+        button.addEventListener(
+          "click",
+          () =>
+            deletePage(
+              button.dataset.deletePage
+            )
+        );
+
+      }
+    );
+
 }
 
+
+/* =========================================================
+   ページ画像
+========================================================= */
+
+async function renderPageImage(
+  page
+) {
+
+  const target =
+    document.getElementById(
+      `page-preview-${page.id}`
+    );
+
+
+  if (!target) {
+
+    return;
+
+  }
+
+
+  const {
+    data,
+    error
+  } =
+    await supabaseClient
+      .storage
+      .from(
+        "model-answers"
+      )
+      .createSignedUrl(
+        page.image_path,
+        3600
+      );
+
+
+  if (error) {
+
+    target.textContent =
+      "画像を取得できません。";
+
+    return;
+
+  }
+
+
+  target.innerHTML = `
+
+    <img
+      src="${escapeHtml(data.signedUrl)}"
+      alt="解答用紙"
+      style="
+        max-width:100%;
+        max-height:100%;
+        object-fit:contain;
+      "
+    >
+
+  `;
+
+}
+
+
+/* =========================================================
+   アップロード
+========================================================= */
 
 document
   .getElementById(
@@ -323,125 +567,60 @@ document
     "click",
     async () => {
 
-      const file =
-        document.getElementById(
-          "pageFile"
-        ).files[0];
+      const files =
+        [
+          ...
+          document.getElementById(
+            "pageFile"
+          ).files
+        ];
 
 
-      const message =
-        document.getElementById(
-          "message"
+      if (!files.length) {
+
+        showMessage(
+          "解答用紙ファイルを選択してください。",
+          true
         );
-
-
-      if (!file) {
-
-        message.textContent =
-          "ページ画像を選択してください。";
-
-        message.style.color =
-          "#c62828";
 
         return;
 
       }
 
 
+      const button =
+        document.getElementById(
+          "addPageButton"
+        );
+
+
+      button.disabled =
+        true;
+
+      button.textContent =
+        "登録中...";
+
+
       try {
 
-        const {
-          data: pages,
-          error: pagesError
-        } =
-          await supabaseClient
-            .from("test_pages")
-            .select(
-              "page_no"
-            )
-            .eq(
-              "test_id",
-              testId
-            )
-            .order(
-              "page_no",
-              {
-                ascending:false
-              }
-            )
-            .limit(1);
+        for (
+          const file
+          of files
+        ) {
 
-
-        if (pagesError) {
-
-          throw pagesError;
+          await processInputFile(
+            file
+          );
 
         }
 
 
-        const nextPage =
-          pages?.length
-            ? pages[0].page_no + 1
-            : 1;
+        await loadPages();
 
 
-        const filePath =
-          `${testId}/page-${String(nextPage).padStart(3,"0")}-${crypto.randomUUID()}.${getExtension(file.name)}`;
-
-
-        const {
-          error: uploadError
-        } =
-          await supabaseClient
-            .storage
-            .from("model-answers")
-            .upload(
-              filePath,
-              file,
-              {
-                upsert:false
-              }
-            );
-
-
-        if (uploadError) {
-
-          throw uploadError;
-
-        }
-
-
-        const {
-          error: insertError
-        } =
-          await supabaseClient
-            .from("test_pages")
-            .insert({
-
-              test_id:
-                testId,
-
-              page_no:
-                nextPage,
-
-              image_path:
-                filePath
-
-            });
-
-
-        if (insertError) {
-
-          throw insertError;
-
-        }
-
-
-        message.textContent =
-          `${nextPage}ページを登録しました。`;
-
-        message.style.color =
-          "#16834b";
+        showMessage(
+          "解答用紙の登録が完了しました。"
+        );
 
 
         document.getElementById(
@@ -450,41 +629,954 @@ document
           "";
 
 
-        await loadPages();
-
-
       } catch (error) {
 
-        console.error(error);
+        console.error(
+          "解答用紙登録エラー:",
+          error
+        );
 
-        message.textContent =
+
+        showMessage(
           error.message ||
-          "ページ登録に失敗しました。";
-
-        message.style.color =
-          "#c62828";
+          "解答用紙の登録に失敗しました。",
+          true
+        );
 
       }
+
+
+      button.disabled =
+        false;
+
+      button.textContent =
+        "解答用紙を登録";
 
     }
   );
 
 
-document
-  .getElementById(
-    "saveButton"
-  )
-  .addEventListener(
-    "click",
-    () => {
+/* =========================================================
+   入力ファイル判定
+========================================================= */
 
-      alert(
-        "現在のページ設定は保存済みです。"
+async function processInputFile(
+  file
+) {
+
+  const extension =
+    getExtension(
+      file.name
+    );
+
+
+  /*
+    ZIP
+  */
+
+  if (
+    ZIP_EXTENSIONS
+      .includes(extension)
+  ) {
+
+    await processZip(
+      file
+    );
+
+    return;
+
+  }
+
+
+  /*
+    PDF
+  */
+
+  if (
+    PDF_EXTENSIONS
+      .includes(extension)
+  ) {
+
+    await processPdf(
+      file
+    );
+
+    return;
+
+  }
+
+
+  /*
+    画像
+  */
+
+  if (
+    IMAGE_EXTENSIONS
+      .includes(extension)
+  ) {
+
+    await processImage(
+      file
+    );
+
+    return;
+
+  }
+
+
+  throw new Error(
+    `${file.name}：対応していないファイル形式です。`
+  );
+
+}
+
+
+/* =========================================================
+   画像登録
+========================================================= */
+
+async function processImage(
+  file
+) {
+
+  const image =
+    await loadImageFromBlob(
+      file
+    );
+
+
+  const pageNo =
+    await getNextPageNo();
+
+
+  const path =
+    `${pageTestId}/page-${String(pageNo).padStart(3,"0")}-${crypto.randomUUID()}.png`;
+
+
+  /*
+    解答用紙はPNGへ統一
+  */
+
+  const pngBlob =
+    await convertImageToPng(
+      file
+    );
+
+
+  const {
+    error: uploadError
+  } =
+    await supabaseClient
+      .storage
+      .from(
+        "model-answers"
+      )
+      .upload(
+        path,
+        pngBlob,
+        {
+          contentType:
+            "image/png",
+          upsert:
+            false
+        }
+      );
+
+
+  if (uploadError) {
+
+    throw uploadError;
+
+  }
+
+
+  await insertTestPage({
+
+    pageNo,
+
+    path,
+
+    width:
+      image.naturalWidth,
+
+    height:
+      image.naturalHeight
+
+  });
+
+}
+
+
+/* =========================================================
+   ZIP
+========================================================= */
+
+async function processZip(
+  file
+) {
+
+  if (
+    typeof JSZip ===
+    "undefined"
+  ) {
+
+    throw new Error(
+      "ZIP処理ライブラリが読み込まれていません。"
+    );
+
+  }
+
+
+  const zip =
+    await JSZip.loadAsync(
+      file
+    );
+
+
+  const entries = [];
+
+
+  for (
+    const [
+      path,
+      entry
+    ]
+    of Object.entries(
+      zip.files
+    )
+  ) {
+
+    if (
+      entry.dir
+    ) {
+
+      continue;
+
+    }
+
+
+    const extension =
+      getExtension(
+        path
+      );
+
+
+    if (
+      ![
+        ...IMAGE_EXTENSIONS,
+        ...PDF_EXTENSIONS
+      ].includes(
+        extension
+      )
+    ) {
+
+      continue;
+
+    }
+
+
+    const blob =
+      await entry.async(
+        "blob"
+      );
+
+
+    entries.push({
+
+      path,
+
+      name:
+        path
+          .split("/")
+          .pop(),
+
+      blob
+
+    });
+
+  }
+
+
+  if (!entries.length) {
+
+    throw new Error(
+      "ZIP内に対応ファイルがありません。"
+    );
+
+  }
+
+
+  entries.sort(
+    (a, b) =>
+      a.path.localeCompare(
+        b.path,
+        undefined,
+        {
+          numeric:
+            true
+        }
+      )
+  );
+
+
+  for (
+    const entry
+    of entries
+  ) {
+
+    const extension =
+      getExtension(
+        entry.name
+      );
+
+
+    if (
+      PDF_EXTENSIONS
+        .includes(
+          extension
+        )
+    ) {
+
+      await processPdf(
+        entry.blob,
+        entry.name
+      );
+
+    } else {
+
+      await processImage(
+        entry.blob,
+        entry.name
+      );
+
+    }
+
+  }
+
+}
+
+
+/* =========================================================
+   PDF
+========================================================= */
+
+async function processPdf(
+  file,
+  originalName
+) {
+
+  const pdf =
+    await loadPdf(
+      file
+    );
+
+
+  if (!pdf) {
+
+    throw new Error(
+      `${originalName || file.name}：PDFを読み込めませんでした。`
+    );
+
+  }
+
+
+  for (
+    let pageNo = 1;
+    pageNo <= pdf.numPages;
+    pageNo++
+  ) {
+
+    const page =
+      await pdf.getPage(
+        pageNo
+      );
+
+
+    /*
+      高解像度
+    */
+
+    const viewport =
+      page.getViewport({
+        scale:
+          2
+      });
+
+
+    const canvas =
+      document.createElement(
+        "canvas"
+      );
+
+
+    canvas.width =
+      Math.ceil(
+        viewport.width
+      );
+
+
+    canvas.height =
+      Math.ceil(
+        viewport.height
+      );
+
+
+    const context =
+      canvas.getContext(
+        "2d"
+      );
+
+
+    await page.render({
+
+      canvasContext:
+        context,
+
+      viewport
+
+    }).promise;
+
+
+    const blob =
+      await canvasToBlob(
+        canvas
+      );
+
+
+    const nextPage =
+      await getNextPageNo();
+
+
+    const path =
+      `${pageTestId}/page-${String(nextPage).padStart(3,"0")}-${crypto.randomUUID()}.png`;
+
+
+    const {
+      error:
+        uploadError
+    } =
+      await supabaseClient
+        .storage
+        .from(
+          "model-answers"
+        )
+        .upload(
+          path,
+          blob,
+          {
+            contentType:
+              "image/png",
+
+            upsert:
+              false
+          }
+        );
+
+
+    if (uploadError) {
+
+      throw uploadError;
+
+    }
+
+
+    await insertTestPage({
+
+      pageNo:
+        nextPage,
+
+      path,
+
+      width:
+        canvas.width,
+
+      height:
+        canvas.height
+
+    });
+
+  }
+
+}
+
+
+/* =========================================================
+   PDF.js
+========================================================= */
+
+async function loadPdf(
+  blob
+) {
+
+  if (
+    !window.pdfjsLib
+  ) {
+
+    await loadPdfJs();
+
+  }
+
+
+  if (
+    !window.pdfjsLib
+  ) {
+
+    throw new Error(
+      "PDF.jsを読み込めませんでした。"
+    );
+
+  }
+
+
+  const buffer =
+    await blob.arrayBuffer();
+
+
+  return await window.pdfjsLib
+    .getDocument({
+      data:
+        buffer
+    })
+    .promise;
+
+}
+
+
+async function loadPdfJs() {
+
+  /*
+    PDF.js 4.x は
+    ESM版を使用する。
+  */
+
+  if (
+    window.pdfjsLib
+  ) {
+
+    return;
+
+  }
+
+
+  const module =
+    await import(
+      "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs"
+    );
+
+
+  window.pdfjsLib =
+    module;
+
+}
+
+
+/* =========================================================
+   次のページ番号
+========================================================= */
+
+async function getNextPageNo() {
+
+  const {
+    data,
+    error
+  } =
+    await supabaseClient
+      .from(
+        "test_pages"
+      )
+      .select(
+        "page_no"
+      )
+      .eq(
+        "test_id",
+        pageTestId
+      )
+      .neq(
+        "page_no",
+        999
+      )
+      .order(
+        "page_no",
+        {
+          ascending:
+            false
+        }
+      )
+      .limit(1);
+
+
+  if (error) {
+
+    throw error;
+
+  }
+
+
+  if (
+    !data ||
+    !data.length
+  ) {
+
+    return 1;
+
+  }
+
+
+  return (
+    Number(
+      data[0].page_no
+    ) + 1
+  );
+
+}
+
+
+/* =========================================================
+   test_pages登録
+========================================================= */
+
+async function insertTestPage({
+  pageNo,
+  path,
+  width,
+  height
+}) {
+
+  const {
+    error
+  } =
+    await supabaseClient
+      .from(
+        "test_pages"
+      )
+      .insert({
+
+        test_id:
+          pageTestId,
+
+        page_no:
+          pageNo,
+
+        image_path:
+          path,
+
+        width_px:
+          width,
+
+        height_px:
+          height
+
+      });
+
+
+  if (error) {
+
+    throw error;
+
+  }
+
+}
+
+
+/* =========================================================
+   画像をPNGへ
+========================================================= */
+
+async function convertImageToPng(
+  blob
+) {
+
+  const image =
+    await loadImageFromBlob(
+      blob
+    );
+
+
+  const canvas =
+    document.createElement(
+      "canvas"
+    );
+
+
+  canvas.width =
+    image.naturalWidth;
+
+
+  canvas.height =
+    image.naturalHeight;
+
+
+  const context =
+    canvas.getContext(
+      "2d"
+    );
+
+
+  context.drawImage(
+    image,
+    0,
+    0
+  );
+
+
+  return await canvasToBlob(
+    canvas
+  );
+
+}
+
+
+/* =========================================================
+   Blob画像
+========================================================= */
+
+function loadImageFromBlob(
+  blob
+) {
+
+  return new Promise(
+    (
+      resolve,
+      reject
+    ) => {
+
+      const image =
+        new Image();
+
+
+      const url =
+        URL.createObjectURL(
+          blob
+        );
+
+
+      image.onload =
+        () => {
+
+          URL.revokeObjectURL(
+            url
+          );
+
+          resolve(
+            image
+          );
+
+        };
+
+
+      image.onerror =
+        () => {
+
+          URL.revokeObjectURL(
+            url
+          );
+
+          reject(
+            new Error(
+              "画像を読み込めませんでした。"
+            )
+          );
+
+        };
+
+
+      image.src =
+        url;
+
+    }
+  );
+
+}
+
+
+/* =========================================================
+   Canvas → PNG
+========================================================= */
+
+function canvasToBlob(
+  canvas
+) {
+
+  return new Promise(
+    (
+      resolve,
+      reject
+    ) => {
+
+      canvas.toBlob(
+        blob => {
+
+          if (!blob) {
+
+            reject(
+              new Error(
+                "画像変換に失敗しました。"
+              )
+            );
+
+            return;
+
+          }
+
+
+          resolve(
+            blob
+          );
+
+        },
+        "image/png"
       );
 
     }
   );
 
+}
+
+
+/* =========================================================
+   ページ削除
+========================================================= */
+
+async function deletePage(
+  pageId
+) {
+
+  if (
+    !confirm(
+      "この解答用紙ページを削除しますか？"
+    )
+  ) {
+
+    return;
+
+  }
+
+
+  try {
+
+    const {
+      data: page,
+      error:
+        pageError
+    } =
+      await supabaseClient
+        .from(
+          "test_pages"
+        )
+        .select(
+          "id,image_path"
+        )
+        .eq(
+          "id",
+          pageId
+        )
+        .single();
+
+
+    if (pageError) {
+
+      throw pageError;
+
+    }
+
+
+    /*
+      DB削除
+    */
+
+    const {
+      error:
+        deleteError
+    } =
+      await supabaseClient
+        .from(
+          "test_pages"
+        )
+        .delete()
+        .eq(
+          "id",
+          pageId
+        );
+
+
+    if (deleteError) {
+
+      throw deleteError;
+
+    }
+
+
+    /*
+      Storage削除
+    */
+
+    if (
+      page?.image_path
+    ) {
+
+      await supabaseClient
+        .storage
+        .from(
+          "model-answers"
+        )
+        .remove([
+          page.image_path
+        ]);
+
+    }
+
+
+    await loadPages();
+
+
+    showMessage(
+      "ページを削除しました。"
+    );
+
+
+  } catch (error) {
+
+    console.error(error);
+
+    showMessage(
+      error.message ||
+      "削除に失敗しました。",
+      true
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   選択解除
+========================================================= */
+
+document
+  .getElementById(
+    "clearButton"
+  )
+  .addEventListener(
+    "click",
+    () => {
+
+      document.getElementById(
+        "pageFile"
+      ).value =
+        "";
+
+      showMessage(
+        ""
+      );
+
+    }
+  );
+
+
+/* =========================================================
+   Logout
+========================================================= */
 
 document
   .getElementById(
@@ -496,29 +1588,69 @@ document
   );
 
 
+/* =========================================================
+   メッセージ
+========================================================= */
+
+function showMessage(
+  message,
+  error = false
+) {
+
+  const element =
+    document.getElementById(
+      "message"
+    );
+
+
+  element.textContent =
+    message;
+
+
+  element.style.color =
+    error
+      ? "#c62828"
+      : "#16834b";
+
+}
+
+
+/* =========================================================
+   拡張子
+========================================================= */
+
 function getExtension(
   filename
 ) {
 
+  const clean =
+    String(filename)
+      .split("?")[0]
+      .toLowerCase();
+
+
   const parts =
-    filename.split(".");
+    clean.split(".");
 
 
   if (
     parts.length < 2
   ) {
 
-    return "png";
+    return "";
 
   }
 
 
   return parts
-    .pop()
-    .toLowerCase();
+    .pop();
 
 }
 
+
+/* =========================================================
+   HTML escape
+========================================================= */
 
 function escapeHtml(
   value
@@ -535,13 +1667,32 @@ function escapeHtml(
 
 
   return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
+    .replaceAll(
+      "&",
+      "&amp;"
+    )
+    .replaceAll(
+      "<",
+      "&lt;"
+    )
+    .replaceAll(
+      ">",
+      "&gt;"
+    )
+    .replaceAll(
+      '"',
+      "&quot;"
+    )
+    .replaceAll(
+      "'",
+      "&#039;"
+    );
 
 }
 
+
+/* =========================================================
+   START
+========================================================= */
 
 initializeTestPages();

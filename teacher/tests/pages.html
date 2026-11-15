@@ -21,7 +21,9 @@
 
 </head>
 
+
 <body>
+
 
 <header class="topbar">
 
@@ -29,11 +31,14 @@
     テスト成績システム
   </div>
 
+
   <div class="topbar-space"></div>
+
 
   <span id="teacherName">
     -
   </span>
+
 
   <button
     id="logoutButton"
@@ -46,13 +51,21 @@
 </header>
 
 
+
 <div class="teacher-layout">
 
+
+  <!-- =========================
+       サイドバー
+  ========================== -->
+
   <aside class="sidebar">
+
 
     <div class="sidebar-title">
       テスト設定
     </div>
+
 
     <a
       href="/teacher/tests"
@@ -60,6 +73,7 @@
     >
       テスト一覧
     </a>
+
 
     <a
       id="pagesLink"
@@ -69,6 +83,7 @@
       解答用紙登録
     </a>
 
+
     <a
       id="layoutLink"
       href="#"
@@ -76,6 +91,7 @@
     >
       枠設定
     </a>
+
 
     <a
       id="modelAnswerLink"
@@ -85,6 +101,7 @@
       模範解答
     </a>
 
+
     <a
       id="previewLink"
       href="#"
@@ -93,10 +110,17 @@
       テスト確認
     </a>
 
+
   </aside>
 
 
+
+  <!-- =========================
+       メイン
+  ========================== -->
+
   <main class="main-content">
+
 
     <div class="page-header">
 
@@ -107,24 +131,34 @@
     </div>
 
 
+
+    <!-- テスト情報 -->
+
     <div
       id="testInformation"
       class="card"
     >
+
       読み込み中...
+
     </div>
 
 
-    <!-- アップロード -->
+
+    <!-- =========================
+         アップロード
+    ========================== -->
 
     <div class="card">
+
 
       <h3>
         解答用紙ファイル
       </h3>
 
+
       <p>
-        解答用紙をアップロードしてください。
+        解答用紙を登録してください。
       </p>
 
 
@@ -132,35 +166,69 @@
         style="
           background:#f3f5f7;
           border:1px solid #d0d6dc;
+          border-radius:4px;
           padding:14px;
-          margin-bottom:15px;
+          margin-bottom:18px;
         "
       >
 
         <strong>
-          対応形式
+          対応ファイル
         </strong>
 
-        <p>
-          JPG / JPEG / PNG / WEBP / GIF / BMP / PDF / ZIP
-        </p>
 
-        <p>
-          ZIPの場合、複数の画像・PDFをまとめて登録できます。
-        </p>
+        <div
+          style="
+            margin-top:8px;
+            line-height:1.8;
+          "
+        >
 
-        <p>
-          複数ページの解答用紙にも対応します。
-        </p>
+          JPG / JPEG / PNG / WEBP / GIF / BMP
+
+          <br>
+
+          PDF
+
+          <br>
+
+          ZIP
+
+        </div>
+
+
+        <div
+          style="
+            margin-top:8px;
+            color:#666;
+            font-size:13px;
+          "
+        >
+
+          ZIPには複数の画像・PDFをまとめて入れられます。
+
+          <br>
+
+          PDFはページごとに自動分割されます。
+
+          <br>
+
+          画像はPNGへ統一して保存します。
+
+        </div>
 
       </div>
 
 
+
       <div class="form-group">
 
-        <label for="pageFile">
+        <label
+          for="pageFile"
+        >
           ファイル
         </label>
+
 
         <input
           id="pageFile"
@@ -188,6 +256,7 @@
       </div>
 
 
+
       <div
         style="
           display:flex;
@@ -204,6 +273,7 @@
           解答用紙を登録
         </button>
 
+
         <button
           id="clearButton"
           class="btn"
@@ -215,6 +285,7 @@
       </div>
 
 
+
       <div
         id="message"
         style="
@@ -224,25 +295,33 @@
       >
       </div>
 
+
     </div>
 
 
-    <!-- 登録済みページ -->
+
+    <!-- =========================
+         登録済み
+    ========================== -->
 
     <div class="card">
+
 
       <div
         style="
           display:flex;
           align-items:center;
           justify-content:space-between;
-          margin-bottom:12px;
+          margin-bottom:15px;
         "
       >
 
-        <h3 style="margin:0;">
+        <h3
+          style="margin:0;"
+        >
           登録済み解答用紙
         </h3>
+
 
         <span
           id="pageCount"
@@ -255,6 +334,7 @@
         </span>
 
       </div>
+
 
 
       <div
@@ -272,7 +352,7 @@
             grid-column:1/-1;
             text-align:center;
             color:#777;
-            padding:30px;
+            padding:35px;
           "
         >
           読み込み中...
@@ -280,33 +360,52 @@
 
       </div>
 
+
     </div>
 
+
   </main>
+
 
 </div>
 
 
-<!-- ZIP -->
 
+<!-- =====================================================
+     外部ライブラリ
+===================================================== -->
+
+<!-- ZIP -->
 <script
   src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"
 ></script>
 
 
 <!-- Supabase -->
-
 <script
   src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
 ></script>
 
 
+<!-- 共通設定 -->
 <script src="/js/config.js"></script>
 
+
+<!-- 認証 -->
 <script src="/js/auth.js"></script>
 
+
+<!-- PDF処理 -->
+<script src="/js/lib/pdf-loader.js"></script>
+
+
+<!-- ファイル処理 -->
+<script src="/js/lib/file-parser.js"></script>
+
+
+<!-- このページ -->
 <script src="/js/teacher/test-pages.js"></script>
 
-</body>
 
+</body>
 </html>

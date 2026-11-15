@@ -1,13 +1,65 @@
 
 "use strict";
 
-
 /* =========================================================
-   TEST MARKING
+   テスト成績システム
+   js/teacher/marking.js
+
+   テスト単位採点
+
+   URL:
+     /teacher/marking/mark?test=TEST_ID
+
+   仕様:
+   ---------------------------------------------------------
+   テストを1つ選択
+       ↓
+   そのテストの答案を全件取得
+       ↓
+   問1
+       ↓
+   全生徒の答案を表示・採点
+       ↓
+   問2
+       ↓
+   全生徒の答案を表示・採点
+       ↓
+   ...
+       ↓
+   全設問 × 全答案 完了
+
+   答案画像:
+     answer_sheet_pages
+       ↓
+     Storage bucket: answer-files
+       ↓
+     signed URL
+       ↓
+     img
+
+   Canvas / toBlob:
+     使用しない
+
+   source_page_id:
+     使用しない
+
+   answer_regions:
+     必須ではない
+
+   answer_sheets:
+     全問採点完了しても、このファイルでは
+     markedへ変更しない。
+
+   公開:
+     このファイルでは行わない。
+     成績・偏差値・順位処理完了後の
+     最終公開処理で行う。
 ========================================================= */
 
-(function () {
 
+/* =========================================================
+   STATE
+========================================================= */
 
 let DB = null;
 
@@ -34,1444 +86,2194 @@ let saving = false;
    DOM
 ========================================================= */
 
-const statusEl =
-document.getElementById("status");
+const statusElement =
+  document.getElementById(
+    "status"
+  );
 
-const teacherName =
-document.getElementById("teacherName");
+const teacherNameElement =
+  document.getElementById(
+    "teacherName"
+  );
 
 const answerTableWrap =
-document.getElementById("answerTableWrap");
+  document.getElementById(
+    "answerTableWrap"
+  );
 
-const questionTitle =
-document.getElementById("questionTitle");
+const questionTitleElement =
+  document.getElementById(
+    "questionTitle"
+  );
 
-const questionMeta =
-document.getElementById("questionMeta");
+const questionMetaElement =
+  document.getElementById(
+    "questionMeta"
+  );
 
 const previousButton =
-document.getElementById("previousButton");
+  document.getElementById(
+    "previousButton"
+  );
 
 const nextButton =
-document.getElementById("nextButton");
+  document.getElementById(
+    "nextButton"
+  );
 
 const refreshButton =
-document.getElementById("refreshButton");
+  document.getElementById(
+    "refreshButton"
+  );
 
-const progress =
-document.getElementById("progress");
+const progressElement =
+  document.getElementById(
+    "progress"
+  );
 
 const progressBar =
-document.getElementById("progressBar");
+  document.getElementById(
+    "progressBar"
+  );
 
 const progressText =
-document.getElementById("progressText");
+  document.getElementById(
+    "progressText"
+  );
 
-const complete =
-document.getElementById("complete");
+const completeElement =
+  document.getElementById(
+    "complete"
+  );
 
 
 /* =========================================================
-   START
+   INIT
 ========================================================= */
 
-function start() {
-
-try {
-
-setStatus(
-"JavaScriptが起動しました。"
+document.addEventListener(
+  "DOMContentLoaded",
+  initialize
 );
 
 
-/* ---------------------------------------------------------
-   Supabase
---------------------------------------------------------- */
+async function initialize() {
 
-DB =
-window.SB ||
-window.supabaseClient ||
-window.sb;
+  try {
 
-
-if (!DB) {
-
-throw new Error(
-"Supabaseクライアントが見つかりません。config.jsを確認してください。"
-);
-
-}
+    setStatus(
+      "JavaScriptを起動しました。"
+    );
 
 
-/* ---------------------------------------------------------
-   URL
---------------------------------------------------------- */
+    /*
+     * -----------------------------------------------------
+     * Supabase
+     * -----------------------------------------------------
+     *
+     * config.js:
+     *
+     * window.SB
+     */
 
-const params =
-new URLSearchParams(
-window.location.search
-);
-
-testId =
-params.get("test");
-
-
-if (!testId) {
-
-throw new Error(
-"テストIDがありません。採点一覧から「採点開始」を押してください。"
-);
-
-}
+    DB =
+      window.SB ||
+      window.supabaseClient ||
+      null;
 
 
-testId =
-String(
-testId
-).trim();
+    if (!DB) {
+
+      throw new Error(
+        "Supabaseクライアントがありません。js/config.js の設定を確認してください。"
+      );
+
+    }
 
 
-setupEvents();
+    /*
+     * -----------------------------------------------------
+     * URL
+     * -----------------------------------------------------
+     */
+
+    const params =
+      new URLSearchParams(
+        window.location.search
+      );
 
 
-loadEverything();
+    testId =
+      params.get(
+        "test"
+      );
 
-} catch (error) {
 
-showFatal(
-error.message ||
-"採点画面を起動できませんでした。"
-);
+    if (!testId) {
 
-}
+      throw new Error(
+        "テストIDがありません。採点一覧から「採点開始」を押してください。"
+      );
+
+    }
+
+
+    testId =
+      String(
+        testId
+      ).trim();
+
+
+    if (!testId) {
+
+      throw new Error(
+        "テストIDが空です。"
+      );
+
+    }
+
+
+    /*
+     * -----------------------------------------------------
+     * 認証
+     * -----------------------------------------------------
+     */
+
+    await checkTeacher();
+
+
+    /*
+     * -----------------------------------------------------
+     * イベント
+     * -----------------------------------------------------
+     */
+
+    setupEvents();
+
+
+    /*
+     * -----------------------------------------------------
+     * データ
+     * -----------------------------------------------------
+     */
+
+    await loadEverything();
+
+
+  } catch (error) {
+
+    console.error(
+      "marking initialize:",
+      error
+    );
+
+
+    showFatal(
+      error.message ||
+      "採点画面を起動できませんでした。"
+    );
+
+  }
 
 }
 
 
 /* =========================================================
-   LOAD
+   AUTH
+========================================================= */
+
+async function checkTeacher() {
+
+  /*
+   * 現在の auth.js に合わせる。
+   *
+   * window.requireRole("teacher")
+   *
+   * 戻り値:
+   * {
+   *   user,
+   *   profile
+   * }
+   */
+
+  if (
+    typeof window.requireRole ===
+    "function"
+  ) {
+
+    const result =
+      await withTimeout(
+        window.requireRole(
+          "teacher"
+        ),
+        10000,
+        "ログイン確認がタイムアウトしました。"
+      );
+
+
+    if (!result) {
+
+      return;
+
+    }
+
+
+    const profile =
+      result.profile ||
+      result;
+
+
+    if (
+      teacherNameElement
+    ) {
+
+      teacherNameElement.textContent =
+        profile.name ||
+        "先生";
+
+    }
+
+
+    return;
+
+  }
+
+
+  /*
+   * 念のため直接確認。
+   */
+
+  if (
+    DB.auth &&
+    typeof DB.auth.getUser ===
+    "function"
+  ) {
+
+    const {
+      data,
+      error
+    } =
+      await withTimeout(
+        DB.auth.getUser(),
+        10000,
+        "ログイン確認がタイムアウトしました。"
+      );
+
+
+    if (error) {
+
+      throw new Error(
+        `ログイン確認エラー: ${error.message}`
+      );
+
+    }
+
+
+    if (!data?.user) {
+
+      throw new Error(
+        "ログインセッションがありません。"
+      );
+
+    }
+
+  }
+
+}
+
+
+/* =========================================================
+   EVENTS
+========================================================= */
+
+function setupEvents() {
+
+  /*
+   * 前の問題
+   */
+
+  previousButton?.addEventListener(
+    "click",
+    async () => {
+
+      if (
+        questionIndex <=
+        0
+      ) {
+
+        return;
+
+      }
+
+
+      questionIndex--;
+
+
+      try {
+
+        await renderQuestion();
+
+      } catch (error) {
+
+        showFatal(
+          error.message ||
+          "問題を表示できませんでした。"
+        );
+
+      }
+
+    }
+  );
+
+
+  /*
+   * 次の問題
+   */
+
+  nextButton?.addEventListener(
+    "click",
+    async () => {
+
+      try {
+
+        await nextQuestion();
+
+      } catch (error) {
+
+        showFatal(
+          error.message ||
+          "次の問題へ進めませんでした。"
+        );
+
+      }
+
+    }
+  );
+
+
+  /*
+   * 更新
+   */
+
+  refreshButton?.addEventListener(
+    "click",
+    async () => {
+
+      try {
+
+        setStatus(
+          "更新しています..."
+        );
+
+
+        await loadEverything();
+
+      } catch (error) {
+
+        showFatal(
+          error.message ||
+          "更新に失敗しました。"
+        );
+
+      }
+
+    }
+  );
+
+
+  /*
+   * ログアウト
+   */
+
+  document
+    .getElementById(
+      "logoutButton"
+    )
+    ?.addEventListener(
+      "click",
+      async () => {
+
+        try {
+
+          if (
+            typeof window.signOut ===
+            "function"
+          ) {
+
+            await window.signOut();
+
+            return;
+
+          }
+
+
+          if (
+            typeof window.logout ===
+            "function"
+          ) {
+
+            await window.logout();
+
+            return;
+
+          }
+
+
+          if (
+            DB.auth &&
+            typeof DB.auth.signOut ===
+            "function"
+          ) {
+
+            await DB.auth.signOut();
+
+            location.replace(
+              "/login"
+            );
+
+          }
+
+        } catch (error) {
+
+          console.error(
+            "logout:",
+            error
+          );
+
+        }
+
+      }
+    );
+
+}
+
+
+/* =========================================================
+   LOAD EVERYTHING
 ========================================================= */
 
 async function loadEverything() {
 
-try {
+  /*
+   * -------------------------------------------------------
+   * TEST
+   * -------------------------------------------------------
+   */
+
+  setStatus(
+    "テスト情報を取得しています..."
+  );
+
+
+  const {
+    data: testData,
+    error: testError
+  } =
+    await withTimeout(
+      DB
+        .from(
+          "tests"
+        )
+        .select(
+          `
+          id,
+          name,
+          subject,
+          grade,
+          class_name
+          `
+        )
+        .eq(
+          "id",
+          testId
+        )
+        .maybeSingle(),
+      10000,
+      "テスト情報取得がタイムアウトしました。"
+    );
+
+
+  if (testError) {
+
+    throw new Error(
+      `テスト取得エラー: ${testError.message}`
+    );
+
+  }
+
+
+  if (!testData) {
+
+    throw new Error(
+      "指定されたテストが見つかりません。"
+    );
+
+  }
+
+
+  test =
+    testData;
+
+
+  /*
+   * -------------------------------------------------------
+   * ANSWERS
+   * -------------------------------------------------------
+   */
+
+  setStatus(
+    "答案を取得しています..."
+  );
+
+
+  const {
+    data: answerData,
+    error: answerError
+  } =
+    await withTimeout(
+      DB
+        .from(
+          "answer_sheets"
+        )
+        .select(
+          `
+          id,
+          test_id,
+          student_id,
+          original_file_path,
+          rendered_file_path,
+          page_count,
+          qr_value,
+          status,
+          uploaded_at,
+          created_at
+          `
+        )
+        .eq(
+          "test_id",
+          testId
+        )
+        .order(
+          "uploaded_at",
+          {
+            ascending:
+              true
+          }
+        ),
+      10000,
+      "答案取得がタイムアウトしました。"
+    );
+
+
+  if (answerError) {
+
+    throw new Error(
+      `答案取得エラー: ${answerError.message}`
+    );
+
+  }
+
+
+  answers =
+    answerData ||
+    [];
+
+
+  if (!answers.length) {
+
+    throw new Error(
+      `「${test.name}」には答案が登録されていません。`
+    );
+
+  }
+
+
+  /*
+   * -------------------------------------------------------
+   * STUDENTS
+   * -------------------------------------------------------
+   */
+
+  setStatus(
+    "生徒情報を取得しています..."
+  );
+
+
+  await loadStudents();
+
+
+  /*
+   * -------------------------------------------------------
+   * ANSWER PAGES
+   * -------------------------------------------------------
+   */
+
+  setStatus(
+    "答案ページを取得しています..."
+  );
+
+
+  await loadPages();
+
+
+  /*
+   * -------------------------------------------------------
+   * LAYOUT BOXES
+   * -------------------------------------------------------
+   */
+
+  setStatus(
+    "採点枠を取得しています..."
+  );
+
+
+  const {
+    data: boxData,
+    error: boxError
+  } =
+    await withTimeout(
+      DB
+        .from(
+          "layout_boxes"
+        )
+        .select(
+          `
+          id,
+          test_id,
+          page_no,
+          box_type,
+          label,
+          x,
+          y,
+          width,
+          height,
+          question_id,
+          points,
+          created_at
+          `
+        )
+        .eq(
+          "test_id",
+          testId
+        )
+        .order(
+          "page_no",
+          {
+            ascending:
+              true
+          }
+        )
+        .order(
+          "created_at",
+          {
+            ascending:
+              true
+          }
+        ),
+      10000,
+      "採点枠取得がタイムアウトしました。"
+    );
+
+
+  if (boxError) {
+
+    throw new Error(
+      `採点枠取得エラー: ${boxError.message}`
+    );
+
+  }
+
+
+  /*
+   * -------------------------------------------------------
+   * QUESTIONS
+   * -------------------------------------------------------
+   *
+   * 採点対象:
+   *
+   * box_type = answer
+   * AND question_idあり
+   *
+   * 大問・合計・小計・QR等は除外。
+   */
+
+  questions =
+    (boxData || [])
+      .filter(
+        box => {
+
+          const type =
+            String(
+              box.box_type ||
+              ""
+            )
+              .trim()
+              .toLowerCase();
+
+
+          return (
+            type ===
+              "answer" &&
+            Boolean(
+              box.question_id
+            )
+          );
 
-setStatus(
-"テスト情報を取得しています..."
-);
+        }
+      )
+      .map(
+        box => ({
 
+          id:
+            box.id,
 
-const testResult =
-await DB
-.from("tests")
-.select(`
-id,
-name,
-subject,
-grade,
-class_name
-`)
-.eq(
-"id",
-testId
-)
-.maybeSingle();
+          label:
+            box.label ||
+            "設問",
 
+          pageNo:
+            Number(
+              box.page_no
+            ),
 
-if (testResult.error) {
+          x:
+            Number(
+              box.x
+            ) || 0,
 
-throw new Error(
-`テスト取得エラー: ${testResult.error.message}`
-);
+          y:
+            Number(
+              box.y
+            ) || 0,
 
-}
+          width:
+            Number(
+              box.width
+            ) || 1,
 
+          height:
+            Number(
+              box.height
+            ) || 1,
 
-if (!testResult.data) {
+          questionId:
+            box.question_id,
 
-throw new Error(
-"指定されたテストがありません。"
-);
+          points:
+            Number(
+              box.points
+            ) || 0
 
-}
+        })
+      );
 
 
-test =
-testResult.data;
+  if (!questions.length) {
 
+    throw new Error(
+      "採点対象の設問がありません。layout_boxes の box_type=answer と question_id を確認してください。"
+    );
 
-setStatus(
-"答案を取得しています..."
-);
+  }
 
 
-const answerResult =
-await DB
-.from("answer_sheets")
-.select(`
-id,
-test_id,
-student_id,
-page_count,
-qr_value,
-status,
-uploaded_at
-`)
-.eq(
-"test_id",
-testId
-)
-.order(
-"uploaded_at",
-{
-ascending:true
-}
-);
+  /*
+   * -------------------------------------------------------
+   * SCORES
+   * -------------------------------------------------------
+   */
 
+  setStatus(
+    "既存の採点結果を取得しています..."
+  );
 
-if (answerResult.error) {
 
-throw new Error(
-`答案取得エラー: ${answerResult.error.message}`
-);
+  await loadScores();
 
-}
 
+  /*
+   * -------------------------------------------------------
+   * READY
+   * -------------------------------------------------------
+   */
 
-answers =
-answerResult.data || [];
+  questionIndex =
+    0;
 
 
-if (!answers.length) {
+  progressElement?.classList.add(
+    "show"
+  );
 
-throw new Error(
-"このテストには答案がありません。"
-);
 
-}
+  completeElement?.classList.remove(
+    "show"
+  );
 
 
-setStatus(
-"生徒情報を取得しています..."
-);
+  nextButton.disabled =
+    false;
 
 
-await loadStudents();
-
-
-setStatus(
-"答案ページを取得しています..."
-);
-
-
-await loadPages();
-
-
-setStatus(
-"採点枠を取得しています..."
-);
-
-
-const boxResult =
-await DB
-.from("layout_boxes")
-.select(`
-id,
-test_id,
-page_no,
-box_type,
-label,
-x,
-y,
-width,
-height,
-question_id,
-points,
-created_at
-`)
-.eq(
-"test_id",
-testId
-)
-.order(
-"page_no",
-{
-ascending:true
-}
-)
-.order(
-"created_at",
-{
-ascending:true
-}
-);
+  await renderQuestion();
 
 
-if (boxResult.error) {
-
-throw new Error(
-`採点枠取得エラー: ${boxResult.error.message}`
-);
-
-}
-
-
-questions =
-(boxResult.data || [])
-.filter(
-box => {
-
-return (
-String(
-box.box_type ||
-""
-)
-.toLowerCase()
-.trim() ===
-"answer" &&
-Boolean(
-box.question_id
-)
-);
-
-}
-)
-.map(
-box => ({
-
-id:
-box.id,
-
-label:
-box.label ||
-"設問",
-
-pageNo:
-Number(
-box.page_no
-),
-
-x:
-Number(
-box.x
-) || 0,
-
-y:
-Number(
-box.y
-) || 0,
-
-width:
-Number(
-box.width
-) || 1,
-
-height:
-Number(
-box.height
-) || 1,
-
-questionId:
-box.question_id,
-
-points:
-Number(
-box.points
-) || 0
-
-})
-);
-
-
-if (!questions.length) {
-
-throw new Error(
-"採点対象の設問がありません。"
-);
-
-}
-
-
-setStatus(
-"既存の採点結果を取得しています..."
-);
-
-
-await loadScores();
-
-
-progress.classList.add(
-"show"
-);
-
-
-await renderQuestion();
-
-
-setStatus(
-`${test.name} / 答案${answers.length}件 / 設問${questions.length}問`
-);
-
-
-} catch (error) {
-
-showFatal(
-error.message ||
-"採点データの取得に失敗しました。"
-);
-
-}
+  setStatus(
+    `${test.name} / 答案 ${answers.length}件 / 設問 ${questions.length}問`
+  );
 
 }
 
 
 /* =========================================================
-   STUDENTS
+   LOAD STUDENTS
 ========================================================= */
 
 async function loadStudents() {
 
-students =
-new Map();
+  students =
+    new Map();
 
 
-const ids =
-[
-...new Set(
-answers
-.map(
-item =>
-item.student_id
-)
-.filter(Boolean)
-)
-];
+  const studentIds =
+    [
+      ...new Set(
+        answers
+          .map(
+            answer =>
+              answer.student_id
+          )
+          .filter(Boolean)
+      )
+    ];
 
 
-if (!ids.length) {
+  if (!studentIds.length) {
 
-return;
+    return;
 
-}
-
-
-const result =
-await DB
-.from("students")
-.select(`
-id,
-student_no,
-name
-`)
-.in(
-"id",
-ids
-);
+  }
 
 
-if (result.error) {
+  const {
+    data,
+    error
+  } =
+    await withTimeout(
+      DB
+        .from(
+          "students"
+        )
+        .select(
+          `
+          id,
+          student_no,
+          name
+          `
+        )
+        .in(
+          "id",
+          studentIds
+        ),
+      10000,
+      "生徒情報取得がタイムアウトしました。"
+    );
 
-throw new Error(
-`生徒情報取得エラー: ${result.error.message}`
-);
 
-}
+  if (error) {
+
+    throw new Error(
+      `生徒情報取得エラー: ${error.message}`
+    );
+
+  }
 
 
-for (
-const student
-of result.data || []
-) {
+  for (
+    const student
+    of data || []
+  ) {
 
-students.set(
-student.id,
-student
-);
+    students.set(
+      student.id,
+      student
+    );
 
-}
+  }
 
 }
 
 
 /* =========================================================
-   PAGES
+   LOAD PAGES
 ========================================================= */
 
 async function loadPages() {
 
-pages =
-new Map();
+  pages =
+    new Map();
 
 
-const ids =
-answers.map(
-item =>
-item.id
-);
+  const answerIds =
+    answers.map(
+      answer =>
+        answer.id
+    );
 
 
-const result =
-await DB
-.from("answer_sheet_pages")
-.select(`
-answer_sheet_id,
-page_no,
-file_path,
-file_type,
-original_name,
-width_px,
-height_px
-`)
-.in(
-"answer_sheet_id",
-ids
-)
-.order(
-"page_no",
-{
-ascending:true
-}
-);
+  if (!answerIds.length) {
+
+    return;
+
+  }
 
 
-if (result.error) {
+  const {
+    data,
+    error
+  } =
+    await withTimeout(
+      DB
+        .from(
+          "answer_sheet_pages"
+        )
+        .select(
+          `
+          answer_sheet_id,
+          page_no,
+          file_path,
+          file_type,
+          original_name,
+          width_px,
+          height_px
+          `
+        )
+        .in(
+          "answer_sheet_id",
+          answerIds
+        )
+        .order(
+          "page_no",
+          {
+            ascending:
+              true
+          }
+        ),
+      10000,
+      "答案ページ取得がタイムアウトしました。"
+    );
 
-throw new Error(
-`答案ページ取得エラー: ${result.error.message}`
-);
 
-}
+  if (error) {
 
+    throw new Error(
+      `答案ページ取得エラー: ${error.message}`
+    );
 
-for (
-const page
-of result.data || []
-) {
-
-if (
-!pages.has(
-page.answer_sheet_id
-)
-) {
-
-pages.set(
-page.answer_sheet_id,
-[]
-);
-
-}
+  }
 
 
-pages
-.get(
-page.answer_sheet_id
-)
-.push(
-page
-);
+  for (
+    const page
+    of data || []
+  ) {
 
-}
+    if (
+      !pages.has(
+        page.answer_sheet_id
+      )
+    ) {
+
+      pages.set(
+        page.answer_sheet_id,
+        []
+      );
+
+    }
+
+
+    pages
+      .get(
+        page.answer_sheet_id
+      )
+      .push(
+        page
+      );
+
+  }
 
 }
 
 
 /* =========================================================
-   SCORES
+   LOAD SCORES
 ========================================================= */
 
 async function loadScores() {
 
-const ids =
-answers.map(
-item =>
-item.id
-);
+  scores =
+    [];
 
 
-const result =
-await DB
-.from("scores")
-.select(`
-id,
-answer_sheet_id,
-layout_box_id,
-question_id,
-score,
-status,
-marked_at
-`)
-.in(
-"answer_sheet_id",
-ids
-);
+  const answerIds =
+    answers.map(
+      answer =>
+        answer.id
+    );
 
 
-if (result.error) {
+  if (!answerIds.length) {
 
-throw new Error(
-`採点結果取得エラー: ${result.error.message}`
-);
+    return;
 
-}
+  }
 
 
-scores =
-result.data || [];
+  const {
+    data,
+    error
+  } =
+    await withTimeout(
+      DB
+        .from(
+          "scores"
+        )
+        .select(
+          `
+          id,
+          answer_sheet_id,
+          layout_box_id,
+          question_id,
+          score,
+          status,
+          marked_at
+          `
+        )
+        .in(
+          "answer_sheet_id",
+          answerIds
+        ),
+      10000,
+      "採点結果取得がタイムアウトしました。"
+    );
+
+
+  if (error) {
+
+    throw new Error(
+      `採点結果取得エラー: ${error.message}`
+    );
+
+  }
+
+
+  scores =
+    data ||
+    [];
 
 }
 
 
 /* =========================================================
-   RENDER
+   RENDER QUESTION
 ========================================================= */
 
 async function renderQuestion() {
 
-const question =
-questions[
-questionIndex
-];
+  const question =
+    questions[
+      questionIndex
+    ];
 
 
-questionTitle.textContent =
-question.label;
+  if (!question) {
+
+    throw new Error(
+      "表示する設問がありません。"
+    );
+
+  }
 
 
-questionMeta.textContent =
-`${test.name} / 配点 ${format(
-question.points
-)}点 / ${questionIndex + 1} / ${questions.length}`;
+  questionTitleElement.textContent =
+    question.label;
 
 
-previousButton.disabled =
-questionIndex === 0;
+  questionMetaElement.textContent =
+    `${test.name} / 配点 ${formatNumber(
+      question.points
+    )}点 / 問題 ${
+      questionIndex + 1
+    } / ${
+      questions.length
+    }`;
 
 
-nextButton.textContent =
-questionIndex ===
-questions.length - 1
-? "採点完了確認"
-: "次の問題";
+  previousButton.disabled =
+    questionIndex <=
+    0;
 
 
-answerTableWrap.innerHTML =
-"";
+  nextButton.disabled =
+    false;
 
 
-const table =
-document.createElement(
-"table"
-);
-
-table.className =
-"answer-table";
+  nextButton.textContent =
+    questionIndex >=
+      questions.length - 1
+      ? "採点完了確認"
+      : "次の問題";
 
 
-table.innerHTML = `
-
-<thead>
-
-<tr>
-
-<th class="student-cell">
-生徒
-</th>
-
-<th class="answer-cell">
-答案
-</th>
-
-<th class="score-cell">
-得点
-</th>
-
-<th>
-状態
-</th>
-
-</tr>
-
-</thead>
-
-<tbody></tbody>
-
-`;
+  answerTableWrap.innerHTML =
+    "";
 
 
-const tbody =
-table.querySelector(
-"tbody"
-);
+  const table =
+    document.createElement(
+      "table"
+    );
 
 
-for (
-const answer
-of answers
-) {
-
-tbody.appendChild(
-await createRow(
-answer,
-question
-)
-);
-
-}
+  table.className =
+    "answer-table";
 
 
-answerTableWrap.appendChild(
-table
-);
+  table.innerHTML = `
+
+    <thead>
+
+      <tr>
+
+        <th class="student-cell">
+          生徒
+        </th>
+
+        <th class="answer-cell">
+          答案
+        </th>
+
+        <th class="score-cell">
+          得点
+        </th>
+
+        <th>
+          状態
+        </th>
+
+      </tr>
+
+    </thead>
+
+    <tbody></tbody>
+
+  `;
 
 
-updateProgress();
+  const tbody =
+    table.querySelector(
+      "tbody"
+    );
+
+
+  /*
+   * 同じ問題を全生徒分表示。
+   */
+
+  for (
+    const answer
+    of answers
+  ) {
+
+    const row =
+      await createAnswerRow(
+        answer,
+        question
+      );
+
+
+    tbody.appendChild(
+      row
+    );
+
+  }
+
+
+  answerTableWrap.appendChild(
+    table
+  );
+
+
+  updateProgress();
 
 }
 
 
 /* =========================================================
-   ROW
+   CREATE ANSWER ROW
 ========================================================= */
 
-async function createRow(
-answer,
-question
+async function createAnswerRow(
+  answer,
+  question
 ) {
 
-const row =
-document.createElement(
-"tr"
-);
+  const row =
+    document.createElement(
+      "tr"
+    );
 
 
-/* Student */
+  /*
+   * -------------------------------------------------------
+   * STUDENT
+   * -------------------------------------------------------
+   */
 
-const studentCell =
-document.createElement(
-"td"
-);
+  const studentCell =
+    document.createElement(
+      "td"
+    );
 
-studentCell.className =
-"student-cell";
 
+  studentCell.className =
+    "student-cell";
 
-const student =
-students.get(
-answer.student_id
-);
 
+  const student =
+    students.get(
+      answer.student_id
+    );
 
-const no =
-document.createElement(
-"div"
-);
 
-no.className =
-"student-no";
+  const studentNo =
+    document.createElement(
+      "div"
+    );
 
-no.textContent =
-student?.student_no ||
-"未紐付け";
 
+  studentNo.className =
+    "student-no";
 
-const name =
-document.createElement(
-"div"
-);
 
-name.className =
-"student-name";
+  studentNo.textContent =
+    student?.student_no ||
+    "未紐付け";
 
-name.textContent =
-student?.name ||
-"";
 
+  const studentName =
+    document.createElement(
+      "div"
+    );
 
-studentCell.append(
-no,
-name
-);
 
+  studentName.className =
+    "student-name";
 
-/* Image */
 
-const answerCell =
-document.createElement(
-"td"
-);
+  studentName.textContent =
+    student?.name ||
+    "";
 
-answerCell.className =
-"answer-cell";
 
+  studentCell.append(
+    studentNo,
+    studentName
+  );
 
-try {
 
-answerCell.appendChild(
-await createViewer(
-answer,
-question
-)
-);
+  /*
+   * -------------------------------------------------------
+   * ANSWER IMAGE
+   * -------------------------------------------------------
+   */
 
-} catch (error) {
+  const answerCell =
+    document.createElement(
+      "td"
+    );
 
-const errorBox =
-document.createElement(
-"div"
-);
 
-errorBox.className =
-"answer-error";
+  answerCell.className =
+    "answer-cell";
 
-errorBox.textContent =
-error.message;
 
-answerCell.appendChild(
-errorBox
-);
+  try {
 
-}
+    const viewer =
+      await createAnswerViewer(
+        answer,
+        question
+      );
 
 
-/* Score */
+    answerCell.appendChild(
+      viewer
+    );
 
-const scoreCell =
-document.createElement(
-"td"
-);
+  } catch (error) {
 
-scoreCell.className =
-"score-cell";
+    const errorElement =
+      document.createElement(
+        "div"
+      );
 
 
-const existing =
-findScore(
-answer.id,
-question.id
-);
+    errorElement.className =
+      "answer-error";
 
 
-const input =
-document.createElement(
-"input"
-);
+    errorElement.textContent =
+      error.message ||
+      "答案画像を表示できません。";
 
-input.type =
-"number";
 
-input.step =
-"0.1";
+    answerCell.appendChild(
+      errorElement
+    );
 
-input.min =
-"0";
+  }
 
-input.max =
-String(
-question.points
-);
 
-input.className =
-"score-input";
+  /*
+   * -------------------------------------------------------
+   * SCORE
+   * -------------------------------------------------------
+   */
 
-input.value =
-existing
-? existing.score
-: "";
+  const scoreCell =
+    document.createElement(
+      "td"
+    );
 
 
-const save =
-document.createElement(
-"button"
-);
+  scoreCell.className =
+    "score-cell";
 
-save.type =
-"button";
 
-save.className =
-"btn btn-primary score-save";
+  const existing =
+    findScore(
+      answer.id,
+      question.id
+    );
 
-save.textContent =
-"保存";
 
+  const input =
+    document.createElement(
+      "input"
+    );
 
-const state =
-document.createElement(
-"div"
-);
 
-state.className =
-"score-state";
+  input.type =
+    "number";
 
-state.textContent =
-existing &&
-existing.status ===
-"marked"
-? "採点済み"
-: "未採点";
 
+  input.step =
+    "0.1";
 
-if (
-existing &&
-existing.status ===
-"marked"
-) {
 
-state.classList.add(
-"marked"
-);
+  input.min =
+    "0";
 
-}
 
+  input.max =
+    String(
+      question.points
+    );
 
-const warning =
-document.createElement(
-"div"
-);
 
-warning.className =
-"warning";
+  input.className =
+    "score-input";
 
 
-input.addEventListener(
-"input",
-() => {
+  input.value =
+    existing
+      ? existing.score
+      : "";
 
-validate(
-input,
-warning,
-question.points
-);
 
-}
-);
+  const saveButton =
+    document.createElement(
+      "button"
+    );
 
 
-save.addEventListener(
-"click",
-() => {
+  saveButton.type =
+    "button";
 
-saveScore(
-answer,
-question,
-input,
-warning,
-state
-);
 
-}
-);
+  saveButton.className =
+    "btn btn-primary score-save";
 
 
-scoreCell.append(
-input,
-document.createElement("br"),
-save,
-state,
-warning
-);
+  saveButton.textContent =
+    "保存";
 
 
-/* Status */
+  const state =
+    document.createElement(
+      "div"
+    );
 
-const statusCell =
-document.createElement(
-"td"
-);
 
-statusCell.textContent =
-existing &&
-existing.status ===
-"marked"
-? "採点済み"
-: "未採点";
+  state.className =
+    "score-state";
 
-statusCell.style.color =
-existing &&
-existing.status ===
-"marked"
-? "#1769aa"
-: "#b42318";
 
+  state.textContent =
+    existing &&
+    existing.status ===
+      "marked"
+      ? "採点済み"
+      : "未採点";
 
-row.append(
-studentCell,
-answerCell,
-scoreCell,
-statusCell
-);
 
+  if (
+    existing &&
+    existing.status ===
+      "marked"
+  ) {
 
-return row;
+    state.classList.add(
+      "marked"
+    );
+
+  }
+
+
+  const warning =
+    document.createElement(
+      "div"
+    );
+
+
+  warning.className =
+    "warning";
+
+
+  input.addEventListener(
+    "input",
+    () => {
+
+      validateScore(
+        input,
+        warning,
+        question.points
+      );
+
+    }
+  );
+
+
+  saveButton.addEventListener(
+    "click",
+    async () => {
+
+      await saveScore(
+        answer,
+        question,
+        input,
+        warning,
+        state
+      );
+
+    }
+  );
+
+
+  scoreCell.append(
+    input,
+    document.createElement(
+      "br"
+    ),
+    saveButton,
+    state,
+    warning
+  );
+
+
+  /*
+   * -------------------------------------------------------
+   * STATUS
+   * -------------------------------------------------------
+   */
+
+  const statusCell =
+    document.createElement(
+      "td"
+    );
+
+
+  if (
+    existing &&
+    existing.status ===
+      "marked"
+  ) {
+
+    statusCell.textContent =
+      "採点済み";
+
+
+    statusCell.style.color =
+      "#1769aa";
+
+  } else {
+
+    statusCell.textContent =
+      "未採点";
+
+
+    statusCell.style.color =
+      "#b42318";
+
+  }
+
+
+  row.append(
+    studentCell,
+    answerCell,
+    scoreCell,
+    statusCell
+  );
+
+
+  return row;
 
 }
 
 
 /* =========================================================
-   VIEWER
+   CREATE ANSWER VIEWER
 ========================================================= */
 
-async function createViewer(
-answer,
-question
+async function createAnswerViewer(
+  answer,
+  question
 ) {
 
-const list =
-pages.get(
-answer.id
-) ||
-[];
+  const answerPages =
+    pages.get(
+      answer.id
+    ) ||
+    [];
 
 
-const page =
-list.find(
-item =>
-Number(
-item.page_no
-) ===
-Number(
-question.pageNo
-)
-);
+  /*
+   * 問題のpage_noと答案ページを一致させる。
+   */
+
+  const page =
+    answerPages.find(
+      item =>
+        Number(
+          item.page_no
+        ) ===
+        Number(
+          question.pageNo
+        )
+    );
 
 
-if (!page) {
+  if (!page) {
 
-throw new Error(
-`答案ページ ${question.pageNo} がありません。`
-);
+    throw new Error(
+      `答案ページ ${question.pageNo} がありません。`
+    );
 
-}
-
-
-const result =
-await DB
-.storage
-.from(
-"answer-files"
-)
-.createSignedUrl(
-page.file_path,
-600
-);
+  }
 
 
-if (result.error) {
+  if (!page.file_path) {
 
-throw new Error(
-`答案画像取得エラー: ${result.error.message}`
-);
+    throw new Error(
+      "答案ページのfile_pathがありません。"
+    );
 
-}
-
-
-const viewer =
-document.createElement(
-"div"
-);
-
-viewer.className =
-"answer-viewer";
+  }
 
 
-const image =
-document.createElement(
-"img"
-);
+  /*
+   * -------------------------------------------------------
+   * Storage
+   * -------------------------------------------------------
+   */
 
-image.src =
-result.data.signedUrl;
-
-image.alt =
-"答案";
-
-
-await waitImage(
-image
-);
-
-
-const pageWidth =
-Number(
-page.width_px
-) ||
-image.naturalWidth;
-
-
-const pageHeight =
-Number(
-page.height_px
-) ||
-image.naturalHeight;
+  const {
+    data,
+    error
+  } =
+    await withTimeout(
+      DB
+        .storage
+        .from(
+          "answer-files"
+        )
+        .createSignedUrl(
+          page.file_path,
+          600
+        ),
+      10000,
+      "答案画像URL取得がタイムアウトしました。"
+    );
 
 
-const scaleX =
-image.naturalWidth /
-pageWidth;
+  if (error) {
+
+    throw new Error(
+      `答案画像取得エラー: ${error.message}`
+    );
+
+  }
 
 
-const scaleY =
-image.naturalHeight /
-pageHeight;
+  if (!data?.signedUrl) {
+
+    throw new Error(
+      "答案画像の署名URLを取得できませんでした。"
+    );
+
+  }
 
 
-const x =
-Number(
-question.x
-) ||
-0;
+  /*
+   * -------------------------------------------------------
+   * Viewer
+   * -------------------------------------------------------
+   */
+
+  const viewer =
+    document.createElement(
+      "div"
+    );
 
 
-const y =
-Number(
-question.y
-) ||
-0;
+  viewer.className =
+    "answer-viewer";
 
 
-const width =
-Math.max(
-1,
-Number(
-question.width
-) ||
-1
-);
+  const image =
+    document.createElement(
+      "img"
+    );
 
 
-const height =
-Math.max(
-1,
-Number(
-question.height
-) ||
-1
-);
+  image.src =
+    data.signedUrl;
 
 
-const cropWidth =
-width *
-scaleX;
+  image.alt =
+    "答案";
 
 
-const cropHeight =
-height *
-scaleY;
+  image.draggable =
+    false;
 
 
-const displayWidth =
-Math.min(
-500,
-Math.max(
-350,
-cropWidth
-)
-);
+  await waitForImage(
+    image
+  );
 
 
-const displayScale =
-displayWidth /
-cropWidth;
+  /*
+   * -------------------------------------------------------
+   * Crop
+   * -------------------------------------------------------
+   *
+   * Canvasは使わない。
+   *
+   * CSSのoverflow:hiddenで
+   * 必要な部分だけ表示する。
+   */
+
+  const pageWidth =
+    Number(
+      page.width_px
+    ) ||
+    image.naturalWidth;
 
 
-viewer.style.height =
-`${Math.max(
-150,
-cropHeight *
-displayScale
-)}px`;
+  const pageHeight =
+    Number(
+      page.height_px
+    ) ||
+    image.naturalHeight;
 
 
-image.style.width =
-`${image.naturalWidth *
-displayScale}px`;
-
-image.style.height =
-`${image.naturalHeight *
-displayScale}px`;
-
-image.style.left =
-`${-x *
-scaleX *
-displayScale}px`;
-
-image.style.top =
-`${-y *
-scaleY *
-displayScale}px`;
+  const scaleX =
+    image.naturalWidth /
+    pageWidth;
 
 
-viewer.appendChild(
-image
-);
+  const scaleY =
+    image.naturalHeight /
+    pageHeight;
 
 
-return viewer;
+  const x =
+    Number(
+      question.x
+    ) ||
+    0;
+
+
+  const y =
+    Number(
+      question.y
+    ) ||
+    0;
+
+
+  const width =
+    Math.max(
+      1,
+      Number(
+        question.width
+      ) ||
+      1
+    );
+
+
+  const height =
+    Math.max(
+      1,
+      Number(
+        question.height
+      ) ||
+      1
+    );
+
+
+  const cropWidth =
+    width *
+    scaleX;
+
+
+  const cropHeight =
+    height *
+    scaleY;
+
+
+  const displayWidth =
+    Math.min(
+      500,
+      Math.max(
+        350,
+        cropWidth
+      )
+    );
+
+
+  const displayScale =
+    displayWidth /
+    cropWidth;
+
+
+  const displayHeight =
+    Math.max(
+      150,
+      cropHeight *
+      displayScale
+    );
+
+
+  viewer.style.height =
+    `${displayHeight}px`;
+
+
+  image.style.width =
+    `${image.naturalWidth *
+      displayScale}px`;
+
+
+  image.style.height =
+    `${image.naturalHeight *
+      displayScale}px`;
+
+
+  image.style.left =
+    `${-x *
+      scaleX *
+      displayScale}px`;
+
+
+  image.style.top =
+    `${-y *
+      scaleY *
+      displayScale}px`;
+
+
+  viewer.appendChild(
+    image
+  );
+
+
+  return viewer;
 
 }
 
 
 /* =========================================================
-   SAVE
+   SAVE SCORE
 ========================================================= */
 
 async function saveScore(
-answer,
-question,
-input,
-warning,
-state
+  answer,
+  question,
+  input,
+  warning,
+  state
 ) {
 
-if (saving) {
+  if (saving) {
 
-return;
+    return;
 
-}
+  }
 
 
-const value =
-Number(
-input.value
-);
+  const value =
+    Number(
+      input.value
+    );
 
 
-if (
-input.value === ""
-) {
+  if (
+    input.value ===
+    ""
+  ) {
 
-warn(
-warning,
-"点数を入力してください。"
-);
+    showWarning(
+      warning,
+      "点数を入力してください。"
+    );
 
-return;
+    return;
 
-}
+  }
 
 
-if (
-!Number.isFinite(value) ||
-value < 0 ||
-value > question.points
-) {
+  if (
+    !Number.isFinite(
+      value
+    )
+  ) {
 
-warn(
-warning,
-`0〜${question.points}点で入力してください。`
-);
+    showWarning(
+      warning,
+      "点数が不正です。"
+    );
 
-return;
+    return;
 
-}
+  }
 
 
-saving =
-true;
+  if (
+    value < 0
+  ) {
 
+    showWarning(
+      warning,
+      "0点未満にはできません。"
+    );
 
-try {
+    return;
 
-const result =
-await DB
-.from("scores")
-.select("id")
-.eq(
-"answer_sheet_id",
-answer.id
-)
-.eq(
-"layout_box_id",
-question.id
-)
-.maybeSingle();
+  }
 
 
-if (result.error) {
+  if (
+    value >
+    question.points
+  ) {
 
-throw new Error(
-`採点確認エラー: ${result.error.message}`
-);
+    showWarning(
+      warning,
+      `配点 ${question.points}点を超えています。`
+    );
 
-}
+    return;
 
+  }
 
-if (result.data) {
 
-const update =
-await DB
-.from("scores")
-.update({
+  saving =
+    true;
 
-question_id:
-question.questionId,
 
-score:
-value,
+  try {
 
-status:
-"marked",
+    /*
+     * -----------------------------------------------------
+     * Existing
+     * -----------------------------------------------------
+     */
 
-marked_at:
-new Date().toISOString()
+    const {
+      data: existing,
+      error: findError
+    } =
+      await withTimeout(
+        DB
+          .from(
+            "scores"
+          )
+          .select(
+            "id"
+          )
+          .eq(
+            "answer_sheet_id",
+            answer.id
+          )
+          .eq(
+            "layout_box_id",
+            question.id
+          )
+          .maybeSingle(),
+        10000,
+        "既存採点確認がタイムアウトしました。"
+      );
 
-})
-.eq(
-"id",
-result.data.id
-);
 
+    if (findError) {
 
-if (update.error) {
+      throw new Error(
+        `既存採点確認エラー: ${findError.message}`
+      );
 
-throw new Error(
-`採点更新エラー: ${update.error.message}`
-);
+    }
 
-}
 
+    /*
+     * -----------------------------------------------------
+     * UPDATE
+     * -----------------------------------------------------
+     */
 
-setLocalScore(
-result.data.id,
-answer.id,
-question,
-value
-);
+    if (existing?.id) {
 
-} else {
+      const {
+        error
+      } =
+        await withTimeout(
+          DB
+            .from(
+              "scores"
+            )
+            .update({
 
-const insert =
-await DB
-.from("scores")
-.insert({
+              question_id:
+                question.questionId,
 
-answer_sheet_id:
-answer.id,
+              score:
+                value,
 
-layout_box_id:
-question.id,
+              status:
+                "marked",
 
-question_id:
-question.questionId,
+              marked_at:
+                new Date().toISOString()
 
-score:
-value,
+            })
+            .eq(
+              "id",
+              existing.id
+            ),
+          10000,
+          "採点更新がタイムアウトしました。"
+        );
 
-status:
-"marked",
 
-marked_at:
-new Date().toISOString()
+      if (error) {
 
-})
-.select("id")
-.single();
+        throw new Error(
+          `採点更新エラー: ${error.message}`
+        );
 
+      }
 
-if (insert.error) {
 
-throw new Error(
-`採点登録エラー: ${insert.error.message}`
-);
+      updateLocalScore(
+        existing.id,
+        answer.id,
+        question,
+        value
+      );
 
-}
+    }
 
 
-setLocalScore(
-insert.data.id,
-answer.id,
-question,
-value
-);
+    /*
+     * -----------------------------------------------------
+     * INSERT
+     * -----------------------------------------------------
+     */
 
-}
+    else {
 
+      const {
+        data,
+        error
+      } =
+        await withTimeout(
+          DB
+            .from(
+              "scores"
+            )
+            .insert({
 
-state.textContent =
-"採点済み";
+              answer_sheet_id:
+                answer.id,
 
-state.className =
-"score-state marked";
+              layout_box_id:
+                question.id,
 
-warning.classList.remove(
-"show"
-);
+              question_id:
+                question.questionId,
 
+              score:
+                value,
 
-updateProgress();
+              status:
+                "marked",
 
+              marked_at:
+                new Date().toISOString()
 
-showStatus(
-`${getStudentLabel(answer)} / ${question.label} を保存しました。`
-);
+            })
+            .select(
+              "id"
+            )
+            .single(),
+          10000,
+          "採点登録がタイムアウトしました。"
+        );
 
 
-} catch (error) {
+      if (error) {
 
-warn(
-warning,
-error.message
-);
+        throw new Error(
+          `採点登録エラー: ${error.message}`
+        );
 
-state.textContent =
-"保存失敗";
+      }
 
-state.className =
-"score-state error";
 
-} finally {
+      updateLocalScore(
+        data.id,
+        answer.id,
+        question,
+        value
+      );
 
-saving =
-false;
+    }
 
-}
+
+    warning.classList.remove(
+      "show"
+    );
+
+
+    state.textContent =
+      "採点済み";
+
+
+    state.className =
+      "score-state marked";
+
+
+    updateProgress();
+
+
+    showStatus(
+      `${getStudentLabel(
+        answer
+      )} / ${question.label} を保存しました。`
+    );
+
+
+  } catch (error) {
+
+    console.error(
+      "saveScore:",
+      error
+    );
+
+
+    state.textContent =
+      "保存失敗";
+
+
+    state.className =
+      "score-state error";
+
+
+    showWarning(
+      warning,
+      error.message ||
+      "採点を保存できませんでした。"
+    );
+
+
+  } finally {
+
+    saving =
+      false;
+
+  }
 
 }
 
 
 /* =========================================================
-   NEXT
+   NEXT QUESTION
 ========================================================= */
 
 async function nextQuestion() {
 
-const question =
-questions[
-questionIndex
-];
+  const question =
+    questions[
+      questionIndex
+    ];
 
 
-if (
-!isComplete(question)
-) {
+  if (
+    !isQuestionComplete(
+      question
+    )
+  ) {
 
-if (
-!confirm(
-"未採点の答案があります。このまま次へ進みますか？"
-)
-) {
-
-return;
-
-}
-
-}
+    const proceed =
+      window.confirm(
+        "この問題には未採点の答案があります。このまま次へ進みますか？"
+      );
 
 
-if (
-questionIndex >=
-questions.length - 1
-) {
+    if (!proceed) {
 
-finish();
+      return;
 
-return;
+    }
 
-}
+  }
 
 
-questionIndex++;
+  if (
+    questionIndex >=
+    questions.length - 1
+  ) {
 
-await renderQuestion();
+    finishMarking();
+
+    return;
+
+  }
+
+
+  questionIndex++;
+
+
+  await renderQuestion();
 
 }
 
@@ -1480,39 +2282,498 @@ await renderQuestion();
    FINISH
 ========================================================= */
 
-function finish() {
+function finishMarking() {
 
-const all =
-questions.every(
-question =>
-isComplete(question)
-);
+  const allComplete =
+    questions.every(
+      question =>
+        isQuestionComplete(
+          question
+        )
+    );
 
 
-if (!all) {
+  if (!allComplete) {
 
-showStatus(
-"まだ未採点の答案があります。",
-true
-);
+    const remaining =
+      questions.filter(
+        question =>
+          !isQuestionComplete(
+            question
+          )
+      ).length;
 
-return;
+
+    showStatus(
+      `まだ未採点の設問があります。残り ${remaining}問です。`,
+      true
+    );
+
+
+    return;
+
+  }
+
+
+  completeElement?.classList.add(
+    "show"
+  );
+
+
+  showStatus(
+    "全答案・全設問の採点が完了しました。成績処理待ちです。"
+  );
+
+
+  updateProgress();
+
+
+  nextButton.disabled =
+    true;
+
+
+  /*
+   * 重要:
+   *
+   * ここでは
+   * answer_sheets.status = marked
+   * にしない。
+   *
+   * 公開もしない。
+   *
+   * 成績・偏差値・順位の処理が
+   * 完了してから最終確定する。
+   */
 
 }
 
 
-complete.classList.add(
-"show"
-);
+/* =========================================================
+   QUESTION COMPLETE
+========================================================= */
+
+function isQuestionComplete(
+  question
+) {
+
+  if (!question) {
+
+    return false;
+
+  }
 
 
-showStatus(
-"全答案・全設問の採点が完了しました。成績処理待ちです。"
-);
+  return answers.every(
+    answer => {
+
+      const score =
+        findScore(
+          answer.id,
+          question.id
+        );
 
 
-nextButton.disabled =
-true;
+      return Boolean(
+        score &&
+        score.status ===
+          "marked"
+      );
+
+    }
+  );
+
+}
+
+
+/* =========================================================
+   FIND SCORE
+========================================================= */
+
+function findScore(
+  answerId,
+  questionId
+) {
+
+  return scores.find(
+    score =>
+      score.answer_sheet_id ===
+        answerId &&
+      score.layout_box_id ===
+        questionId
+  ) ||
+  null;
+
+}
+
+
+/* =========================================================
+   LOCAL SCORE
+========================================================= */
+
+function updateLocalScore(
+  id,
+  answerId,
+  question,
+  value
+) {
+
+  const existing =
+    findScore(
+      answerId,
+      question.id
+    );
+
+
+  if (existing) {
+
+    existing.id =
+      id;
+
+    existing.score =
+      value;
+
+    existing.status =
+      "marked";
+
+    return;
+
+  }
+
+
+  scores.push({
+
+    id,
+
+    answer_sheet_id:
+      answerId,
+
+    layout_box_id:
+      question.id,
+
+    question_id:
+      question.questionId,
+
+    score:
+      value,
+
+    status:
+      "marked"
+
+  });
+
+}
+
+
+/* =========================================================
+   PROGRESS
+========================================================= */
+
+function updateProgress() {
+
+  const total =
+    answers.length *
+    questions.length;
+
+
+  let completed =
+    0;
+
+
+  for (
+    const answer
+    of answers
+  ) {
+
+    for (
+      const question
+      of questions
+    ) {
+
+      const score =
+        findScore(
+          answer.id,
+          question.id
+        );
+
+
+      if (
+        score &&
+        score.status ===
+          "marked"
+      ) {
+
+        completed++;
+
+      }
+
+    }
+
+  }
+
+
+  const percent =
+    total > 0
+      ? Math.round(
+          completed /
+          total *
+          100
+        )
+      : 0;
+
+
+  if (progressBar) {
+
+    progressBar.style.width =
+      `${percent}%`;
+
+  }
+
+
+  if (progressText) {
+
+    progressText.textContent =
+      `${completed} / ${total} 設問答案を採点済み (${percent}%)`;
+
+  }
+
+}
+
+
+/* =========================================================
+   VALIDATE SCORE
+========================================================= */
+
+function validateScore(
+  input,
+  warning,
+  max
+) {
+
+  if (
+    input.value ===
+    ""
+  ) {
+
+    warning.classList.remove(
+      "show"
+    );
+
+    return;
+
+  }
+
+
+  const value =
+    Number(
+      input.value
+    );
+
+
+  if (
+    !Number.isFinite(
+      value
+    ) ||
+    value < 0 ||
+    value > max
+  ) {
+
+    showWarning(
+      warning,
+      `0〜${max}点で入力してください。`
+    );
+
+    return;
+
+  }
+
+
+  warning.classList.remove(
+    "show"
+  );
+
+}
+
+
+/* =========================================================
+   IMAGE
+========================================================= */
+
+function waitForImage(
+  image
+) {
+
+  return new Promise(
+    (
+      resolve,
+      reject
+    ) => {
+
+      if (
+        image.complete &&
+        image.naturalWidth >
+          0
+      ) {
+
+        resolve();
+
+        return;
+
+      }
+
+
+      image.onload =
+        () => {
+
+          resolve();
+
+        };
+
+
+      image.onerror =
+        () => {
+
+          reject(
+            new Error(
+              "答案画像を読み込めませんでした。"
+            )
+          );
+
+        };
+
+    }
+  );
+
+}
+
+
+/* =========================================================
+   TIMEOUT
+========================================================= */
+
+async function withTimeout(
+  promise,
+  milliseconds,
+  message
+) {
+
+  let timer = null;
+
+
+  const timeout =
+    new Promise(
+      (
+        resolve,
+        reject
+      ) => {
+
+        timer =
+          setTimeout(
+            () => {
+
+              reject(
+                new Error(
+                  message
+                )
+              );
+
+            },
+            milliseconds
+          );
+
+      }
+    );
+
+
+  try {
+
+    return await Promise.race(
+      [
+        promise,
+        timeout
+      ]
+    );
+
+  } finally {
+
+    if (timer) {
+
+      clearTimeout(
+        timer
+      );
+
+    }
+
+  }
+
+}
+
+
+/* =========================================================
+   STATUS
+========================================================= */
+
+function showStatus(
+  message,
+  error = false
+) {
+
+  if (!statusElement) {
+
+    return;
+
+  }
+
+
+  statusElement.textContent =
+    message;
+
+
+  statusElement.style.color =
+    error
+      ? "#b42318"
+      : "#333";
+
+}
+
+
+/* =========================================================
+   FATAL
+========================================================= */
+
+function showFatal(
+  message
+) {
+
+  showStatus(
+    message,
+    true
+  );
+
+
+  if (answerTableWrap) {
+
+    answerTableWrap.innerHTML = `
+
+      <div class="empty">
+
+        ${escapeHtml(
+          message
+        )}
+
+        <br><br>
+
+        <a
+          href="/teacher/marking"
+          class="btn"
+        >
+          採点一覧へ戻る
+        </a>
+
+      </div>
+
+    `;
+
+  }
 
 }
 
@@ -1521,379 +2782,119 @@ true;
    HELPERS
 ========================================================= */
 
-function findScore(
-answerId,
-questionId
+function showWarning(
+  element,
+  message
 ) {
 
-return scores.find(
-item =>
-item.answer_sheet_id ===
-answerId &&
-item.layout_box_id ===
-questionId
-) ||
-null;
+  if (!element) {
 
-}
+    return;
 
+  }
 
-function setLocalScore(
-id,
-answerId,
-question,
-value
-) {
 
-const old =
-findScore(
-answerId,
-question.id
-);
+  element.textContent =
+    message;
 
 
-if (old) {
-
-old.id =
-id;
-
-old.score =
-value;
-
-old.status =
-"marked";
-
-return;
-
-}
-
-
-scores.push({
-
-id,
-
-answer_sheet_id:
-answerId,
-
-layout_box_id:
-question.id,
-
-question_id:
-question.questionId,
-
-score:
-value,
-
-status:
-"marked"
-
-});
-
-}
-
-
-function isComplete(
-question
-) {
-
-return answers.every(
-answer => {
-
-const score =
-findScore(
-answer.id,
-question.id
-);
-
-return Boolean(
-score &&
-score.status ===
-"marked"
-);
-
-}
-);
-
-}
-
-
-function updateProgress() {
-
-const total =
-answers.length *
-questions.length;
-
-
-let done =
-0;
-
-
-for (
-const answer
-of answers
-) {
-
-for (
-const question
-of questions
-) {
-
-if (
-isScored(
-answer.id,
-question.id
-)
-) {
-
-done++;
-
-}
-
-}
-
-}
-
-
-const percent =
-total
-? Math.round(
-done /
-total *
-100
-)
-: 0;
-
-
-progressBar.style.width =
-`${percent}%`;
-
-progressText.textContent =
-`${done} / ${total} 設問答案を採点済み (${percent}%)`;
-
-}
-
-
-function isScored(
-answerId,
-questionId
-) {
-
-const score =
-findScore(
-answerId,
-questionId
-);
-
-return Boolean(
-score &&
-score.status ===
-"marked"
-);
-
-}
-
-
-function validate(
-input,
-warning,
-max
-) {
-
-if (
-input.value === ""
-) {
-
-warning.classList.remove(
-"show"
-);
-
-return;
-
-}
-
-
-const value =
-Number(
-input.value
-);
-
-
-if (
-!Number.isFinite(value) ||
-value < 0 ||
-value > max
-) {
-
-warn(
-warning,
-`0〜${max}点で入力してください。`
-);
-
-return;
-
-}
-
-
-warning.classList.remove(
-"show"
-);
-
-}
-
-
-function warn(
-element,
-message
-) {
-
-element.textContent =
-message;
-
-element.classList.add(
-"show"
-);
-
-}
-
-
-function waitImage(
-image
-) {
-
-return new Promise(
-(
-resolve,
-reject
-) => {
-
-if (
-image.complete &&
-image.naturalWidth > 0
-) {
-
-resolve();
-
-return;
-
-}
-
-image.onload =
-resolve;
-
-image.onerror =
-() =>
-reject(
-new Error(
-"答案画像を読み込めませんでした。"
-)
-);
-
-}
-);
-
+  element.classList.add(
+    "show"
+  );
 
 }
 
 
 function getStudentLabel(
-answer
+  answer
 ) {
 
-const student =
-students.get(
-answer.student_id
-);
+  const student =
+    students.get(
+      answer.student_id
+    );
 
-return student
-? `${student.student_no || ""} / ${student.name || ""}`
-: "未紐付け";
+
+  if (!student) {
+
+    return "未紐付け";
+
+  }
+
+
+  return `${student.student_no || ""} / ${student.name || ""}`;
 
 }
 
 
-function format(
-value
+function formatNumber(
+  value
 ) {
 
-const n =
-Number(value);
-
-return Number.isFinite(n)
-? String(n)
-: "0";
-
-}
+  const number =
+    Number(
+      value
+    );
 
 
-function setStatus(
-message,
-error
-) {
+  if (
+    !Number.isFinite(
+      number
+    )
+  ) {
 
-statusEl.textContent =
-message;
+    return "0";
 
-statusEl.style.color =
-error
-? "#b42318"
-: "#333";
-
-}
+  }
 
 
-function showFatal(
-message
-) {
-
-setStatus(
-message,
-true
-);
-
-answerTableWrap.innerHTML = `
-
-<div class="empty">
-
-${escapeHtml(message)}
-
-<br><br>
-
-<a
-href="/teacher/marking"
-class="btn"
->
-採点一覧へ戻る
-</a>
-
-</div>
-
-`;
+  return Number.isInteger(
+    number
+  )
+    ? String(
+        number
+      )
+    : number.toFixed(
+        1
+      );
 
 }
 
 
 function escapeHtml(
-value
+  value
 ) {
 
-return String(
-value ??
-""
-)
-.replaceAll("&","&amp;")
-.replaceAll("<","&lt;")
-.replaceAll(">","&gt;")
-.replaceAll('"',"&quot;")
-.replaceAll("'","&#039;");
+  return String(
+    value ??
+    ""
+  )
+    .replaceAll(
+      "&",
+      "&amp;"
+    )
+    .replaceAll(
+      "<",
+      "&lt;"
+    )
+    .replaceAll(
+      ">",
+      "&gt;"
+    )
+    .replaceAll(
+      '"',
+      "&quot;"
+    )
+    .replaceAll(
+      "'",
+      "&#039;"
+    );
 
 }
 
 
 /* =========================================================
-   START
+   END
 ========================================================= */
-
-start();
-
 
 })();

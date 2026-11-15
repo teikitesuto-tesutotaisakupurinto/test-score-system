@@ -1,12 +1,51 @@
 
+/* =========================================================
+   テスト成績システム
+   生徒用 採点済み答案・成績表示
+
+   条件
+   ---------------------------------------------------------
+   ・ログイン済み
+   ・role = student
+   ・students.auth_user_id = auth.uid()
+   ・tests.results_published = true
+
+   表示
+   ---------------------------------------------------------
+   ・テスト情報
+   ・合計点
+   ・満点
+   ・得点率
+   ・設問別点数
+   ・採点前答案
+   ・採点済み答案
+
+   採点済み答案
+   ---------------------------------------------------------
+   元答案画像
+       +
+   mark_objects
+       +
+   scores
+       ↓
+   Canvas
+       ↓
+   採点済み答案画像
+========================================================= */
+
+
 (function () {
 
   "use strict";
 
 
+  /* =====================================================
+     URL
+  ===================================================== */
+
   const params =
     new URLSearchParams(
-      location.search
+      window.location.search
     );
 
 
@@ -16,7 +55,13 @@
     );
 
 
+  /* =====================================================
+     状態
+  ===================================================== */
+
   let profile = null;
+
+  let student = null;
 
   let test = null;
 
@@ -33,63 +78,87 @@
   let boxes = [];
 
 
+  /* =====================================================
+     初期化
+  ===================================================== */
+
   async function initialize() {
 
-    const session =
-      await getSession();
+    try {
+
+      /*
+        生徒認証
+
+        roleだけではなく
+        students.auth_user_idまで確認。
+      */
+
+      const auth =
+        await requireStudent();
 
 
-    if (!session) {
+      if (!auth) {
 
-      location.replace(
-        "/login"
+        return;
+
+      }
+
+
+      profile =
+        auth.profile;
+
+
+      student =
+        auth.student;
+
+
+      const studentName =
+        document.getElementById(
+          "studentName"
+        );
+
+
+      if (studentName) {
+
+        studentName.textContent =
+          student.name ||
+          profile.name ||
+          "生徒";
+
+      }
+
+
+      if (!testId) {
+
+        location.replace(
+          "/student/tests"
+        );
+
+        return;
+
+      }
+
+
+      await loadTest();
+
+
+      await loadAnswer();
+
+
+    } catch (error) {
+
+      console.error(
+        "生徒結果初期化:",
+        error
       );
 
-      return;
 
-    }
-
-
-    profile =
-      await getProfile();
-
-
-    if (
-      !profile ||
-      profile.role !==
-        "student"
-    ) {
-
-      location.replace(
-        "/login"
+      showError(
+        error.message ||
+        "結果を表示できませんでした。"
       );
 
-      return;
-
     }
-
-
-    document.getElementById(
-      "studentName"
-    ).textContent =
-      profile.name ||
-      "生徒";
-
-
-    if (!testId) {
-
-      location.replace(
-        "/student/tests"
-      );
-
-      return;
-
-    }
-
-
-    await loadTest();
-
-    await loadAnswer();
 
   }
 
@@ -157,30 +226,86 @@
       data;
 
 
-    document.getElementById(
-      "testName"
-    ).textContent =
-      test.name;
-
-
-    document.getElementById(
-      "originalAnswerLink"
-    ).href =
-      `/student/tests/answer?test=${encodeURIComponent(
-        testId
-      )}`;
+    renderTestInformation();
 
   }
 
 
   /* =====================================================
-     答案
+     テスト情報
+  ===================================================== */
+
+  function renderTestInformation() {
+
+    const title =
+      document.getElementById(
+        "testName"
+      );
+
+
+    if (title) {
+
+      title.textContent =
+        test.name;
+
+    }
+
+
+    const meta =
+      document.getElementById(
+        "testMeta"
+      );
+
+
+    if (meta) {
+
+      meta.textContent =
+
+        [
+          test.subject
+            ? `教科：${test.subject}`
+            : "",
+
+          test.grade
+            ? `学年：${test.grade}`
+            : "",
+
+          test.class_name
+            ? `クラス：${test.class_name}`
+            : "",
+
+          test.results_published_at
+            ? `公開：${formatDate(
+                test.results_published_at
+              )}`
+            : ""
+
+        ]
+          .filter(
+            Boolean
+          )
+          .join(
+            " ／ "
+          );
+
+    }
+
+  }
+
+
+  /* =====================================================
+     自分の答案
   ===================================================== */
 
   async function loadAnswer() {
 
     /*
-      RLSにより自分の答案だけ
+      student_idはURLから受け取らない。
+
+      requireStudent()で確定した
+      自分自身のstudent.idを使用する。
+
+      さらにRLSでも本人限定。
     */
 
     const {
@@ -201,6 +326,10 @@
           "test_id",
           testId
         )
+        .eq(
+          "student_id",
+          student.id
+        )
         .neq(
           "status",
           "unmatched"
@@ -208,7 +337,8 @@
         .order(
           "created_at",
           {
-            ascending:false
+            ascending:
+              false
           }
         )
         .limit(1)
@@ -224,7 +354,7 @@
 
     if (!data) {
 
-      showNoAnswer();
+      renderNoAnswer();
 
       return;
 
@@ -234,6 +364,10 @@
     answer =
       data;
 
+
+    /*
+      全データ取得
+    */
 
     await Promise.all([
 
@@ -250,8 +384,15 @@
     ]);
 
 
+    /*
+      表示
+    */
+
     renderSummary();
 
+    renderQuestionResults();
+
+    setOriginalAnswerLink();
 
     await renderMarkedPages();
 
@@ -287,7 +428,8 @@
         .order(
           "page_no",
           {
-            ascending:true
+            ascending:
+              true
           }
         );
 
@@ -306,7 +448,7 @@
 
 
   /* =====================================================
-     Regions
+     answer_regions
   ===================================================== */
 
   async function loadRegions() {
@@ -350,7 +492,7 @@
 
 
   /* =====================================================
-     Scores
+     scores
   ===================================================== */
 
   async function loadScores() {
@@ -365,7 +507,9 @@
         )
         .select(`
           id,
+          answer_sheet_id,
           layout_box_id,
+          question_id,
           score,
           status
         `)
@@ -393,7 +537,7 @@
 
 
   /* =====================================================
-     Marks
+     mark_objects
   ===================================================== */
 
   async function loadMarks() {
@@ -408,7 +552,9 @@
         )
         .select(`
           id,
+          answer_sheet_id,
           layout_box_id,
+          question_id,
           object_type,
           text_value,
           color,
@@ -427,7 +573,8 @@
         .order(
           "created_at",
           {
-            ascending:true
+            ascending:
+              true
           }
         );
 
@@ -446,7 +593,7 @@
 
 
   /* =====================================================
-     Layout
+     layout_boxes
   ===================================================== */
 
   async function loadBoxes() {
@@ -461,6 +608,7 @@
         )
         .select(`
           id,
+          test_id,
           page_no,
           label,
           points,
@@ -481,19 +629,22 @@
         .order(
           "page_no",
           {
-            ascending:true
+            ascending:
+              true
           }
         )
         .order(
           "y",
           {
-            ascending:true
+            ascending:
+              true
           }
         )
         .order(
           "x",
           {
-            ascending:true
+            ascending:
+              true
           }
         );
 
@@ -512,21 +663,34 @@
 
 
   /* =====================================================
-     集計
+     サマリー
   ===================================================== */
 
   function renderSummary() {
+
+    const element =
+      document.getElementById(
+        "resultSummary"
+      );
+
+
+    if (!element) {
+
+      return;
+
+    }
+
 
     const total =
       scores.reduce(
         (
           sum,
-          score
+          item
         ) =>
           sum +
           (
             Number(
-              score.score
+              item.score
             ) || 0
           ),
         0
@@ -551,20 +715,21 @@
 
     const percentage =
       max > 0
+
         ? (
             total /
             max
           ) *
           100
+
         : 0;
 
 
-    document.getElementById(
-      "resultSummary"
-    ).innerHTML = `
+    element.innerHTML = `
 
-      <div class="result-summary-grid">
-
+      <div
+        class="result-summary-grid"
+      >
 
         <div>
 
@@ -613,6 +778,21 @@
         </div>
 
 
+        <div>
+
+          <div class="result-label">
+            生徒番号
+          </div>
+
+          <div class="result-value">
+            ${escapeHtml(
+              student.student_no ||
+              "-"
+            )}
+          </div>
+
+        </div>
+
       </div>
 
     `;
@@ -621,7 +801,192 @@
 
 
   /* =====================================================
-     採点済みページ
+     設問別結果
+  ===================================================== */
+
+  function renderQuestionResults() {
+
+    const container =
+      document.getElementById(
+        "questionResults"
+      );
+
+
+    if (!container) {
+
+      return;
+
+    }
+
+
+    if (!boxes.length) {
+
+      container.innerHTML = `
+
+        <div class="empty-state">
+
+          設問情報がありません。
+
+        </div>
+
+      `;
+
+
+      return;
+
+    }
+
+
+    const scoreMap =
+      new Map();
+
+
+    scores.forEach(
+      score => {
+
+        scoreMap.set(
+          score.layout_box_id,
+          Number(
+            score.score
+          ) || 0
+        );
+
+      }
+    );
+
+
+    container.innerHTML = `
+
+      <table
+        class="question-results-table"
+      >
+
+        <thead>
+
+          <tr>
+
+            <th>
+              設問
+            </th>
+
+            <th>
+              配点
+            </th>
+
+            <th>
+              得点
+            </th>
+
+          </tr>
+
+        </thead>
+
+
+        <tbody>
+
+          ${
+            boxes
+              .map(
+                (
+                  box,
+                  index
+                ) => {
+
+                  const value =
+                    scoreMap.has(
+                      box.id
+                    )
+
+                      ? scoreMap.get(
+                          box.id
+                        )
+
+                      : null;
+
+
+                  return `
+
+                    <tr>
+
+                      <td>
+
+                        ${escapeHtml(
+                          box.label ||
+                          `問${index + 1}`
+                        )}
+
+                      </td>
+
+
+                      <td>
+
+                        ${
+                          box.points ??
+                          "-"
+                        }
+
+                      </td>
+
+
+                      <td
+                        class="score"
+                      >
+
+                        ${
+                          value === null
+                            ? "-"
+                            : value
+                        }
+
+                      </td>
+
+                    </tr>
+
+                  `;
+
+                }
+              )
+              .join("")
+          }
+
+        </tbody>
+
+      </table>
+
+    `;
+
+  }
+
+
+  /* =====================================================
+     採点前答案リンク
+  ===================================================== */
+
+  function setOriginalAnswerLink() {
+
+    const link =
+      document.getElementById(
+        "originalAnswerLink"
+      );
+
+
+    if (!link) {
+
+      return;
+
+    }
+
+
+    link.href =
+      `/student/tests/answer?test=${encodeURIComponent(
+        testId
+      )}`;
+
+  }
+
+
+  /* =====================================================
+     採点済み答案
   ===================================================== */
 
   async function renderMarkedPages() {
@@ -632,8 +997,33 @@
       );
 
 
+    if (!container) {
+
+      return;
+
+    }
+
+
     container.innerHTML =
       "";
+
+
+    if (!pages.length) {
+
+      container.innerHTML = `
+
+        <div class="empty-state">
+
+          答案ページがありません。
+
+        </div>
+
+      `;
+
+
+      return;
+
+    }
 
 
     for (
@@ -689,6 +1079,10 @@
           `採点済み答案 ${page.page_no}ページ`;
 
 
+        image.loading =
+          "lazy";
+
+
         wrapper.appendChild(
           title
         );
@@ -707,27 +1101,30 @@
       } catch (error) {
 
         console.error(
+          `ページ${page.page_no}:`,
           error
         );
 
+
+        const errorElement =
+          document.createElement(
+            "div"
+          );
+
+
+        errorElement.className =
+          "empty-state";
+
+
+        errorElement.textContent =
+          `${page.page_no}ページを表示できませんでした。`;
+
+
+        container.appendChild(
+          errorElement
+        );
+
       }
-
-    }
-
-
-    if (
-      !container.children.length
-    ) {
-
-      container.innerHTML = `
-
-        <div class="empty-state">
-
-          採点済み答案を表示できません。
-
-        </div>
-
-      `;
 
     }
 
@@ -735,12 +1132,16 @@
 
 
   /* =====================================================
-     Canvas生成
+     採点済みCanvas
   ===================================================== */
 
   async function createMarkedPageCanvas(
     page
   ) {
+
+    /*
+      元答案画像
+    */
 
     const {
       data,
@@ -764,11 +1165,26 @@
     }
 
 
+    if (
+      !data?.signedUrl
+    ) {
+
+      throw new Error(
+        "答案画像URLを取得できませんでした。"
+      );
+
+    }
+
+
     const image =
       await loadImage(
         data.signedUrl
       );
 
+
+    /*
+      元画像と同じサイズ
+    */
 
     const canvas =
       document.createElement(
@@ -791,7 +1207,7 @@
 
 
     /*
-      元答案
+      元画像
     */
 
     context.drawImage(
@@ -816,6 +1232,10 @@
           )
       );
 
+
+    /*
+      採点記号＋点数
+    */
 
     for (
       const box
@@ -873,7 +1293,7 @@
 
 
   /* =====================================================
-     ○×△◎テキスト・ペン
+     採点記号
   ===================================================== */
 
   function drawMarks(
@@ -926,6 +1346,12 @@
       regionHeight;
 
 
+    /*
+      answer_region
+      ↓
+      layout_box
+    */
+
     const scaleX =
       boxWidth /
       regionWidth;
@@ -939,35 +1365,67 @@
     pageMarks.forEach(
       mark => {
 
-        const x =
+        const localX =
           Number(
-            box.x
-          ) +
+            mark.x
+          ) || 0;
+
+
+        const localY =
+          Number(
+            mark.y
+          ) || 0;
+
+
+        const x =
           (
             Number(
-              mark.x
+              box.x
             ) || 0
-          ) *
+          ) +
+          localX *
           scaleX;
 
 
         const y =
-          Number(
-            box.y
-          ) +
           (
             Number(
-              mark.y
+              box.y
             ) || 0
-          ) *
+          ) +
+          localY *
           scaleY;
 
 
+        const originalSize =
+          Number(
+            mark.font_size
+          ) || 42;
+
+
         const size =
+          originalSize *
+          (
+            Math.abs(
+              scaleX
+            ) +
+            Math.abs(
+              scaleY
+            )
+          ) /
+          2;
+
+
+        const color =
+          mark.color ||
+          "#c62828";
+
+
+        const strokeWidth =
           (
             Number(
-              mark.font_size
-            ) || 42
+              mark.stroke_width
+            ) || 3
           ) *
           (
             Math.abs(
@@ -984,31 +1442,31 @@
 
 
         context.strokeStyle =
-          mark.color ||
-          "#c62828";
+          color;
 
 
         context.fillStyle =
-          mark.color ||
-          "#c62828";
+          color;
 
 
         context.lineWidth =
-          (
-            Number(
-              mark.stroke_width
-            ) || 3
-          ) *
-          (
-            Math.abs(
-              scaleX
-            ) +
-            Math.abs(
-              scaleY
-            )
-          ) /
-          2;
+          Math.max(
+            1,
+            strokeWidth
+          );
 
+
+        context.lineCap =
+          "round";
+
+
+        context.lineJoin =
+          "round";
+
+
+        /*
+          ○
+        */
 
         if (
           mark.object_type ===
@@ -1031,6 +1489,10 @@
 
         }
 
+
+        /*
+          ×
+        */
 
         else if (
           mark.object_type ===
@@ -1069,6 +1531,10 @@
         }
 
 
+        /*
+          △
+        */
+
         else if (
           mark.object_type ===
           "triangle"
@@ -1103,6 +1569,10 @@
         }
 
 
+        /*
+          ◎
+        */
+
         else if (
           mark.object_type ===
           "double_circle"
@@ -1110,6 +1580,10 @@
 
           context.font =
             `bold ${size}px Arial`;
+
+
+          context.textBaseline =
+            "alphabetic";
 
 
           context.fillText(
@@ -1121,6 +1595,10 @@
         }
 
 
+        /*
+          テキスト
+        */
+
         else if (
           mark.object_type ===
           "text"
@@ -1128,6 +1606,10 @@
 
           context.font =
             `${size}px Arial`;
+
+
+          context.textBaseline =
+            "alphabetic";
 
 
           context.fillText(
@@ -1139,6 +1621,10 @@
 
         }
 
+
+        /*
+          ペン
+        */
 
         else if (
           mark.object_type ===
@@ -1167,8 +1653,10 @@
               ) => {
 
                 const px =
-                  Number(
-                    box.x
+                  (
+                    Number(
+                      box.x
+                    ) || 0
                   ) +
                   (
                     Number(
@@ -1179,8 +1667,10 @@
 
 
                 const py =
-                  Number(
-                    box.y
+                  (
+                    Number(
+                      box.y
+                    ) || 0
                   ) +
                   (
                     Number(
@@ -1237,34 +1727,28 @@
     score
   ) {
 
-    const x =
-      (
-        Number(
-          box.x
-        ) || 0
-      ) +
-      (
-        Number(
-          box.width
-        ) || 100
-      ) +
-      8;
+    const boxX =
+      Number(
+        box.x
+      ) || 0;
 
 
-    const y =
-      (
-        Number(
-          box.y
-        ) || 0
-      ) +
-      Math.max(
-        22,
-        (
-          Number(
-            box.height
-          ) || 50
-        ) * 0.25
-      );
+    const boxY =
+      Number(
+        box.y
+      ) || 0;
+
+
+    const boxWidth =
+      Number(
+        box.width
+      ) || 100;
+
+
+    const boxHeight =
+      Number(
+        box.height
+      ) || 50;
 
 
     const fontSize =
@@ -1272,12 +1756,29 @@
         18,
         Math.min(
           42,
-          (
-            Number(
-              box.height
-            ) || 50
-          ) * 0.25
+          boxHeight * 0.25
         )
+      );
+
+
+    /*
+      点数を解答欄右側へ
+    */
+
+    const x =
+      boxX +
+      boxWidth +
+      Math.max(
+        6,
+        boxWidth * 0.03
+      );
+
+
+    const y =
+      boxY +
+      Math.max(
+        22,
+        boxHeight * 0.25
       );
 
 
@@ -1309,7 +1810,7 @@
 
 
   /* =====================================================
-     画像
+     画像ロード
   ===================================================== */
 
   function loadImage(
@@ -1355,38 +1856,212 @@
   }
 
 
-  function showNoAnswer() {
+  /* =====================================================
+     答案なし
+  ===================================================== */
 
-    document.getElementById(
-      "resultSummary"
-    ).innerHTML = `
+  function renderNoAnswer() {
 
-      <div class="empty-state">
-
-        答案がありません。
-
-      </div>
-
-    `;
+    const summary =
+      document.getElementById(
+        "resultSummary"
+      );
 
 
-    document.getElementById(
-      "markedPages"
-    ).innerHTML =
-      "";
+    if (summary) {
+
+      summary.innerHTML = `
+
+        <div class="empty-state">
+
+          このテストの答案はありません。
+
+        </div>
+
+      `;
+
+    }
+
+
+    const questionResults =
+      document.getElementById(
+        "questionResults"
+      );
+
+
+    if (questionResults) {
+
+      questionResults.innerHTML =
+        "";
+
+    }
+
+
+    const markedPages =
+      document.getElementById(
+        "markedPages"
+      );
+
+
+    if (markedPages) {
+
+      markedPages.innerHTML =
+        "";
+
+    }
 
   }
 
 
-  document
-    .getElementById(
-      "logoutButton"
+  /* =====================================================
+     エラー
+  ===================================================== */
+
+  function showError(
+    message
+  ) {
+
+    const container =
+      document.getElementById(
+        "markedPages"
+      );
+
+
+    if (container) {
+
+      container.innerHTML = `
+
+        <div
+          class="empty-state"
+          style="color:#c62828;"
+        >
+
+          ${escapeHtml(
+            message
+          )}
+
+        </div>
+
+      `;
+
+    } else {
+
+      alert(
+        message
+      );
+
+    }
+
+  }
+
+
+  /* =====================================================
+     日付
+  ===================================================== */
+
+  function formatDate(
+    value
+  ) {
+
+    if (!value) {
+
+      return "";
+
+    }
+
+
+    const date =
+      new Date(
+        value
+      );
+
+
+    if (
+      Number.isNaN(
+        date.getTime()
+      )
+    ) {
+
+      return "";
+
+    }
+
+
+    return date.toLocaleString(
+      "ja-JP"
+    );
+
+  }
+
+
+  /* =====================================================
+     HTML Escape
+  ===================================================== */
+
+  function escapeHtml(
+    value
+  ) {
+
+    if (
+      value === null ||
+      value === undefined
+    ) {
+
+      return "";
+
+    }
+
+
+    return String(
+      value
     )
-    .addEventListener(
+      .replaceAll(
+        "&",
+        "&amp;"
+      )
+      .replaceAll(
+        "<",
+        "&lt;"
+      )
+      .replaceAll(
+        ">",
+        "&gt;"
+      )
+      .replaceAll(
+        '"',
+        "&quot;"
+      )
+      .replaceAll(
+        "'",
+        "&#039;"
+      );
+
+  }
+
+
+  /* =====================================================
+     Logout
+  ===================================================== */
+
+  const logoutButton =
+    document.getElementById(
+      "logoutButton"
+    );
+
+
+  if (logoutButton) {
+
+    logoutButton.addEventListener(
       "click",
       logout
     );
 
+  }
+
+
+  /* =====================================================
+     START
+  ===================================================== */
 
   initialize();
 

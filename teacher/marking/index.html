@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 
@@ -11,7 +12,7 @@
   >
 
   <title>
-    デジタル採点 - テスト成績システム
+    採点答案選択 - テスト成績システム
   </title>
 
   <link
@@ -19,9 +20,230 @@
     href="/css/common.css"
   >
 
+  <style>
+
+    .marking-index-main {
+
+      max-width:1200px;
+
+      margin:0 auto;
+
+      padding:25px;
+
+    }
+
+
+    .page-header {
+
+      margin-bottom:20px;
+
+    }
+
+
+    .page-header h1 {
+
+      margin:0;
+
+      font-size:24px;
+
+    }
+
+
+    .page-header p {
+
+      margin:7px 0 0;
+
+      color:#666;
+
+      font-size:13px;
+
+    }
+
+
+    .toolbar {
+
+      display:flex;
+
+      flex-wrap:wrap;
+
+      gap:10px;
+
+      align-items:center;
+
+      margin-bottom:15px;
+
+    }
+
+
+    .toolbar select {
+
+      min-width:320px;
+
+      height:40px;
+
+      padding:0 10px;
+
+    }
+
+
+    .answer-grid {
+
+      display:grid;
+
+      grid-template-columns:
+        repeat(
+          3,
+          minmax(
+            0,
+            1fr
+          )
+        );
+
+      gap:15px;
+
+    }
+
+
+    .answer-card {
+
+      background:#fff;
+
+      border:
+        1px solid #d0d6dc;
+
+      border-radius:5px;
+
+      padding:16px;
+
+    }
+
+
+    .answer-card-title {
+
+      font-weight:700;
+
+      font-size:16px;
+
+      margin-bottom:8px;
+
+    }
+
+
+    .answer-card-meta {
+
+      color:#666;
+
+      font-size:13px;
+
+      line-height:1.8;
+
+    }
+
+
+    .answer-card-actions {
+
+      margin-top:15px;
+
+    }
+
+
+    .answer-card-actions a {
+
+      display:block;
+
+      text-align:center;
+
+      text-decoration:none;
+
+    }
+
+
+    .status {
+
+      margin-bottom:15px;
+
+      padding:10px 12px;
+
+      background:#f5f6f7;
+
+      border:
+        1px solid #d5dbe0;
+
+      font-size:13px;
+
+    }
+
+
+    .empty {
+
+      grid-column:1 / -1;
+
+      padding:50px;
+
+      text-align:center;
+
+      color:#777;
+
+      background:#fff;
+
+      border:
+        1px solid #d0d6dc;
+
+    }
+
+
+    @media(max-width:900px) {
+
+      .answer-grid {
+
+        grid-template-columns:
+          repeat(
+            2,
+            minmax(
+              0,
+              1fr
+            )
+          );
+
+      }
+
+    }
+
+
+    @media(max-width:600px) {
+
+      .marking-index-main {
+
+        padding:15px;
+
+      }
+
+
+      .answer-grid {
+
+        grid-template-columns:
+          1fr;
+
+      }
+
+
+      .toolbar select {
+
+        width:100%;
+
+        min-width:0;
+
+      }
+
+    }
+
+  </style>
+
 </head>
 
+
 <body>
+
 
 <header class="topbar">
 
@@ -29,15 +251,19 @@
     テスト成績システム
   </div>
 
+
   <div class="topbar-space"></div>
+
 
   <span id="teacherName">
     -
   </span>
 
+
   <button
     id="logoutButton"
     class="logout-button"
+    type="button"
   >
     ログアウト
   </button>
@@ -45,128 +271,104 @@
 </header>
 
 
-<div class="teacher-layout">
 
-  <aside class="sidebar">
+<main
+  class="marking-index-main"
+>
 
-    <div class="sidebar-title">
-      デジタル採点
-    </div>
 
-    <a
-      href="/teacher/marking"
-      class="menu-link active"
+  <section
+    class="page-header"
+  >
+
+    <h1>
+      採点
+    </h1>
+
+
+    <p>
+      採点する答案を選択してください。
+      解答用紙に設定した枠から自動生成された解答欄を採点します。
+    </p>
+
+  </section>
+
+
+
+  <div
+    class="toolbar"
+  >
+
+    <select
+      id="testSelect"
     >
-      採点開始
-    </a>
 
-    <a
-      href="/teacher/answers/matched"
-      class="menu-link"
+      <option value="">
+        テストを選択してください
+      </option>
+
+    </select>
+
+
+    <button
+      id="refreshButton"
+      class="btn"
+      type="button"
     >
-      紐付け済み答案
-    </a>
+      更新
+    </button>
 
-    <a
-      href="/teacher/results"
-      class="menu-link"
-    >
-      結果総括表
-    </a>
-
-  </aside>
+  </div>
 
 
-  <main class="main-content">
 
-    <div class="page-header">
-
-      <h1>
-        デジタル採点
-      </h1>
-
-    </div>
+  <div
+    id="status"
+    class="status"
+  >
+    テストを選択してください。
+  </div>
 
 
-    <div class="card">
 
-      <h3>
-        テストを選択
-      </h3>
-
-      <div class="form-group">
-
-        <label>
-          テスト
-        </label>
-
-        <select
-          id="testSelect"
-        >
-
-          <option value="">
-            選択してください
-          </option>
-
-        </select>
-
-      </div>
-
-
-      <div
-        id="testInformation"
-        style="
-          margin-top:10px;
-        "
-      ></div>
-
-    </div>
-
+  <section
+    id="answerGrid"
+    class="answer-grid"
+  >
 
     <div
-      id="markingSummary"
-      class="card"
-      style="display:none;"
+      class="empty"
     >
-
-      <h3>
-        採点状況
-      </h3>
-
-      <div
-        id="summaryContent"
-      ></div>
-
-      <div
-        style="
-          margin-top:15px;
-        "
-      >
-
-        <a
-          id="startMarkingButton"
-          href="#"
-          class="btn btn-primary"
-        >
-          串刺し採点を開始
-        </a>
-
-      </div>
-
+      テストを選択してください。
     </div>
 
-  </main>
-
-</div>
+  </section>
 
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</main>
 
-<script src="/js/config.js"></script>
 
-<script src="/js/auth.js"></script>
 
-<script src="/js/teacher/marking-index.js"></script>
+<script
+  src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+></script>
+
+
+<script
+  src="/js/config.js"
+></script>
+
+
+<script
+  src="/js/auth.js"
+></script>
+
+
+<script
+  src="/js/teacher/marking-index.js"
+></script>
+
 
 </body>
+
 </html>

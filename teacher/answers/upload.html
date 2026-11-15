@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>
+    答案アップロード - テスト成績システム
+  </title>
+
+  <link
+    rel="stylesheet"
+    href="/css/common.css"
+  >
+
+</head>
+
+<body>
+
+<header class="topbar">
+
+  <div class="system-name">
+    テスト成績システム
+  </div>
+
+  <div class="topbar-space"></div>
+
+  <span id="teacherName">
+    -
+  </span>
+
+  <button
+    id="logoutButton"
+    class="logout-button"
+  >
+    ログアウト
+  </button>
+
+</header>
+
+
+<div class="teacher-layout">
+
+  <aside class="sidebar">
+
+    <div class="sidebar-title">
+      答案
+    </div>
+
+    <a
+      href="/teacher/answers/upload"
+      class="menu-link active"
+    >
+      答案アップロード
+    </a>
+
+    <a
+      href="/teacher/answers/processing"
+      class="menu-link"
+    >
+      処理状況
+    </a>
+
+    <a
+      href="/teacher/answers/unmatched"
+      class="menu-link"
+    >
+      未紐付け答案
+    </a>
+
+    <a
+      href="/teacher/answers/matched"
+      class="menu-link"
+    >
+      紐付け済み答案
+    </a>
+
+  </aside>
+
+
+  <main class="main-content">
+
+    <div class="page-header">
+
+      <h1>
+        答案アップロード
+      </h1>
+
+    </div>
+
+
+    <div class="card">
+
+      <div class="form-group">
+
+        <label>
+          テスト
+        </label>
+
+        <select id="testSelect">
+
+          <option value="">
+            読み込み中...
+          </option>
+
+        </select>
+
+      </div>
+
+
+      <div class="form-group">
+
+        <label>
+          スキャン答案
+        </label>
+
+        <input
+          id="answerFiles"
+          type="file"
+          multiple
+          accept="image/*,.pdf"
+        >
+
+      </div>
+
+
+      <div
+        style="
+          background:#f3f5f7;
+          border:1px solid #d0d6dc;
+          padding:12px;
+          margin-bottom:15px;
+        "
+      >
+
+        <strong>
+          処理内容
+        </strong>
+
+        <ul>
+
+          <li>
+            答案ファイルをSupabase Storageへ保存
+          </li>
+
+          <li>
+            QRコードから生徒番号を取得
+          </li>
+
+          <li>
+            生徒番号から生徒を特定
+          </li>
+
+          <li>
+            答案を生徒へ紐付け
+          </li>
+
+          <li>
+            読み取れなかった答案は未紐付けへ送る
+          </li>
+
+        </ul>
+
+      </div>
+
+
+      <button
+        id="uploadButton"
+        class="btn btn-primary"
+      >
+        アップロード開始
+      </button>
+
+
+      <div
+        id="message"
+        style="
+          margin-top:15px;
+          min-height:24px;
+        "
+      ></div>
+
+    </div>
+
+
+    <div class="card">
+
+      <h3>
+        アップロード状況
+      </h3>
+
+      <div
+        id="uploadList"
+      ></div>
+
+    </div>
+
+  </main>
+
+</div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script src="/js/config.js"></script>
+
+<script src="/js/auth.js"></script>
+
+<script src="/js/teacher/answer-upload.js"></script>
+
+</body>
+</html>

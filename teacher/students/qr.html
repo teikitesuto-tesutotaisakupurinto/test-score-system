@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>
+    QRシール発行 - テスト成績システム
+  </title>
+
+  <link
+    rel="stylesheet"
+    href="/css/common.css"
+  >
+
+  <link
+    rel="stylesheet"
+    href="/css/print.css"
+  >
+
+</head>
+
+<body>
+
+<header class="topbar no-print">
+
+  <div class="system-name">
+    テスト成績システム
+  </div>
+
+  <div class="topbar-space"></div>
+
+  <span id="teacherName">
+    -
+  </span>
+
+  <button
+    id="logoutButton"
+    class="logout-button"
+  >
+    ログアウト
+  </button>
+
+</header>
+
+
+<div class="teacher-layout no-print">
+
+  <aside class="sidebar">
+
+    <div class="sidebar-title">
+      生徒
+    </div>
+
+    <a
+      href="/teacher/students"
+      class="menu-link"
+    >
+      生徒一覧
+    </a>
+
+    <a
+      href="/teacher/students/new"
+      class="menu-link"
+    >
+      生徒登録
+    </a>
+
+    <a
+      href="/teacher/students/import"
+      class="menu-link"
+    >
+      CSV一括登録
+    </a>
+
+    <a
+      href="/teacher/students/qr"
+      class="menu-link active"
+    >
+      QRシール発行
+    </a>
+
+  </aside>
+
+
+  <main class="main-content">
+
+    <div class="page-header">
+
+      <h1>
+        QRシール発行
+      </h1>
+
+    </div>
+
+
+    <div class="card">
+
+      <p>
+        1人18枚。
+        A4用紙1枚に3人分、
+        合計54枚を配置します。
+      </p>
+
+      <p>
+        シールサイズ：
+        <strong>3cm × 2cm</strong>
+      </p>
+
+
+      <div
+        style="
+          display:grid;
+          grid-template-columns:
+            repeat(3, minmax(0,1fr));
+          gap:12px;
+          margin-bottom:16px;
+        "
+      >
+
+        <div class="form-group">
+
+          <label>
+            1人目
+          </label>
+
+          <select
+            id="student1"
+          ></select>
+
+        </div>
+
+
+        <div class="form-group">
+
+          <label>
+            2人目
+          </label>
+
+          <select
+            id="student2"
+          ></select>
+
+        </div>
+
+
+        <div class="form-group">
+
+          <label>
+            3人目
+          </label>
+
+          <select
+            id="student3"
+          ></select>
+
+        </div>
+
+      </div>
+
+
+      <div
+        style="
+          display:flex;
+          gap:8px;
+        "
+      >
+
+        <button
+          id="generateButton"
+          class="btn btn-primary"
+        >
+          A4シールを生成
+        </button>
+
+        <button
+          id="printButton"
+          class="btn"
+          style="display:none;"
+        >
+          印刷
+        </button>
+
+      </div>
+
+
+      <div
+        id="message"
+        style="
+          margin-top:12px;
+        "
+      ></div>
+
+    </div>
+
+  </main>
+
+</div>
+
+
+<div
+  id="stickerArea"
+  class="sticker-preview"
+></div>
+
+
+<script
+  src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+></script>
+
+<script
+  src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"
+></script>
+
+<script src="/js/config.js"></script>
+
+<script src="/js/auth.js"></script>
+
+<script src="/js/teacher/qr.js"></script>
+
+</body>
+
+</html>

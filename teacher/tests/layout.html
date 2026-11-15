@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>
+    枠設定 - テスト成績システム
+  </title>
+
+  <link
+    rel="stylesheet"
+    href="/css/common.css"
+  >
+
+  <link
+    rel="stylesheet"
+    href="/css/layout-editor.css"
+  >
+
+</head>
+
+<body>
+
+<header class="topbar">
+
+  <div class="system-name">
+    テスト成績システム
+  </div>
+
+  <div class="topbar-space"></div>
+
+  <span id="teacherName">
+    -
+  </span>
+
+  <button
+    id="logoutButton"
+    class="logout-button"
+  >
+    ログアウト
+  </button>
+
+</header>
+
+
+<div class="teacher-layout">
+
+  <aside class="sidebar">
+
+    <div class="sidebar-title">
+      テスト設定
+    </div>
+
+    <a
+      id="pagesLink"
+      href="#"
+      class="menu-link"
+    >
+      解答用紙登録
+    </a>
+
+    <a
+      id="layoutLink"
+      href="#"
+      class="menu-link active"
+    >
+      枠設定
+    </a>
+
+    <a
+      id="questionsLink"
+      href="#"
+      class="menu-link"
+    >
+      問題設定
+    </a>
+
+    <a
+      id="modelAnswerLink"
+      href="#"
+      class="menu-link"
+    >
+      模範解答
+    </a>
+
+  </aside>
+
+
+  <main class="main-content">
+
+    <div class="page-header">
+
+      <h1>
+        解答登録・枠設定
+      </h1>
+
+    </div>
+
+
+    <div
+      id="testInformation"
+      class="card"
+    >
+      読み込み中...
+    </div>
+
+
+    <div class="card">
+
+      <div
+        class="layout-toolbar"
+      >
+
+        <button
+          id="answerBoxButton"
+          class="btn btn-primary"
+        >
+          解答欄
+        </button>
+
+
+        <button
+          id="qrBoxButton"
+          class="btn"
+        >
+          QRコードシール欄
+        </button>
+
+
+        <button
+          id="studentNoBoxButton"
+          class="btn"
+        >
+          生徒番号欄
+        </button>
+
+
+        <button
+          id="nameBoxButton"
+          class="btn"
+        >
+          氏名欄
+        </button>
+
+
+        <button
+          id="saveButton"
+          class="btn btn-success"
+        >
+          枠設定を保存
+        </button>
+
+      </div>
+
+    </div>
+
+
+    <div class="layout-editor">
+
+      <div
+        id="sheetCanvas"
+        class="sheet-canvas"
+      >
+
+        <div
+          id="sheetMessage"
+          class="sheet-message"
+        >
+          解答用紙を読み込み中...
+        </div>
+
+      </div>
+
+    </div>
+
+  </main>
+
+</div>
+
+
+<script
+  src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+></script>
+
+<script src="/js/config.js"></script>
+
+<script src="/js/auth.js"></script>
+
+<script src="/js/teacher/test-layout.js"></script>
+
+</body>
+
+</html>

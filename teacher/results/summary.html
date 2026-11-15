@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>
+    結果総括表 - テスト成績システム
+  </title>
+
+  <link
+    rel="stylesheet"
+    href="/css/common.css"
+  >
+
+</head>
+
+
+<body>
+
+
+<header class="topbar">
+
+  <div class="system-name">
+    テスト成績システム
+  </div>
+
+
+  <div class="topbar-space"></div>
+
+
+  <span id="teacherName">
+    -
+  </span>
+
+
+  <button
+    id="logoutButton"
+    class="logout-button"
+    type="button"
+  >
+    ログアウト
+  </button>
+
+</header>
+
+
+
+<div class="teacher-layout">
+
+
+  <aside class="sidebar">
+
+    <div class="sidebar-title">
+      成績
+    </div>
+
+
+    <a
+      href="/teacher/results/summary"
+      class="menu-link active"
+    >
+      結果総括表
+    </a>
+
+
+    <a
+      href="/teacher/results/students"
+      class="menu-link"
+    >
+      生徒別成績
+    </a>
+
+
+    <a
+      href="/teacher/results/questions"
+      class="menu-link"
+    >
+      設問別分析
+    </a>
+
+
+    <a
+      href="/teacher/results/return"
+      class="menu-link"
+    >
+      答案返却
+    </a>
+
+  </aside>
+
+
+
+  <main class="main-content">
+
+
+    <div class="page-header">
+
+      <h1>
+        結果総括表
+      </h1>
+
+    </div>
+
+
+
+    <div class="card">
+
+
+      <div class="form-group">
+
+        <label for="testSelect">
+          テスト
+        </label>
+
+
+        <select
+          id="testSelect"
+        >
+
+          <option value="">
+            テストを選択してください
+          </option>
+
+        </select>
+
+      </div>
+
+
+    </div>
+
+
+
+    <div
+      id="testInformation"
+      class="card"
+      style="display:none;"
+    >
+    </div>
+
+
+
+    <div
+      id="summaryCards"
+      class="card"
+      style="display:none;"
+    >
+    </div>
+
+
+
+    <div
+      id="summaryTableCard"
+      class="card"
+      style="display:none;"
+    >
+
+
+      <div
+        style="
+          display:flex;
+          align-items:center;
+          justify-content:space-between;
+          margin-bottom:12px;
+        "
+      >
+
+        <h3 style="margin:0;">
+          結果総括表
+        </h3>
+
+
+        <button
+          id="exportCsvButton"
+          class="btn"
+          type="button"
+        >
+          CSV出力
+        </button>
+
+      </div>
+
+
+
+      <div
+        style="
+          overflow:auto;
+        "
+      >
+
+        <table
+          id="summaryTable"
+          style="
+            width:100%;
+            border-collapse:collapse;
+            min-width:700px;
+          "
+        >
+
+          <thead></thead>
+
+          <tbody></tbody>
+
+        </table>
+
+      </div>
+
+
+    </div>
+
+
+  </main>
+
+</div>
+
+
+
+<script
+  src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+></script>
+
+
+<script src="/js/config.js"></script>
+
+<script src="/js/auth.js"></script>
+
+<script src="/js/teacher/results-summary.js"></script>
+
+
+</body>
+
+</html>

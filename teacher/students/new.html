@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>
+    生徒登録 - テスト成績システム
+  </title>
+
+  <link
+    rel="stylesheet"
+    href="/css/common.css"
+  >
+
+</head>
+
+<body>
+
+<header class="topbar">
+
+  <div class="system-name">
+    テスト成績システム
+  </div>
+
+  <div class="topbar-space"></div>
+
+  <span id="teacherName">
+    -
+  </span>
+
+  <button
+    id="logoutButton"
+    class="logout-button"
+  >
+    ログアウト
+  </button>
+
+</header>
+
+
+<div class="teacher-layout">
+
+  <aside class="sidebar">
+
+    <div class="sidebar-title">
+      生徒
+    </div>
+
+    <a
+      href="/teacher/students"
+      class="menu-link"
+    >
+      生徒一覧
+    </a>
+
+    <a
+      href="/teacher/students/new"
+      class="menu-link active"
+    >
+      生徒登録
+    </a>
+
+    <a
+      href="/teacher/students/qr"
+      class="menu-link"
+    >
+      QRシール発行
+    </a>
+
+  </aside>
+
+
+  <main class="main-content">
+
+    <div class="page-header">
+
+      <h1>
+        生徒登録
+      </h1>
+
+    </div>
+
+
+    <div class="card">
+
+      <div
+        style="
+          background:#eef6fb;
+          border:1px solid #c8ddeb;
+          padding:12px;
+          margin-bottom:20px;
+          border-radius:4px;
+        "
+      >
+
+        <strong>
+          生徒番号について
+        </strong>
+
+        <p
+          style="
+            margin:6px 0 0;
+          "
+        >
+          生徒番号は登録時に重複しない
+          ランダム6桁コードを自動発行します。
+        </p>
+
+      </div>
+
+
+      <form id="studentForm">
+
+        <div class="form-group">
+
+          <label for="studentName">
+            氏名
+          </label>
+
+          <input
+            id="studentName"
+            type="text"
+            maxlength="100"
+            required
+            autocomplete="off"
+          >
+
+        </div>
+
+
+        <div
+          style="
+            display:grid;
+            grid-template-columns:
+              repeat(2,minmax(0,1fr));
+            gap:15px;
+          "
+        >
+
+          <div class="form-group">
+
+            <label for="studentGrade">
+              学年
+            </label>
+
+            <input
+              id="studentGrade"
+              type="text"
+              maxlength="30"
+              placeholder="中3"
+            >
+
+          </div>
+
+
+          <div class="form-group">
+
+            <label for="studentClass">
+              クラス
+            </label>
+
+            <input
+              id="studentClass"
+              type="text"
+              maxlength="30"
+              placeholder="1組"
+            >
+
+          </div>
+
+        </div>
+
+
+        <div
+          id="formMessage"
+          style="
+            min-height:22px;
+            margin-bottom:10px;
+            color:#c62828;
+          "
+        ></div>
+
+
+        <div
+          style="
+            display:flex;
+            gap:8px;
+          "
+        >
+
+          <button
+            type="submit"
+            id="saveButton"
+            class="btn btn-primary"
+          >
+            登録する
+          </button>
+
+          <a
+            href="/teacher/students"
+            class="btn"
+          >
+            キャンセル
+          </a>
+
+        </div>
+
+      </form>
+
+    </div>
+
+  </main>
+
+</div>
+
+
+<script
+  src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+></script>
+
+<script src="/js/config.js"></script>
+
+<script src="/js/auth.js"></script>
+
+<script src="/js/teacher/student-new.js"></script>
+
+</body>
+
+</html>

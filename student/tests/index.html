@@ -15,10 +15,12 @@
     テスト成績 - テスト成績システム
   </title>
 
+
   <link
     rel="stylesheet"
     href="/css/common.css"
   >
+
 
   <link
     rel="stylesheet"
@@ -41,9 +43,17 @@
   <div class="topbar-space"></div>
 
 
-  <span id="studentName">
-    -
-  </span>
+  <div
+    class="student-header-info"
+  >
+
+    <span
+      id="studentName"
+    >
+      -
+    </span>
+
+  </div>
 
 
   <button
@@ -58,27 +68,73 @@
 
 
 
-<main class="student-main">
-
-
-  <div class="page-header">
-
-    <h1>
-      テスト成績
-    </h1>
-
-  </div>
-
+<main
+  class="student-main"
+>
 
 
   <div
-    id="testList"
-    class="student-test-grid"
+    class="page-header"
   >
 
-    読み込み中...
+    <div>
+
+      <h1>
+        テスト成績
+      </h1>
+
+
+      <p
+        class="page-description"
+      >
+        公開されたテストの答案と成績を確認できます。
+      </p>
+
+    </div>
 
   </div>
+
+
+
+  <section
+    class="student-test-section"
+  >
+
+    <div
+      class="section-header"
+    >
+
+      <h2>
+        公開済みテスト
+      </h2>
+
+
+      <button
+        id="refreshButton"
+        class="btn"
+        type="button"
+      >
+        更新
+      </button>
+
+    </div>
+
+
+
+    <div
+      id="testList"
+      class="student-test-grid"
+    >
+
+      <div
+        class="loading-state"
+      >
+        読み込み中...
+      </div>
+
+    </div>
+
+  </section>
 
 
 </main>
@@ -89,11 +145,20 @@
   src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
 ></script>
 
-<script src="/js/config.js"></script>
 
-<script src="/js/auth.js"></script>
+<script
+  src="/js/config.js"
+></script>
 
-<script src="/js/student/tests.js"></script>
+
+<script
+  src="/js/auth.js"
+></script>
+
+
+<script
+  src="/js/student/tests.js"
+></script>
 
 
 </body>

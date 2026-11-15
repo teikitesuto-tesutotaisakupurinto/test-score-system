@@ -1,971 +1,267 @@
-/* =========================================================
-   答案切り出し
+<!DOCTYPE html>
+<html lang="ja">
 
-   answer_sheets
-       ↓
-   layout_boxes
-       ↓
-   answer_regions
-       ↓
-   student-answers Storage
-========================================================= */
+<head>
+  <meta charset="UTF-8">
 
-let regionTests = [];
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
 
-let selectedTestId = null;
+  <title>
+    答案切り出し - テスト成績システム
+  </title>
 
+  <link
+    rel="stylesheet"
+    href="/css/common.css"
+  >
 
-/* =========================================================
-   初期化
-========================================================= */
+</head>
 
-async function initializeRegions() {
+<body>
 
-  const profile =
-    await getProfile();
+<header class="topbar">
 
+  <div class="system-name">
+    テスト成績システム
+  </div>
 
-  if (!profile) {
+  <div class="topbar-space"></div>
 
-    location.href =
-      "/login";
-
-    return;
-
-  }
-
-
-  if (
-    profile.role !== "teacher" &&
-    profile.role !== "admin"
-  ) {
-
-    location.href =
-      "/student/dashboard";
-
-    return;
-
-  }
-
-
-  document.getElementById(
-    "teacherName"
-  ).textContent =
-    profile.name || "先生";
-
-
-  await loadTests();
-
-}
-
-
-/* =========================================================
-   テスト一覧
-========================================================= */
-
-async function loadTests() {
-
-  const {
-    data,
-    error
-  } =
-    await supabaseClient
-      .from("tests")
-      .select(`
-        id,
-        name,
-        subject,
-        grade
-      `)
-      .order(
-        "created_at",
-        {
-          ascending: false
-        }
-      );
-
-
-  if (error) {
-
-    console.error(error);
-
-    showMessage(
-      "テストを取得できませんでした。",
-      true
-    );
-
-    return;
-
-  }
-
-
-  regionTests =
-    data || [];
-
-
-  const select =
-    document.getElementById(
-      "testSelect"
-    );
-
-
-  select.innerHTML = `
-
-    <option value="">
-      テストを選択してください
-    </option>
-
-    ${
-      regionTests
-        .map(
-          test => `
-
-            <option value="${test.id}">
-
-              ${escapeHtml(
-                test.name
-              )}
-
-              ${
-                test.subject
-                  ? ` / ${escapeHtml(test.subject)}`
-                  : ""
-              }
-
-            </option>
-
-          `
-        )
-        .join("")
-    }
-
-  `;
-
-}
-
-
-/* =========================================================
-   テスト選択
-========================================================= */
-
-document
-  .getElementById(
-    "testSelect"
-  )
-  .addEventListener(
-    "change",
-    async event => {
-
-      selectedTestId =
-        event.target.value ||
-        null;
-
-
-      const executeButton =
-        document.getElementById(
-          "executeButton"
-        );
-
-
-      if (!selectedTestId) {
-
-        executeButton.disabled =
-          true;
-
-        document.getElementById(
-          "summary"
-        ).style.display =
-          "none";
-
-        return;
-
-      }
-
-
-      executeButton.disabled =
-        false;
-
-
-      await loadSummary();
-
-    }
-  );
-
-
-/* =========================================================
-   概要
-========================================================= */
-
-async function loadSummary() {
-
-  const [
-    boxResult,
-    answerResult
-  ] =
-    await Promise.all([
-
-      supabaseClient
-        .from("layout_boxes")
-        .select(
-          "id",
-          {
-            count: "exact",
-            head: true
-          }
-        )
-        .eq(
-          "test_id",
-          selectedTestId
-        )
-        .eq(
-          "box_type",
-          "answer"
-        ),
-
-      supabaseClient
-        .from("answer_sheets")
-        .select(
-          "id",
-          {
-            count: "exact",
-            head: true
-          }
-        )
-        .eq(
-          "test_id",
-          selectedTestId
-        )
-        .neq(
-          "status",
-          "unmatched"
-        )
-
-    ]);
-
-
-  const boxCount =
-    boxResult.count || 0;
-
-
-  const answerCount =
-    answerResult.count || 0;
-
-
-  const summary =
-    document.getElementById(
-      "summary"
-    );
-
-
-  summary.style.display =
-    "block";
-
-
-  summary.innerHTML = `
-
-    解答欄：
-    <strong>
-      ${boxCount}
-    </strong>
-
-    ／
-
-    紐付け済み答案：
-    <strong>
-      ${answerCount}
-    </strong>
-    枚
-
-  `;
-
-}
-
-
-/* =========================================================
-   切り出し開始
-========================================================= */
-
-document
-  .getElementById(
-    "executeButton"
-  )
-  .addEventListener(
-    "click",
-    async () => {
-
-      if (!selectedTestId) {
-        return;
-      }
-
-
-      const button =
-        document.getElementById(
-          "executeButton"
-        );
-
-
-      button.disabled =
-        true;
-
-      button.textContent =
-        "切り出し中...";
-
-
-      clearResults();
-
-
-      try {
-
-        const count =
-          await buildAnswerRegions(
-            selectedTestId
-          );
-
-
-        showMessage(
-          `${count}件の答案領域を作成しました。`
-        );
-
-
-      } catch (error) {
-
-        console.error(error);
-
-        showMessage(
-          error.message ||
-          "答案切り出しに失敗しました。",
-          true
-        );
-
-      }
-
-
-      button.disabled =
-        false;
-
-      button.textContent =
-        "答案を問題別に切り出す";
-
-    }
-  );
-
-
-/* =========================================================
-   答案領域作成
-========================================================= */
-
-async function buildAnswerRegions(
-  testId
-) {
-
-  /*
-    解答欄
-  */
-
-  const {
-    data: boxes,
-    error: boxError
-  } =
-    await supabaseClient
-      .from("layout_boxes")
-      .select(`
-        id,
-        page_no,
-        x,
-        y,
-        width,
-        height,
-        points
-      `)
-      .eq(
-        "test_id",
-        testId
-      )
-      .eq(
-        "box_type",
-        "answer"
-      )
-      .order(
-        "page_no"
-      );
-
-
-  if (boxError) {
-    throw boxError;
-  }
-
-
-  /*
-    答案
-  */
-
-  const {
-    data: answers,
-    error: answerError
-  } =
-    await supabaseClient
-      .from("answer_sheets")
-      .select(`
-        id,
-        student_id,
-        original_file_path,
-        status,
-        students(
-          student_no,
-          name
-        )
-      `)
-      .eq(
-        "test_id",
-        testId
-      )
-      .neq(
-        "status",
-        "unmatched"
-      );
-
-
-  if (answerError) {
-    throw answerError;
-  }
-
-
-  if (
-    !boxes?.length ||
-    !answers?.length
-  ) {
-
-    return 0;
-
-  }
-
-
-  let created =
-    0;
-
-
-  /*
-    各答案
-  */
-
-  for (
-    const answer
-    of answers
-  ) {
-
-    /*
-      画像答案のみ
-    */
-
-    if (
-      !answer.original_file_path
-    ) {
-
-      continue;
-
-    }
-
-
-    /*
-      現在の簡易構成では
-      1答案ファイル＝1ページ画像
-      として扱う。
-
-      PDF複数ページ処理は
-      PDF.js版で追加する。
-    */
-
-    for (
-      const box
-      of boxes
-    ) {
-
-      if (
-        Number(box.page_no) !== 1
-      ) {
-
-        /*
-          現段階では1ページ目を
-          対象とする。
-        */
-
-        continue;
-
-      }
-
-
-      const blob =
-        await cropAnswerImage(
-          answer.original_file_path,
-          box
-        );
-
-
-      if (!blob) {
-
-        continue;
-
-      }
-
-
-      const storagePath =
-        `${testId}/${answer.id}/${box.id}.png`;
-
-
-      const {
-        error: uploadError
-      } =
-        await supabaseClient
-          .storage
-          .from(
-            "student-answers"
-          )
-          .upload(
-            storagePath,
-            blob,
-            {
-              contentType:
-                "image/png",
-
-              upsert:
-                true
-            }
-          );
-
-
-      if (uploadError) {
-
-        throw uploadError;
-
-      }
-
-
-      /*
-        answer_regions
-      */
-
-      const {
-        data: existing
-      } =
-        await supabaseClient
-          .from(
-            "answer_regions"
-          )
-          .select(
-            "id"
-          )
-          .eq(
-            "answer_sheet_id",
-            answer.id
-          )
-          .eq(
-            "layout_box_id",
-            box.id
-          )
-          .maybeSingle();
-
-
-      const values = {
-
-        answer_sheet_id:
-          answer.id,
-
-        question_id:
-          null,
-
-        layout_box_id:
-          box.id,
-
-        page_no:
-          box.page_no,
-
-        image_path:
-          storagePath,
-
-        x:
-          box.x,
-
-        y:
-          box.y,
-
-        width:
-          box.width,
-
-        height:
-          box.height
-
-      };
-
-
-      if (existing) {
-
-        const {
-          error
-        } =
-          await supabaseClient
-            .from(
-              "answer_regions"
-            )
-            .update(
-              values
-            )
-            .eq(
-              "id",
-              existing.id
-            );
-
-
-        if (error) {
-          throw error;
-        }
-
-      } else {
-
-        const {
-          error
-        } =
-          await supabaseClient
-            .from(
-              "answer_regions"
-            )
-            .insert(
-              values
-            );
-
-
-        if (error) {
-          throw error;
-        }
-
-      }
-
-
-      created++;
-
-
-      addResult(
-        answer,
-        box
-      );
-
-    }
-
-  }
-
-
-  return created;
-
-}
-
-
-/* =========================================================
-   画像切り出し
-========================================================= */
-
-async function cropAnswerImage(
-  storagePath,
-  box
-) {
-
-  const {
-    data,
-    error
-  } =
-    await supabaseClient
-      .storage
-      .from(
-        "answer-files"
-      )
-      .createSignedUrl(
-        storagePath,
-        3600
-      );
-
-
-  if (error) {
-
-    console.error(error);
-
-    return null;
-
-  }
-
-
-  const image =
-    await loadImage(
-      data.signedUrl
-    );
-
-
-  const x =
-    Number(box.x) || 0;
-
-
-  const y =
-    Number(box.y) || 0;
-
-
-  const width =
-    Number(box.width) || 1;
-
-
-  const height =
-    Number(box.height) || 1;
-
-
-  /*
-    元画像サイズを超えない
-  */
-
-  const cropWidth =
-    Math.min(
-      width,
-      image.naturalWidth - x
-    );
-
-
-  const cropHeight =
-    Math.min(
-      height,
-      image.naturalHeight - y
-    );
-
-
-  if (
-    cropWidth <= 0 ||
-    cropHeight <= 0
-  ) {
-
-    return null;
-
-  }
-
-
-  const canvas =
-    document.createElement(
-      "canvas"
-    );
-
-
-  canvas.width =
-    Math.round(
-      cropWidth
-    );
-
-
-  canvas.height =
-    Math.round(
-      cropHeight
-    );
-
-
-  const ctx =
-    canvas.getContext(
-      "2d"
-    );
-
-
-  ctx.drawImage(
-    image,
-
-    x,
-    y,
-
-    cropWidth,
-    cropHeight,
-
-    0,
-    0,
-
-    cropWidth,
-    cropHeight
-  );
-
-
-  return new Promise(
-    resolve => {
-
-      canvas.toBlob(
-        resolve,
-        "image/png"
-      );
-
-    }
-  );
-
-}
-
-
-/* =========================================================
-   画像ロード
-========================================================= */
-
-function loadImage(
-  src
-) {
-
-  return new Promise(
-    (
-      resolve,
-      reject
-    ) => {
-
-      const image =
-        new Image();
-
-
-      image.onload =
-        () =>
-          resolve(
-            image
-          );
-
-
-      image.onerror =
-        () =>
-          reject(
-            new Error(
-              "答案画像を読み込めませんでした。"
-            )
-          );
-
-
-      image.src =
-        src;
-
-    }
-  );
-
-}
-
-
-/* =========================================================
-   結果表示
-========================================================= */
-
-function addResult(
-  answer,
-  box
-) {
-
-  const container =
-    document.getElementById(
-      "resultList"
-    );
-
-
-  const item =
-    document.createElement(
-      "div"
-    );
-
-
-  item.style.cssText = `
-    padding:8px;
-    border-bottom:1px solid #d0d6dc;
-  `;
-
-
-  item.innerHTML = `
-
-    ${escapeHtml(
-      answer.students?.student_no ||
-      ""
-    )}
-
+  <span id="teacherName">
     -
+  </span>
 
-    ${escapeHtml(
-      answer.students?.name ||
-      ""
-    )}
+  <button
+    id="logoutButton"
+    class="logout-button"
+    type="button"
+  >
+    ログアウト
+  </button>
 
-    ／
-
-    解答欄：
-    ${escapeHtml(
-      box.id
-    )}
-
-    ／
-
-    ${box.points ?? "-"}点
-
-  `;
+</header>
 
 
-  container.appendChild(
-    item
-  );
+<div class="teacher-layout">
 
-}
+  <aside class="sidebar">
 
+    <div class="sidebar-title">
+      答案処理
+    </div>
 
-function clearResults() {
+    <a
+      href="/teacher/answers/upload"
+      class="menu-link"
+    >
+      答案アップロード
+    </a>
 
-  document.getElementById(
-    "resultList"
-  ).innerHTML =
-    "";
+    <a
+      href="/teacher/answers/processing"
+      class="menu-link"
+    >
+      処理状況
+    </a>
 
-}
+    <a
+      href="/teacher/answers/regions"
+      class="menu-link active"
+    >
+      答案切り出し
+    </a>
 
+    <a
+      href="/teacher/answers/unmatched"
+      class="menu-link"
+    >
+      未紐付け答案
+    </a>
 
-function showMessage(
-  message,
-  error = false
-) {
+    <a
+      href="/teacher/answers/matched"
+      class="menu-link"
+    >
+      紐付け済み答案
+    </a>
 
-  const element =
-    document.getElementById(
-      "message"
-    );
-
-
-  element.textContent =
-    message;
-
-
-  element.style.color =
-    error
-      ? "#c62828"
-      : "#16834b";
-
-}
-
-
-document
-  .getElementById(
-    "logoutButton"
-  )
-  .addEventListener(
-    "click",
-    logout
-  );
+  </aside>
 
 
-function escapeHtml(
-  value
-) {
+  <main class="main-content">
 
-  if (
-    value === null ||
-    value === undefined
-  ) {
+    <div class="page-header">
 
-    return "";
+      <h1>
+        答案切り出し
+      </h1>
 
-  }
+    </div>
 
 
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
+    <!-- テスト選択 -->
 
-}
+    <div class="card">
+
+      <div class="form-group">
+
+        <label for="testSelect">
+          テスト
+        </label>
+
+        <select
+          id="testSelect"
+        >
+
+          <option value="">
+            テストを選択してください
+          </option>
+
+        </select>
+
+      </div>
 
 
-initializeRegions();
+      <div
+        id="testInformation"
+        style="
+          margin-top:10px;
+          line-height:1.8;
+        "
+      >
+      </div>
+
+    </div>
+
+
+    <!-- 処理対象 -->
+
+    <div
+      id="summary"
+      class="card"
+      style="display:none;"
+    >
+    </div>
+
+
+    <!-- 実行 -->
+
+    <div class="card">
+
+      <h3>
+        答案画像の切り出し
+      </h3>
+
+      <p>
+        登録済みの解答欄設定に従って、
+        生徒答案から各解答欄を切り出します。
+      </p>
+
+      <p
+        style="
+          color:#666;
+          font-size:13px;
+        "
+      >
+        元答案はそのまま保持されます。
+        切り出した画像は生徒答案用Storageへ保存されます。
+      </p>
+
+
+      <button
+        id="executeButton"
+        class="btn btn-primary"
+        type="button"
+        disabled
+      >
+        答案を問題別に切り出す
+      </button>
+
+
+      <div
+        id="message"
+        style="
+          margin-top:14px;
+          min-height:24px;
+        "
+      >
+      </div>
+
+    </div>
+
+
+    <!-- 処理結果 -->
+
+    <div class="card">
+
+      <div
+        style="
+          display:flex;
+          align-items:center;
+          justify-content:space-between;
+          margin-bottom:12px;
+        "
+      >
+
+        <h3 style="margin:0;">
+          処理結果
+        </h3>
+
+        <span
+          id="resultCount"
+          style="
+            color:#666;
+            font-size:13px;
+          "
+        >
+          0件
+        </span>
+
+      </div>
+
+
+      <div
+        id="resultList"
+      >
+      </div>
+
+    </div>
+
+  </main>
+
+</div>
+
+
+<!-- ZIP -->
+
+<script
+  src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"
+></script>
+
+
+<!-- QR -->
+
+<script
+  src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"
+></script>
+
+
+<!-- Supabase -->
+
+<script
+  src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+></script>
+
+
+<script src="/js/config.js"></script>
+
+<script src="/js/auth.js"></script>
+
+<script src="/js/teacher/answer-regions.js"></script>
+
+</body>
+
+</html>

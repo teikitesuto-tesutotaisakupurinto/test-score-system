@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>
+    生徒一括登録 - テスト成績システム
+  </title>
+
+  <link
+    rel="stylesheet"
+    href="/css/common.css"
+  >
+
+</head>
+
+<body>
+
+<header class="topbar">
+
+  <div class="system-name">
+    テスト成績システム
+  </div>
+
+  <div class="topbar-space"></div>
+
+  <span id="teacherName">
+    -
+  </span>
+
+  <button
+    id="logoutButton"
+    class="logout-button"
+  >
+    ログアウト
+  </button>
+
+</header>
+
+
+<div class="teacher-layout">
+
+  <aside class="sidebar">
+
+    <div class="sidebar-title">
+      生徒
+    </div>
+
+    <a
+      href="/teacher/students"
+      class="menu-link"
+    >
+      生徒一覧
+    </a>
+
+    <a
+      href="/teacher/students/new"
+      class="menu-link"
+    >
+      生徒登録
+    </a>
+
+    <a
+      href="/teacher/students/import"
+      class="menu-link active"
+    >
+      CSV一括登録
+    </a>
+
+    <a
+      href="/teacher/students/qr"
+      class="menu-link"
+    >
+      QRシール発行
+    </a>
+
+  </aside>
+
+
+  <main class="main-content">
+
+    <div class="page-header">
+
+      <h1>
+        生徒一括登録
+      </h1>
+
+    </div>
+
+
+    <div class="card">
+
+      <h3>
+        CSVファイル
+      </h3>
+
+      <p>
+        氏名、学年、クラスをCSVから一括登録できます。
+      </p>
+
+      <p>
+        生徒番号は空欄で構いません。
+        登録時にランダム6桁で自動発行します。
+      </p>
+
+      <p>
+        1行目は見出しにしてください。
+      </p>
+
+      <div
+        style="
+          background:#f3f5f7;
+          padding:12px;
+          border:1px solid #d0d6dc;
+          margin-bottom:16px;
+          font-family:monospace;
+        "
+      >
+        氏名,学年,クラス
+        <br>
+        山田太郎,中3,1組
+        <br>
+        佐藤花子,中3,1組
+        <br>
+        鈴木一郎,中3,2組
+      </div>
+
+
+      <div class="form-group">
+
+        <label>
+          CSVファイル
+        </label>
+
+        <input
+          id="csvFile"
+          type="file"
+          accept=".csv,text/csv"
+        >
+
+      </div>
+
+
+      <div
+        style="
+          display:flex;
+          gap:8px;
+        "
+      >
+
+        <button
+          id="previewButton"
+          class="btn"
+        >
+          プレビュー
+        </button>
+
+        <button
+          id="importButton"
+          class="btn btn-primary"
+          disabled
+        >
+          登録する
+        </button>
+
+        <a
+          href="/teacher/students"
+          class="btn"
+        >
+          戻る
+        </a>
+
+      </div>
+
+
+      <div
+        id="message"
+        style="
+          margin-top:15px;
+          min-height:22px;
+        "
+      ></div>
+
+    </div>
+
+
+    <div
+      id="previewArea"
+      class="card"
+      style="display:none;"
+    >
+
+      <h3>
+        登録プレビュー
+      </h3>
+
+      <div style="overflow:auto;">
+
+        <table class="table">
+
+          <thead>
+
+            <tr>
+
+              <th>
+                氏名
+              </th>
+
+              <th>
+                学年
+              </th>
+
+              <th>
+                クラス
+              </th>
+
+            </tr>
+
+          </thead>
+
+          <tbody id="previewRows"></tbody>
+
+        </table>
+
+      </div>
+
+    </div>
+
+  </main>
+
+</div>
+
+
+<script
+  src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+></script>
+
+<script src="/js/config.js"></script>
+
+<script src="/js/auth.js"></script>
+
+<script src="/js/teacher/student-import.js"></script>
+
+</body>
+</html>

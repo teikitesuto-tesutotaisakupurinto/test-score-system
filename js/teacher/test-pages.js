@@ -3,31 +3,28 @@
    テスト成績システム
    js/teacher/test-pages.js
 
-   解答用紙アップロード・枠設定
+   解答用紙アップロード・解答欄設定
 
    URL
    ---------------------------------------------------------
    /teacher/tests/pages?test=UUID
 
-   処理
-   ---------------------------------------------------------
-   ① URLからtest ID取得
-   ② 解答用紙をアップロード
-   ③ test_pagesへ保存
-   ④ 解答用紙を表示
-   ⑤ 画面上で枠をドラッグ
-   ⑥ 原画像座標へ変換
-   ⑦ layout_boxesへ保存
-
    重要
    ---------------------------------------------------------
-   枠は「解答用紙」にだけ設定する。
+   ・testSelect がHTMLに存在しなくても動作する
+   ・URL ?test=UUID を最優先
+   ・解答用紙にだけ枠を設定
+   ・枠は原画像のピクセル座標で保存
+   ・答案側には枠を設定しない
+   ・答案アップロード時にこの枠を自動適用する
 
-   生徒答案には枠を設定しない。
-
-   生徒答案アップロード時に
-   layout_boxesを自動適用して
-   answer_regionsを作成する。
+   対応
+   ---------------------------------------------------------
+   PDF
+   JPG
+   JPEG
+   PNG
+   WEBP
 ========================================================= */
 
 (function () {
@@ -38,8 +35,6 @@
   /* =======================================================
      STATE
   ======================================================= */
-
-  let profile = null;
 
   let selectedTestId = null;
 
@@ -53,11 +48,15 @@
 
   let drawing = false;
 
+  let drawingStart = null;
+
   let drawingPage = null;
 
   let drawingLayer = null;
 
   let temporaryBox = null;
+
+  let pdfPromise = null;
 
 
   /* =======================================================
@@ -134,6 +133,11 @@
       "closeButton"
     );
 
+  const teacherName =
+    document.getElementById(
+      "teacherName"
+    );
+
 
   /* =======================================================
      INITIALIZE
@@ -143,19 +147,19 @@
 
     try {
 
-      profile =
+      /*
+        Teacher認証
+      */
+
+      const profile =
         await requireTeacher();
 
 
       if (!profile) {
+
         return;
+
       }
-
-
-      const teacherName =
-        document.getElementById(
-          "teacherName"
-        );
 
 
       if (teacherName) {
@@ -168,67 +172,96 @@
 
 
       /*
-        最重要：
+        URLからtest ID取得
+
         /teacher/tests/pages?test=UUID
       */
 
       const urlTestId =
         new URLSearchParams(
           window.location.search
-        ).get("test");
+        ).get(
+          "test"
+        );
 
 
       /*
-        グローバル値も確認
+        testSelectがある古い画面にも対応。
       */
 
       selectedTestId =
         urlTestId ||
         window.__TEST_ID__ ||
+        (
+          testSelect
+            ? testSelect.value
+            : null
+        ) ||
         null;
 
 
       setupEvents();
 
-      await loadTests();
-
 
       /*
-        URLのtestを初期選択
+        testSelectがある場合のみ
+        テスト一覧を読み込む。
       */
 
-      if (selectedTestId) {
+      if (testSelect) {
 
-        const exists =
-          tests.some(
-            test =>
-              test.id ===
-              selectedTestId
-          );
+        await loadTests();
 
 
-        if (exists) {
+        if (selectedTestId) {
+
+          const exists =
+            tests.some(
+              test =>
+                test.id ===
+                selectedTestId
+            );
+
+
+          if (!exists) {
+
+            setStatus(
+              "指定されたテストが見つかりません。"
+            );
+
+            return;
+
+          }
+
+
+          /*
+            ここがnullエラー対策。
+
+            testSelectが存在する場合だけ
+            valueを設定する。
+          */
 
           testSelect.value =
             selectedTestId;
 
-          await loadTestPages();
-
-        } else {
-
-          setStatus(
-            "指定されたテストが見つかりません。"
-          );
-
         }
 
-      } else {
+      }
+
+
+      if (!selectedTestId) {
 
         setStatus(
           "テストIDが指定されていません。"
         );
 
+        return;
+
       }
+
+
+      await loadTestPages();
+
 
     } catch (error) {
 
@@ -249,96 +282,14 @@
 
 
   /* =======================================================
-     TESTS
-  ======================================================= */
-
-  async function loadTests() {
-
-    const {
-      data,
-      error
-    } =
-      await supabaseClient
-        .from(
-          "tests"
-        )
-        .select(`
-          id,
-          name,
-          subject,
-          grade,
-          class_name,
-          created_at
-        `)
-        .order(
-          "created_at",
-          {
-            ascending:
-              false
-          }
-        );
-
-
-    if (error) {
-      throw error;
-    }
-
-
-    tests =
-      data || [];
-
-
-    if (!testSelect) {
-      return;
-    }
-
-
-    testSelect.innerHTML = `
-
-      <option value="">
-        テストを選択してください
-      </option>
-
-      ${
-        tests
-          .map(
-            test => `
-
-              <option
-                value="${escapeHtml(
-                  test.id
-                )}"
-              >
-
-                ${escapeHtml(
-                  test.name
-                )}
-
-                ${
-                  test.subject
-                    ? ` / ${escapeHtml(
-                        test.subject
-                      )}`
-                    : ""
-                }
-
-              </option>
-
-            `
-          )
-          .join("")
-      }
-
-    `;
-
-  }
-
-
-  /* =======================================================
      EVENTS
   ======================================================= */
 
   function setupEvents() {
+
+    /*
+      testSelectが存在する場合のみ。
+    */
 
     testSelect?.addEventListener(
       "change",
@@ -394,23 +345,7 @@
 
     backButton?.addEventListener(
       "click",
-      () => {
-
-        if (selectedTestId) {
-
-          window.location.href =
-            `/teacher/tests/edit?id=${encodeURIComponent(
-              selectedTestId
-            )}`;
-
-        } else {
-
-          window.location.href =
-            "/teacher/tests";
-
-        }
-
-      }
+      goBack
     );
 
 
@@ -427,10 +362,107 @@
 
 
   /* =======================================================
+     LOAD TESTS
+  ======================================================= */
+
+  async function loadTests() {
+
+    const {
+      data,
+      error
+    } =
+      await supabaseClient
+        .from(
+          "tests"
+        )
+        .select(`
+          id,
+          name,
+          subject,
+          grade,
+          class_name,
+          created_at
+        `)
+        .order(
+          "created_at",
+          {
+            ascending:
+              false
+          }
+        );
+
+
+    if (error) {
+
+      throw error;
+
+    }
+
+
+    tests =
+      data || [];
+
+
+    if (!testSelect) {
+
+      return;
+
+    }
+
+
+    testSelect.innerHTML = `
+
+      <option value="">
+        テストを選択してください
+      </option>
+
+      ${
+        tests
+          .map(
+            test => `
+
+              <option
+                value="${escapeHtml(
+                  test.id
+                )}"
+              >
+
+                ${escapeHtml(
+                  test.name
+                )}
+
+                ${
+                  test.subject
+                    ? ` / ${escapeHtml(
+                        test.subject
+                      )}`
+                    : ""
+                }
+
+              </option>
+
+            `
+          )
+          .join("")
+      }
+
+    `;
+
+  }
+
+
+  /* =======================================================
      LOAD TEST PAGES
   ======================================================= */
 
   async function loadTestPages() {
+
+    if (!viewer) {
+
+      return;
+
+    }
+
 
     viewer.innerHTML =
       "";
@@ -452,7 +484,7 @@
     if (!selectedTestId) {
 
       setStatus(
-        "テストを選択してください。"
+        "テストIDが指定されていません。"
       );
 
       return;
@@ -464,6 +496,10 @@
       "解答用紙を読み込んでいます..."
     );
 
+
+    /*
+      test_pages
+    */
 
     const {
       data:
@@ -499,13 +535,19 @@
 
 
     if (pageError) {
+
       throw pageError;
+
     }
 
 
     pages =
       pageData || [];
 
+
+    /*
+      layout_boxes
+    */
 
     const {
       data:
@@ -545,13 +587,19 @@
 
 
     if (boxError) {
+
       throw boxError;
+
     }
 
 
     boxes =
       boxData || [];
 
+
+    /*
+      表示
+    */
 
     await renderPages();
 
@@ -562,13 +610,14 @@
         "解答用紙がありません。PDFまたは画像を登録してください。"
       );
 
-    } else {
-
-      setStatus(
-        "解答用紙上をドラッグして解答欄を設定してください。"
-      );
+      return;
 
     }
+
+
+    setStatus(
+      "解答用紙上をドラッグして解答欄を設定してください。"
+    );
 
   }
 
@@ -582,7 +631,7 @@
     if (!selectedTestId) {
 
       alert(
-        "テストを選択してください。"
+        "テストIDがありません。"
       );
 
       return;
@@ -605,12 +654,43 @@
     }
 
 
+    const extension =
+      getExtension(
+        file.name
+      );
+
+
+    if (
+      ![
+        "pdf",
+        "jpg",
+        "jpeg",
+        "png",
+        "webp"
+      ].includes(
+        extension
+      )
+    ) {
+
+      alert(
+        "PDF、JPG、JPEG、PNG、WEBPに対応しています。"
+      );
+
+      return;
+
+    }
+
+
     try {
 
       setStatus(
         "解答用紙を処理しています..."
       );
 
+
+      /*
+        ファイルをページ化
+      */
 
       const pageImages =
         await fileToPages(
@@ -628,12 +708,12 @@
 
 
       /*
-        既存のページを削除
+        既存test_pages削除
       */
 
       const {
         error:
-          deleteError
+          pageDeleteError
       } =
         await supabaseClient
           .from(
@@ -646,16 +726,16 @@
           );
 
 
-      if (deleteError) {
-        throw deleteError;
+      if (pageDeleteError) {
+
+        throw pageDeleteError;
+
       }
 
 
       /*
-        既存の枠も削除。
-
-        解答用紙を入れ替えると
-        以前の座標が合わなくなるため。
+        解答用紙を入れ替えるので
+        古い枠も削除。
       */
 
       const {
@@ -674,11 +754,18 @@
 
 
       if (boxDeleteError) {
+
         throw boxDeleteError;
+
       }
 
 
-      let pageNo = 1;
+      /*
+        Storageへ保存
+      */
+
+      let pageNo =
+        1;
 
 
       for (
@@ -730,9 +817,15 @@
 
 
         if (uploadError) {
+
           throw uploadError;
+
         }
 
+
+        /*
+          DB
+        */
 
         const {
           error:
@@ -769,7 +862,9 @@
 
 
         if (insertError) {
+
           throw insertError;
+
         }
 
 
@@ -778,15 +873,23 @@
       }
 
 
-      answerFile.value =
-        "";
+      if (answerFile) {
 
+        answerFile.value =
+          "";
+
+      }
+
+
+      /*
+        再読み込み
+      */
 
       await loadTestPages();
 
 
       setStatus(
-        "解答用紙を登録しました。ドラッグして解答欄を設定してください。"
+        "解答用紙を登録しました。枠を設定してください。"
       );
 
 
@@ -814,6 +917,13 @@
 
   async function renderPages() {
 
+    if (!viewer) {
+
+      return;
+
+    }
+
+
     viewer.innerHTML =
       "";
 
@@ -831,6 +941,10 @@
 
   }
 
+
+  /* =======================================================
+     RENDER PAGE
+  ======================================================= */
 
   async function renderPage(
     page
@@ -870,6 +984,7 @@
       canvas
     );
 
+
     wrapper.appendChild(
       layer
     );
@@ -879,6 +994,10 @@
       wrapper
     );
 
+
+    /*
+      Signed URL
+    */
 
     const {
       data,
@@ -897,12 +1016,18 @@
 
     if (error) {
 
-      console.error(
-        "createSignedUrl:",
-        error
-      );
+      throw error;
 
-      return;
+    }
+
+
+    if (
+      !data?.signedUrl
+    ) {
+
+      throw new Error(
+        "解答用紙画像URLを取得できませんでした。"
+      );
 
     }
 
@@ -914,7 +1039,7 @@
 
 
     /*
-      原画像サイズをそのままCanvasへ。
+      原画像サイズ
     */
 
     canvas.width =
@@ -925,15 +1050,17 @@
       image.naturalHeight;
 
 
-    canvas
-      .getContext(
+    const context =
+      canvas.getContext(
         "2d"
-      )
-      .drawImage(
-        image,
-        0,
-        0
       );
+
+
+    context.drawImage(
+      image,
+      0,
+      0
+    );
 
 
     /*
@@ -987,6 +1114,11 @@
       "mousedown",
       event => {
 
+        /*
+          既存枠をクリックした場合は
+          新規枠を作らない。
+        */
+
         if (
           event.target !==
           layer
@@ -1013,7 +1145,7 @@
           layer.getBoundingClientRect();
 
 
-        const point =
+        drawingStart =
           getLayerPoint(
             event,
             rect
@@ -1031,11 +1163,19 @@
 
 
         temporaryBox.style.left =
-          `${point.x / rect.width * 100}%`;
+          `${
+            drawingStart.x /
+            rect.width *
+            100
+          }%`;
 
 
         temporaryBox.style.top =
-          `${point.y / rect.height * 100}%`;
+          `${
+            drawingStart.y /
+            rect.height *
+            100
+          }%`;
 
 
         temporaryBox.style.width =
@@ -1061,7 +1201,7 @@
         if (
           !drawing ||
           !temporaryBox ||
-          drawingPage !== page
+          !drawingStart
         ) {
 
           return;
@@ -1073,62 +1213,71 @@
           layer.getBoundingClientRect();
 
 
-        const point =
+        const current =
           getLayerPoint(
             event,
             rect
           );
 
 
-        const start =
-          getTemporaryStart(
-            temporaryBox,
-            rect
-          );
-
-
         const x =
           Math.min(
-            start.x,
-            point.x
+            drawingStart.x,
+            current.x
           );
 
 
         const y =
           Math.min(
-            start.y,
-            point.y
+            drawingStart.y,
+            current.y
           );
 
 
         const width =
           Math.abs(
-            point.x -
-            start.x
+            current.x -
+            drawingStart.x
           );
 
 
         const height =
           Math.abs(
-            point.y -
-            start.y
+            current.y -
+            drawingStart.y
           );
 
 
         temporaryBox.style.left =
-          `${x / rect.width * 100}%`;
+          `${
+            x /
+            rect.width *
+            100
+          }%`;
 
 
         temporaryBox.style.top =
-          `${y / rect.height * 100}%`;
+          `${
+            y /
+            rect.height *
+            100
+          }%`;
 
 
         temporaryBox.style.width =
-          `${width / rect.width * 100}%`;
+          `${
+            width /
+            rect.width *
+            100
+          }%`;
 
 
         temporaryBox.style.height =
-          `${height / rect.height * 100}%`;
+          `${
+            height /
+            rect.height *
+            100
+          }%`;
 
       }
     );
@@ -1140,7 +1289,8 @@
 
         if (
           !drawing ||
-          !temporaryBox
+          !temporaryBox ||
+          !drawingStart
         ) {
 
           return;
@@ -1156,14 +1306,7 @@
           layer.getBoundingClientRect();
 
 
-        const start =
-          getTemporaryStart(
-            temporaryBox,
-            rect
-          );
-
-
-        const point =
+        const current =
           getLayerPoint(
             event,
             rect
@@ -1172,29 +1315,29 @@
 
         const x =
           Math.min(
-            start.x,
-            point.x
+            drawingStart.x,
+            current.x
           );
 
 
         const y =
           Math.min(
-            start.y,
-            point.y
+            drawingStart.y,
+            current.y
           );
 
 
         const width =
           Math.abs(
-            point.x -
-            start.x
+            current.x -
+            drawingStart.x
           );
 
 
         const height =
           Math.abs(
-            point.y -
-            start.y
+            current.y -
+            drawingStart.y
           );
 
 
@@ -1213,6 +1356,10 @@
           null;
 
 
+        drawingStart =
+          null;
+
+
         if (
           width < 10 ||
           height < 10
@@ -1224,9 +1371,7 @@
 
 
         /*
-          表示座標
-          ↓
-          原画像座標
+          表示座標 → 原画像座標
         */
 
         const canvas =
@@ -1235,18 +1380,18 @@
           );
 
 
-        const displayRect =
+        const canvasRect =
           canvas.getBoundingClientRect();
 
 
         const scaleX =
           canvas.width /
-          displayRect.width;
+          canvasRect.width;
 
 
         const scaleY =
           canvas.height /
-          displayRect.height;
+          canvasRect.height;
 
 
         const box = {
@@ -1307,22 +1452,6 @@
         selectBox(
           box
         );
-
-      }
-    );
-
-
-    layer.addEventListener(
-      "mouseleave",
-      () => {
-
-        if (
-          !drawing
-        ) {
-
-          return;
-
-        }
 
       }
     );
@@ -1620,7 +1749,7 @@
 
 
   /* =======================================================
-     UPDATE BOX ELEMENT
+     UPDATE BOX
   ======================================================= */
 
   function updateBoxElement(
@@ -1629,22 +1758,32 @@
     box
   ) {
 
-    const width =
+    const pageWidth =
       Number(
         page.width_px
       );
 
 
-    const height =
+    const pageHeight =
       Number(
         page.height_px
       );
 
 
+    if (
+      !pageWidth ||
+      !pageHeight
+    ) {
+
+      return;
+
+    }
+
+
     element.style.left =
       `${
         Number(box.x) /
-        width *
+        pageWidth *
         100
       }%`;
 
@@ -1652,7 +1791,7 @@
     element.style.top =
       `${
         Number(box.y) /
-        height *
+        pageHeight *
         100
       }%`;
 
@@ -1660,7 +1799,7 @@
     element.style.width =
       `${
         Number(box.width) /
-        width *
+        pageWidth *
         100
       }%`;
 
@@ -1668,7 +1807,7 @@
     element.style.height =
       `${
         Number(box.height) /
-        height *
+        pageHeight *
         100
       }%`;
 
@@ -1713,19 +1852,31 @@
       false;
 
 
-    labelInput.value =
-      box.label ||
-      "";
+    if (labelInput) {
+
+      labelInput.value =
+        box.label ||
+        "";
+
+    }
 
 
-    pointsInput.value =
-      box.points ??
-      0;
+    if (pointsInput) {
+
+      pointsInput.value =
+        box.points ??
+        0;
+
+    }
 
 
-    questionIdInput.value =
-      box.question_id ||
-      "";
+    if (questionIdInput) {
+
+      questionIdInput.value =
+        box.question_id ||
+        "";
+
+    }
 
   }
 
@@ -1742,24 +1893,34 @@
 
 
     selectedBox.label =
-      labelInput.value.trim() ||
+      labelInput?.value.trim() ||
       "設問";
 
 
     const points =
       Number(
-        pointsInput.value
+        pointsInput?.value
       );
 
 
+    if (
+      !Number.isFinite(points) ||
+      points < 0
+    ) {
+
+      throw new Error(
+        "配点は0以上の数値を入力してください。"
+      );
+
+    }
+
+
     selectedBox.points =
-      Number.isFinite(points)
-        ? points
-        : 0;
+      points;
 
 
     selectedBox.question_id =
-      questionIdInput.value.trim() ||
+      questionIdInput?.value.trim() ||
       null;
 
 
@@ -1852,7 +2013,7 @@
 
 
   /* =======================================================
-     SAVE
+     SAVE BOXES
   ======================================================= */
 
   async function saveBoxes() {
@@ -1860,39 +2021,7 @@
     if (!selectedTestId) {
 
       alert(
-        "テストを選択してください。"
-      );
-
-      return;
-
-    }
-
-
-    /*
-      保存前に現在の枠を反映
-    */
-
-    applySelectedBox();
-
-
-    /*
-      配点チェック
-    */
-
-    const invalid =
-      boxes.find(
-        box =>
-          !Number.isFinite(
-            Number(box.points)
-          ) ||
-          Number(box.points) < 0
-      );
-
-
-    if (invalid) {
-
-      alert(
-        `${invalid.label || "設問"}の配点が正しくありません。`
+        "テストIDがありません。"
       );
 
       return;
@@ -1901,6 +2030,69 @@
 
 
     try {
+
+      /*
+        選択中の設定も反映
+      */
+
+      applySelectedBox();
+
+
+      /*
+        全枠チェック
+      */
+
+      for (
+        const box
+        of boxes
+      ) {
+
+        if (
+          !Number.isFinite(
+            Number(box.x)
+          ) ||
+          !Number.isFinite(
+            Number(box.y)
+          ) ||
+          !Number.isFinite(
+            Number(box.width)
+          ) ||
+          !Number.isFinite(
+            Number(box.height)
+          )
+        ) {
+
+          throw new Error(
+            `${box.label || "設問"}の座標が正しくありません。`
+          );
+
+        }
+
+
+        if (
+          Number(box.width) <= 0 ||
+          Number(box.height) <= 0
+        ) {
+
+          throw new Error(
+            `${box.label || "設問"}のサイズが正しくありません。`
+          );
+
+        }
+
+
+        if (
+          Number(box.points) < 0
+        ) {
+
+          throw new Error(
+            `${box.label || "設問"}の配点が正しくありません。`
+          );
+
+        }
+
+      }
+
 
       saveButton.disabled =
         true;
@@ -1912,7 +2104,7 @@
 
 
       /*
-        既存枠を削除
+        既存枠削除
       */
 
       const {
@@ -1931,9 +2123,15 @@
 
 
       if (deleteError) {
+
         throw deleteError;
+
       }
 
+
+      /*
+        新しい枠保存
+      */
 
       if (boxes.length) {
 
@@ -2004,11 +2202,18 @@
 
 
         if (insertError) {
+
           throw insertError;
+
         }
 
       }
 
+
+      /*
+        保存後にDBのUUIDを
+        正しいものへ再取得。
+      */
 
       await loadTestPages();
 
@@ -2084,10 +2289,6 @@
   /* =======================================================
      PDF
   ======================================================= */
-
-  let pdfPromise =
-    null;
-
 
   function loadPdfJs() {
 
@@ -2208,14 +2409,14 @@
 
 
     for (
-      let i = 1;
-      i <= pdf.numPages;
-      i++
+      let pageNo = 1;
+      pageNo <= pdf.numPages;
+      pageNo++
     ) {
 
       const page =
         await pdf.getPage(
-          i
+          pageNo
         );
 
 
@@ -2370,6 +2571,30 @@
 
 
   /* =======================================================
+     BACK
+  ======================================================= */
+
+  function goBack() {
+
+    if (selectedTestId) {
+
+      window.location.href =
+        `/teacher/tests/edit?id=${encodeURIComponent(
+          selectedTestId
+        )}`;
+
+      return;
+
+    }
+
+
+    window.location.href =
+      "/teacher/tests";
+
+  }
+
+
+  /* =======================================================
      HELPERS
   ======================================================= */
 
@@ -2401,32 +2626,6 @@
   }
 
 
-  function getTemporaryStart(
-    element,
-    rect
-  ) {
-
-    return {
-
-      x:
-        parseFloat(
-          element.style.left
-        ) /
-        100 *
-        rect.width,
-
-      y:
-        parseFloat(
-          element.style.top
-        ) /
-        100 *
-        rect.height
-
-    };
-
-  }
-
-
   function clamp(
     value,
     min,
@@ -2439,6 +2638,45 @@
         max,
         value
       )
+    );
+
+  }
+
+
+  function loadImage(
+    src
+  ) {
+
+    return new Promise(
+      (
+        resolve,
+        reject
+      ) => {
+
+        const image =
+          new Image();
+
+
+        image.onload =
+          () =>
+            resolve(
+              image
+            );
+
+
+        image.onerror =
+          () =>
+            reject(
+              new Error(
+                "画像を読み込めませんでした。"
+              )
+            );
+
+
+        image.src =
+          src;
+
+      }
     );
 
   }
@@ -2486,45 +2724,6 @@
   }
 
 
-  function loadImage(
-    src
-  ) {
-
-    return new Promise(
-      (
-        resolve,
-        reject
-      ) => {
-
-        const image =
-          new Image();
-
-
-        image.onload =
-          () =>
-            resolve(
-              image
-            );
-
-
-        image.onerror =
-          () =>
-            reject(
-              new Error(
-                "画像を読み込めませんでした。"
-              )
-            );
-
-
-        image.src =
-          src;
-
-      }
-    );
-
-  }
-
-
   function getExtension(
     value
   ) {
@@ -2543,9 +2742,7 @@
 
 
     return parts.length > 1
-      ? parts
-          .pop()
-          .toLowerCase()
+      ? parts.pop().toLowerCase()
       : "";
 
   }

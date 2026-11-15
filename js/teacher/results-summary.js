@@ -7,9 +7,17 @@
 
   let selectedTestId = null;
 
-  let studentResults = [];
+  let testData = null;
 
   let questionResults = [];
+
+  let answerSheets = [];
+
+  let scores = [];
+
+  let students = [];
+
+  let resultRows = [];
 
 
   /* =====================================================
@@ -87,7 +95,7 @@
 
 
   /* =====================================================
-     テスト一覧
+     テスト
   ===================================================== */
 
   async function loadTests() {
@@ -106,13 +114,13 @@
           subject,
           grade,
           class_name,
-          max_score
+          max_score,
+          status
         `)
         .order(
           "created_at",
           {
-            ascending:
-              false
+            ascending:false
           }
         );
 
@@ -122,7 +130,6 @@
       console.error(
         error
       );
-
 
       return;
 
@@ -154,9 +161,7 @@
                 value="${escapeHtml(test.id)}"
               >
 
-                ${escapeHtml(
-                  test.name
-                )}
+                ${escapeHtml(test.name)}
 
                 ${
                   test.subject
@@ -194,6 +199,8 @@
 
         if (!testId) {
 
+          clearResult();
+
           return;
 
         }
@@ -219,15 +226,15 @@
       testId;
 
 
-    const test =
+    testData =
       tests.find(
-        item =>
-          item.id ===
+        test =>
+          test.id ===
           testId
       );
 
 
-    if (!test) {
+    if (!testData) {
 
       return;
 
@@ -235,29 +242,33 @@
 
 
     /*
-      生徒別
+      生徒
     */
 
     const {
       data:
-        students,
+        studentData,
       error:
         studentError
     } =
       await supabaseClient
         .from(
-          "test_score_summary"
+          "students"
         )
-        .select("*")
+        .select(`
+          id,
+          student_no,
+          name,
+          active
+        `)
         .eq(
-          "test_id",
-          testId
+          "active",
+          true
         )
         .order(
           "student_no",
           {
-            ascending:
-              true
+            ascending:true
           }
         );
 
@@ -268,40 +279,108 @@
         studentError
       );
 
+      return;
+
+    }
+
+
+    students =
+      studentData || [];
+
+
+    /*
+      答案
+    */
+
+    const {
+      data:
+        answerData,
+      error:
+        answerError
+    } =
+      await supabaseClient
+        .from(
+          "answer_sheets"
+        )
+        .select(`
+          id,
+          student_id,
+          status,
+          created_at
+        `)
+        .eq(
+          "test_id",
+          testId
+        )
+        .neq(
+          "status",
+          "unmatched"
+        );
+
+
+    if (answerError) {
+
+      console.error(
+        answerError
+      );
 
       return;
 
     }
 
 
-    studentResults =
-      students || [];
+    answerSheets =
+      answerData || [];
 
 
     /*
-      設問別
+      設問
     */
 
     const {
       data:
-        questions,
+        questionData,
       error:
         questionError
     } =
       await supabaseClient
         .from(
-          "question_score_summary"
+          "layout_boxes"
         )
-        .select("*")
+        .select(`
+          id,
+          page_no,
+          label,
+          points,
+          x,
+          y,
+          width,
+          height
+        `)
         .eq(
           "test_id",
           testId
         )
+        .eq(
+          "box_type",
+          "answer"
+        )
         .order(
           "page_no",
           {
-            ascending:
-              true
+            ascending:true
+          }
+        )
+        .order(
+          "y",
+          {
+            ascending:true
+          }
+        )
+        .order(
+          "x",
+          {
+            ascending:true
           }
         );
 
@@ -312,24 +391,85 @@
         questionError
       );
 
-
       return;
 
     }
 
 
     questionResults =
-      questions || [];
+      questionData || [];
 
 
-    renderTestInformation(
-      test
-    );
+    /*
+      採点
+    */
+
+    const answerIds =
+      answerSheets.map(
+        answer =>
+          answer.id
+      );
 
 
-    renderSummaryCards(
-      test
-    );
+    if (
+      answerIds.length
+    ) {
+
+      const {
+        data:
+          scoreData,
+        error:
+          scoreError
+      } =
+        await supabaseClient
+          .from(
+            "scores"
+          )
+          .select(`
+            id,
+            answer_sheet_id,
+            layout_box_id,
+            score,
+            status
+          `)
+          .in(
+            "answer_sheet_id",
+            answerIds
+          )
+          .eq(
+            "status",
+            "marked"
+          );
+
+
+      if (scoreError) {
+
+        console.error(
+          scoreError
+        );
+
+        return;
+
+      }
+
+
+      scores =
+        scoreData || [];
+
+    } else {
+
+      scores = [];
+
+    }
+
+
+    buildResultRows();
+
+
+    renderTestInformation();
+
+
+    renderSummaryCards();
 
 
     renderSummaryTable();
@@ -338,12 +478,314 @@
 
 
   /* =====================================================
+     結果行作成
+  ===================================================== */
+
+  function buildResultRows() {
+
+    /*
+      answer_sheet
+      ↓
+      student
+      ↓
+      question score
+    */
+
+    const answerByStudent =
+      new Map();
+
+
+    answerSheets.forEach(
+      answer => {
+
+        if (
+          !answer.student_id
+        ) {
+
+          return;
+
+        }
+
+
+        /*
+          同じ生徒に複数答案がある場合、
+          最初の答案を使用。
+        */
+
+        if (
+          !answerByStudent.has(
+            answer.student_id
+          )
+        ) {
+
+          answerByStudent.set(
+            answer.student_id,
+            answer
+          );
+
+        }
+
+      }
+    );
+
+
+    const scoreMap =
+      new Map();
+
+
+    scores.forEach(
+      score => {
+
+        const key =
+          `${score.answer_sheet_id}__${score.layout_box_id}`;
+
+
+        scoreMap.set(
+          key,
+          Number(
+            score.score
+          ) || 0
+        );
+
+      }
+    );
+
+
+    const rows = [];
+
+
+    students.forEach(
+      student => {
+
+        const answer =
+          answerByStudent.get(
+            student.id
+          );
+
+
+        /*
+          テストを受けていない生徒も
+          総括表には表示する。
+        */
+
+        const questionScores =
+          {};
+
+
+        let total =
+          0;
+
+
+        questionResults.forEach(
+          question => {
+
+            let value =
+              null;
+
+
+            if (answer) {
+
+              const key =
+                `${answer.id}__${question.id}`;
+
+
+              if (
+                scoreMap.has(
+                  key
+                )
+              ) {
+
+                value =
+                  scoreMap.get(
+                    key
+                  );
+
+                total +=
+                  value;
+
+              }
+
+            }
+
+
+            questionScores[
+              question.id
+            ] =
+              value;
+
+          }
+        );
+
+
+        rows.push({
+
+          studentId:
+            student.id,
+
+          studentNo:
+            student.student_no,
+
+          name:
+            student.name,
+
+          answerSheetId:
+            answer?.id ||
+            null,
+
+          questionScores,
+
+          total
+
+        });
+
+      }
+    );
+
+
+    /*
+      合計点降順
+    */
+
+    const ranked =
+      rows
+        .filter(
+          row =>
+            row.answerSheetId
+        )
+        .sort(
+          (
+            a,
+            b
+          ) => {
+
+            if (
+              b.total !==
+              a.total
+            ) {
+
+              return (
+                b.total -
+                a.total
+              );
+
+            }
+
+
+            return String(
+              a.studentNo ||
+              ""
+            ).localeCompare(
+              String(
+                b.studentNo ||
+                ""
+              ),
+              undefined,
+              {
+                numeric:true
+              }
+            );
+
+          }
+        );
+
+
+    /*
+      順位
+      同点は同順位
+    */
+
+    let lastScore =
+      null;
+
+    let lastRank =
+      0;
+
+
+    ranked.forEach(
+      (
+        row,
+        index
+      ) => {
+
+        if (
+          lastScore ===
+          null ||
+          row.total !==
+          lastScore
+        ) {
+
+          lastRank =
+            index + 1;
+
+        }
+
+
+        row.rank =
+          lastRank;
+
+
+        lastScore =
+          row.total;
+
+      }
+    );
+
+
+    /*
+      未受験
+    */
+
+    rows
+      .filter(
+        row =>
+          !row.answerSheetId
+      )
+      .forEach(
+        row => {
+
+          row.rank =
+            null;
+
+        }
+      );
+
+
+    /*
+      生徒番号順に表示
+    */
+
+    rows.sort(
+      (
+        a,
+        b
+      ) =>
+        String(
+          a.studentNo ||
+          ""
+        ).localeCompare(
+          String(
+            b.studentNo ||
+            ""
+          ),
+          undefined,
+          {
+            numeric:true
+          }
+        )
+    );
+
+
+    resultRows =
+      rows;
+
+  }
+
+
+  /* =====================================================
      テスト情報
   ===================================================== */
 
-  function renderTestInformation(
-    test
-  ) {
+  function renderTestInformation() {
 
     const element =
       document.getElementById(
@@ -359,7 +801,7 @@
 
       <strong>
         ${escapeHtml(
-          test.name
+          testData.name
         )}
       </strong>
 
@@ -367,7 +809,7 @@
 
       教科：
       ${escapeHtml(
-        test.subject ||
+        testData.subject ||
         "-"
       )}
 
@@ -375,7 +817,7 @@
 
       学年：
       ${escapeHtml(
-        test.grade ||
+        testData.grade ||
         "-"
       )}
 
@@ -383,14 +825,14 @@
 
       クラス：
       ${escapeHtml(
-        test.class_name ||
+        testData.class_name ||
         "-"
       )}
 
       ／
 
       満点：
-      ${test.max_score}
+      ${testData.max_score ?? "-"}
 
     `;
 
@@ -398,33 +840,32 @@
 
 
   /* =====================================================
-     集計カード
+     サマリー
   ===================================================== */
 
-  function renderSummaryCards(
-    test
-  ) {
+  function renderSummaryCards() {
 
-    const scores =
-      studentResults
-        .map(
-          item =>
-            Number(
-              item.total_score
-            )
-        )
-        .filter(
-          Number.isFinite
-        );
+    const completedRows =
+      resultRows.filter(
+        row =>
+          row.answerSheetId
+      );
+
+
+    const values =
+      completedRows.map(
+        row =>
+          row.total
+      );
 
 
     const count =
-      scores.length;
+      values.length;
 
 
     const average =
       count
-        ? scores.reduce(
+        ? values.reduce(
             (
               sum,
               value
@@ -435,18 +876,18 @@
         : 0;
 
 
-    const max =
+    const highest =
       count
         ? Math.max(
-            ...scores
+            ...values
           )
         : 0;
 
 
-    const min =
+    const lowest =
       count
         ? Math.min(
-            ...scores
+            ...values
           )
         : 0;
 
@@ -463,89 +904,73 @@
 
     element.innerHTML = `
 
-      <div
-        style="
-          display:grid;
-          grid-template-columns:
-            repeat(4,minmax(0,1fr));
-          gap:12px;
-        "
-      >
+      <div class="summary-card-grid">
+
 
         <div>
 
-          <div
-            style="
-              color:#777;
-              font-size:12px;
-            "
-          >
+          <div class="summary-card-label">
             受験者数
           </div>
 
-          <strong>
+          <div class="summary-card-value">
             ${count}
-          </strong>
-          人
+          </div>
 
         </div>
 
 
         <div>
 
-          <div
-            style="
-              color:#777;
-              font-size:12px;
-            "
-          >
+          <div class="summary-card-label">
             平均点
           </div>
 
-          <strong>
+          <div class="summary-card-value">
             ${average.toFixed(1)}
-          </strong>
-          点
+          </div>
 
         </div>
 
 
         <div>
 
-          <div
-            style="
-              color:#777;
-              font-size:12px;
-            "
-          >
+          <div class="summary-card-label">
             最高点
           </div>
 
-          <strong>
-            ${max}
-          </strong>
-          点
+          <div class="summary-card-value">
+            ${highest}
+          </div>
 
         </div>
 
 
         <div>
 
-          <div
-            style="
-              color:#777;
-              font-size:12px;
-            "
-          >
+          <div class="summary-card-label">
             最低点
           </div>
 
-          <strong>
-            ${min}
-          </strong>
-          点
+          <div class="summary-card-value">
+            ${lowest}
+          </div>
 
         </div>
+
+
+        <div>
+
+          <div class="summary-card-label">
+            設問数
+          </div>
+
+          <div class="summary-card-value">
+            ${questionResults.length}
+          </div>
+
+        </div>
+
 
       </div>
 
@@ -555,7 +980,7 @@
 
 
   /* =====================================================
-     総括表
+     結果総括表
   ===================================================== */
 
   function renderSummaryTable() {
@@ -589,71 +1014,42 @@
 
 
     /*
-      設問列
+      ヘッダー
     */
-
-    const questionColumns =
-      questionResults.map(
-        question => ({
-
-          id:
-            question.layout_box_id,
-
-          label:
-            question.label ||
-            "解答欄",
-
-          points:
-            question.max_points
-
-        })
-      );
-
 
     thead.innerHTML = `
 
       <tr>
 
-        <th
-          style="
-            border:1px solid #cdd3d9;
-            padding:8px;
-            background:#f2f4f6;
-            white-space:nowrap;
-          "
-        >
-          番号
+
+        <th>
+          順位
         </th>
 
 
-        <th
-          style="
-            border:1px solid #cdd3d9;
-            padding:8px;
-            background:#f2f4f6;
-            white-space:nowrap;
-          "
-        >
+        <th>
+          生徒番号
+        </th>
+
+
+        <th>
           氏名
         </th>
 
 
         ${
-          questionColumns
+          questionResults
             .map(
-              question => `
+              (
+                question,
+                index
+              ) => `
 
-                <th
-                  style="
-                    border:1px solid #cdd3d9;
-                    padding:8px;
-                    background:#f2f4f6;
-                    white-space:nowrap;
-                  "
-                >
+                <th>
 
                   ${escapeHtml(
-                    question.label
+                    question.label ||
+                    `問${index + 1}`
                   )}
 
                   <br>
@@ -664,7 +1060,12 @@
                       font-weight:normal;
                     "
                   >
-                    ${question.points ?? "-"}点
+
+                    ${
+                      question.points ??
+                      "-"
+                    }点
+
                   </span>
 
                 </th>
@@ -675,91 +1076,158 @@
         }
 
 
-        <th
-          style="
-            border:1px solid #cdd3d9;
-            padding:8px;
-            background:#f2f4f6;
-            white-space:nowrap;
-          "
-        >
+        <th>
           合計
         </th>
+
+
+        <th>
+          平均
+        </th>
+
 
       </tr>
 
     `;
 
 
+    /*
+      行
+    */
+
     tbody.innerHTML =
-      studentResults
+      resultRows
         .map(
-          student => `
+          row => {
 
-            <tr>
-
-              <td
-                style="
-                  border:1px solid #cdd3d9;
-                  padding:8px;
-                "
-              >
-                ${escapeHtml(
-                  student.student_no ||
-                  ""
-                )}
-              </td>
-
-
-              <td
-                style="
-                  border:1px solid #cdd3d9;
-                  padding:8px;
-                  white-space:nowrap;
-                "
-              >
-                ${escapeHtml(
-                  student.student_name ||
-                  ""
-                )}
-              </td>
+            const average =
+              questionResults.length
+                ? (
+                    row.total /
+                    questionResults
+                      .reduce(
+                        (
+                          sum,
+                          question
+                        ) =>
+                          sum +
+                          (
+                            Number(
+                              question.points
+                            ) || 0
+                          ),
+                        0
+                      )
+                  ) *
+                  100
+                : 0;
 
 
-              ${
-                questionColumns
-                  .map(
-                    () => `
+            return `
 
-                      <td
-                        style="
-                          border:1px solid #cdd3d9;
-                          padding:8px;
-                          text-align:center;
-                        "
-                      >
-                        -
-                      </td>
-
-                    `
-                  )
-                  .join("")
-              }
+              <tr>
 
 
-              <td
-                style="
-                  border:1px solid #cdd3d9;
-                  padding:8px;
-                  text-align:center;
-                  font-weight:700;
-                "
-              >
-                ${student.total_score}
-              </td>
+                <td
+                  class="rank"
+                >
 
-            </tr>
+                  ${
+                    row.rank ??
+                    "-"
+                  }
 
-          `
+                </td>
+
+
+                <td>
+
+                  ${escapeHtml(
+                    row.studentNo ||
+                    ""
+                  )}
+
+                </td>
+
+
+                <td>
+
+                  ${escapeHtml(
+                    row.name ||
+                    ""
+                  )}
+
+                </td>
+
+
+                ${
+                  questionResults
+                    .map(
+                      question => {
+
+                        const value =
+                          row.questionScores[
+                            question.id
+                          ];
+
+
+                        return `
+
+                          <td
+                            class="center"
+                          >
+
+                            ${
+                              value === null ||
+                              value === undefined
+
+                                ? "-"
+
+                                : value
+
+                            }
+
+                          </td>
+
+                        `;
+
+                      }
+                    )
+                    .join("")
+                }
+
+
+                <td
+                  class="total"
+                >
+
+                  ${
+                    row.answerSheetId
+                      ? row.total
+                      : "-"
+                  }
+
+                </td>
+
+
+                <td
+                  class="center"
+                >
+
+                  ${
+                    row.answerSheetId
+                      ? `${average.toFixed(1)}%`
+                      : "-"
+                  }
+
+                </td>
+
+
+              </tr>
+
+            `;
+
+          }
         )
         .join("");
 
@@ -776,18 +1244,14 @@
     )
     .addEventListener(
       "click",
-      () => {
-
-        exportCsv();
-
-      }
+      exportCsv
     );
 
 
   function exportCsv() {
 
     if (
-      !studentResults.length
+      !resultRows.length
     ) {
 
       return;
@@ -799,29 +1263,83 @@
 
 
     rows.push([
+
+      "順位",
+
       "生徒番号",
+
       "氏名",
-      "合計点",
-      "採点済み設問数"
+
+      ...questionResults.map(
+        (
+          question,
+          index
+        ) =>
+          question.label ||
+          `問${index + 1}`
+      ),
+
+      "合計",
+
+      "平均"
+
     ]);
 
 
-    studentResults.forEach(
-      student => {
+    const maxTotal =
+      questionResults.reduce(
+        (
+          sum,
+          question
+        ) =>
+          sum +
+          (
+            Number(
+              question.points
+            ) || 0
+          ),
+        0
+      );
+
+
+    resultRows.forEach(
+      row => {
+
+        const average =
+          maxTotal
+            ? (
+                row.total /
+                maxTotal
+              ) *
+              100
+            : 0;
+
 
         rows.push([
 
-          student.student_no ||
+          row.rank ??
             "",
 
-          student.student_name ||
+          row.studentNo ||
             "",
 
-          student.total_score ??
-            0,
+          row.name ||
+            "",
 
-          student.marked_count ??
-            0
+          ...questionResults.map(
+            question =>
+              row.questionScores[
+                question.id
+              ] ?? ""
+          ),
+
+          row.answerSheetId
+            ? row.total
+            : "",
+
+          row.answerSheetId
+            ? `${average.toFixed(1)}%`
+            : ""
 
         ]);
 
@@ -836,11 +1354,12 @@
             row
               .map(
                 value =>
-                  `"${String(value)
-                    .replaceAll(
-                      '"',
-                      '""'
-                    )}"`
+                  `"${String(
+                    value
+                  ).replaceAll(
+                    '"',
+                    '""'
+                  )}"`
               )
               .join(",")
         )
@@ -877,7 +1396,7 @@
 
 
     link.download =
-      "結果総括表.csv";
+      `${testData.name}-結果総括表.csv`;
 
 
     link.click();
@@ -886,6 +1405,69 @@
     URL.revokeObjectURL(
       url
     );
+
+  }
+
+
+  /* =====================================================
+     印刷
+  ===================================================== */
+
+  document
+    .getElementById(
+      "printButton"
+    )
+    .addEventListener(
+      "click",
+      () => {
+
+        window.print();
+
+      }
+    );
+
+
+  /* =====================================================
+     クリア
+  ===================================================== */
+
+  function clearResult() {
+
+    selectedTestId =
+      null;
+
+    testData =
+      null;
+
+    questionResults =
+      [];
+
+    answerSheets =
+      [];
+
+    scores =
+      [];
+
+    resultRows =
+      [];
+
+
+    document.getElementById(
+      "testInformation"
+    ).style.display =
+      "none";
+
+
+    document.getElementById(
+      "summaryCards"
+    ).style.display =
+      "none";
+
+
+    document.getElementById(
+      "summaryTableCard"
+    ).style.display =
+      "none";
 
   }
 

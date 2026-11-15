@@ -1,229 +1,633 @@
-<!DOCTYPE html>
+
+<!doctype html>
 <html lang="ja">
 
 <head>
 
-  <meta charset="UTF-8">
+<meta charset="utf-8">
 
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
-  >
+<meta
+  name="viewport"
+  content="width=device-width,initial-scale=1"
+>
 
-  <title>
-    QRシール発行 - テスト成績システム
-  </title>
+<title>生徒QR発行 - テスト成績システム</title>
 
-  <link
-    rel="stylesheet"
-    href="/css/common.css"
-  >
+<link
+  rel="stylesheet"
+  href="/css/common.css"
+>
 
-  <link
-    rel="stylesheet"
-    href="/css/print.css"
-  >
+<style>
+
+.qr-main {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 22px;
+}
+
+.page-header {
+  margin-bottom: 18px;
+}
+
+.page-header h1 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.page-header p {
+  margin: 7px 0 0;
+  color: #666;
+  font-size: 13px;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 15px;
+}
+
+.status {
+  padding: 10px 12px;
+  margin-bottom: 15px;
+  background: #f5f6f7;
+  border: 1px solid #d5dbe0;
+  font-size: 13px;
+}
+
+.qr-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(4, minmax(0, 1fr));
+
+  gap: 14px;
+}
+
+.qr-card {
+  min-height: 240px;
+  padding: 15px;
+
+  background: #fff;
+
+  border: 1px solid #d0d6dc;
+
+  text-align: center;
+
+  break-inside: avoid;
+}
+
+.qr-student-no {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.qr-student-name {
+  margin-top: 4px;
+  color: #555;
+}
+
+.qr-image {
+  display: flex;
+
+  justify-content: center;
+
+  margin-top: 12px;
+}
+
+.qr-value {
+  margin-top: 8px;
+
+  color: #777;
+
+  font-size: 10px;
+
+  word-break: break-all;
+}
+
+.empty {
+  padding: 50px;
+  text-align: center;
+  color: #777;
+  background: #fff;
+  border: 1px solid #d0d6dc;
+}
+
+@media(max-width:900px) {
+
+  .qr-grid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+
+}
+
+@media(max-width:600px) {
+
+  .qr-main {
+    padding: 14px;
+  }
+
+  .qr-grid {
+    grid-template-columns: 1fr;
+  }
+
+}
+
+
+/* =====================================================
+   印刷
+===================================================== */
+
+@media print {
+
+  .topbar,
+  .toolbar,
+  .status,
+  .page-header p {
+    display: none !important;
+  }
+
+  .qr-main {
+    max-width: none;
+    padding: 0;
+  }
+
+  .qr-grid {
+    grid-template-columns:
+      repeat(4, 1fr);
+
+    gap: 8px;
+  }
+
+  .qr-card {
+    min-height: 0;
+    padding: 8px;
+  }
+
+}
+
+</style>
 
 </head>
 
+
 <body>
 
-<header class="topbar no-print">
 
-  <div class="system-name">
-    テスト成績システム
-  </div>
+<header class="topbar">
 
-  <div class="topbar-space"></div>
+<div class="system-name">
+テスト成績システム
+</div>
 
-  <span id="teacherName">
-    -
-  </span>
+<div class="topbar-space"></div>
 
-  <button
-    id="logoutButton"
-    class="logout-button"
-  >
-    ログアウト
-  </button>
+<span id="teacherName">
+-
+</span>
+
+<button
+id="logoutButton"
+class="logout-button"
+type="button"
+>
+ログアウト
+</button>
 
 </header>
 
 
-<div class="teacher-layout no-print">
-
-  <aside class="sidebar">
-
-    <div class="sidebar-title">
-      生徒
-    </div>
-
-    <a
-      href="/teacher/students"
-      class="menu-link"
-    >
-      生徒一覧
-    </a>
-
-    <a
-      href="/teacher/students/new"
-      class="menu-link"
-    >
-      生徒登録
-    </a>
-
-    <a
-      href="/teacher/students/import"
-      class="menu-link"
-    >
-      CSV一括登録
-    </a>
-
-    <a
-      href="/teacher/students/qr"
-      class="menu-link active"
-    >
-      QRシール発行
-    </a>
-
-  </aside>
+<main class="qr-main">
 
 
-  <main class="main-content">
+<div class="page-header">
 
-    <div class="page-header">
+<h1>
+生徒QR発行
+</h1>
 
-      <h1>
-        QRシール発行
-      </h1>
+<p>
+生徒番号をQRコード化して印刷します。答案アップロード時にこのQRを読み取って生徒を自動紐付けします。
+</p>
 
-    </div>
-
-
-    <div class="card">
-
-      <p>
-        1人18枚。
-        A4用紙1枚に3人分、
-        合計54枚を配置します。
-      </p>
-
-      <p>
-        シールサイズ：
-        <strong>3cm × 2cm</strong>
-      </p>
+</div>
 
 
-      <div
-        style="
-          display:grid;
-          grid-template-columns:
-            repeat(3, minmax(0,1fr));
-          gap:12px;
-          margin-bottom:16px;
-        "
-      >
+<div class="toolbar">
 
-        <div class="form-group">
+<a
+href="/teacher/marking"
+class="btn"
+>
+採点へ
+</a>
 
-          <label>
-            1人目
-          </label>
+<button
+id="printButton"
+class="btn btn-primary"
+type="button"
+>
+印刷
+</button>
 
-          <select
-            id="student1"
-          ></select>
-
-        </div>
-
-
-        <div class="form-group">
-
-          <label>
-            2人目
-          </label>
-
-          <select
-            id="student2"
-          ></select>
-
-        </div>
-
-
-        <div class="form-group">
-
-          <label>
-            3人目
-          </label>
-
-          <select
-            id="student3"
-          ></select>
-
-        </div>
-
-      </div>
-
-
-      <div
-        style="
-          display:flex;
-          gap:8px;
-        "
-      >
-
-        <button
-          id="generateButton"
-          class="btn btn-primary"
-        >
-          A4シールを生成
-        </button>
-
-        <button
-          id="printButton"
-          class="btn"
-          style="display:none;"
-        >
-          印刷
-        </button>
-
-      </div>
-
-
-      <div
-        id="message"
-        style="
-          margin-top:12px;
-        "
-      ></div>
-
-    </div>
-
-  </main>
+<button
+id="reloadButton"
+class="btn"
+type="button"
+>
+更新
+</button>
 
 </div>
 
 
 <div
-  id="stickerArea"
-  class="sticker-preview"
-></div>
+id="status"
+class="status"
+>
+生徒を読み込んでいます...
+</div>
+
+
+<section
+id="qrGrid"
+class="qr-grid"
+>
+
+<div class="empty">
+QRを作成しています...
+</div>
+
+</section>
+
+
+</main>
 
 
 <script
-  src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
 ></script>
 
+
 <script
-  src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"
+src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"
 ></script>
+
 
 <script src="/js/config.js"></script>
 
 <script src="/js/auth.js"></script>
 
-<script src="/js/teacher/qr.js"></script>
 
-</body>
+<script>
 
-</html>
+"use strict";
+
+
+(function () {
+
+
+const DB =
+window.SB ||
+window.supabaseClient;
+
+
+const status =
+document.getElementById(
+"status"
+);
+
+const grid =
+document.getElementById(
+"qrGrid"
+);
+
+
+document.addEventListener(
+"DOMContentLoaded",
+initialize
+);
+
+
+async function initialize() {
+
+try {
+
+if (!DB) {
+
+throw new Error(
+"Supabase接続がありません。"
+);
+
+}
+
+
+if (
+typeof requireRole ===
+"function"
+) {
+
+await requireRole(
+"teacher"
+);
+
+}
+
+
+setupEvents();
+
+await loadStudents();
+
+
+} catch (error) {
+
+showError(
+error.message
+);
+
+}
+
+}
+
+
+function setupEvents() {
+
+document
+.getElementById(
+"printButton"
+)
+?.addEventListener(
+"click",
+() => {
+
+window.print();
+
+}
+);
+
+
+document
+.getElementById(
+"reloadButton"
+)
+?.addEventListener(
+"click",
+loadStudents
+);
+
+
+document
+.getElementById(
+"logoutButton"
+)
+?.addEventListener(
+"click",
+async () => {
+
+if (
+typeof logout ===
+"function"
+) {
+
+await logout();
+
+}
+
+}
+);
+
+}
+
+
+async function loadStudents() {
+
+setStatus(
+"生徒一覧を取得しています..."
+);
+
+
+const {
+data,
+error
+} =
+await DB
+.from("students")
+.select(
+`
+id,
+student_no,
+name,
+active
+`
+)
+.eq(
+"active",
+true
+)
+.order(
+"student_no",
+{
+ascending:true
+}
+);
+
+
+if (error) {
+
+throw error;
+
+}
+
+
+const students =
+data || [];
+
+
+if (!students.length) {
+
+grid.innerHTML = `
+
+<div class="empty">
+
+有効な生徒が登録されていません。
+
+</div>
+
+`;
+
+setStatus(
+"生徒がありません。"
+);
+
+return;
+
+}
+
+
+grid.innerHTML =
+"";
+
+
+for (
+const student
+of students
+) {
+
+const card =
+document.createElement(
+"article"
+);
+
+
+card.className =
+"qr-card";
+
+
+const no =
+document.createElement(
+"div"
+);
+
+
+no.className =
+"qr-student-no";
+
+
+no.textContent =
+student.student_no;
+
+
+const name =
+document.createElement(
+"div"
+);
+
+
+name.className =
+"qr-student-name";
+
+
+name.textContent =
+student.name;
+
+
+const qrWrap =
+document.createElement(
+"div"
+);
+
+
+qrWrap.className =
+"qr-image";
+
+
+const value =
+`STUDENT:${student.student_no}`;
+
+
+const qr =
+document.createElement(
+"div"
+);
+
+
+new QRCode(
+qr,
+{
+
+text:
+value,
+
+width:
+150,
+
+height:
+150,
+
+correctLevel:
+QRCode.CorrectLevel.M
+
+}
+);
+
+
+const qrValue =
+document.createElement(
+"div"
+);
+
+
+qrValue.className =
+"qr-value";
+
+
+qrValue.textContent =
+value;
+
+
+qrWrap.appendChild(
+qr
+);
+
+
+card.appendChild(
+no
+);
+
+card.appendChild(
+name
+);
+
+card.appendChild(
+qrWrap
+);
+
+card.appendChild(
+qrValue
+);
+
+
+grid.appendChild(
+card
+);
+
+}
+
+
+setStatus(
+`${students.length}名分のQRを発行しました。`
+);
+
+}
+
+
+function setStatus(
+message,
+error = false
+) {
+
+status.textContent =
+message;
+
+status.className =
+error
+? "status error"
+: "status";
+
+}
+
+
+function showError(
+message
+) {
+
+setStatus(
+message,
+true
+);
+
+}
+
+
+})();

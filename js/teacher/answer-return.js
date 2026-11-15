@@ -3,32 +3,34 @@
    テスト成績システム
    採点済み答案返却 完全版
 
-   機能
+   元答案画像
+       ↓
+   Canvas
+       ↓
+   layout_boxes
+       ↓
+   mark_objects
+       ↓
+   scores
+       ↓
+   採点記号・点数を元画像座標へ描画
+       ↓
+   印刷 / PDF
 
-   ・テスト選択
-   ・生徒選択
-   ・元答案ページ取得
-   ・answer_regions取得
-   ・layout_boxes取得
-   ・scores取得
-   ・mark_objects取得
 
-   ・元答案画像そのものをCanvasへ描画
-   ・○
-   ・×
-   ・△
-   ・◎
-   ・テキスト
-   ・ペン描画
-   ・点数
+   座標仕様
 
-   を元画像の座標へ正確に合成
+   mark_objects.x / y
+   =
+   answer_region内の元画像座標
 
-   ・ブラウザ印刷
-   ・PDF保存
+   返却時:
 
-   PDFはDOMスクリーンショットではなく、
-   元答案画像をCanvasへ直接合成して生成する。
+   answer_region座標
+       ↓
+   layout_boxの元ページ座標
+       ↓
+   元答案Canvasへ描画
 ========================================================= */
 
 
@@ -120,7 +122,7 @@
 
 
   /* =====================================================
-     テスト一覧
+     テスト
   ===================================================== */
 
   async function loadTests() {
@@ -144,7 +146,7 @@
         .order(
           "created_at",
           {
-            ascending: false
+            ascending:false
           }
         );
 
@@ -152,14 +154,8 @@
     if (error) {
 
       console.error(
-        "テスト取得:",
+        "テスト:",
         error
-      );
-
-
-      showMessage(
-        "テスト一覧を取得できませんでした。",
-        true
       );
 
 
@@ -197,7 +193,9 @@
             test => `
 
               <option
-                value="${escapeHtml(test.id)}"
+                value="${escapeHtml(
+                  test.id
+                )}"
               >
 
                 ${escapeHtml(
@@ -206,7 +204,9 @@
 
                 ${
                   test.subject
-                    ? ` / ${escapeHtml(test.subject)}`
+                    ? ` / ${escapeHtml(
+                        test.subject
+                      )}`
                     : ""
                 }
 
@@ -223,7 +223,7 @@
 
 
   /* =====================================================
-     テスト変更
+     テスト選択
   ===================================================== */
 
   const testSelect =
@@ -293,13 +293,13 @@
 
 
   /* =====================================================
-     生徒一覧
+     生徒
   ===================================================== */
 
   async function loadStudents() {
 
     const {
-      data: answers,
+      data,
       error
     } =
       await supabaseClient
@@ -328,7 +328,7 @@
         .order(
           "created_at",
           {
-            ascending: true
+            ascending:true
           }
         );
 
@@ -336,7 +336,7 @@
     if (error) {
 
       console.error(
-        "生徒一覧取得:",
+        "生徒:",
         error
       );
 
@@ -351,7 +351,7 @@
 
 
     (
-      answers || []
+      data || []
     ).forEach(
       answer => {
 
@@ -387,30 +387,30 @@
             ),
             undefined,
             {
-              numeric: true
+              numeric:true
             }
           )
       );
 
 
-    const studentSelect =
+    const select =
       document.getElementById(
         "studentSelect"
       );
 
 
-    if (!studentSelect) {
+    if (!select) {
 
       return;
 
     }
 
 
-    studentSelect.disabled =
+    select.disabled =
       false;
 
 
-    studentSelect.innerHTML = `
+    select.innerHTML = `
 
       <option value="">
         生徒を選択してください
@@ -488,7 +488,7 @@
 
 
   /* =====================================================
-     生徒答案取得
+     生徒答案
   ===================================================== */
 
   async function loadStudentAnswer() {
@@ -522,7 +522,7 @@
         .order(
           "created_at",
           {
-            ascending: false
+            ascending:false
           }
         )
         .limit(1)
@@ -532,14 +532,8 @@
     if (error) {
 
       console.error(
-        "答案取得:",
+        "答案:",
         error
-      );
-
-
-      showMessage(
-        "答案を取得できませんでした。",
-        true
       );
 
 
@@ -566,38 +560,41 @@
       data;
 
 
-    /*
-      全データ取得
-    */
+    try {
 
-    await Promise.all([
+      await Promise.all([
 
-      loadAnswerPages(),
+        loadAnswerPages(),
 
-      loadRegions(),
+        loadRegions(),
 
-      loadScores(),
+        loadScores(),
 
-      loadMarks(),
+        loadMarks(),
 
-      loadLayoutBoxes()
+        loadLayoutBoxes()
 
-    ]);
+      ]);
 
 
-    /*
-      Canvas生成
-    */
+      await buildMarkedPages();
 
-    await buildMarkedPages();
+      renderPreview();
+
+    } catch (error) {
+
+      console.error(
+        "返却データ:",
+        error
+      );
 
 
-    /*
-      プレビュー
-    */
+      alert(
+        error.message ||
+        "採点済み答案を生成できませんでした。"
+      );
 
-    renderPreview();
-
+    }
 
   }
 
@@ -632,7 +629,7 @@
         .order(
           "page_no",
           {
-            ascending: true
+            ascending:true
           }
         );
 
@@ -651,7 +648,7 @@
 
 
   /* =====================================================
-     answer_regions
+     Regions
   ===================================================== */
 
   async function loadRegions() {
@@ -695,7 +692,7 @@
 
 
   /* =====================================================
-     scores
+     Scores
   ===================================================== */
 
   async function loadScores() {
@@ -742,7 +739,7 @@
 
 
   /* =====================================================
-     mark_objects
+     Mark objects
   ===================================================== */
 
   async function loadMarks() {
@@ -779,7 +776,7 @@
         .order(
           "created_at",
           {
-            ascending: true
+            ascending:true
           }
         );
 
@@ -798,7 +795,7 @@
 
 
   /* =====================================================
-     layout_boxes
+     Layout
   ===================================================== */
 
   async function loadLayoutBoxes() {
@@ -834,19 +831,19 @@
         .order(
           "page_no",
           {
-            ascending: true
+            ascending:true
           }
         )
         .order(
           "y",
           {
-            ascending: true
+            ascending:true
           }
         )
         .order(
           "x",
           {
-            ascending: true
+            ascending:true
           }
         );
 
@@ -899,16 +896,12 @@
 
 
   /* =====================================================
-     1ページを元画像から生成
+     元画像Canvas
   ===================================================== */
 
   async function createMarkedPageCanvas(
     page
   ) {
-
-    /*
-      元答案Storage
-    */
 
     const {
       data,
@@ -943,10 +936,6 @@
     }
 
 
-    /*
-      元画像
-    */
-
     const image =
       await loadImage(
         data.signedUrl
@@ -954,7 +943,7 @@
 
 
     /*
-      元画像そのものと同じサイズ
+      元画像と完全に同じサイズ
     */
 
     const canvas =
@@ -978,7 +967,7 @@
 
 
     /*
-      元画像をそのまま描画
+      元画像
     */
 
     context.drawImage(
@@ -989,7 +978,7 @@
 
 
     /*
-      現在ページの解答欄
+      このページの解答欄
     */
 
     const pageBoxes =
@@ -1005,7 +994,7 @@
 
 
     /*
-      各解答欄
+      採点結果を焼き込む
     */
 
     for (
@@ -1021,10 +1010,6 @@
         );
 
 
-      /*
-        採点記号
-      */
-
       const pageMarks =
         marks.filter(
           mark =>
@@ -1032,10 +1017,6 @@
             box.id
         );
 
-
-      /*
-        点数
-      */
 
       const score =
         scores.find(
@@ -1045,10 +1026,6 @@
         );
 
 
-      /*
-        記号
-      */
-
       drawReturnMarks(
         context,
         box,
@@ -1056,10 +1033,6 @@
         pageMarks
       );
 
-
-      /*
-        点数
-      */
 
       if (score) {
 
@@ -1081,25 +1054,8 @@
 
 
   /* =====================================================
-     採点記号描画
-
-     x/yは「解答欄内座標」として扱う。
-
-     例:
-
-     layout_box
-       x = 100
-       y = 200
-
-     mark
-       x = 50
-       y = 30
-
-     元画像上
-
-       x = 150
-       y = 230
-========================================================= */
+     記号焼き込み
+  ===================================================== */
 
   function drawReturnMarks(
     context,
@@ -1118,12 +1074,9 @@
 
 
     /*
-      regionがある場合は
-      region座標系を優先する。
-
-      region.width / height が
-      layout_boxと異なる場合は
-      スケール変換する。
+      region内座標
+      ↓
+      元答案ページ座標
     */
 
     const regionWidth =
@@ -1178,17 +1131,25 @@
           "#c62828";
 
 
-        const size =
+        const originalSize =
           Number(
             mark.font_size
           ) ||
           42;
 
 
-        /*
-          mark.x/y:
-          region内座標
-        */
+        const size =
+          originalSize *
+          (
+            Math.abs(
+              scaleX
+            ) +
+            Math.abs(
+              scaleY
+            )
+          ) /
+          2;
+
 
         const localX =
           Number(
@@ -1204,46 +1165,20 @@
           0;
 
 
-        /*
-          元答案ページ座標
-        */
-
         const pageX =
           Number(
             box.x
           ) +
-          (
-            localX *
-            scaleX
-          );
+          localX *
+          scaleX;
 
 
         const pageY =
           Number(
             box.y
           ) +
-          (
-            localY *
-            scaleY
-          );
-
-
-        /*
-          サイズも
-          region→元ページへ変換
-        */
-
-        const drawSize =
-          size *
-          (
-            Math.abs(
-              scaleX
-            ) +
-            Math.abs(
-              scaleY
-            )
-          ) /
-          2;
+          localY *
+          scaleY;
 
 
         context.save();
@@ -1290,7 +1225,7 @@
           context.arc(
             pageX,
             pageY,
-            drawSize / 2,
+            size / 2,
             0,
             Math.PI * 2
           );
@@ -1315,33 +1250,33 @@
 
           context.moveTo(
             pageX -
-              drawSize / 2,
+              size / 2,
             pageY -
-              drawSize / 2
+              size / 2
           );
 
 
           context.lineTo(
             pageX +
-              drawSize / 2,
+              size / 2,
             pageY +
-              drawSize / 2
+              size / 2
           );
 
 
           context.moveTo(
             pageX +
-              drawSize / 2,
+              size / 2,
             pageY -
-              drawSize / 2
+              size / 2
           );
 
 
           context.lineTo(
             pageX -
-              drawSize / 2,
+              size / 2,
             pageY +
-              drawSize / 2
+              size / 2
           );
 
 
@@ -1365,23 +1300,23 @@
           context.moveTo(
             pageX,
             pageY -
-              drawSize / 2
+              size / 2
           );
 
 
           context.lineTo(
             pageX -
-              drawSize / 2,
+              size / 2,
             pageY +
-              drawSize / 2
+              size / 2
           );
 
 
           context.lineTo(
             pageX +
-              drawSize / 2,
+              size / 2,
             pageY +
-              drawSize / 2
+              size / 2
           );
 
 
@@ -1403,7 +1338,11 @@
         ) {
 
           context.font =
-            `bold ${drawSize}px Arial`;
+            `bold ${size}px Arial`;
+
+
+          context.textBaseline =
+            "alphabetic";
 
 
           context.fillText(
@@ -1425,7 +1364,11 @@
         ) {
 
           context.font =
-            `${drawSize}px Arial`;
+            `${size}px Arial`;
+
+
+          context.textBaseline =
+            "alphabetic";
 
 
           context.fillText(
@@ -1473,14 +1416,12 @@
                     box.x
                   ) +
                   (
-                    (
-                      Number(
-                        point.x
-                      ) ||
-                      0
-                    ) *
-                    scaleX
-                  );
+                    Number(
+                      point.x
+                    ) ||
+                    0
+                  ) *
+                  scaleX;
 
 
                 const py =
@@ -1488,14 +1429,12 @@
                     box.y
                   ) +
                   (
-                    (
-                      Number(
-                        point.y
-                      ) ||
-                      0
-                    ) *
-                    scaleY
-                  );
+                    Number(
+                      point.y
+                    ) ||
+                    0
+                  ) *
+                  scaleY;
 
 
                 if (
@@ -1536,13 +1475,8 @@
 
 
   /* =====================================================
-     点数描画
-
-     点数は解答欄の右上付近へ表示。
-
-     元画像の座標なので、
-     PDF化しても位置がずれない。
-========================================================= */
+     点数焼き込み
+  ===================================================== */
 
   function drawReturnScore(
     context,
@@ -1551,33 +1485,31 @@
     score
   ) {
 
-    const boxX =
+    const x =
       Number(
         box.x
       ) || 0;
 
 
-    const boxY =
+    const y =
       Number(
         box.y
       ) || 0;
 
 
-    const boxWidth =
+    const width =
       Number(
         box.width
       ) || 100;
 
 
-    const boxHeight =
+    const height =
       Number(
         box.height
       ) || 50;
 
 
     /*
-      点数表示位置
-
       解答欄右上
     */
 
@@ -1585,37 +1517,32 @@
       Math.max(
         6,
         Math.min(
-          boxWidth,
-          boxHeight
+          width,
+          height
         ) * 0.05
       );
 
 
-    const x =
-      boxX +
-      boxWidth +
+    const scoreX =
+      x +
+      width +
       padding;
 
 
-    const y =
-      boxY +
+    const scoreY =
+      y +
       Math.max(
         22,
-        boxHeight * 0.25
+        height * 0.25
       );
 
-
-    /*
-      解答欄サイズに応じて
-      点数文字サイズを調整
-    */
 
     const fontSize =
       Math.max(
         18,
         Math.min(
           42,
-          boxHeight * 0.25
+          height * 0.25
         )
       );
 
@@ -1637,8 +1564,8 @@
 
     context.fillText(
       `${score}点`,
-      x,
-      y
+      scoreX,
+      scoreY
     );
 
 
@@ -1664,10 +1591,6 @@
       return;
 
     }
-
-
-    container.style.display =
-      "block";
 
 
     const student =
@@ -1700,6 +1623,10 @@
           ),
         0
       );
+
+
+    container.style.display =
+      "block";
 
 
     container.innerHTML = `
@@ -1783,10 +1710,7 @@
 
 
     generatedPageCanvases.forEach(
-      (
-        item,
-        index
-      ) => {
+      item => {
 
         const wrapper =
           document.createElement(
@@ -1859,11 +1783,6 @@
       "click",
       async () => {
 
-        /*
-          すでに生成済みなら
-          そのまま印刷
-        */
-
         if (
           !generatedPageCanvases.length
         ) {
@@ -1908,14 +1827,14 @@
 
 
   /* =====================================================
-     PDF出力
+     PDF生成
+
+     CanvasをそのままPDFへ配置
   ===================================================== */
 
   async function exportPdf() {
 
-    if (
-      !selectedAnswer
-    ) {
+    if (!selectedAnswer) {
 
       alert(
         "生徒を選択してください。"
@@ -1942,7 +1861,7 @@
 
 
     /*
-      最新状態で再生成
+      最新状態を再生成
     */
 
     await buildMarkedPages();
@@ -1969,7 +1888,7 @@
       });
 
 
-    let firstPage =
+    let first =
       true;
 
 
@@ -1978,28 +1897,25 @@
       of generatedPageCanvases
     ) {
 
-      const canvas =
-        item.canvas;
-
-
-      if (
-        !firstPage
-      ) {
+      if (!first) {
 
         pdf.addPage();
 
       }
 
 
-      firstPage =
+      first =
         false;
 
 
-      /*
-        PNGのまま出力。
+      const canvas =
+        item.canvas;
 
-        元答案の文字品質を
-        JPEG圧縮で落とさない。
+
+      /*
+        PNGなので
+        元答案の文字を
+        JPEG圧縮しない。
       */
 
       const imageData =
@@ -2008,7 +1924,7 @@
         );
 
 
-      const pageSize =
+      const size =
         fitCanvasToA4(
           canvas
         );
@@ -2020,13 +1936,13 @@
 
         "PNG",
 
-        pageSize.x,
+        size.x,
 
-        pageSize.y,
+        size.y,
 
-        pageSize.width,
+        size.width,
 
-        pageSize.height,
+        size.height,
 
         undefined,
 
@@ -2045,24 +1961,22 @@
       );
 
 
-    const filename =
+    pdf.save(
+
       `${sanitizeFilename(
         getTestName()
       )}-${sanitizeFilename(
         student?.student_no ||
         "student"
-      )}-採点済み答案.pdf`;
+      )}-採点済み答案.pdf`
 
-
-    pdf.save(
-      filename
     );
 
   }
 
 
   /* =====================================================
-     Canvas → A4サイズ
+     A4へフィット
   ===================================================== */
 
   function fitCanvasToA4(
@@ -2143,7 +2057,7 @@
 
 
   /* =====================================================
-     ボタン有効化
+     ボタン
   ===================================================== */
 
   function enableReturnButtons() {
@@ -2256,45 +2170,6 @@
 
 
   /* =====================================================
-     メッセージ
-  ===================================================== */
-
-  function showMessage(
-    message,
-    error = false
-  ) {
-
-    /*
-      answer-return.htmlに
-      messageがない場合は何もしない。
-    */
-
-    const element =
-      document.getElementById(
-        "message"
-      );
-
-
-    if (!element) {
-
-      return;
-
-    }
-
-
-    element.textContent =
-      message;
-
-
-    element.style.color =
-      error
-        ? "#c62828"
-        : "#16834b";
-
-  }
-
-
-  /* =====================================================
      テスト名
   ===================================================== */
 
@@ -2313,7 +2188,7 @@
 
 
   /* =====================================================
-     ファイル名安全化
+     ファイル名
   ===================================================== */
 
   function sanitizeFilename(
@@ -2351,35 +2226,24 @@
           new Image();
 
 
-        /*
-          Supabase Signed URLなので
-          crossOriginを設定してCanvasへ描画可能にする。
-        */
-
         image.crossOrigin =
           "anonymous";
 
 
         image.onload =
-          () => {
-
+          () =>
             resolve(
               image
             );
 
-          };
-
 
         image.onerror =
-          () => {
-
+          () =>
             reject(
               new Error(
                 "答案画像を読み込めませんでした。"
               )
             );
-
-          };
 
 
         image.src =

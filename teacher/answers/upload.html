@@ -4,343 +4,166 @@
 
 <head>
 
-  <meta charset="UTF-8">
+<meta charset="UTF-8">
 
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
-  >
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1.0"
+>
 
-  <title>
-    答案アップロード - テスト成績システム
-  </title>
+<title>答案アップロード - テスト成績システム</title>
 
+<link
+  rel="stylesheet"
+  href="/css/common.css"
+>
 
-  <link
-    rel="stylesheet"
-    href="/css/common.css"
-  >
 
-  <style>
+<style>
 
-    .upload-main {
+* {
+  box-sizing: border-box;
+}
 
-      max-width:1100px;
 
-      margin:0 auto;
+body {
+  margin: 0;
+  background: #f3f5f7;
+}
 
-      padding:25px;
 
-    }
+.main {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+}
 
 
-    .upload-card {
+.card {
+  background: #fff;
+  border: 1px solid #d7dce1;
+  padding: 20px;
+}
 
-      background:#fff;
 
-      border:
-        1px solid #d0d6dc;
+.form-row {
+  margin-bottom: 18px;
+}
 
-      padding:20px;
 
-      margin-bottom:18px;
+.form-row label {
+  display: block;
+  margin-bottom: 7px;
+  font-weight: 700;
+  font-size: 13px;
+}
 
-    }
 
+#test {
+  width: 100%;
+  height: 42px;
+  padding: 0 10px;
+  border: 1px solid #c8ced4;
+  background: #fff;
+}
 
-    .upload-title {
 
-      margin:0 0 8px;
+.drop-zone {
+  min-height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  border: 2px dashed #aeb6bd;
+  background: #fafbfc;
+  cursor: pointer;
+  margin-bottom: 15px;
+}
 
-      font-size:20px;
 
-    }
+.drop-zone.dragover {
+  border-color: #2468a8;
+  background: #f1f6fa;
+}
 
 
-    .upload-description {
+.drop-zone strong {
+  display: block;
+  margin-bottom: 8px;
+}
 
-      color:#666;
 
-      font-size:13px;
+.file-list {
+  margin-top: 15px;
+}
 
-      line-height:1.7;
 
-    }
+.file-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px;
+  border: 1px solid #e0e4e7;
+  margin-bottom: 7px;
+  background: #fff;
+}
 
 
-    .form-row {
+.file-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
-      display:grid;
 
-      grid-template-columns:
-        180px
-        1fr;
+.file-size {
+  color: #777;
+  font-size: 12px;
+  white-space: nowrap;
+}
 
-      gap:15px;
 
-      align-items:center;
+.remove-file {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  color: #a22;
+}
 
-      margin-bottom:15px;
 
-    }
+.actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 18px;
+}
 
 
-    .form-label {
+button {
+  min-height: 40px;
+}
 
-      font-weight:700;
 
-    }
+#msg {
+  margin-top: 15px;
+  padding: 10px;
+  background: #f5f6f7;
+  border: 1px solid #e1e5e8;
+  font-size: 13px;
+}
 
 
-    select,
-    input[type="file"] {
+.spec {
+  margin-top: 18px;
+  padding: 12px;
+  background: #f5f6f7;
+  border: 1px solid #e1e5e8;
+  color: #555;
+  font-size: 12px;
+  line-height: 1.7;
+}
 
-      width:100%;
-
-      box-sizing:border-box;
-
-    }
-
-
-    .drop-zone {
-
-      border:
-        2px dashed #b7bec6;
-
-      padding:45px 20px;
-
-      text-align:center;
-
-      background:#fafbfc;
-
-      cursor:pointer;
-
-      transition:
-        .15s ease;
-
-    }
-
-
-    .drop-zone.dragover {
-
-      border-color:#555;
-
-      background:#f1f3f5;
-
-    }
-
-
-    .drop-zone-title {
-
-      font-size:17px;
-
-      font-weight:700;
-
-      margin-bottom:8px;
-
-    }
-
-
-    .drop-zone-description {
-
-      color:#777;
-
-      font-size:13px;
-
-      line-height:1.7;
-
-    }
-
-
-    .selected-files {
-
-      margin-top:15px;
-
-    }
-
-
-    .selected-file {
-
-      display:flex;
-
-      align-items:center;
-
-      justify-content:space-between;
-
-      gap:10px;
-
-      padding:10px;
-
-      border-bottom:
-        1px solid #e1e5e8;
-
-      font-size:13px;
-
-    }
-
-
-    .selected-file-name {
-
-      overflow:hidden;
-
-      text-overflow:ellipsis;
-
-      white-space:nowrap;
-
-    }
-
-
-    .selected-file-size {
-
-      color:#777;
-
-      white-space:nowrap;
-
-    }
-
-
-    .upload-actions {
-
-      display:flex;
-
-      gap:10px;
-
-      justify-content:flex-end;
-
-      margin-top:20px;
-
-    }
-
-
-    .progress-wrap {
-
-      display:none;
-
-      margin-top:20px;
-
-    }
-
-
-    .progress-bar {
-
-      height:10px;
-
-      background:#e5e7eb;
-
-      overflow:hidden;
-
-      border-radius:3px;
-
-    }
-
-
-    .progress-value {
-
-      width:0;
-
-      height:100%;
-
-      background:#555;
-
-      transition:
-        width .15s ease;
-
-    }
-
-
-    .progress-text {
-
-      margin-top:7px;
-
-      font-size:12px;
-
-      color:#666;
-
-    }
-
-
-    .message {
-
-      display:none;
-
-      padding:12px;
-
-      margin-bottom:15px;
-
-      border:1px solid #d0d6dc;
-
-      background:#f7f8f9;
-
-    }
-
-
-    .message.error {
-
-      color:#b42318;
-
-      background:#fff4f2;
-
-      border-color:#efc2bc;
-
-    }
-
-
-    .message.success {
-
-      color:#26743b;
-
-      background:#f0faf2;
-
-      border-color:#b7d9c0;
-
-    }
-
-
-    .rules {
-
-      font-size:13px;
-
-      color:#555;
-
-      line-height:1.8;
-
-    }
-
-
-    .rules strong {
-
-      color:#222;
-
-    }
-
-
-    @media(max-width:700px) {
-
-      .upload-main {
-
-        padding:15px;
-
-      }
-
-
-      .form-row {
-
-        grid-template-columns:1fr;
-
-        gap:5px;
-
-      }
-
-
-      .upload-actions {
-
-        flex-direction:column;
-
-      }
-
-    }
-
-  </style>
+</style>
 
 </head>
 
@@ -354,14 +177,11 @@
     テスト成績システム
   </div>
 
-
   <div class="topbar-space"></div>
-
 
   <span id="teacherName">
     -
   </span>
-
 
   <button
     id="logoutButton"
@@ -374,53 +194,27 @@
 </header>
 
 
+<main class="main">
 
-<main class="upload-main">
-
-
-  <div
-    id="message"
-    class="message"
-  ></div>
+  <h1>
+    答案アップロード
+  </h1>
 
 
-
-  <section class="upload-card">
-
-    <h1 class="upload-title">
-      答案アップロード
-    </h1>
+  <div class="card">
 
 
-    <p class="upload-description">
-
-      生徒の答案をアップロードします。
-      PDF、JPEG、JPG、PNG、WEBP、ZIPに対応しています。
-
-      ZIPの場合は内部の対応ファイルを展開して処理します。
-
-    </p>
-
-  </section>
-
-
-
-  <section class="upload-card">
-
+    <!-- ===============================================
+         TEST
+    ================================================ -->
 
     <div class="form-row">
 
-      <label
-        class="form-label"
-        for="testSelect"
-      >
+      <label for="test">
         テスト
       </label>
 
-
-      <select
-        id="testSelect"
-      >
+      <select id="test">
 
         <option value="">
           テストを選択してください
@@ -431,26 +225,23 @@
     </div>
 
 
+    <!-- ===============================================
+         ANSWER TYPE
+    ================================================ -->
 
     <div class="form-row">
 
-      <label
-        class="form-label"
-        for="answerType"
-      >
+      <label>
         答案種類
       </label>
 
+      <select id="answerType">
 
-      <select
-        id="answerType"
-      >
-
-        <option value="student_answer">
+        <option value="student">
           生徒答案
         </option>
 
-        <option value="model_answer">
+        <option value="model">
           解答用紙・模範解答
         </option>
 
@@ -459,121 +250,88 @@
     </div>
 
 
-  </section>
-
-
-
-  <section class="upload-card">
-
+    <!-- ===============================================
+         DROP
+    ================================================ -->
 
     <div
       id="dropZone"
       class="drop-zone"
     >
 
-      <div class="drop-zone-title">
-        ファイルをここへドロップ
-      </div>
+      <div>
 
-
-      <div class="drop-zone-description">
+        <strong>
+          ファイルをここへドロップ
+        </strong>
 
         またはクリックして選択
 
-        <br>
-
-        PDF / JPG / JPEG / PNG / WEBP / ZIP
+        <div style="margin-top:8px;font-size:12px;color:#777;">
+          PDF / JPG / JPEG / PNG / WEBP / ZIP
+        </div>
 
       </div>
-
-
-      <input
-        id="fileInput"
-        type="file"
-        multiple
-        accept="
-          .pdf,
-          .jpg,
-          .jpeg,
-          .png,
-          .webp,
-          .zip,
-          application/pdf,
-          image/jpeg,
-          image/png,
-          image/webp,
-          application/zip
-        "
-        hidden
-      >
 
     </div>
 
 
+    <input
+      id="files"
+      type="file"
+      multiple
+      accept=".pdf,.jpg,.jpeg,.png,.webp,.zip"
+      hidden
+    >
+
+
+    <!-- ===============================================
+         FILE LIST
+    ================================================ -->
 
     <div
-      id="selectedFiles"
-      class="selected-files"
+      id="fileList"
+      class="file-list"
     ></div>
 
 
+    <!-- ===============================================
+         ACTIONS
+    ================================================ -->
 
-    <div class="upload-actions">
+    <div class="actions">
 
       <button
-        id="clearButton"
-        class="btn"
+        id="upload"
         type="button"
-      >
-        クリア
-      </button>
-
-
-      <button
-        id="uploadButton"
         class="btn btn-primary"
-        type="button"
-        disabled
       >
         アップロード
       </button>
 
-    </div>
 
+      <button
+        id="clear"
+        type="button"
+        class="btn"
+      >
+        クリア
+      </button>
+
+    </div>
 
 
     <div
-      id="progressWrap"
-      class="progress-wrap"
-    >
-
-      <div class="progress-bar">
-
-        <div
-          id="progressValue"
-          class="progress-value"
-        ></div>
-
-      </div>
+      id="msg"
+      hidden
+    ></div>
 
 
-      <div
-        id="progressText"
-        class="progress-text"
-      >
-        0%
-      </div>
+    <!-- ===============================================
+         SPEC
+    ================================================ -->
 
-    </div>
-
-
-  </section>
-
-
-
-  <section class="upload-card">
-
-    <div class="rules">
+    <div class="spec">
 
       <strong>
         アップロード仕様
@@ -589,7 +347,7 @@
 
       <br>
 
-      ・ZIPは展開して内部のPDF・画像を処理します。
+      ・ZIPは内部の対応ファイルを展開して処理します。
 
       <br>
 
@@ -605,32 +363,831 @@
 
     </div>
 
-  </section>
-
+  </div>
 
 </main>
-
 
 
 <script
   src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
 ></script>
 
+<script src="/js/config.js"></script>
 
-<script
-  src="/js/config.js"
-></script>
-
-
-<script
-  src="/js/auth.js"
-></script>
+<script src="/js/auth.js"></script>
 
 
-<script
-  src="/js/teacher/answers-upload.js"
-></script>
+<script>
 
+(function () {
+
+  "use strict";
+
+
+  let selectedFiles = [];
+
+
+  const test =
+    document.getElementById(
+      "test"
+    );
+
+
+  const answerType =
+    document.getElementById(
+      "answerType"
+    );
+
+
+  const files =
+    document.getElementById(
+      "files"
+    );
+
+
+  const dropZone =
+    document.getElementById(
+      "dropZone"
+    );
+
+
+  const fileList =
+    document.getElementById(
+      "fileList"
+    );
+
+
+  const upload =
+    document.getElementById(
+      "upload"
+    );
+
+
+  const clear =
+    document.getElementById(
+      "clear"
+    );
+
+
+  const msg =
+    document.getElementById(
+      "msg"
+    );
+
+
+  const teacherName =
+    document.getElementById(
+      "teacherName"
+    );
+
+
+  /* =====================================================
+     INIT
+  ===================================================== */
+
+  async function init() {
+
+    const profile =
+      await requireTeacher();
+
+
+    if (!profile) {
+      return;
+    }
+
+
+    if (teacherName) {
+
+      teacherName.textContent =
+        profile.name ||
+        "先生";
+
+    }
+
+
+    await loadTests();
+
+    setupEvents();
+
+  }
+
+
+  /* =====================================================
+     TESTS
+  ===================================================== */
+
+  async function loadTests() {
+
+    const {
+      data,
+      error
+    } =
+      await supabaseClient
+        .from("tests")
+        .select(`
+          id,
+          name,
+          subject,
+          grade,
+          created_at
+        `)
+        .order(
+          "created_at",
+          {
+            ascending: false
+          }
+        );
+
+
+    if (error) {
+
+      showMessage(
+        error.message,
+        true
+      );
+
+      return;
+
+    }
+
+
+    test.innerHTML = `
+
+      <option value="">
+        テストを選択してください
+      </option>
+
+    `;
+
+
+    (
+      data || []
+    ).forEach(
+      item => {
+
+        const option =
+          document.createElement(
+            "option"
+          );
+
+
+        option.value =
+          item.id;
+
+
+        option.textContent =
+          [
+            item.name,
+            item.subject
+          ]
+            .filter(Boolean)
+            .join(
+              " / "
+            );
+
+
+        test.appendChild(
+          option
+        );
+
+      }
+    );
+
+  }
+
+
+  /* =====================================================
+     EVENTS
+  ===================================================== */
+
+  function setupEvents() {
+
+    dropZone.addEventListener(
+      "click",
+      () => {
+
+        files.click();
+
+      }
+    );
+
+
+    files.addEventListener(
+      "change",
+      () => {
+
+        addFiles(
+          files.files
+        );
+
+        files.value =
+          "";
+
+      }
+    );
+
+
+    dropZone.addEventListener(
+      "dragover",
+      event => {
+
+        event.preventDefault();
+
+        dropZone.classList.add(
+          "dragover"
+        );
+
+      }
+    );
+
+
+    dropZone.addEventListener(
+      "dragleave",
+      () => {
+
+        dropZone.classList.remove(
+          "dragover"
+        );
+
+      }
+    );
+
+
+    dropZone.addEventListener(
+      "drop",
+      event => {
+
+        event.preventDefault();
+
+        dropZone.classList.remove(
+          "dragover"
+        );
+
+
+        addFiles(
+          event.dataTransfer.files
+        );
+
+      }
+    );
+
+
+    clear.addEventListener(
+      "click",
+      clearFiles
+    );
+
+
+    upload.addEventListener(
+      "click",
+      uploadFiles
+    );
+
+
+    document
+      .getElementById(
+        "logoutButton"
+      )
+      ?.addEventListener(
+        "click",
+        logout
+      );
+
+  }
+
+
+  /* =====================================================
+     ADD FILES
+  ===================================================== */
+
+  function addFiles(
+    fileListObject
+  ) {
+
+    const allowed = [
+      "pdf",
+      "jpg",
+      "jpeg",
+      "png",
+      "webp",
+      "zip"
+    ];
+
+
+    for (
+      const file
+      of Array.from(
+        fileListObject || []
+      )
+    ) {
+
+      const ext =
+        getExtension(
+          file.name
+        );
+
+
+      if (
+        !allowed.includes(
+          ext
+        )
+      ) {
+
+        showMessage(
+          `${file.name} は対応していない形式です。`,
+          true
+        );
+
+        continue;
+
+      }
+
+
+      const exists =
+        selectedFiles.some(
+          item =>
+            item.name ===
+              file.name &&
+            item.size ===
+              file.size &&
+            item.lastModified ===
+              file.lastModified
+        );
+
+
+      if (!exists) {
+
+        selectedFiles.push(
+          file
+        );
+
+      }
+
+    }
+
+
+    renderFileList();
+
+  }
+
+
+  /* =====================================================
+     FILE LIST
+  ===================================================== */
+
+  function renderFileList() {
+
+    fileList.innerHTML =
+      "";
+
+
+    selectedFiles.forEach(
+      (
+        file,
+        index
+      ) => {
+
+        const row =
+          document.createElement(
+            "div"
+          );
+
+
+        row.className =
+          "file-item";
+
+
+        const left =
+          document.createElement(
+            "div"
+          );
+
+
+        left.style.minWidth =
+          "0";
+
+
+        const name =
+          document.createElement(
+            "div"
+          );
+
+
+        name.className =
+          "file-name";
+
+
+        name.textContent =
+          file.name;
+
+
+        const size =
+          document.createElement(
+            "div"
+          );
+
+
+        size.className =
+          "file-size";
+
+
+        size.textContent =
+          formatBytes(
+            file.size
+          );
+
+
+        left.appendChild(
+          name
+        );
+
+
+        left.appendChild(
+          size
+        );
+
+
+        const remove =
+          document.createElement(
+            "button"
+          );
+
+
+        remove.type =
+          "button";
+
+
+        remove.className =
+          "remove-file";
+
+
+        remove.textContent =
+          "削除";
+
+
+        remove.addEventListener(
+          "click",
+          () => {
+
+            selectedFiles.splice(
+              index,
+              1
+            );
+
+
+            renderFileList();
+
+          }
+        );
+
+
+        row.appendChild(
+          left
+        );
+
+
+        row.appendChild(
+          remove
+        );
+
+
+        fileList.appendChild(
+          row
+        );
+
+      }
+    );
+
+  }
+
+
+  /* =====================================================
+     UPLOAD
+  ===================================================== */
+
+  async function uploadFiles() {
+
+    if (!test.value) {
+
+      showMessage(
+        "テストを選択してください。",
+        true
+      );
+
+      return;
+
+    }
+
+
+    if (!selectedFiles.length) {
+
+      showMessage(
+        "アップロードするファイルを選択してください。",
+        true
+      );
+
+      return;
+
+    }
+
+
+    try {
+
+      upload.disabled =
+        true;
+
+
+      showMessage(
+        "アップロードしています..."
+      );
+
+
+      for (
+        let i = 0;
+        i < selectedFiles.length;
+        i++
+      ) {
+
+        const file =
+          selectedFiles[i];
+
+
+        const path =
+          [
+            "uploads",
+            test.value,
+            crypto.randomUUID(),
+            sanitizeFileName(
+              file.name
+            )
+          ].join("/");
+
+
+        /*
+          生徒答案
+        */
+
+        if (
+          answerType.value ===
+          "student"
+        ) {
+
+          const {
+            error:
+              storageError
+          } =
+            await supabaseClient
+              .storage
+              .from(
+                "answers"
+              )
+              .upload(
+                path,
+                file,
+                {
+                  upsert:
+                    false
+                }
+              );
+
+
+          if (storageError) {
+
+            throw storageError;
+
+          }
+
+
+          const {
+            error:
+              insertError
+          } =
+            await supabaseClient
+              .from(
+                "answer_sheets"
+              )
+              .insert({
+
+                test_id:
+                  test.value,
+
+                file_path:
+                  path,
+
+                status:
+                  "unmatched"
+
+              });
+
+
+          if (insertError) {
+
+            throw insertError;
+
+          }
+
+        }
+
+
+        /*
+          解答用紙・模範解答
+        */
+
+        else {
+
+          const {
+            error:
+              storageError
+          } =
+            await supabaseClient
+              .storage
+              .from(
+                "model-answers"
+              )
+              .upload(
+                path,
+                file,
+                {
+                  upsert:
+                    false
+                }
+              );
+
+
+          if (storageError) {
+
+            throw storageError;
+
+          }
+
+        }
+
+      }
+
+
+      showMessage(
+        "アップロードしました。"
+      );
+
+
+      clearFiles();
+
+
+    } catch (error) {
+
+      console.error(
+        "answer upload:",
+        error
+      );
+
+
+      showMessage(
+        error.message ||
+        "アップロードに失敗しました。",
+        true
+      );
+
+    } finally {
+
+      upload.disabled =
+        false;
+
+    }
+
+  }
+
+
+  /* =====================================================
+     CLEAR
+  ===================================================== */
+
+  function clearFiles() {
+
+    selectedFiles =
+      [];
+
+
+    renderFileList();
+
+  }
+
+
+  /* =====================================================
+     MESSAGE
+  ===================================================== */
+
+  function showMessage(
+    text,
+    isError = false
+  ) {
+
+    msg.hidden =
+      false;
+
+
+    msg.textContent =
+      text;
+
+
+    msg.style.color =
+      isError
+        ? "#b42318"
+        : "#333";
+
+  }
+
+
+  /* =====================================================
+     HELPERS
+  ===================================================== */
+
+  function getExtension(
+    name
+  ) {
+
+    const parts =
+      String(
+        name || ""
+      )
+        .toLowerCase()
+        .split(".");
+
+
+    return parts.length > 1
+      ? parts.pop()
+      : "";
+
+  }
+
+
+  function sanitizeFileName(
+    name
+  ) {
+
+    return String(
+      name || "file"
+    )
+      .replace(
+        /[\\/:*?"<>|]/g,
+        "_"
+      );
+
+  }
+
+
+  function formatBytes(
+    bytes
+  ) {
+
+    if (
+      !Number.isFinite(
+        bytes
+      )
+    ) {
+
+      return "";
+
+    }
+
+
+    if (
+      bytes < 1024
+    ) {
+
+      return `${bytes} B`;
+
+    }
+
+
+    if (
+      bytes < 1024 * 1024
+    ) {
+
+      return `${(
+        bytes / 1024
+      ).toFixed(1)} KB`;
+
+    }
+
+
+    return `${(
+      bytes /
+      1024 /
+      1024
+    ).toFixed(1)} MB`;
+
+  }
+
+
+  /* =====================================================
+     START
+  ===================================================== */
+
+  init();
+
+})();
+
+</script>
 
 </body>
 

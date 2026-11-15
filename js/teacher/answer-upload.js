@@ -1,90 +1,522 @@
+
 /* =========================================================
    テスト成績システム
-   答案アップロード 完全版
+   答案アップロード
 
-   対応:
-   JPG / JPEG / PNG / WEBP / GIF / BMP
-   PDF
-   ZIP
+   使用ファイル:
+     js/teacher/answer-upload.js
 
-   基本構造:
+   ページ構造:
+     入力ファイル
+       ↓
+     file-parser
+       ↓
+     ページ画像
+       ↓
+     QR探索
+       ↓
+     QRがあるページ = 新しい答案
+       ↓
+     QRがない後続ページ = 直前の答案
+       ↓
+     answer_sheets
+       ↓
+     answer_sheet_pages
 
-   入力ファイル
-      ↓
-   file-parser
-      ↓
-   ページ画像
-      ↓
-   QR探索
-      ↓
-   QRがあるページ = 新しい答案
-      ↓
-   QRがない後続ページ = 直前の答案
-      ↓
-   answer_sheets
-      ↓
-   answer_sheet_pages
+   source_page_id は使用しない。
 ========================================================= */
-
 
 (function () {
 
   "use strict";
 
 
+  /* =======================================================
+     STATE
+  ======================================================= */
+
   let tests = [];
 
-
-  /* =====================================================
-     初期化
-  ===================================================== */
-
-  async function initialize() {
-
-    const profile =
-      await getProfile();
+  let selectedFiles = [];
 
 
-    if (!profile) {
+  /* =======================================================
+     DOM
+  ======================================================= */
 
-      location.replace(
-        "/login"
-      );
+  function getTestElement() {
 
-      return;
-
-    }
-
-
-    if (
-      profile.role !== "teacher" &&
-      profile.role !== "admin"
-    ) {
-
-      location.replace(
-        "/student/dashboard"
-      );
-
-      return;
-
-    }
-
-
-    document.getElementById(
-      "teacherName"
-    ).textContent =
-      profile.name ||
-      "先生";
-
-
-    await loadTests();
+    return (
+      document.getElementById("testSelect") ||
+      document.getElementById("test")
+    );
 
   }
 
 
-  /* =====================================================
+  function getFilesElement() {
+
+    return (
+      document.getElementById("answerFiles") ||
+      document.getElementById("files")
+    );
+
+  }
+
+
+  function getUploadButton() {
+
+    return document.getElementById(
+      "uploadButton"
+    );
+
+  }
+
+
+  function getClearButton() {
+
+    return (
+      document.getElementById("clearButton") ||
+      document.getElementById("clear")
+    );
+
+  }
+
+
+  function getMessageElement() {
+
+    return (
+      document.getElementById("message") ||
+      document.getElementById("msg")
+    );
+
+  }
+
+
+  function getUploadListElement() {
+
+    return (
+      document.getElementById("uploadList") ||
+      document.getElementById("fileList")
+    );
+
+  }
+
+
+  function getProgressArea() {
+
+    return document.getElementById(
+      "progressArea"
+    );
+
+  }
+
+
+  function getProgressBar() {
+
+    return document.getElementById(
+      "progressBar"
+    );
+
+  }
+
+
+  function getProgressText() {
+
+    return document.getElementById(
+      "progressText"
+    );
+
+  }
+
+
+  /* =======================================================
+     初期化
+  ======================================================= */
+
+  async function initialize() {
+
+    try {
+
+      const profile =
+        await getProfile();
+
+
+      if (!profile) {
+
+        location.replace(
+          "/login"
+        );
+
+        return;
+
+      }
+
+
+      if (
+        profile.role !== "teacher" &&
+        profile.role !== "admin"
+      ) {
+
+        location.replace(
+          "/student/dashboard"
+        );
+
+        return;
+
+      }
+
+
+      const teacherName =
+        document.getElementById(
+          "teacherName"
+        );
+
+
+      if (teacherName) {
+
+        teacherName.textContent =
+          profile.name ||
+          "先生";
+
+      }
+
+
+      setupEvents();
+
+
+      await loadTests();
+
+
+    } catch (error) {
+
+      console.error(
+        "answer upload initialize:",
+        error
+      );
+
+
+      showMessage(
+        error.message ||
+        "答案アップロード画面の初期化に失敗しました。",
+        true
+      );
+
+    }
+
+  }
+
+
+  /* =======================================================
+     イベント
+  ======================================================= */
+
+  function setupEvents() {
+
+    const filesElement =
+      getFilesElement();
+
+
+    const uploadButton =
+      getUploadButton();
+
+
+    const clearButton =
+      getClearButton();
+
+
+    filesElement?.addEventListener(
+      "change",
+      event => {
+
+        addFiles(
+          event.target.files
+        );
+
+
+        /*
+         * 同じファイルを再選択可能にする。
+         */
+
+        event.target.value =
+          "";
+
+      }
+    );
+
+
+    uploadButton?.addEventListener(
+      "click",
+      uploadAnswers
+    );
+
+
+    clearButton?.addEventListener(
+      "click",
+      clearFiles
+    );
+
+
+    /*
+     * ログアウト
+     */
+
+    document
+      .getElementById(
+        "logoutButton"
+      )
+      ?.addEventListener(
+        "click",
+        async event => {
+
+          event.preventDefault();
+
+
+          if (
+            typeof logout ===
+            "function"
+          ) {
+
+            await logout();
+
+          }
+
+        }
+      );
+
+  }
+
+
+  /* =======================================================
+     ファイル追加
+  ======================================================= */
+
+  function addFiles(
+    files
+  ) {
+
+    const allowed =
+      new Set([
+        "jpg",
+        "jpeg",
+        "png",
+        "webp",
+        "gif",
+        "bmp",
+        "pdf",
+        "zip"
+      ]);
+
+
+    for (
+      const file
+      of Array.from(
+        files || []
+      )
+    ) {
+
+      const extension =
+        getExtension(
+          file.name
+        );
+
+
+      if (
+        !allowed.has(
+          extension
+        )
+      ) {
+
+        showMessage(
+          `${file.name} は対応していない形式です。`,
+          true
+        );
+
+        continue;
+
+      }
+
+
+      const exists =
+        selectedFiles.some(
+          item =>
+            item.name ===
+              file.name &&
+            item.size ===
+              file.size &&
+            item.lastModified ===
+              file.lastModified
+        );
+
+
+      if (!exists) {
+
+        selectedFiles.push(
+          file
+        );
+
+      }
+
+    }
+
+
+    renderFileList();
+
+  }
+
+
+  /* =======================================================
+     ファイル一覧
+  ======================================================= */
+
+  function renderFileList() {
+
+    const container =
+      getUploadListElement();
+
+
+    if (!container) {
+
+      return;
+
+    }
+
+
+    if (!selectedFiles.length) {
+
+      container.hidden =
+        true;
+
+      container.innerHTML =
+        "";
+
+      return;
+
+    }
+
+
+    container.hidden =
+      false;
+
+
+    container.innerHTML =
+      "";
+
+
+    selectedFiles.forEach(
+      (
+        file,
+        index
+      ) => {
+
+        const row =
+          document.createElement(
+            "div"
+          );
+
+
+        row.style.padding =
+          "8px 0";
+
+
+        row.style.borderBottom =
+          "1px solid #d0d6dc";
+
+
+        const line =
+          document.createElement(
+            "div"
+          );
+
+
+        line.style.display =
+          "flex";
+
+
+        line.style.alignItems =
+          "center";
+
+
+        line.style.justifyContent =
+          "space-between";
+
+
+        line.style.gap =
+          "10px";
+
+
+        const name =
+          document.createElement(
+            "span"
+          );
+
+
+        name.textContent =
+          `${file.name} (${formatBytes(file.size)})`;
+
+
+        const remove =
+          document.createElement(
+            "button"
+          );
+
+
+        remove.type =
+          "button";
+
+
+        remove.className =
+          "btn";
+
+
+        remove.textContent =
+          "削除";
+
+
+        remove.addEventListener(
+          "click",
+          () => {
+
+            selectedFiles.splice(
+              index,
+              1
+            );
+
+
+            renderFileList();
+
+          }
+        );
+
+
+        line.appendChild(
+          name
+        );
+
+
+        line.appendChild(
+          remove
+        );
+
+
+        row.appendChild(
+          line
+        );
+
+
+        container.appendChild(
+          row
+        );
+
+      }
+    );
+
+  }
+
+
+  /* =======================================================
      テスト
-  ===================================================== */
+  ======================================================= */
 
   async function loadTests() {
 
@@ -99,24 +531,30 @@
           name,
           subject,
           grade,
-          class_name
+          class_name,
+          created_at
         `)
         .order(
           "created_at",
           {
-            ascending: false
+            ascending:
+              false
           }
         );
 
 
     if (error) {
 
-      console.error(error);
+      console.error(
+        error
+      );
+
 
       showMessage(
         "テスト一覧を取得できませんでした。",
         true
       );
+
 
       return;
 
@@ -128,9 +566,16 @@
 
 
     const select =
-      document.getElementById(
-        "testSelect"
+      getTestElement();
+
+
+    if (!select) {
+
+      throw new Error(
+        "テスト選択欄が見つかりません。"
       );
+
+    }
 
 
     select.innerHTML = `
@@ -139,153 +584,176 @@
         テストを選択してください
       </option>
 
-      ${
-        tests
-          .map(
-            test => `
-
-              <option
-                value="${escapeHtml(test.id)}"
-              >
-
-                ${escapeHtml(test.name)}
-
-                ${
-                  test.subject
-                    ? ` / ${escapeHtml(test.subject)}`
-                    : ""
-                }
-
-              </option>
-
-            `
-          )
-          .join("")
-      }
-
     `;
+
+
+    for (
+      const test
+      of tests
+    ) {
+
+      const option =
+        document.createElement(
+          "option"
+        );
+
+
+      option.value =
+        test.id;
+
+
+      const parts = [
+        test.name,
+        test.subject,
+        test.grade
+      ]
+        .filter(
+          value =>
+            value !== null &&
+            value !== undefined &&
+            String(
+              value
+            ).trim() !== ""
+        );
+
+
+      option.textContent =
+        parts.join(
+          " / "
+        );
+
+
+      select.appendChild(
+        option
+      );
+
+    }
 
   }
 
 
-  /* =====================================================
+  /* =======================================================
      アップロード
-  ===================================================== */
+  ======================================================= */
 
-  document
-    .getElementById(
-      "uploadButton"
-    )
-    .addEventListener(
-      "click",
-      async () => {
+  async function uploadAnswers() {
 
-        const testId =
-          document.getElementById(
-            "testSelect"
-          ).value;
+    const testElement =
+      getTestElement();
 
 
-        const files =
-          [
-            ...
-            document.getElementById(
-              "answerFiles"
-            ).files
-          ];
+    const testId =
+      testElement?.value ||
+      "";
 
 
-        if (!testId) {
+    if (!testId) {
 
-          showMessage(
-            "テストを選択してください。",
-            true
-          );
+      showMessage(
+        "テストを選択してください。",
+        true
+      );
 
-          return;
+      return;
 
-        }
-
-
-        if (!files.length) {
-
-          showMessage(
-            "答案ファイルを選択してください。",
-            true
-          );
-
-          return;
-
-        }
+    }
 
 
-        const button =
-          document.getElementById(
-            "uploadButton"
-          );
+    if (!selectedFiles.length) {
+
+      showMessage(
+        "答案ファイルを選択してください。",
+        true
+      );
+
+      return;
+
+    }
 
 
-        button.disabled =
-          true;
+    const button =
+      getUploadButton();
 
 
-        button.textContent =
-          "処理中...";
+    if (button) {
+
+      button.disabled =
+        true;
+
+      button.dataset.originalText =
+        button.textContent;
+
+      button.textContent =
+        "処理中...";
+
+    }
 
 
-        clearUploadList();
+    clearUploadList();
 
 
-        try {
+    try {
 
-          for (
-            const file
-            of files
-          ) {
+      for (
+        const file
+        of selectedFiles
+      ) {
 
-            await processInputFile(
-              testId,
-              file
-            );
+        await processInputFile(
+          testId,
+          file
+        );
 
-          }
-
-
-          showMessage(
-            "答案の処理が完了しました。"
-          );
+      }
 
 
-        } catch (error) {
-
-          console.error(
-            error
-          );
+      showMessage(
+        "答案の処理が完了しました。"
+      );
 
 
-          showMessage(
-            error.message ||
-            "答案の処理に失敗しました。",
-            true
-          );
+      selectedFiles =
+        [];
 
-        }
 
+      renderFileList();
+
+
+    } catch (error) {
+
+      console.error(
+        "answer upload:",
+        error
+      );
+
+
+      showMessage(
+        error.message ||
+        "答案の処理に失敗しました。",
+        true
+      );
+
+    } finally {
+
+      if (button) {
 
         button.disabled =
           false;
 
-
         button.textContent =
-          "アップロード開始";
+          button.dataset.originalText ||
+          "アップロード";
 
       }
-    );
+
+    }
+
+  }
 
 
-  /* =====================================================
+  /* =======================================================
      1ファイル
-  ===================================================== */
+  ======================================================= */
 
   async function processInputFile(
     testId,
@@ -307,10 +775,9 @@
 
 
       const pages =
-        await window.TEST_SCORE_FILES
-          .parseFile(
-            file
-          );
+        await parseFile(
+          file
+        );
 
 
       if (
@@ -332,8 +799,8 @@
 
 
       /*
-        ページをQR単位で答案に分割
-      */
+       * QR単位で答案を分割。
+       */
 
       const groups =
         await groupPagesByQr(
@@ -386,15 +853,439 @@
   }
 
 
-  /* =====================================================
-     QR単位でページをグループ化
-  ===================================================== */
+  /* =======================================================
+     FILE PARSER
+  ======================================================= */
+
+  async function parseFile(
+    file
+  ) {
+
+    /*
+     * 既存file-parserを優先。
+     */
+
+    if (
+      window.TEST_SCORE_FILES &&
+      typeof
+        window.TEST_SCORE_FILES.parseFile ===
+        "function"
+    ) {
+
+      return window.TEST_SCORE_FILES
+        .parseFile(
+          file
+        );
+
+    }
+
+
+    /*
+     * フォールバック。
+     */
+
+    const extension =
+      getExtension(
+        file.name
+      );
+
+
+    if (
+      extension ===
+      "pdf"
+    ) {
+
+      return parsePdf(
+        file
+      );
+
+    }
+
+
+    if (
+      extension ===
+      "zip"
+    ) {
+
+      return parseZip(
+        file
+      );
+
+    }
+
+
+    return [
+      await parseImage(
+        file
+      )
+    ];
+
+  }
+
+
+  /* =======================================================
+     PDF
+  ======================================================= */
+
+  async function parsePdf(
+    file
+  ) {
+
+    if (
+      typeof pdfjsLib ===
+      "undefined"
+    ) {
+
+      throw new Error(
+        "PDF処理ライブラリが読み込まれていません。"
+      );
+
+    }
+
+
+    const buffer =
+      await file.arrayBuffer();
+
+
+    const pdf =
+      await pdfjsLib
+        .getDocument({
+          data:
+            buffer
+        })
+        .promise;
+
+
+    const pages =
+      [];
+
+
+    for (
+      let number = 1;
+      number <=
+      pdf.numPages;
+      number++
+    ) {
+
+      const pdfPage =
+        await pdf.getPage(
+          number
+        );
+
+
+      const base =
+        pdfPage.getViewport({
+          scale:
+            1
+        });
+
+
+      const scale =
+        Math.min(
+          3,
+          Math.max(
+            1,
+            3000 /
+            Math.max(
+              base.width,
+              base.height
+            )
+          )
+        );
+
+
+      const viewport =
+        pdfPage.getViewport({
+          scale
+        });
+
+
+      const canvas =
+        document.createElement(
+          "canvas"
+        );
+
+
+      canvas.width =
+        Math.ceil(
+          viewport.width
+        );
+
+
+      canvas.height =
+        Math.ceil(
+          viewport.height
+        );
+
+
+      await pdfPage
+        .render({
+
+          canvasContext:
+            canvas.getContext(
+              "2d"
+            ),
+
+          viewport
+
+        })
+        .promise;
+
+
+      const blob =
+        await canvasToBlob(
+          canvas
+        );
+
+
+      pages.push({
+
+        blob,
+
+        name:
+          `${file.name} - page ${number}`,
+
+        fileType:
+          "image/png",
+
+        width:
+          canvas.width,
+
+        height:
+          canvas.height
+
+      });
+
+    }
+
+
+    return pages;
+
+  }
+
+
+  /* =======================================================
+     ZIP
+  ======================================================= */
+
+  async function parseZip(
+    file
+  ) {
+
+    if (
+      typeof JSZip ===
+      "undefined"
+    ) {
+
+      throw new Error(
+        "ZIP処理ライブラリが読み込まれていません。"
+      );
+
+    }
+
+
+    const zip =
+      await JSZip.loadAsync(
+        file
+      );
+
+
+    const entries =
+      Object.values(
+        zip.files
+      )
+        .filter(
+          entry =>
+            !entry.dir
+        )
+        .sort(
+          (
+            a,
+            b
+          ) =>
+            a.name.localeCompare(
+              b.name,
+              undefined,
+              {
+                numeric:
+                  true
+              }
+            )
+        );
+
+
+    const pages =
+      [];
+
+
+    for (
+      const entry
+      of entries
+    ) {
+
+      const extension =
+        getExtension(
+          entry.name
+        );
+
+
+      if (
+        extension ===
+        "pdf"
+      ) {
+
+        const blob =
+          await entry.async(
+            "blob"
+          );
+
+
+        const pdfFile =
+          new File(
+            [
+              blob
+            ],
+            entry.name,
+            {
+              type:
+                "application/pdf"
+            }
+          );
+
+
+        pages.push(
+          ...await parsePdf(
+            pdfFile
+          )
+        );
+
+
+        continue;
+
+      }
+
+
+      if (
+        [
+          "jpg",
+          "jpeg",
+          "png",
+          "webp",
+          "gif",
+          "bmp"
+        ].includes(
+          extension
+        )
+      ) {
+
+        const blob =
+          await entry.async(
+            "blob"
+          );
+
+
+        const imageFile =
+          new File(
+            [
+              blob
+            ],
+            entry.name
+          );
+
+
+        pages.push(
+          await parseImage(
+            imageFile
+          )
+        );
+
+      }
+
+    }
+
+
+    return pages;
+
+  }
+
+
+  /* =======================================================
+     IMAGE
+  ======================================================= */
+
+  async function parseImage(
+    file
+  ) {
+
+    const image =
+      await loadImage(
+        file
+      );
+
+
+    const canvas =
+      document.createElement(
+        "canvas"
+      );
+
+
+    canvas.width =
+      image.naturalWidth;
+
+
+    canvas.height =
+      image.naturalHeight;
+
+
+    canvas
+      .getContext(
+        "2d"
+      )
+      .drawImage(
+        image,
+        0,
+        0
+      );
+
+
+    const blob =
+      await canvasToBlob(
+        canvas
+      );
+
+
+    return {
+
+      blob,
+
+      name:
+        file.name,
+
+      fileType:
+        "image/png",
+
+      width:
+        canvas.width,
+
+      height:
+        canvas.height
+
+    };
+
+  }
+
+
+  /* =======================================================
+     QR単位でグループ化
+  ======================================================= */
 
   async function groupPagesByQr(
     pages
   ) {
 
-    const groups = [];
+    const groups =
+      [];
+
 
     let currentGroup =
       null;
@@ -412,9 +1303,10 @@
 
 
       /*
-        QRが見つかった
-        → 新しい答案
-      */
+       * QRがある
+       * ↓
+       * 新しい答案
+       */
 
       if (qr) {
 
@@ -423,7 +1315,8 @@
           qrValue:
             qr,
 
-          pages: []
+          pages:
+            []
 
         };
 
@@ -436,9 +1329,9 @@
 
 
       /*
-        QRがない最初のページ
-        → 答案を特定できない
-      */
+       * 最初のページに
+       * QRがない場合
+       */
 
       if (!currentGroup) {
 
@@ -447,7 +1340,8 @@
           qrValue:
             null,
 
-          pages: []
+          pages:
+            []
 
         };
 
@@ -460,8 +1354,8 @@
 
 
       /*
-        現在の答案にページ追加
-      */
+       * 現在の答案へ追加
+       */
 
       currentGroup.pages.push(
         page
@@ -475,9 +1369,9 @@
   }
 
 
-  /* =====================================================
-     答案グループ保存
-  ===================================================== */
+  /* =======================================================
+     答案保存
+  ======================================================= */
 
   async function saveAnswerGroup(
     testId,
@@ -494,8 +1388,8 @@
 
 
     /*
-      answer_sheets
-    */
+     * answer_sheets
+     */
 
     const answer =
       await createAnswerSheet(
@@ -506,25 +1400,31 @@
 
 
     /*
-      ページ保存
-    */
+     * ページ保存
+     */
 
     for (
-      let i = 0;
-      i < group.pages.length;
-      i++
+      let index = 0;
+      index <
+      group.pages.length;
+      index++
     ) {
 
       const page =
-        group.pages[i];
+        group.pages[index];
 
 
       const pageNo =
-        i + 1;
+        index + 1;
 
 
       const path =
-        `${testId}/${answer.id}/page-${String(pageNo).padStart(3, "0")}.png`;
+        `${testId}/${answer.id}/page-${String(
+          pageNo
+        ).padStart(
+          3,
+          "0"
+        )}.png`;
 
 
       const {
@@ -587,8 +1487,8 @@
 
 
     /*
-      QRから生徒を特定
-    */
+     * QRから生徒を特定
+     */
 
     if (student) {
 
@@ -601,11 +1501,15 @@
     }
 
 
+    /*
+     * 表示
+     */
+
     if (row) {
 
       const label =
         student
-          ? `${student.student_no} ${student.name}`
+          ? `${student.student_no || ""} ${student.name || ""}`.trim()
           : "未紐付け";
 
 
@@ -619,70 +1523,140 @@
   }
 
 
-  /* =====================================================
+  /* =======================================================
      生徒検索
-  ===================================================== */
+  ======================================================= */
 
   async function findStudentByQr(
     qrValue
   ) {
 
+    if (!qrValue) {
+
+      return null;
+
+    }
+
+
     const prefix =
       "STUDENT:";
 
 
+    /*
+     * 現在のQR仕様:
+     *
+     * STUDENT:424990
+     */
+
     if (
-      !qrValue.startsWith(
+      qrValue.startsWith(
         prefix
       )
     ) {
 
-      return null;
+      const studentNo =
+        qrValue
+          .substring(
+            prefix.length
+          )
+          .trim();
+
+
+      const {
+        data,
+        error
+      } =
+        await supabaseClient
+          .from(
+            "students"
+          )
+          .select(
+            `
+            id,
+            student_no,
+            name
+            `
+          )
+          .eq(
+            "student_no",
+            studentNo
+          )
+          .eq(
+            "active",
+            true
+          )
+          .maybeSingle();
+
+
+      if (error) {
+
+        throw error;
+
+      }
+
+
+      return data || null;
 
     }
 
 
-    const studentNo =
-      qrValue
-        .substring(
-          prefix.length
-        )
-        .trim();
+    /*
+     * JSON形式
+     */
+
+    let value =
+      qrValue;
 
 
-    if (
-      !/^\d{6}$/.test(
-        studentNo
-      )
-    ) {
+    try {
 
-      return null;
+      const json =
+        JSON.parse(
+          qrValue
+        );
 
-    }
 
+      value =
+        json.student_no ||
+        json.studentNo ||
+        json.student_id ||
+        json.studentId ||
+        json.id ||
+        qrValue;
+
+    } catch (_) {}
+
+
+    /*
+     * 生徒番号で検索
+     */
 
     const {
       data,
       error
     } =
-    await supabaseClient
-      .from(
-        "students"
-      )
-      .select(`
-        id,
-        student_no,
-        name
-      `)
-      .eq(
-        "student_no",
-        studentNo
-      )
-      .eq(
-        "active",
-        true
-      )
-      .maybeSingle();
+      await supabaseClient
+        .from(
+          "students"
+        )
+        .select(
+          `
+          id,
+          student_no,
+          name
+          `
+        )
+        .eq(
+          "student_no",
+          String(
+            value
+          ).trim()
+        )
+        .eq(
+          "active",
+          true
+        )
+        .maybeSingle();
 
 
     if (error) {
@@ -697,9 +1671,9 @@
   }
 
 
-  /* =====================================================
+  /* =======================================================
      answer_sheets
-  ===================================================== */
+  ======================================================= */
 
   async function createAnswerSheet(
     testId,
@@ -719,6 +1693,10 @@
 
     }
 
+
+    /*
+     * 元のanswer-upload.js仕様を維持。
+     */
 
     const {
       data,
@@ -771,9 +1749,9 @@
   }
 
 
-  /* =====================================================
+  /* =======================================================
      answer_sheet_pages
-  ===================================================== */
+  ======================================================= */
 
   async function saveAnswerPage({
     answerSheetId,
@@ -788,42 +1766,42 @@
     const {
       error
     } =
-      await supabaseClient
-        .from(
-          "answer_sheet_pages"
-        )
-        .upsert(
-          {
+    await supabaseClient
+      .from(
+        "answer_sheet_pages"
+      )
+      .upsert(
+        {
 
-            answer_sheet_id:
-              answerSheetId,
+          answer_sheet_id:
+            answerSheetId,
 
-            page_no:
-              pageNo,
+          page_no:
+            pageNo,
 
-            file_path:
-              storagePath,
+          file_path:
+            storagePath,
 
-            file_type:
-              fileType,
+          file_type:
+            fileType,
 
-            original_name:
-              originalName,
+          original_name:
+            originalName,
 
-            width_px:
-              width,
+          width_px:
+            width,
 
-            height_px:
-              height
+          height_px:
+            height
 
-          },
-          {
+        },
+        {
 
-            onConflict:
-              "answer_sheet_id,page_no"
+          onConflict:
+            "answer_sheet_id,page_no"
 
-          }
-        );
+        }
+      );
 
 
     if (error) {
@@ -835,9 +1813,9 @@
   }
 
 
-  /* =====================================================
+  /* =======================================================
      生徒紐付け
-  ===================================================== */
+  ======================================================= */
 
   async function updateAnswerStudent(
     answerId,
@@ -879,9 +1857,9 @@
   }
 
 
-  /* =====================================================
-     QR読み取り
-  ===================================================== */
+  /* =======================================================
+     QR
+  ======================================================= */
 
   async function readQRCode(
     blob
@@ -974,6 +1952,10 @@
     );
 
 
+    /*
+     * 通常読み取り
+     */
+
     const imageData =
       context.getImageData(
         0,
@@ -983,7 +1965,7 @@
       );
 
 
-    const result =
+    let result =
       jsQR(
         imageData.data,
         imageData.width,
@@ -995,7 +1977,9 @@
       );
 
 
-    if (result?.data) {
+    if (
+      result?.data
+    ) {
 
       return result.data;
 
@@ -1003,8 +1987,8 @@
 
 
     /*
-      簡易二値化して再試行
-    */
+     * 二値化して再試行
+     */
 
     const data =
       imageData.data;
@@ -1042,7 +2026,7 @@
     }
 
 
-    const retry =
+    result =
       jsQR(
         data,
         width,
@@ -1054,18 +2038,18 @@
       );
 
 
-    return retry?.data ||
+    return result?.data ||
       null;
 
   }
 
 
-  /* =====================================================
-     Image
-  ===================================================== */
+  /* =======================================================
+     IMAGE LOAD
+  ======================================================= */
 
   function loadImage(
-    blob
+    source
   ) {
 
     return new Promise(
@@ -1079,17 +2063,25 @@
 
 
         const url =
-          URL.createObjectURL(
-            blob
-          );
+          source instanceof Blob
+            ? URL.createObjectURL(
+                source
+              )
+            : source;
 
 
         image.onload =
           () => {
 
-            URL.revokeObjectURL(
-              url
-            );
+            if (
+              source instanceof Blob
+            ) {
+
+              URL.revokeObjectURL(
+                url
+              );
+
+            }
 
 
             resolve(
@@ -1102,9 +2094,15 @@
         image.onerror =
           () => {
 
-            URL.revokeObjectURL(
-              url
-            );
+            if (
+              source instanceof Blob
+            ) {
+
+              URL.revokeObjectURL(
+                url
+              );
+
+            }
 
 
             reject(
@@ -1125,18 +2123,32 @@
   }
 
 
-  /* =====================================================
+  /* =======================================================
      UI
-  ===================================================== */
+  ======================================================= */
 
   function createUploadRow(
     name
   ) {
 
     const container =
-      document.getElementById(
-        "uploadList"
-      );
+      getUploadListElement();
+
+
+    /*
+     * uploadListがない場合は
+     * 画面を壊さずnullを返す。
+     */
+
+    if (!container) {
+
+      return null;
+
+    }
+
+
+    container.hidden =
+      false;
 
 
     const row =
@@ -1145,18 +2157,12 @@
       );
 
 
-    row.style.cssText = `
+    row.style.padding =
+      "10px 0";
 
-      padding:10px;
 
-      margin-bottom:6px;
-
-      border:
-        1px solid #d0d6dc;
-
-      background:#fff;
-
-    `;
+    row.style.borderBottom =
+      "1px solid #d0d6dc";
 
 
     row.innerHTML = `
@@ -1165,17 +2171,15 @@
         ${escapeHtml(name)}
       </strong>
 
-
       <span
         class="upload-status"
         style="
-          margin-left:15px;
+          margin-left:12px;
           color:#777;
         "
       >
         待機中
       </span>
-
 
       <div
         class="upload-detail"
@@ -1184,8 +2188,7 @@
           font-size:12px;
           color:#666;
         "
-      >
-      </div>
+      ></div>
 
     `;
 
@@ -1206,6 +2209,13 @@
     error = false
   ) {
 
+    if (!row) {
+
+      return;
+
+    }
+
+
     const status =
       row.querySelector(
         ".upload-status"
@@ -1225,7 +2235,7 @@
 
     status.style.color =
       error
-        ? "#c62828"
+        ? "#b42318"
         : "#16834b";
 
   }
@@ -1235,6 +2245,13 @@
     row,
     text
   ) {
+
+    if (!row) {
+
+      return;
+
+    }
+
 
     const detail =
       row.querySelector(
@@ -1249,18 +2266,18 @@
     }
 
 
-    const item =
+    const line =
       document.createElement(
         "div"
       );
 
 
-    item.textContent =
+    line.textContent =
       text;
 
 
     detail.appendChild(
-      item
+      line
     );
 
   }
@@ -1268,10 +2285,23 @@
 
   function clearUploadList() {
 
-    document.getElementById(
-      "uploadList"
-    ).innerHTML =
+    const container =
+      getUploadListElement();
+
+
+    if (!container) {
+
+      return;
+
+    }
+
+
+    container.innerHTML =
       "";
+
+
+    container.hidden =
+      true;
 
   }
 
@@ -1282,19 +2312,154 @@
   ) {
 
     const element =
-      document.getElementById(
-        "message"
-      );
+      getMessageElement();
+
+
+    if (!element) {
+
+      return;
+
+    }
 
 
     element.textContent =
       text;
 
 
-    element.style.color =
+    element.className =
       error
-        ? "#c62828"
-        : "#16834b";
+        ? "small error"
+        : "small";
+
+  }
+
+
+  /* =======================================================
+     CLEAR
+  ======================================================= */
+
+  function clearFiles() {
+
+    selectedFiles =
+      [];
+
+
+    renderFileList();
+
+
+    if (filesElement) {
+
+      filesElement.value =
+        "";
+
+    }
+
+
+    showMessage(
+      ""
+    );
+
+
+    const progress =
+      getProgressArea();
+
+
+    if (progress) {
+
+      progress.hidden =
+        true;
+
+    }
+
+
+    const bar =
+      getProgressBar();
+
+
+    if (bar) {
+
+      bar.style.width =
+        "0%";
+
+    }
+
+
+    const text =
+      getProgressText();
+
+
+    if (text) {
+
+      text.textContent =
+        "待機中";
+
+    }
+
+  }
+
+
+  /* =======================================================
+     HELPERS
+  ======================================================= */
+
+  function getExtension(
+    name
+  ) {
+
+    const parts =
+      String(
+        name ||
+        ""
+      )
+        .toLowerCase()
+        .split(
+          "."
+        );
+
+
+    return parts.length > 1
+      ? parts.pop()
+      : "";
+
+  }
+
+
+  function formatBytes(
+    bytes
+  ) {
+
+    if (
+      bytes <
+      1024
+    ) {
+
+      return `${bytes} B`;
+
+    }
+
+
+    if (
+      bytes <
+      1024 * 1024
+    ) {
+
+      return `${(
+        bytes /
+        1024
+      ).toFixed(
+        1
+      )} KB`;
+
+    }
+
+
+    return `${(
+      bytes /
+      1024 /
+      1024
+    ).toFixed(
+      1
+    )} MB`;
 
   }
 
@@ -1303,17 +2468,10 @@
     value
   ) {
 
-    if (
-      value === null ||
-      value === undefined
-    ) {
-
-      return "";
-
-    }
-
-
-    return String(value)
+    return String(
+      value ??
+      ""
+    )
       .replaceAll(
         "&",
         "&amp;"
@@ -1338,23 +2496,9 @@
   }
 
 
-  /* =====================================================
-     Logout
-  ===================================================== */
-
-  document
-    .getElementById(
-      "logoutButton"
-    )
-    .addEventListener(
-      "click",
-      logout
-    );
-
-
-  /* =====================================================
+  /* =======================================================
      START
-  ===================================================== */
+  ======================================================= */
 
   initialize();
 

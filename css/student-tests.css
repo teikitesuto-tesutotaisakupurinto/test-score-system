@@ -1,18 +1,79 @@
 
+/* =========================================================
+   生徒テスト一覧
+========================================================= */
+
 .student-main {
 
-  max-width:1200px;
+  max-width:
+    1200px;
 
-  margin:0 auto;
+  margin:
+    0 auto;
 
-  padding:25px;
+  padding:
+    25px;
+
+}
+
+
+.page-description {
+
+  margin:
+    6px 0 0;
+
+  color:
+    #666;
+
+  font-size:
+    13px;
+
+}
+
+
+.student-test-section {
+
+  margin-top:
+    20px;
+
+}
+
+
+.section-header {
+
+  display:
+    flex;
+
+  align-items:
+    center;
+
+  justify-content:
+    space-between;
+
+  gap:
+    12px;
+
+  margin-bottom:
+    12px;
+
+}
+
+
+.section-header h2 {
+
+  margin:
+    0;
+
+  font-size:
+    18px;
 
 }
 
 
 .student-test-grid {
 
-  display:grid;
+  display:
+    grid;
 
   grid-template-columns:
     repeat(
@@ -23,69 +84,148 @@
       )
     );
 
-  gap:15px;
+  gap:
+    15px;
 
 }
 
 
 .student-test-card {
 
-  background:#fff;
+  display:
+    flex;
+
+  flex-direction:
+    column;
+
+  background:
+    #fff;
 
   border:
     1px solid #d0d6dc;
 
-  border-radius:5px;
+  border-radius:
+    5px;
 
-  padding:18px;
+  padding:
+    18px;
+
+  min-height:
+    220px;
 
 }
 
 
 .student-test-title {
 
-  font-size:17px;
+  font-size:
+    17px;
 
-  font-weight:700;
+  font-weight:
+    700;
 
-  margin-bottom:12px;
+  line-height:
+    1.5;
+
+  margin-bottom:
+    12px;
 
 }
 
 
 .student-test-info {
 
-  color:#555;
+  color:
+    #555;
 
-  font-size:13px;
+  font-size:
+    13px;
 
-  line-height:1.8;
+  line-height:
+    1.9;
+
+}
+
+
+.student-test-published {
+
+  display:
+    inline-block;
+
+  margin-top:
+    10px;
+
+  padding:
+    3px 8px;
+
+  border:
+    1px solid #b7d9c0;
+
+  border-radius:
+    3px;
+
+  background:
+    #edf8ef;
+
+  color:
+    #26743b;
+
+  font-size:
+    12px;
 
 }
 
 
 .student-test-actions {
 
-  display:flex;
+  display:
+    flex;
 
-  gap:7px;
+  gap:
+    8px;
 
-  margin-top:16px;
+  flex-wrap:
+    wrap;
 
-  flex-wrap:wrap;
+  margin-top:
+    auto;
+
+  padding-top:
+    18px;
 
 }
 
 
-.empty-state {
+.student-test-actions .btn {
 
-  padding:50px;
+  flex:
+    1;
 
-  text-align:center;
+  min-width:
+    130px;
 
-  color:#777;
+  text-align:
+    center;
 
-  background:#fff;
+  text-decoration:
+    none;
+
+}
+
+
+.loading-state {
+
+  padding:
+    50px;
+
+  text-align:
+    center;
+
+  color:
+    #777;
+
+  background:
+    #fff;
 
   border:
     1px solid #d0d6dc;
@@ -93,12 +233,125 @@
 }
 
 
-@media(max-width:900px) {
+.empty-state {
+
+  grid-column:
+    1 / -1;
+
+  padding:
+    50px;
+
+  text-align:
+    center;
+
+  color:
+    #777;
+
+  background:
+    #fff;
+
+  border:
+    1px solid #d0d6dc;
+
+}
+
+
+/* =========================================================
+   生徒ヘッダー
+========================================================= */
+
+.student-header-info {
+
+  display:
+    flex;
+
+  align-items:
+    center;
+
+  margin-right:
+    12px;
+
+  font-size:
+    13px;
+
+  white-space:
+    nowrap;
+
+}
+
+
+/* =========================================================
+   Responsive
+========================================================= */
+
+@media (
+  max-width: 950px
+) {
+
+  .student-test-grid {
+
+    grid-template-columns:
+      repeat(
+        2,
+        minmax(
+          0,
+          1fr
+        )
+      );
+
+  }
+
+}
+
+
+@media (
+  max-width: 650px
+) {
+
+  .student-main {
+
+    padding:
+      15px;
+
+  }
+
 
   .student-test-grid {
 
     grid-template-columns:
       1fr;
+
+  }
+
+
+  .student-test-card {
+
+    min-height:
+      auto;
+
+  }
+
+
+  .student-test-actions {
+
+    flex-direction:
+      column;
+
+  }
+
+
+  .student-test-actions .btn {
+
+    width:
+      100%;
+
+  }
+
+
+  .student-header-info {
+
+    display:
+      none;
 
   }
 

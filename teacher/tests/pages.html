@@ -11,34 +11,28 @@
   content="width=device-width, initial-scale=1.0"
 >
 
-<title>
-  解答用紙・枠設定 - テスト成績システム
-</title>
-
+<title>解答用紙・枠設定 - テスト成績システム</title>
 
 <link
   rel="stylesheet"
   href="/css/common.css"
 >
 
-
 <style>
 
 /* =========================================================
-   BASE
+   基本
 ========================================================= */
 
 * {
   box-sizing: border-box;
 }
 
-
 html,
 body {
   margin: 0;
   padding: 0;
 }
-
 
 body {
   background: #f3f5f7;
@@ -47,11 +41,10 @@ body {
 
 
 /* =========================================================
-   MAIN
+   メイン
 ========================================================= */
 
 .main {
-  width: 100%;
   max-width: 1500px;
   margin: 0 auto;
   padding: 20px;
@@ -59,31 +52,27 @@ body {
 
 
 /* =========================================================
-   PAGE HEADER
+   見出し
 ========================================================= */
 
 .page-header {
   margin-bottom: 14px;
 }
 
-
 .page-header h1 {
   margin: 0;
   font-size: 24px;
-  line-height: 1.4;
 }
-
 
 .page-description {
   margin: 5px 0 0;
   color: #666;
   font-size: 13px;
-  line-height: 1.6;
 }
 
 
 /* =========================================================
-   TOOLBAR
+   ツールバー
 ========================================================= */
 
 .toolbar {
@@ -98,80 +87,56 @@ body {
 
   background: #fff;
 
-  border:
-    1px solid #d5dbe0;
+  border: 1px solid #d5dbe0;
 }
-
 
 .toolbar input[type="file"] {
   max-width: 300px;
 }
 
-
 .toolbar-status {
   width: 100%;
 
-  padding:
-    8px 10px;
+  padding: 8px 10px;
 
-  margin-top: 2px;
+  background: #f5f6f7;
 
-  background:
-    #f5f6f7;
+  border: 1px solid #e1e5e8;
 
-  border:
-    1px solid #e1e5e8;
+  color: #555;
 
-  color:
-    #555;
-
-  font-size:
-    12px;
-
-  line-height:
-    1.6;
+  font-size: 12px;
 }
 
 
 /* =========================================================
-   VIEWER
+   ビューア
 ========================================================= */
 
 .viewer {
-  position: relative;
+  min-height: 650px;
 
-  min-height: 600px;
+  padding: 25px;
 
-  padding: 20px;
+  background: #dfe3e8;
 
-  background:
-    #dfe3e8;
+  border: 1px solid #ccd2d7;
 
-  border:
-    1px solid #ccd2d7;
-
-  overflow:
-    auto;
+  overflow: auto;
 }
-
 
 .page {
   position: relative;
 
-  width:
-    min(100%, 1000px);
+  width: min(100%, 1000px);
 
-  margin:
-    0 auto 30px;
+  margin: 0 auto 30px;
 
-  background:
-    #fff;
+  background: #fff;
 
   box-shadow:
-    0 2px 12px
-    rgba(0, 0, 0, .15);
+    0 2px 12px rgba(0,0,0,.15);
 }
-
 
 .page canvas {
   display: block;
@@ -181,152 +146,111 @@ body {
   height: auto;
 }
 
-
-.page .layer {
+.page-layer {
   position: absolute;
 
   inset: 0;
 
   user-select: none;
+
+  touch-action: none;
 }
 
 
 /* =========================================================
-   BOX
+   枠
 ========================================================= */
 
-.box {
+.layout-box {
   position: absolute;
 
   min-width: 8px;
-
   min-height: 8px;
 
   cursor: move;
 
-  z-index: 10;
+  z-index: 20;
+}
+
+.layout-box.selected {
+  outline: 3px solid #111;
+
+  outline-offset: 1px;
 }
 
 
-.box.selected {
-  outline:
-    3px solid #111;
+/* =========================================================
+   枠ラベル
+========================================================= */
 
-  outline-offset:
-    1px;
-}
-
-
-.box-label {
+.layout-box-label {
   position: absolute;
 
   top: -25px;
 
   left: 0;
 
-  padding:
-    3px 7px;
+  padding: 3px 7px;
 
-  background:
-    #222;
+  background: #222;
 
-  color:
-    #fff;
+  color: #fff;
 
-  font-size:
-    11px;
+  font-size: 11px;
 
-  line-height:
-    1.3;
+  line-height: 1.3;
 
-  white-space:
-    nowrap;
+  white-space: nowrap;
 
-  pointer-events:
-    none;
+  pointer-events: none;
 }
 
 
-.resize {
+/* =========================================================
+   リサイズハンドル
+========================================================= */
+
+.resize-handle {
   position: absolute;
 
-  right: -5px;
+  right: -6px;
 
-  bottom: -5px;
+  bottom: -6px;
 
-  width: 11px;
+  width: 12px;
 
-  height: 11px;
+  height: 12px;
 
-  background:
-    #222;
+  background: #222;
 
-  cursor:
-    nwse-resize;
+  border: 1px solid #fff;
+
+  cursor: nwse-resize;
 }
 
 
 /* =========================================================
-   DRAGGING PREVIEW
+   ドラッグ中の仮枠
 ========================================================= */
 
-.drawing-box {
-  position: absolute !important;
+.drag-preview {
+  position: absolute;
 
-  display: block !important;
+  border: 2px dashed #d00000;
 
-  border:
-    2px dashed #d00000 !important;
+  background: rgba(208,0,0,.10);
 
-  background:
-    rgba(208, 0, 0, .10) !important;
+  pointer-events: none;
 
-  pointer-events:
-    none !important;
-
-  z-index:
-    9999 !important;
-
-  box-shadow:
-    0 0 0 1px
-    rgba(255,255,255,.8);
+  z-index: 9999;
 }
 
 
 /* =========================================================
-   EMPTY
+   枠設定バー
 ========================================================= */
 
-.empty-view {
-  padding:
-    80px 20px;
-
-  text-align:
-    center;
-
-  color:
-    #666;
-}
-
-
-.empty-view strong {
-  display:
-    block;
-
-  margin-bottom:
-    8px;
-
-  color:
-    #333;
-}
-
-
-/* =========================================================
-   BOX SETTINGS PANEL
-   上部固定
-========================================================= */
-
-.box-settings-panel {
+.box-panel {
   position: fixed;
 
   top: 64px;
@@ -335,100 +259,59 @@ body {
 
   right: 0;
 
-  width: 100%;
+  z-index: 1000;
 
-  background:
-    #fff;
+  display: none;
 
-  border-bottom:
-    1px solid #cbd1d6;
+  background: #fff;
+
+  border-bottom: 1px solid #cbd1d6;
 
   box-shadow:
-    0 3px 14px
-    rgba(0, 0, 0, .14);
-
-  z-index:
-    1000;
+    0 3px 14px rgba(0,0,0,.14);
 }
 
-
-.box-settings-panel[hidden] {
-  display: none;
+.box-panel.open {
+  display: block;
 }
 
-
-/* =========================================================
-   PANEL HEADER
-========================================================= */
-
-.box-settings-header {
+.box-panel-header {
   display: flex;
 
   align-items: center;
 
-  gap: 14px;
+  gap: 12px;
 
   min-height: 42px;
 
-  padding:
-    7px 16px;
+  padding: 7px 15px;
 
-  background:
-    #f4f6f8;
+  background: #f4f6f8;
 
-  border-bottom:
-    1px solid #e0e4e7;
+  border-bottom: 1px solid #e0e4e7;
 }
 
-
-.box-settings-title {
+.box-panel-title {
   margin: 0;
 
-  font-size:
-    15px;
+  font-size: 15px;
 
-  font-weight:
-    700;
-
-  white-space:
-    nowrap;
+  font-weight: 700;
 }
 
-
-.panel-close {
+.box-panel-close {
   margin-left: auto;
 
-  padding:
-    5px 10px;
+  border: 0;
 
-  border:
-    0;
+  background: transparent;
 
-  background:
-    transparent;
+  cursor: pointer;
 
-  color:
-    #555;
-
-  cursor:
-    pointer;
-
-  font-size:
-    12px;
+  padding: 5px 9px;
 }
 
-
-.panel-close:hover {
-  background:
-    #e7eaed;
-}
-
-
-/* =========================================================
-   PANEL BODY
-========================================================= */
-
-.box-settings-body {
+.box-panel-body {
   display: flex;
 
   align-items: center;
@@ -437,223 +320,119 @@ body {
 
   gap: 10px;
 
-  padding:
-    9px 16px;
+  padding: 9px 15px;
 }
 
+.role-label {
+  font-size: 12px;
 
-/* =========================================================
-   ROLE
-========================================================= */
+  font-weight: 700;
+}
 
-.setting-group {
+#boxRole {
+  width: 150px;
+
+  height: 36px;
+
+  padding: 0 8px;
+
+  border: 1px solid #c8ced4;
+
+  background: #fff;
+}
+
+#parentInfo {
+  min-width: 260px;
+
+  padding: 7px 10px;
+
+  background: #f5f6f7;
+
+  border: 1px solid #e0e4e7;
+
+  color: #666;
+
+  font-size: 11px;
+}
+
+.box-panel-actions {
   display: flex;
-
-  align-items: center;
 
   gap: 7px;
 }
 
-
-.setting-group label {
-  font-size:
-    12px;
-
-  font-weight:
-    700;
-
-  white-space:
-    nowrap;
+.box-panel-actions button {
+  min-height: 36px;
 }
 
+.delete-box {
+  border: 1px solid #c94b43;
 
-.box-role-select {
-  width:
-    150px;
+  background: #fff;
 
-  height:
-    36px;
-
-  padding:
-    0 9px;
-
-  border:
-    1px solid #c8ced4;
-
-  background:
-    #fff;
-
-  font-size:
-    13px;
-}
-
-
-.box-role-select:focus {
-  outline:
-    2px solid #dce8f2;
-
-  border-color:
-    #6d8eaa;
+  color: #b42318;
 }
 
 
 /* =========================================================
-   PARENT INFO
+   空表示
 ========================================================= */
 
-.parent-info {
-  min-width:
-    230px;
+.empty-view {
+  padding: 80px 20px;
 
-  max-width:
-    400px;
+  text-align: center;
 
-  padding:
-    7px 10px;
+  color: #666;
+}
 
-  background:
-    #f5f6f7;
+.empty-view strong {
+  display: block;
 
-  border:
-    1px solid #e0e4e7;
+  margin-bottom: 8px;
 
-  color:
-    #666;
-
-  font-size:
-    11px;
-
-  line-height:
-    1.5;
+  color: #333;
 }
 
 
 /* =========================================================
-   ACTIONS
+   スマホ
 ========================================================= */
 
-.setting-actions {
-  display:
-    flex;
-
-  align-items:
-    center;
-
-  gap:
-    7px;
-}
-
-
-.setting-actions button {
-  min-height:
-    36px;
-
-  white-space:
-    nowrap;
-}
-
-
-.delete-box-button {
-  border:
-    1px solid #c94b43;
-
-  background:
-    #fff;
-
-  color:
-    #b42318;
-}
-
-
-.delete-box-button:hover {
-  background:
-    #fff5f3;
-}
-
-
-/* =========================================================
-   HIDDEN OLD ELEMENTS
-   配点・設問ID・表示名はこの画面では使用しない
-========================================================= */
-
-#label,
-#points,
-#questionId,
-#labelGroup,
-#pointsGroup,
-#questionIdGroup {
-  display: none !important;
-}
-
-
-/* =========================================================
-   MOBILE
-========================================================= */
-
-@media (
-  max-width: 700px
-) {
+@media (max-width: 700px) {
 
   .main {
-    padding:
-      12px;
+    padding: 10px;
   }
-
 
   .viewer {
-    padding:
-      8px;
+    padding: 8px;
   }
 
-
-  .box-settings-panel {
-    top:
-      56px;
+  .box-panel {
+    top: 56px;
   }
 
+  .box-panel-body {
+    align-items: stretch;
 
-  .box-settings-body {
-    align-items:
-      stretch;
-
-    flex-direction:
-      column;
+    flex-direction: column;
   }
 
-
-  .setting-group {
-    width:
-      100%;
+  #boxRole {
+    width: 100%;
   }
 
-
-  .box-role-select {
-    flex:
-      1;
-
-    width:
-      auto;
+  #parentInfo {
+    width: 100%;
   }
 
-
-  .parent-info {
-    width:
-      100%;
-
-    max-width:
-      none;
+  .box-panel-actions {
+    width: 100%;
   }
 
-
-  .setting-actions {
-    width:
-      100%;
-  }
-
-
-  .setting-actions button {
-    flex:
-      1;
+  .box-panel-actions button {
+    flex: 1;
   }
 
 }
@@ -676,14 +455,11 @@ body {
     テスト成績システム
   </div>
 
-
   <div class="topbar-space"></div>
-
 
   <span id="teacherName">
     -
   </span>
-
 
   <button
     id="logoutButton"
@@ -697,124 +473,85 @@ body {
 
 
 <!-- =======================================================
-     BOX SETTINGS
-     上部固定
+     枠設定
 ======================================================= -->
 
-<aside
-  id="panel"
-  class="box-settings-panel"
-  hidden
+<section
+  id="boxPanel"
+  class="box-panel"
 >
 
+  <div class="box-panel-header">
 
-  <header
-    class="box-settings-header"
-  >
-
-    <h2
-      class="box-settings-title"
-    >
+    <h2 class="box-panel-title">
       枠設定
     </h2>
 
-
     <button
-      id="closeButton"
-      class="panel-close"
+      id="closePanelButton"
+      class="box-panel-close"
       type="button"
     >
       閉じる
     </button>
 
-  </header>
+  </div>
 
 
-  <div
-    class="box-settings-body"
-  >
+  <div class="box-panel-body">
+
+    <span class="role-label">
+      枠種類
+    </span>
 
 
-    <!-- =================================================
-         枠種類
-    ================================================== -->
+    <select id="boxRole">
 
-    <div
-      class="setting-group"
-    >
+      <option value="major">
+        大問
+      </option>
 
-      <label
-        for="boxRole"
-      >
-        枠種類
-      </label>
+      <option value="minor">
+        小問
+      </option>
+
+      <option value="qr">
+        QR
+      </option>
+
+      <option value="subtotal">
+        小計
+      </option>
+
+      <option value="total">
+        合計
+      </option>
+
+      <option value="name">
+        氏名
+      </option>
+
+      <option value="student_no">
+        生徒番号
+      </option>
+
+      <option value="instruction">
+        説明
+      </option>
+
+      <option value="other">
+        その他
+      </option>
+
+    </select>
 
 
-      <select
-        id="boxRole"
-        class="box-role-select"
-      >
-
-        <option value="major">
-          大問
-        </option>
-
-        <option value="minor">
-          小問
-        </option>
-
-        <option value="qr">
-          QR
-        </option>
-
-        <option value="subtotal">
-          小計
-        </option>
-
-        <option value="total">
-          合計
-        </option>
-
-        <option value="name">
-          氏名
-        </option>
-
-        <option value="student_no">
-          生徒番号
-        </option>
-
-        <option value="instruction">
-          説明
-        </option>
-
-        <option value="other">
-          その他
-        </option>
-
-      </select>
-
+    <div id="parentInfo">
+      枠種類を選択して、解答用紙上をドラッグしてください。
     </div>
 
 
-    <!-- =================================================
-         親大問情報
-    ================================================== -->
-
-    <div
-      id="parentInfo"
-      class="parent-info"
-    >
-      枠を設定してください。
-    </div>
-
-
-    <!-- =================================================
-         ACTIONS
-    ================================================== -->
-
-    <div
-      class="setting-actions"
-    >
+    <div class="box-panel-actions">
 
       <button
         id="applyButton"
@@ -824,11 +561,10 @@ body {
         反映
       </button>
 
-
       <button
-        id="deleteButton"
+        id="deleteSelectedButton"
         type="button"
-        class="delete-box-button"
+        class="delete-box"
       >
         選択枠を削除
       </button>
@@ -837,7 +573,7 @@ body {
 
   </div>
 
-</aside>
+</section>
 
 
 <!-- =======================================================
@@ -846,33 +582,20 @@ body {
 
 <main class="main">
 
-
-  <header
-    class="page-header"
-  >
+  <header class="page-header">
 
     <h1>
       解答用紙・枠設定
     </h1>
 
-
-    <p
-      class="page-description"
-    >
-      解答用紙を登録し、大問・小問・QR・小計・合計などの枠を設定します。
+    <p class="page-description">
+      解答用紙を登録して、ドラッグで各枠を設定します。
     </p>
 
   </header>
 
 
-  <!-- =====================================================
-       TOOLBAR
-  ====================================================== -->
-
-  <section
-    class="toolbar"
-  >
-
+  <section class="toolbar">
 
     <input
       id="answerFile"
@@ -918,212 +641,39 @@ body {
   </section>
 
 
-  <!-- =====================================================
-       VIEWER
-  ====================================================== -->
-
   <section
     id="viewer"
     class="viewer"
   >
 
-    <div
-      class="empty-view"
-    >
+    <div class="empty-view">
 
       <strong>
         解答用紙がありません
       </strong>
 
-      PDFまたは画像の解答用紙を登録してください。
+      PDFまたは画像を登録してください。
 
     </div>
 
   </section>
 
-
 </main>
 
 
 <!-- =======================================================
-     SCRIPTS
+     SCRIPT
 ======================================================= -->
 
 <script
   src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
 ></script>
 
+<script src="/js/config.js"></script>
 
-<script
-  src="/js/config.js"
-></script>
+<script src="/js/auth.js"></script>
 
-
-<script
-  src="/js/auth.js"
-></script>
-
-
-<script
-  src="/js/teacher/test-pages.js"
-></script>
-
-
-<script>
-
-/* =========================================================
-   UI
-
-   ・表示名は存在しない
-   ・配点は存在しない
-   ・設問IDは存在しない
-   ・枠種類変更時の説明だけ更新
-========================================================= */
-
-(function () {
-
-  const roleSelect =
-    document.getElementById(
-      "boxRole"
-    );
-
-
-  const parentInfo =
-    document.getElementById(
-      "parentInfo"
-    );
-
-
-  function updateRoleInfo() {
-
-    if (!roleSelect ||
-        !parentInfo) {
-
-      return;
-
-    }
-
-
-    const role =
-      roleSelect.value;
-
-
-    switch (
-      role
-    ) {
-
-      case "major":
-
-        parentInfo.textContent =
-          "大問の範囲をドラッグしてください。";
-
-        break;
-
-
-      case "minor":
-
-        parentInfo.textContent =
-          "大問の内側に置いた場合、その大問の小問として自動登録されます。";
-
-        break;
-
-
-      case "qr":
-
-        parentInfo.textContent =
-          "答案のQRコードを読み取る範囲を設定します。";
-
-        break;
-
-
-      case "subtotal":
-
-        parentInfo.textContent =
-          "小問の点数から小計を自動計算する範囲です。";
-
-        break;
-
-
-      case "total":
-
-        parentInfo.textContent =
-          "小計などから合計点を自動計算する範囲です。";
-
-        break;
-
-
-      case "name":
-
-        parentInfo.textContent =
-          "氏名を読み取る範囲です。";
-
-        break;
-
-
-      case "student_no":
-
-        parentInfo.textContent =
-          "生徒番号を読み取る範囲です。";
-
-        break;
-
-
-      case "instruction":
-
-        parentInfo.textContent =
-          "説明・指示などの範囲です。";
-
-        break;
-
-
-      default:
-
-        parentInfo.textContent =
-          "その他の範囲です。";
-
-        break;
-
-    }
-
-  }
-
-
-  roleSelect?.addEventListener(
-    "change",
-    updateRoleInfo
-  );
-
-
-  updateRoleInfo();
-
-
-  /*
-    Escapeでパネルを閉じる。
-  */
-
-  document.addEventListener(
-    "keydown",
-    event => {
-
-      if (
-        event.key ===
-        "Escape"
-      ) {
-
-        document
-          .getElementById(
-            "closeButton"
-          )
-          ?.click();
-
-      }
-
-    }
-  );
-
-})();
-
-</script>
+<script src="/js/teacher/test-pages.js"></script>
 
 
 </body>

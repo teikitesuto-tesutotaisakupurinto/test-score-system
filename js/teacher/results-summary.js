@@ -1,24 +1,62 @@
 
+/* =========================================================
+   テスト成績システム
+   結果総括表 完全版
+
+   機能
+
+   ・テスト選択
+   ・生徒番号
+   ・氏名
+   ・各設問点
+   ・合計点
+   ・平均点
+   ・得点率
+   ・順位
+   ・CSV
+   ・印刷
+   ・成績公開
+   ・公開停止
+
+   公開
+
+   tests.results_published = true
+
+   生徒は公開済みテストのみ閲覧可能。
+========================================================= */
+
+
 (function () {
 
   "use strict";
 
 
+  /* =====================================================
+     状態
+  ===================================================== */
+
   let tests = [];
 
-  let selectedTestId = null;
+  let selectedTestId =
+    null;
 
-  let testData = null;
+  let testData =
+    null;
 
-  let questionResults = [];
+  let questionResults =
+    [];
 
-  let answerSheets = [];
+  let answerSheets =
+    [];
 
-  let scores = [];
+  let scores =
+    [];
 
-  let students = [];
+  let students =
+    [];
 
-  let resultRows = [];
+  let resultRows =
+    [];
 
 
   /* =====================================================
@@ -43,8 +81,10 @@
 
 
     if (
-      profile.role !== "teacher" &&
-      profile.role !== "admin"
+      profile.role !==
+        "teacher" &&
+      profile.role !==
+        "admin"
     ) {
 
       location.replace(
@@ -56,11 +96,19 @@
     }
 
 
-    document.getElementById(
-      "teacherName"
-    ).textContent =
-      profile.name ||
-      "先生";
+    const teacherName =
+      document.getElementById(
+        "teacherName"
+      );
+
+
+    if (teacherName) {
+
+      teacherName.textContent =
+        profile.name ||
+        "先生";
+
+    }
 
 
     await loadTests();
@@ -86,8 +134,12 @@
         );
 
 
-      select.value =
-        testId;
+      if (select) {
+
+        select.value =
+          testId;
+
+      }
 
 
       await loadResult(
@@ -100,7 +152,7 @@
 
 
   /* =====================================================
-     テスト
+     テスト一覧
   ===================================================== */
 
   async function loadTests() {
@@ -120,12 +172,15 @@
           grade,
           class_name,
           max_score,
-          status
+          status,
+          results_published,
+          results_published_at
         `)
         .order(
           "created_at",
           {
-            ascending:false
+            ascending:
+              false
           }
         );
 
@@ -133,7 +188,13 @@
     if (error) {
 
       console.error(
+        "テスト一覧:",
         error
+      );
+
+
+      showError(
+        "テスト一覧を取得できませんでした。"
       );
 
 
@@ -150,6 +211,13 @@
       document.getElementById(
         "testSelect"
       );
+
+
+    if (!select) {
+
+      return;
+
+    }
 
 
     select.innerHTML = `
@@ -181,6 +249,12 @@
                     : ""
                 }
 
+                ${
+                  test.results_published
+                    ? "（公開済み）"
+                    : ""
+                }
+
               </option>
 
             `
@@ -194,14 +268,14 @@
 
 
   /* =====================================================
-     テスト変更
+     テスト選択
   ===================================================== */
 
   document
     .getElementById(
       "testSelect"
     )
-    .addEventListener(
+    ?.addEventListener(
       "change",
       async event => {
 
@@ -258,8 +332,10 @@
     */
 
     const {
-      data: studentData,
-      error: studentError
+      data:
+        studentData,
+      error:
+        studentError
     } =
       await supabaseClient
         .from(
@@ -278,7 +354,8 @@
         .order(
           "student_no",
           {
-            ascending:true
+            ascending:
+              true
           }
         );
 
@@ -286,6 +363,7 @@
     if (studentError) {
 
       console.error(
+        "生徒:",
         studentError
       );
 
@@ -304,8 +382,10 @@
     */
 
     const {
-      data: answerData,
-      error: answerError
+      data:
+        answerData,
+      error:
+        answerError
     } =
       await supabaseClient
         .from(
@@ -330,6 +410,7 @@
     if (answerError) {
 
       console.error(
+        "答案:",
         answerError
       );
 
@@ -348,8 +429,10 @@
     */
 
     const {
-      data: questionData,
-      error: questionError
+      data:
+        questionData,
+      error:
+        questionError
     } =
       await supabaseClient
         .from(
@@ -376,19 +459,22 @@
         .order(
           "page_no",
           {
-            ascending:true
+            ascending:
+              true
           }
         )
         .order(
           "y",
           {
-            ascending:true
+            ascending:
+              true
           }
         )
         .order(
           "x",
           {
-            ascending:true
+            ascending:
+              true
           }
         );
 
@@ -396,6 +482,7 @@
     if (questionError) {
 
       console.error(
+        "解答欄:",
         questionError
       );
 
@@ -413,6 +500,10 @@
       scores
     */
 
+    scores =
+      [];
+
+
     const answerIds =
       answerSheets.map(
         answer =>
@@ -420,17 +511,15 @@
       );
 
 
-    scores =
-      [];
-
-
     if (
       answerIds.length
     ) {
 
       const {
-        data: scoreData,
-        error: scoreError
+        data:
+          scoreData,
+        error:
+          scoreError
       } =
         await supabaseClient
           .from(
@@ -456,6 +545,7 @@
       if (scoreError) {
 
         console.error(
+          "採点:",
           scoreError
         );
 
@@ -471,6 +561,10 @@
     }
 
 
+    /*
+      結果作成
+    */
+
     buildResultRows();
 
 
@@ -480,17 +574,19 @@
 
     renderSummaryTable();
 
+    renderPublishState();
+
   }
 
 
   /* =====================================================
-     結果行
+     結果行作成
   ===================================================== */
 
   function buildResultRows() {
 
     /*
-      生徒 → 答案
+      生徒 → 最新答案
     */
 
     const answerByStudent =
@@ -509,11 +605,6 @@
         }
 
 
-        /*
-          同一生徒に複数答案がある場合、
-          最新答案を使用する。
-        */
-
         const existing =
           answerByStudent.get(
             answer.student_id
@@ -521,7 +612,20 @@
 
 
         if (
-          !existing ||
+          !existing
+        ) {
+
+          answerByStudent.set(
+            answer.student_id,
+            answer
+          );
+
+          return;
+
+        }
+
+
+        if (
           new Date(
             answer.created_at
           ) >
@@ -553,17 +657,21 @@
       score => {
 
         scoreMap.set(
+
           `${score.answer_sheet_id}__${score.layout_box_id}`,
+
           Number(
             score.score
           ) || 0
+
         );
 
       }
     );
 
 
-    const rows = [];
+    const rows =
+      [];
 
 
     students.forEach(
@@ -590,7 +698,9 @@
               null;
 
 
-            if (answer) {
+            if (
+              answer
+            ) {
 
               const key =
                 `${answer.id}__${question.id}`;
@@ -654,7 +764,7 @@
 
 
     /*
-      受験者だけ順位計算
+      順位計算
     */
 
     const ranked =
@@ -692,7 +802,8 @@
               ),
               undefined,
               {
-                numeric:true
+                numeric:
+                  true
               }
             );
 
@@ -739,7 +850,7 @@
 
 
     /*
-      表示は生徒番号順
+      生徒番号順
     */
 
     rows.sort(
@@ -757,7 +868,8 @@
           ),
           undefined,
           {
-            numeric:true
+            numeric:
+              true
           }
         )
     );
@@ -781,17 +893,68 @@
       );
 
 
+    if (!element) {
+
+      return;
+
+    }
+
+
     element.style.display =
       "block";
+
+
+    const publishText =
+      testData.results_published
+
+        ? `
+
+          <span
+            style="
+              display:inline-block;
+              margin-left:10px;
+              padding:3px 8px;
+              border-radius:3px;
+              background:#e8f5e9;
+              color:#26743b;
+              font-size:12px;
+            "
+          >
+            公開済み
+          </span>
+
+        `
+
+        : `
+
+          <span
+            style="
+              display:inline-block;
+              margin-left:10px;
+              padding:3px 8px;
+              border-radius:3px;
+              background:#f3f4f6;
+              color:#666;
+              font-size:12px;
+            "
+          >
+            非公開
+          </span>
+
+        `;
 
 
     element.innerHTML = `
 
       <strong>
+
         ${escapeHtml(
           testData.name
         )}
+
       </strong>
+
+      ${publishText}
 
       <br>
 
@@ -821,6 +984,21 @@
 
       満点：
       ${testData.max_score ?? "-"}
+
+      ${
+        testData.results_published_at
+          ? `
+
+            <br>
+
+            公開日時：
+            ${formatDate(
+              testData.results_published_at
+            )}
+
+          `
+          : ""
+      }
 
     `;
 
@@ -853,6 +1031,7 @@
 
     const average =
       count
+
         ? values.reduce(
             (
               sum,
@@ -862,6 +1041,7 @@
             0
           ) /
           count
+
         : 0;
 
 
@@ -887,22 +1067,34 @@
       );
 
 
+    if (!element) {
+
+      return;
+
+    }
+
+
     element.style.display =
       "block";
 
 
     element.innerHTML = `
 
-      <div class="summary-card-grid">
-
+      <div
+        class="summary-card-grid"
+      >
 
         <div>
 
-          <div class="summary-card-label">
+          <div
+            class="summary-card-label"
+          >
             受験者数
           </div>
 
-          <div class="summary-card-value">
+          <div
+            class="summary-card-value"
+          >
             ${count}
           </div>
 
@@ -911,11 +1103,15 @@
 
         <div>
 
-          <div class="summary-card-label">
+          <div
+            class="summary-card-label"
+          >
             平均点
           </div>
 
-          <div class="summary-card-value">
+          <div
+            class="summary-card-value"
+          >
             ${average.toFixed(1)}
           </div>
 
@@ -924,11 +1120,15 @@
 
         <div>
 
-          <div class="summary-card-label">
+          <div
+            class="summary-card-label"
+          >
             最高点
           </div>
 
-          <div class="summary-card-value">
+          <div
+            class="summary-card-value"
+          >
             ${highest}
           </div>
 
@@ -937,11 +1137,15 @@
 
         <div>
 
-          <div class="summary-card-label">
+          <div
+            class="summary-card-label"
+          >
             最低点
           </div>
 
-          <div class="summary-card-value">
+          <div
+            class="summary-card-value"
+          >
             ${lowest}
           </div>
 
@@ -950,16 +1154,19 @@
 
         <div>
 
-          <div class="summary-card-label">
+          <div
+            class="summary-card-label"
+          >
             設問数
           </div>
 
-          <div class="summary-card-value">
+          <div
+            class="summary-card-value"
+          >
             ${questionResults.length}
           </div>
 
         </div>
-
 
       </div>
 
@@ -980,14 +1187,24 @@
       );
 
 
-    card.style.display =
-      "block";
-
-
     const table =
       document.getElementById(
         "summaryTable"
       );
+
+
+    if (
+      !card ||
+      !table
+    ) {
+
+      return;
+
+    }
+
+
+    card.style.display =
+      "block";
 
 
     const thead =
@@ -1066,7 +1283,10 @@
                     "
                   >
 
-                    ${question.points ?? "-"}点
+                    ${
+                      question.points ??
+                      "-"
+                    }点
 
                   </span>
 
@@ -1106,10 +1326,10 @@
             const averagePoint =
               row.answerSheetId &&
               questionResults.length
-                ? (
-                    row.total /
-                    questionResults.length
-                  )
+
+                ? row.total /
+                  questionResults.length
+
                 : null;
 
 
@@ -1130,26 +1350,33 @@
 
               <tr>
 
-                <td
-                  class="rank"
-                >
-                  ${row.rank ?? "-"}
+                <td class="rank">
+
+                  ${
+                    row.rank ??
+                    "-"
+                  }
+
                 </td>
 
 
                 <td>
+
                   ${escapeHtml(
                     row.studentNo ||
                     ""
                   )}
+
                 </td>
 
 
                 <td>
+
                   ${escapeHtml(
                     row.name ||
                     ""
                   )}
+
                 </td>
 
 
@@ -1190,9 +1417,7 @@
                 }
 
 
-                <td
-                  class="total"
-                >
+                <td class="total">
 
                   ${
                     row.answerSheetId
@@ -1203,9 +1428,7 @@
                 </td>
 
 
-                <td
-                  class="center"
-                >
+                <td class="center">
 
                   ${
                     averagePoint === null
@@ -1216,9 +1439,7 @@
                 </td>
 
 
-                <td
-                  class="center"
-                >
+                <td class="center">
 
                   ${
                     percentage === null
@@ -1240,6 +1461,347 @@
 
 
   /* =====================================================
+     公開状態
+  ===================================================== */
+
+  function renderPublishState() {
+
+    const publishButton =
+      document.getElementById(
+        "publishButton"
+      );
+
+
+    const unpublishButton =
+      document.getElementById(
+        "unpublishButton"
+      );
+
+
+    if (
+      !publishButton ||
+      !unpublishButton
+    ) {
+
+      return;
+
+    }
+
+
+    if (
+      testData?.results_published
+    ) {
+
+      publishButton.disabled =
+        true;
+
+
+      publishButton.textContent =
+        "公開済み";
+
+
+      unpublishButton.disabled =
+        false;
+
+    } else {
+
+      publishButton.disabled =
+        false;
+
+
+      publishButton.textContent =
+        "成績・答案を公開";
+
+
+      unpublishButton.disabled =
+        true;
+
+    }
+
+  }
+
+
+  /* =====================================================
+     公開
+  ===================================================== */
+
+  async function publishResults() {
+
+    if (!selectedTestId) {
+
+      alert(
+        "テストを選択してください。"
+      );
+
+
+      return;
+
+    }
+
+
+    if (
+      testData?.results_published
+    ) {
+
+      return;
+
+    }
+
+
+    const ok =
+      confirm(
+        "このテストの成績と採点済み答案を生徒へ公開します。\n\n公開後、生徒は自分の採点前答案と採点済み答案を閲覧できます。\n\n公開しますか？"
+      );
+
+
+    if (!ok) {
+
+      return;
+
+    }
+
+
+    const session =
+      await getSession();
+
+
+    if (!session) {
+
+      location.replace(
+        "/login"
+      );
+
+      return;
+
+    }
+
+
+    const {
+      data,
+      error
+    } =
+      await supabaseClient
+        .from(
+          "tests"
+        )
+        .update({
+
+          results_published:
+            true,
+
+          results_published_at:
+            new Date()
+              .toISOString(),
+
+          results_published_by:
+            session.user.id
+
+        })
+        .eq(
+          "id",
+          selectedTestId
+        )
+        .select(`
+          id,
+          name,
+          subject,
+          grade,
+          class_name,
+          max_score,
+          results_published,
+          results_published_at
+        `)
+        .single();
+
+
+    if (error) {
+
+      console.error(
+        "公開:",
+        error
+      );
+
+
+      alert(
+        error.message ||
+        "公開できませんでした。"
+      );
+
+
+      return;
+
+    }
+
+
+    testData =
+      data;
+
+
+    renderTestInformation();
+
+    renderPublishState();
+
+
+    /*
+      SELECTの表示も更新
+    */
+
+    const option =
+      document.querySelector(
+        `#testSelect option[value="${CSS.escape(
+          selectedTestId
+        )}"]`
+      );
+
+
+    if (option) {
+
+      option.textContent =
+        `${testData.name}（公開済み）`;
+
+    }
+
+
+    alert(
+      "成績と答案を公開しました。"
+    );
+
+  }
+
+
+  /* =====================================================
+     公開停止
+  ===================================================== */
+
+  async function unpublishResults() {
+
+    if (!selectedTestId) {
+
+      return;
+
+    }
+
+
+    const ok =
+      confirm(
+        "このテストの生徒向け公開を停止します。\n\n生徒から成績・採点済み答案が見えなくなります。\n\n停止しますか？"
+      );
+
+
+    if (!ok) {
+
+      return;
+
+    }
+
+
+    const {
+      data,
+      error
+    } =
+      await supabaseClient
+        .from(
+          "tests"
+        )
+        .update({
+
+          results_published:
+            false
+
+        })
+        .eq(
+          "id",
+          selectedTestId
+        )
+        .select(`
+          id,
+          name,
+          subject,
+          grade,
+          class_name,
+          max_score,
+          results_published,
+          results_published_at
+        `)
+        .single();
+
+
+    if (error) {
+
+      console.error(
+        "公開停止:",
+        error
+      );
+
+
+      alert(
+        error.message ||
+        "公開を停止できませんでした。"
+      );
+
+
+      return;
+
+    }
+
+
+    testData =
+      data;
+
+
+    renderTestInformation();
+
+    renderPublishState();
+
+
+    const option =
+      document.querySelector(
+        `#testSelect option[value="${CSS.escape(
+          selectedTestId
+        )}"]`
+      );
+
+
+    if (option) {
+
+      option.textContent =
+        testData.name;
+
+    }
+
+
+    alert(
+      "公開を停止しました。"
+    );
+
+  }
+
+
+  /* =====================================================
+     公開ボタン
+  ===================================================== */
+
+  document
+    .getElementById(
+      "publishButton"
+    )
+    ?.addEventListener(
+      "click",
+      publishResults
+    );
+
+
+  document
+    .getElementById(
+      "unpublishButton"
+    )
+    ?.addEventListener(
+      "click",
+      unpublishResults
+    );
+
+
+  /* =====================================================
      CSV
   ===================================================== */
 
@@ -1247,7 +1809,7 @@
     .getElementById(
       "exportCsvButton"
     )
-    .addEventListener(
+    ?.addEventListener(
       "click",
       exportCsv
     );
@@ -1280,7 +1842,8 @@
       );
 
 
-    const rows = [];
+    const rows =
+      [];
 
 
     rows.push([
@@ -1421,7 +1984,7 @@
 
     link.download =
       `${sanitizeFilename(
-        testData.name
+        testData?.name
       )}-結果総括表.csv`;
 
 
@@ -1443,7 +2006,7 @@
     .getElementById(
       "printButton"
     )
-    .addEventListener(
+    ?.addEventListener(
       "click",
       () => {
 
@@ -1454,7 +2017,7 @@
 
 
   /* =====================================================
-     リセット
+     クリア
   ===================================================== */
 
   function clearResult() {
@@ -1495,21 +2058,119 @@
     ).style.display =
       "none";
 
+
+    const publishButton =
+      document.getElementById(
+        "publishButton"
+      );
+
+
+    const unpublishButton =
+      document.getElementById(
+        "unpublishButton"
+      );
+
+
+    if (publishButton) {
+
+      publishButton.disabled =
+        true;
+
+    }
+
+
+    if (unpublishButton) {
+
+      unpublishButton.disabled =
+        true;
+
+    }
+
   }
 
 
   /* =====================================================
-     Logout
+     エラー
   ===================================================== */
 
-  document
-    .getElementById(
-      "logoutButton"
-    )
-    .addEventListener(
-      "click",
-      logout
+  function showError(
+    message
+  ) {
+
+    const element =
+      document.getElementById(
+        "summaryTableCard"
+      );
+
+
+    if (!element) {
+
+      return;
+
+    }
+
+
+    element.style.display =
+      "block";
+
+
+    element.innerHTML = `
+
+      <div
+        style="
+          color:#c62828;
+          padding:20px;
+        "
+      >
+
+        ${escapeHtml(
+          message
+        )}
+
+      </div>
+
+    `;
+
+  }
+
+
+  /* =====================================================
+     日付
+  ===================================================== */
+
+  function formatDate(
+    value
+  ) {
+
+    if (!value) {
+
+      return "";
+
+    }
+
+
+    const date =
+      new Date(
+        value
+      );
+
+
+    if (
+      Number.isNaN(
+        date.getTime()
+      )
+    ) {
+
+      return "";
+
+    }
+
+
+    return date.toLocaleString(
+      "ja-JP"
     );
+
+  }
 
 
   /* =====================================================
@@ -1534,7 +2195,7 @@
 
 
   /* =====================================================
-     Escape
+     HTML escape
   ===================================================== */
 
   function escapeHtml(
@@ -1551,7 +2212,9 @@
     }
 
 
-    return String(value)
+    return String(
+      value
+    )
       .replaceAll(
         "&",
         "&amp;"
@@ -1575,6 +2238,10 @@
 
   }
 
+
+  /* =====================================================
+     START
+  ===================================================== */
 
   initialize();
 

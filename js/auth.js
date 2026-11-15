@@ -1,44 +1,37 @@
 
 /* =========================================================
    テスト成績システム
-   共通認証
-   js/auth.js 完全版
+   js/auth.js
 
-   DB構成
+   認証構成
    ---------------------------------------------------------
+   Supabase Auth
+       ↓
    auth.users.id
-        ↓
-   public.profiles.id
-        ↓
-   profiles.role
-        ↓
-   teacher / admin / student
+       ↓
+   public.get_my_profile()
+       ↓
+   public.profiles
+       ↓
+   role
+       ├─ teacher → /teacher
+       ├─ admin   → /teacher
+       └─ student → /student/tests
 
-   student
-        ↓
+   生徒
+       ↓
    public.students.auth_user_id
-        ↓
+       ↓
    public.students.id
 
 
-   ログイン
+   重要
    ---------------------------------------------------------
-   Supabase Auth
-        ↓
-   profiles
-        ↓
-   role判定
-        ↓
-   teacher/admin → /teacher
-   student       → /student/tests
-
-
-   セキュリティ
-   ---------------------------------------------------------
-   ・パスワードはこのファイルに保存しない
-   ・Supabase Authを使用
-   ・生徒IDをURLから信用しない
-   ・students.auth_user_idで本人確認
+   ・public.users は使用しない
+   ・profilesを直接SELECTしてrole判定しない
+   ・get_my_profile() RPCを使用
+   ・パスワードは保存しない
+   ・student_idをURLから信用しない
 ========================================================= */
 
 (function () {
@@ -47,10 +40,10 @@
 
 
   /* =======================================================
-     Supabase Client確認
+     Supabase Client
   ======================================================= */
 
-  function ensureSupabase() {
+  function getClient() {
 
     if (
       typeof window.supabaseClient ===
@@ -63,12 +56,12 @@
       );
 
 
-      return false;
+      return null;
 
     }
 
 
-    return true;
+    return window.supabaseClient;
 
   }
 
@@ -80,9 +73,11 @@
   window.getSession =
     async function () {
 
-      if (
-        !ensureSupabase()
-      ) {
+      const client =
+        getClient();
+
+
+      if (!client) {
 
         return null;
 
@@ -93,9 +88,7 @@
         data,
         error
       } =
-        await window.supabaseClient
-          .auth
-          .getSession();
+        await client.auth.getSession();
 
 
       if (error) {
@@ -148,16 +141,11 @@
   /* =======================================================
      Profile取得
      
-     実際のDB:
-     
-     public.profiles
-       id
-       role
-       name
-       email
-     
-     profiles.id =
-     auth.users.id
+     RPC:
+       public.get_my_profile()
+
+     RPC内部:
+       profiles.id = auth.uid()
   ======================================================= */
 
   window.getProfile =
@@ -174,11 +162,15 @@
       }
 
 
-      if (
-        !ensureSupabase()
-      ) {
+      const client =
+        getClient();
 
-        return null;
+
+      if (!client) {
+
+        throw new Error(
+          "Supabaseが初期化されていません。"
+        );
 
       }
 
@@ -187,27 +179,16 @@
         data,
         error
       } =
-        await window.supabaseClient
-          .from(
-            "profiles"
-          )
-          .select(`
-            id,
-            role,
-            name,
-            email
-          `)
-          .eq(
-            "id",
-            user.id
-          )
-          .maybeSingle();
+        await client
+          .rpc(
+            "get_my_profile"
+          );
 
 
       if (error) {
 
         console.error(
-          "profiles取得エラー:",
+          "get_my_profile ERROR:",
           error
         );
 
@@ -219,24 +200,64 @@
       }
 
 
-      if (!data) {
+      /*
+        RETURNS TABLEなので通常は配列。
+
+        念のため単一オブジェクトにも対応。
+      */
+
+      let profile = null;
+
+
+      if (
+        Array.isArray(
+          data
+        )
+      ) {
+
+        profile =
+          data.length > 0
+            ? data[0]
+            : null;
+
+      } else {
+
+        profile =
+          data || null;
+
+      }
+
+
+      if (!profile) {
 
         console.error(
-          "profilesにユーザーがありません:",
-          user.id
+          "プロフィールがありません。",
+          {
+
+            auth_user_id:
+              user.id,
+
+            email:
+              user.email
+
+          }
         );
 
 
         throw new Error(
-          "ログインユーザーの権限情報が登録されていません。"
+          "ログインユーザーの権限情報がprofilesに登録されていません。"
         );
 
       }
 
 
+      /*
+        role正規化
+      */
+
       const role =
         String(
-          data.role ||
+          profile.role ||
           ""
         )
           .toLowerCase()
@@ -244,18 +265,14 @@
 
 
       if (
-        ![
-          "teacher",
-          "admin",
-          "student"
-        ].includes(
-          role
-        )
+        role !== "teacher" &&
+        role !== "admin" &&
+        role !== "student"
       ) {
 
         console.error(
-          "未対応role:",
-          data.role
+          "未対応のrole:",
+          profile.role
         );
 
 
@@ -269,16 +286,16 @@
       return {
 
         id:
-          data.id,
+          profile.id,
 
         role,
 
         name:
-          data.name ||
+          profile.name ||
           "",
 
         email:
-          data.email ||
+          profile.email ||
           user.email ||
           "",
 
@@ -291,12 +308,11 @@
 
 
   /* =======================================================
-     Student Profile
+     生徒プロフィール
      
-     public.students
-       auth_user_id
-         =
-       auth.uid()
+     students.auth_user_id
+       =
+     auth.users.id
   ======================================================= */
 
   window.getStudentProfile =
@@ -313,11 +329,15 @@
       }
 
 
-      if (
-        !ensureSupabase()
-      ) {
+      const client =
+        getClient();
 
-        return null;
+
+      if (!client) {
+
+        throw new Error(
+          "Supabaseが初期化されていません。"
+        );
 
       }
 
@@ -326,7 +346,7 @@
         data,
         error
       } =
-        await window.supabaseClient
+        await client
           .from(
             "students"
           )
@@ -334,8 +354,12 @@
             id,
             student_no,
             name,
-            active,
-            auth_user_id
+            grade,
+            class_name,
+            class_id,
+            auth_user_id,
+            qr_token,
+            active
           `)
           .eq(
             "auth_user_id",
@@ -359,20 +383,13 @@
       }
 
 
-      if (!data) {
-
-        return null;
-
-      }
-
-
-      return data;
+      return data || null;
 
     };
 
 
   /* =======================================================
-     現在のRole
+     現在Role
   ======================================================= */
 
   window.getCurrentRole =
@@ -508,8 +525,14 @@
   /* =======================================================
      Student 必須
      
-     Roleだけではなく
-     students.auth_user_idまで確認。
+     1.
+       profiles.role = student
+
+     2.
+       students.auth_user_id = auth.uid()
+
+     3.
+       students.active = true
   ======================================================= */
 
   window.requireStudent =
@@ -542,7 +565,7 @@
       } catch (error) {
 
         console.error(
-          "Student認証:",
+          "Student Profile:",
           error
         );
 
@@ -614,13 +637,21 @@
       if (!student) {
 
         console.error(
-          "students.auth_user_idに一致する生徒がありません。",
-          session.user.id
+          "students.auth_user_idが見つかりません。",
+          {
+
+            auth_user_id:
+              session.user.id,
+
+            profile_id:
+              profile.id
+
+          }
         );
 
 
         alert(
-          "このアカウントは生徒情報に紐付いていません。"
+          "このアカウントは生徒マスターに紐付いていません。"
         );
 
 
@@ -667,9 +698,11 @@
       password
     ) {
 
-      if (
-        !ensureSupabase()
-      ) {
+      const client =
+        getClient();
+
+
+      if (!client) {
 
         throw new Error(
           "Supabaseの設定を読み込めませんでした。"
@@ -708,7 +741,7 @@
         data,
         error
       } =
-        await window.supabaseClient
+        await client
           .auth
           .signInWithPassword({
 
@@ -748,7 +781,7 @@
 
 
   /* =======================================================
-     Login後のRole別遷移
+     Login後の遷移
   ======================================================= */
 
   window.redirectAfterLogin =
@@ -876,9 +909,11 @@
   window.logout =
     async function () {
 
-      if (
-        !ensureSupabase()
-      ) {
+      const client =
+        getClient();
+
+
+      if (!client) {
 
         window.location.replace(
           "/login"
@@ -890,18 +925,29 @@
       }
 
 
-      const {
-        error
-      } =
-        await window.supabaseClient
-          .auth
-          .signOut();
+      try {
+
+        const {
+          error
+        } =
+          await client
+            .auth
+            .signOut();
 
 
-      if (error) {
+        if (error) {
+
+          console.error(
+            "Logout:",
+            error
+          );
+
+        }
+
+      } catch (error) {
 
         console.error(
-          "Logout:",
+          "Logout exception:",
           error
         );
 
@@ -919,12 +965,13 @@
      Auth State Change
   ======================================================= */
 
-  if (
-    typeof window.supabaseClient !==
-    "undefined"
-  ) {
+  const client =
+    getClient();
 
-    window.supabaseClient.auth
+
+  if (client) {
+
+    client.auth
       .onAuthStateChange(
         (
           event,
@@ -932,7 +979,7 @@
         ) => {
 
           /*
-            SIGNED_OUT
+            ログアウト
           */
 
           if (
@@ -953,13 +1000,14 @@
 
             }
 
+
             return;
 
           }
 
 
           /*
-            TOKEN_REFRESHED
+            Token refresh
 
             画面遷移しない。
           */
@@ -978,7 +1026,9 @@
             SIGNED_IN
 
             login.js側で
-            redirectAfterLogin()を呼ぶので、
+            redirectAfterLogin()
+            を実行する。
+
             ここでは遷移しない。
           */
 

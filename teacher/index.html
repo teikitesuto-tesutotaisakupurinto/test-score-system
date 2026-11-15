@@ -1,0 +1,397 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>
+    教師ホーム - テスト成績システム
+  </title>
+
+  <link
+    rel="stylesheet"
+    href="/css/common.css"
+  >
+
+  <style>
+
+    .teacher-main {
+
+      max-width:1200px;
+
+      margin:0 auto;
+
+      padding:25px;
+
+    }
+
+
+    .teacher-header {
+
+      margin-bottom:25px;
+
+    }
+
+
+    .teacher-header h1 {
+
+      margin:0;
+
+      font-size:24px;
+
+    }
+
+
+    .teacher-header p {
+
+      margin:8px 0 0;
+
+      color:#666;
+
+      font-size:13px;
+
+    }
+
+
+    .menu-grid {
+
+      display:grid;
+
+      grid-template-columns:
+        repeat(
+          3,
+          minmax(
+            0,
+            1fr
+          )
+        );
+
+      gap:15px;
+
+    }
+
+
+    .menu-card {
+
+      display:block;
+
+      padding:20px;
+
+      background:#fff;
+
+      border:
+        1px solid #d0d6dc;
+
+      border-radius:5px;
+
+      text-decoration:none;
+
+      color:#222;
+
+    }
+
+
+    .menu-card:hover {
+
+      border-color:#888;
+
+    }
+
+
+    .menu-title {
+
+      font-size:17px;
+
+      font-weight:700;
+
+      margin-bottom:8px;
+
+    }
+
+
+    .menu-description {
+
+      color:#666;
+
+      font-size:13px;
+
+      line-height:1.7;
+
+    }
+
+
+    @media(max-width:800px) {
+
+      .menu-grid {
+
+        grid-template-columns:
+          1fr;
+
+      }
+
+    }
+
+  </style>
+
+</head>
+
+
+<body>
+
+
+<header class="topbar">
+
+  <div class="system-name">
+    テスト成績システム
+  </div>
+
+
+  <div class="topbar-space"></div>
+
+
+  <span id="teacherName">
+    -
+  </span>
+
+
+  <button
+    id="logoutButton"
+    class="logout-button"
+    type="button"
+  >
+    ログアウト
+  </button>
+
+</header>
+
+
+
+<main class="teacher-main">
+
+
+  <section class="teacher-header">
+
+    <h1>
+      教師ホーム
+    </h1>
+
+
+    <p>
+      テスト・答案・採点・成績を管理します。
+    </p>
+
+  </section>
+
+
+
+  <section class="menu-grid">
+
+
+    <a
+      class="menu-card"
+      href="/teacher/tests"
+    >
+
+      <div class="menu-title">
+        テスト管理
+      </div>
+
+      <div class="menu-description">
+        テストの作成・編集・管理を行います。
+      </div>
+
+    </a>
+
+
+
+    <a
+      class="menu-card"
+      href="/teacher/tests/pages.html"
+    >
+
+      <div class="menu-title">
+        テストページ
+      </div>
+
+      <div class="menu-description">
+        テスト用紙のページを管理します。
+      </div>
+
+    </a>
+
+
+
+    <a
+      class="menu-card"
+      href="/teacher/answers/upload.html"
+    >
+
+      <div class="menu-title">
+        答案アップロード
+      </div>
+
+      <div class="menu-description">
+        PDF・画像・ZIPの答案をアップロードします。
+      </div>
+
+    </a>
+
+
+
+    <a
+      class="menu-card"
+      href="/teacher/answers/matched.html"
+    >
+
+      <div class="menu-title">
+        答案確認・紐付け
+      </div>
+
+      <div class="menu-description">
+        生徒番号と答案の紐付けを確認します。
+      </div>
+
+    </a>
+
+
+
+    <a
+      class="menu-card"
+      href="/teacher/answers/regions.html"
+    >
+
+      <div class="menu-title">
+        答案領域
+      </div>
+
+      <div class="menu-description">
+        答案の解答領域を設定します。
+      </div>
+
+    </a>
+
+
+
+    <a
+      class="menu-card"
+      href="/teacher/marking"
+    >
+
+      <div class="menu-title">
+        採点
+      </div>
+
+      <div class="menu-description">
+        答案の採点を行います。
+      </div>
+
+    </a>
+
+
+
+    <a
+      class="menu-card"
+      href="/teacher/results/summary.html"
+    >
+
+      <div class="menu-title">
+        結果総括表
+      </div>
+
+      <div class="menu-description">
+        各設問・合計・平均・順位を確認します。
+      </div>
+
+    </a>
+
+
+
+    <a
+      class="menu-card"
+      href="/teacher/answers/return.html"
+    >
+
+      <div class="menu-title">
+        答案返却
+      </div>
+
+      <div class="menu-description">
+        採点済み答案を確認・印刷します。
+      </div>
+
+    </a>
+
+  </section>
+
+
+</main>
+
+
+
+<script
+  src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+></script>
+
+<script
+  src="/js/config.js"
+></script>
+
+<script
+  src="/js/auth.js"
+></script>
+
+
+<script>
+
+(async function () {
+
+  const profile =
+    await requireTeacher();
+
+
+  if (!profile) {
+
+    return;
+
+  }
+
+
+  const name =
+    document.getElementById(
+      "teacherName"
+    );
+
+
+  if (name) {
+
+    name.textContent =
+      profile.name ||
+      "先生";
+
+  }
+
+
+  document
+    .getElementById(
+      "logoutButton"
+    )
+    ?.addEventListener(
+      "click",
+      logout
+    );
+
+})();
+
+</script>
+
+
+</body>
+
+</html>

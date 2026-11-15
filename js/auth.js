@@ -1,8 +1,44 @@
 
 /* =========================================================
    テスト成績システム
-   auth.js
-   ログイン復旧版
+   共通認証
+   js/auth.js 完全版
+
+   DB構成
+   ---------------------------------------------------------
+   auth.users.id
+        ↓
+   public.profiles.id
+        ↓
+   profiles.role
+        ↓
+   teacher / admin / student
+
+   student
+        ↓
+   public.students.auth_user_id
+        ↓
+   public.students.id
+
+
+   ログイン
+   ---------------------------------------------------------
+   Supabase Auth
+        ↓
+   profiles
+        ↓
+   role判定
+        ↓
+   teacher/admin → /teacher
+   student       → /student/tests
+
+
+   セキュリティ
+   ---------------------------------------------------------
+   ・パスワードはこのファイルに保存しない
+   ・Supabase Authを使用
+   ・生徒IDをURLから信用しない
+   ・students.auth_user_idで本人確認
 ========================================================= */
 
 (function () {
@@ -10,104 +46,148 @@
   "use strict";
 
 
-  /* =====================================================
-     Session
-  ===================================================== */
+  /* =======================================================
+     Supabase Client確認
+  ======================================================= */
 
-  window.getSession = async function () {
+  function ensureSupabase() {
 
     if (
-      typeof supabaseClient ===
-      "undefined"
+      typeof window.supabaseClient ===
+      "undefined" ||
+      !window.supabaseClient
     ) {
 
       console.error(
-        "supabaseClientがありません。"
-      );
-
-      return null;
-
-    }
-
-
-    const {
-      data,
-      error
-    } =
-      await supabaseClient
-        .auth
-        .getSession();
-
-
-    if (error) {
-
-      console.error(
-        "getSession:",
-        error
+        "supabaseClientが初期化されていません。"
       );
 
 
-      return null;
+      return false;
 
     }
 
 
-    return data?.session || null;
+    return true;
 
-  };
-
-
-  /* =====================================================
-     Auth User
-  ===================================================== */
-
-  window.getAuthUser = async function () {
-
-    const session =
-      await getSession();
+  }
 
 
-    return session?.user || null;
+  /* =======================================================
+     Session取得
+  ======================================================= */
 
-  };
+  window.getSession =
+    async function () {
 
+      if (
+        !ensureSupabase()
+      ) {
 
-  /* =====================================================
-     Profile / User情報
+        return null;
 
-     まず profiles
-     ↓
-     users
-     ↓
-     user_metadata
+      }
 
-     の順で確認する。
-========================================================= */
-
-  window.getProfile = async function () {
-
-    const user =
-      await getAuthUser();
-
-
-    if (!user) {
-
-      return null;
-
-    }
-
-
-    /*
-      profiles
-    */
-
-    try {
 
       const {
         data,
         error
       } =
-        await supabaseClient
+        await window.supabaseClient
+          .auth
+          .getSession();
+
+
+      if (error) {
+
+        console.error(
+          "getSession:",
+          error
+        );
+
+
+        return null;
+
+      }
+
+
+      return (
+        data?.session ||
+        null
+      );
+
+    };
+
+
+  /* =======================================================
+     Auth User取得
+  ======================================================= */
+
+  window.getAuthUser =
+    async function () {
+
+      const session =
+        await window.getSession();
+
+
+      if (!session) {
+
+        return null;
+
+      }
+
+
+      return (
+        session.user ||
+        null
+      );
+
+    };
+
+
+  /* =======================================================
+     Profile取得
+     
+     実際のDB:
+     
+     public.profiles
+       id
+       role
+       name
+       email
+     
+     profiles.id =
+     auth.users.id
+  ======================================================= */
+
+  window.getProfile =
+    async function () {
+
+      const user =
+        await window.getAuthUser();
+
+
+      if (!user) {
+
+        return null;
+
+      }
+
+
+      if (
+        !ensureSupabase()
+      ) {
+
+        return null;
+
+      }
+
+
+      const {
+        data,
+        error
+      } =
+        await window.supabaseClient
           .from(
             "profiles"
           )
@@ -124,145 +204,81 @@
           .maybeSingle();
 
 
-      if (
-        !error &&
-        data
-      ) {
+      if (error) {
 
-        return {
+        console.error(
+          "profiles取得エラー:",
+          error
+        );
 
-          id:
-            data.id,
 
-          role:
-            data.role,
-
-          name:
-            data.name ||
-            "",
-
-          email:
-            data.email ||
-            user.email ||
-            "",
-
-          auth_user_id:
-            user.id
-
-        };
+        throw new Error(
+          "ユーザー権限を取得できません。"
+        );
 
       }
 
-    } catch (error) {
 
-      console.warn(
-        "profiles取得:",
-        error
-      );
+      if (!data) {
 
-    }
-
-
-    /*
-      users
-
-      既存システムで
-      id, role, name, email
-      を持っている場合に対応。
-    */
-
-    try {
-
-      const {
-        data,
-        error
-      } =
-        await supabaseClient
-          .from(
-            "users"
-          )
-          .select(`
-            id,
-            role,
-            name,
-            email
-          `)
-          .eq(
-            "id",
-            user.id
-          )
-          .maybeSingle();
+        console.error(
+          "profilesにユーザーがありません:",
+          user.id
+        );
 
 
-      if (
-        !error &&
-        data
-      ) {
-
-        return {
-
-          id:
-            data.id,
-
-          role:
-            data.role,
-
-          name:
-            data.name ||
-            "",
-
-          email:
-            data.email ||
-            user.email ||
-            "",
-
-          auth_user_id:
-            user.id
-
-        };
+        throw new Error(
+          "ログインユーザーの権限情報が登録されていません。"
+        );
 
       }
 
-    } catch (error) {
 
-      console.warn(
-        "users取得:",
-        error
-      );
-
-    }
-
-
-    /*
-      user_metadata
-
-      Auth User作成時に
-      roleを入れている場合。
-    */
-
-    const metadata =
-      user.user_metadata ||
-      {};
+      const role =
+        String(
+          data.role ||
+          ""
+        )
+          .toLowerCase()
+          .trim();
 
 
-    if (
-      metadata.role
-    ) {
+      if (
+        ![
+          "teacher",
+          "admin",
+          "student"
+        ].includes(
+          role
+        )
+      ) {
+
+        console.error(
+          "未対応role:",
+          data.role
+        );
+
+
+        throw new Error(
+          "ユーザー権限が正しく設定されていません。"
+        );
+
+      }
+
 
       return {
 
         id:
-          user.id,
+          data.id,
 
-        role:
-          metadata.role,
+        role,
 
         name:
-          metadata.name ||
-          metadata.full_name ||
+          data.name ||
           "",
 
         email:
+          data.email ||
           user.email ||
           "",
 
@@ -271,30 +287,35 @@
 
       };
 
-    }
+    };
 
 
-    /*
-      Role不明
-    */
-
-    return null;
-
-  };
-
-
-  /* =====================================================
-     生徒プロフィール
-  ===================================================== */
+  /* =======================================================
+     Student Profile
+     
+     public.students
+       auth_user_id
+         =
+       auth.uid()
+  ======================================================= */
 
   window.getStudentProfile =
     async function () {
 
       const user =
-        await getAuthUser();
+        await window.getAuthUser();
 
 
       if (!user) {
+
+        return null;
+
+      }
+
+
+      if (
+        !ensureSupabase()
+      ) {
 
         return null;
 
@@ -305,7 +326,7 @@
         data,
         error
       } =
-        await supabaseClient
+        await window.supabaseClient
           .from(
             "students"
           )
@@ -326,8 +347,68 @@
       if (error) {
 
         console.error(
-          "生徒情報取得:",
+          "students取得エラー:",
           error
+        );
+
+
+        throw new Error(
+          "生徒情報を取得できません。"
+        );
+
+      }
+
+
+      if (!data) {
+
+        return null;
+
+      }
+
+
+      return data;
+
+    };
+
+
+  /* =======================================================
+     現在のRole
+  ======================================================= */
+
+  window.getCurrentRole =
+    async function () {
+
+      const profile =
+        await window.getProfile();
+
+
+      if (!profile) {
+
+        return null;
+
+      }
+
+
+      return profile.role;
+
+    };
+
+
+  /* =======================================================
+     認証必須
+  ======================================================= */
+
+  window.requireAuth =
+    async function () {
+
+      const session =
+        await window.getSession();
+
+
+      if (!session) {
+
+        window.location.replace(
+          "/login"
         );
 
 
@@ -336,116 +417,361 @@
       }
 
 
-      return data || null;
+      return session;
 
     };
 
 
-  /* =====================================================
+  /* =======================================================
+     Teacher / Admin 必須
+  ======================================================= */
+
+  window.requireTeacher =
+    async function () {
+
+      const session =
+        await window.getSession();
+
+
+      if (!session) {
+
+        window.location.replace(
+          "/login"
+        );
+
+
+        return null;
+
+      }
+
+
+      let profile;
+
+
+      try {
+
+        profile =
+          await window.getProfile();
+
+      } catch (error) {
+
+        console.error(
+          "Teacher認証:",
+          error
+        );
+
+
+        window.location.replace(
+          "/login"
+        );
+
+
+        return null;
+
+      }
+
+
+      if (!profile) {
+
+        window.location.replace(
+          "/login"
+        );
+
+
+        return null;
+
+      }
+
+
+      if (
+        profile.role !==
+          "teacher" &&
+        profile.role !==
+          "admin"
+      ) {
+
+        window.location.replace(
+          "/student/tests"
+        );
+
+
+        return null;
+
+      }
+
+
+      return profile;
+
+    };
+
+
+  /* =======================================================
+     Student 必須
+     
+     Roleだけではなく
+     students.auth_user_idまで確認。
+  ======================================================= */
+
+  window.requireStudent =
+    async function () {
+
+      const session =
+        await window.getSession();
+
+
+      if (!session) {
+
+        window.location.replace(
+          "/login"
+        );
+
+
+        return null;
+
+      }
+
+
+      let profile;
+
+
+      try {
+
+        profile =
+          await window.getProfile();
+
+      } catch (error) {
+
+        console.error(
+          "Student認証:",
+          error
+        );
+
+
+        window.location.replace(
+          "/login"
+        );
+
+
+        return null;
+
+      }
+
+
+      if (!profile) {
+
+        window.location.replace(
+          "/login"
+        );
+
+
+        return null;
+
+      }
+
+
+      if (
+        profile.role !==
+        "student"
+      ) {
+
+        window.location.replace(
+          "/teacher"
+        );
+
+
+        return null;
+
+      }
+
+
+      let student;
+
+
+      try {
+
+        student =
+          await window.getStudentProfile();
+
+      } catch (error) {
+
+        console.error(
+          "Student情報:",
+          error
+        );
+
+
+        alert(
+          error.message ||
+          "生徒情報を取得できません。"
+        );
+
+
+        return null;
+
+      }
+
+
+      if (!student) {
+
+        console.error(
+          "students.auth_user_idに一致する生徒がありません。",
+          session.user.id
+        );
+
+
+        alert(
+          "このアカウントは生徒情報に紐付いていません。"
+        );
+
+
+        return null;
+
+      }
+
+
+      if (
+        student.active ===
+        false
+      ) {
+
+        alert(
+          "この生徒アカウントは現在利用できません。"
+        );
+
+
+        await window.logout();
+
+        return null;
+
+      }
+
+
+      return {
+
+        profile,
+
+        student
+
+      };
+
+    };
+
+
+  /* =======================================================
      Login
-  ===================================================== */
+  ======================================================= */
 
-  window.login = async function (
-    email,
-    password
-  ) {
+  window.login =
+    async function (
+      email,
+      password
+    ) {
 
-    const cleanEmail =
-      String(
-        email || ""
-      ).trim();
+      if (
+        !ensureSupabase()
+      ) {
 
+        throw new Error(
+          "Supabaseの設定を読み込めませんでした。"
+        );
 
-    if (!cleanEmail) {
-
-      throw new Error(
-        "メールアドレスを入力してください。"
-      );
-
-    }
+      }
 
 
-    if (!password) {
-
-      throw new Error(
-        "パスワードを入力してください。"
-      );
-
-    }
-
-
-    const {
-      data,
-      error
-    } =
-      await supabaseClient
-        .auth
-        .signInWithPassword({
-
-          email:
-            cleanEmail,
-
-          password
-
-        });
+      const cleanEmail =
+        String(
+          email ||
+          ""
+        )
+          .trim();
 
 
-    if (error) {
+      if (!cleanEmail) {
 
-      console.error(
-        "Supabase Login:",
+        throw new Error(
+          "メールアドレスを入力してください。"
+        );
+
+      }
+
+
+      if (!password) {
+
+        throw new Error(
+          "パスワードを入力してください。"
+        );
+
+      }
+
+
+      const {
+        data,
         error
-      );
+      } =
+        await window.supabaseClient
+          .auth
+          .signInWithPassword({
+
+            email:
+              cleanEmail,
+
+            password
+
+          });
 
 
-      throw error;
+      if (error) {
 
-    }
-
-
-    return data;
-
-  };
+        console.error(
+          "Supabase Login:",
+          error
+        );
 
 
-  /* =====================================================
-     Role別遷移
-  ===================================================== */
+        throw error;
+
+      }
+
+
+      if (!data?.session) {
+
+        throw new Error(
+          "ログインセッションを取得できませんでした。"
+        );
+
+      }
+
+
+      return data;
+
+    };
+
+
+  /* =======================================================
+     Login後のRole別遷移
+  ======================================================= */
 
   window.redirectAfterLogin =
     async function () {
 
-      const user =
-        await getAuthUser();
+      const session =
+        await window.getSession();
 
 
-      if (!user) {
+      if (!session) {
 
         throw new Error(
-          "ログイン情報を取得できませんでした。"
+          "ログインセッションを取得できませんでした。"
         );
 
       }
 
 
       const profile =
-        await getProfile();
+        await window.getProfile();
 
 
       if (!profile) {
-
-        /*
-          ここで勝手にsignOutしない。
-
-          実際のDB構成を確認するため、
-          セッションを残す。
-        */
-
-        console.error(
-          "Role情報を取得できませんでした。",
-          user
-        );
-
 
         throw new Error(
           "ユーザー権限を取得できません。"
@@ -454,21 +780,12 @@
       }
 
 
-      const role =
-        String(
-          profile.role ||
-          ""
-        )
-          .toLowerCase()
-          .trim();
-
-
       /*
-        teacher
+        Teacher
       */
 
       if (
-        role ===
+        profile.role ===
         "teacher"
       ) {
 
@@ -483,11 +800,11 @@
 
 
       /*
-        admin
+        Admin
       */
 
       if (
-        role ===
+        profile.role ===
         "admin"
       ) {
 
@@ -502,16 +819,16 @@
 
 
       /*
-        student
+        Student
       */
 
       if (
-        role ===
+        profile.role ===
         "student"
       ) {
 
         const student =
-          await getStudentProfile();
+          await window.getStudentProfile();
 
 
         if (!student) {
@@ -546,193 +863,42 @@
 
 
       throw new Error(
-        `未対応のユーザー権限です: ${profile.role}`
+        "ユーザー権限が正しく設定されていません。"
       );
 
     };
 
 
-  /* =====================================================
-     Teacher
-  ===================================================== */
-
-  window.requireTeacher =
-    async function () {
-
-      const session =
-        await getSession();
-
-
-      if (!session) {
-
-        window.location.replace(
-          "/login"
-        );
-
-
-        return null;
-
-      }
-
-
-      const profile =
-        await getProfile();
-
-
-      if (!profile) {
-
-        window.location.replace(
-          "/login"
-        );
-
-
-        return null;
-
-      }
-
-
-      const role =
-        String(
-          profile.role ||
-          ""
-        )
-          .toLowerCase()
-          .trim();
-
-
-      if (
-        role !== "teacher" &&
-        role !== "admin"
-      ) {
-
-        window.location.replace(
-          "/student/tests"
-        );
-
-
-        return null;
-
-      }
-
-
-      return profile;
-
-    };
-
-
-  /* =====================================================
-     Student
-  ===================================================== */
-
-  window.requireStudent =
-    async function () {
-
-      const session =
-        await getSession();
-
-
-      if (!session) {
-
-        window.location.replace(
-          "/login"
-        );
-
-
-        return null;
-
-      }
-
-
-      const profile =
-        await getProfile();
-
-
-      if (!profile) {
-
-        window.location.replace(
-          "/login"
-        );
-
-
-        return null;
-
-      }
-
-
-      const role =
-        String(
-          profile.role ||
-          ""
-        )
-          .toLowerCase()
-          .trim();
-
-
-      if (
-        role !==
-        "student"
-      ) {
-
-        window.location.replace(
-          "/teacher"
-        );
-
-
-        return null;
-
-      }
-
-
-      const student =
-        await getStudentProfile();
-
-
-      if (!student) {
-
-        throw new Error(
-          "生徒アカウントと生徒マスターが紐付いていません。"
-        );
-
-      }
-
-
-      if (
-        student.active ===
-        false
-      ) {
-
-        throw new Error(
-          "この生徒アカウントは現在利用できません。"
-        );
-
-      }
-
-
-      return {
-
-        profile,
-
-        student
-
-      };
-
-    };
-
-
-  /* =====================================================
+  /* =======================================================
      Logout
-  ===================================================== */
+  ======================================================= */
 
   window.logout =
     async function () {
 
-      try {
+      if (
+        !ensureSupabase()
+      ) {
 
-        await supabaseClient
+        window.location.replace(
+          "/login"
+        );
+
+
+        return;
+
+      }
+
+
+      const {
+        error
+      } =
+        await window.supabaseClient
           .auth
           .signOut();
 
-      } catch (error) {
+
+      if (error) {
 
         console.error(
           "Logout:",
@@ -748,5 +914,86 @@
 
     };
 
+
+  /* =======================================================
+     Auth State Change
+  ======================================================= */
+
+  if (
+    typeof window.supabaseClient !==
+    "undefined"
+  ) {
+
+    window.supabaseClient.auth
+      .onAuthStateChange(
+        (
+          event,
+          session
+        ) => {
+
+          /*
+            SIGNED_OUT
+          */
+
+          if (
+            event ===
+            "SIGNED_OUT"
+          ) {
+
+            if (
+              !window.location.pathname
+                .startsWith(
+                  "/login"
+                )
+            ) {
+
+              window.location.replace(
+                "/login"
+              );
+
+            }
+
+            return;
+
+          }
+
+
+          /*
+            TOKEN_REFRESHED
+
+            画面遷移しない。
+          */
+
+          if (
+            event ===
+            "TOKEN_REFRESHED"
+          ) {
+
+            return;
+
+          }
+
+
+          /*
+            SIGNED_IN
+
+            login.js側で
+            redirectAfterLogin()を呼ぶので、
+            ここでは遷移しない。
+          */
+
+          if (
+            event ===
+            "SIGNED_IN"
+          ) {
+
+            return;
+
+          }
+
+        }
+      );
+
+  }
 
 })();

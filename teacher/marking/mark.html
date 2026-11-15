@@ -11,7 +11,7 @@
   >
 
   <title>
-    採点 - テスト成績システム
+    デジタル採点 - テスト成績システム
   </title>
 
   <link
@@ -26,16 +26,18 @@
 
 </head>
 
+
 <body>
+
 
 <div class="marking-page">
 
 
-  <!-- =========================================
+  <!-- =====================================================
        上部ツールバー
-  ========================================== -->
+  ====================================================== -->
 
-  <div class="marking-toolbar">
+  <header class="marking-toolbar">
 
 
     <div class="marking-toolbar-row">
@@ -44,8 +46,9 @@
       <div class="toolbar-group">
 
         <button
-          class="mark-tool"
+          class="mark-tool active"
           data-tool="select"
+          type="button"
         >
           選択
         </button>
@@ -58,27 +61,34 @@
         <button
           class="mark-tool"
           data-tool="circle"
+          type="button"
         >
           ○
         </button>
 
+
         <button
           class="mark-tool"
           data-tool="x"
+          type="button"
         >
           ×
         </button>
 
+
         <button
           class="mark-tool"
           data-tool="triangle"
+          type="button"
         >
           △
         </button>
 
+
         <button
           class="mark-tool"
           data-tool="double"
+          type="button"
         >
           ◎
         </button>
@@ -91,20 +101,25 @@
         <button
           class="mark-tool"
           data-tool="number"
+          type="button"
         >
           数字
         </button>
 
+
         <button
           class="mark-tool"
           data-tool="text"
+          type="button"
         >
           テキスト
         </button>
 
+
         <button
           class="mark-tool"
           data-tool="pen"
+          type="button"
         >
           描画
         </button>
@@ -117,6 +132,7 @@
         <label class="toolbar-label">
           色
         </label>
+
 
         <input
           id="markColor"
@@ -132,6 +148,7 @@
         <label class="toolbar-label">
           サイズ
         </label>
+
 
         <input
           id="markSize"
@@ -159,12 +176,20 @@
 
       <div class="toolbar-group">
 
-        <span>
-          L = ○
-        </span>
+        <strong>
+          L
+        </strong>
 
         <span>
-          K = ×
+          ○
+        </span>
+
+        <strong>
+          K
+        </strong>
+
+        <span>
+          ×
         </span>
 
       </div>
@@ -179,6 +204,7 @@
       <button
         id="zoomOut"
         class="mark-tool"
+        type="button"
       >
         −
       </button>
@@ -195,6 +221,7 @@
       <button
         id="zoomIn"
         class="mark-tool"
+        type="button"
       >
         ＋
       </button>
@@ -203,6 +230,7 @@
       <button
         id="fitScreen"
         class="mark-tool"
+        type="button"
       >
         全体表示
       </button>
@@ -212,7 +240,7 @@
         id="questionInfo"
         class="question-info"
       >
-        読み込み中...
+        -
       </span>
 
 
@@ -220,24 +248,36 @@
         id="pointInfo"
         class="point-info"
       >
+        -
+      </span>
+
+
+      <span
+        id="markingProgress"
+        class="marking-progress"
+      >
+        0 / 0
       </span>
 
 
     </div>
 
-  </div>
+
+  </header>
 
 
-  <!-- =========================================
+
+  <!-- =====================================================
        本体
-  ========================================== -->
+  ====================================================== -->
 
-  <div class="marking-content">
+  <main class="marking-content">
 
 
     <!-- 左：模範解答 -->
 
     <aside class="model-pane">
+
 
       <div class="model-title">
         模範解答
@@ -248,46 +288,49 @@
         id="modelAnswer"
         class="model-image"
       >
+
         読み込み中...
+
       </div>
+
 
     </aside>
 
 
-    <!-- 右：答案2列 -->
+
+    <!-- 右：答案 -->
 
     <section class="answer-area">
+
 
       <div
         id="answerGrid"
         class="answer-grid"
       >
+
         読み込み中...
+
       </div>
+
 
     </section>
 
-  </div>
+
+  </main>
 
 
-  <!-- =========================================
+
+  <!-- =====================================================
        下部
-  ========================================== -->
+  ====================================================== -->
 
-  <div class="marking-footer">
-
-
-    <div
-      id="markingProgress"
-      class="marking-progress"
-    >
-      0 / 0
-    </div>
+  <footer class="marking-footer">
 
 
     <button
       class="footer-score"
       data-score="0"
+      type="button"
     >
       0
     </button>
@@ -296,6 +339,7 @@
     <button
       class="footer-score"
       data-score="1"
+      type="button"
     >
       1
     </button>
@@ -304,6 +348,7 @@
     <button
       class="footer-score"
       data-score="2"
+      type="button"
     >
       2
     </button>
@@ -312,6 +357,7 @@
     <button
       class="footer-score"
       data-score="3"
+      type="button"
     >
       3
     </button>
@@ -320,6 +366,7 @@
     <button
       class="footer-score"
       data-score="4"
+      type="button"
     >
       4
     </button>
@@ -328,6 +375,7 @@
     <button
       class="footer-score"
       data-score="5"
+      type="button"
     >
       5
     </button>
@@ -336,6 +384,7 @@
     <button
       id="nextUnmarked"
       class="btn btn-primary"
+      type="button"
     >
       次の未採点
     </button>
@@ -344,17 +393,22 @@
     <button
       id="exitMarking"
       class="btn"
+      type="button"
     >
       終了
     </button>
 
 
-  </div>
+  </footer>
+
 
 </div>
 
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script
+  src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+></script>
 
 <script src="/js/config.js"></script>
 
@@ -362,5 +416,7 @@
 
 <script src="/js/teacher/marking.js"></script>
 
+
 </body>
+
 </html>

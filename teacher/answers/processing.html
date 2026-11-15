@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>
+    答案処理状況 - テスト成績システム
+  </title>
+
+  <link
+    rel="stylesheet"
+    href="/css/common.css"
+  >
+
+</head>
+
+<body>
+
+<header class="topbar">
+
+  <div class="system-name">
+    テスト成績システム
+  </div>
+
+  <div class="topbar-space"></div>
+
+  <span id="teacherName">-</span>
+
+  <button
+    id="logoutButton"
+    class="logout-button"
+  >
+    ログアウト
+  </button>
+
+</header>
+
+
+<div class="teacher-layout">
+
+  <aside class="sidebar">
+
+    <div class="sidebar-title">
+      答案
+    </div>
+
+    <a
+      href="/teacher/answers/upload"
+      class="menu-link"
+    >
+      答案アップロード
+    </a>
+
+    <a
+      href="/teacher/answers/processing"
+      class="menu-link active"
+    >
+      処理状況
+    </a>
+
+    <a
+      href="/teacher/answers/unmatched"
+      class="menu-link"
+    >
+      未紐付け答案
+    </a>
+
+    <a
+      href="/teacher/answers/matched"
+      class="menu-link"
+    >
+      紐付け済み答案
+    </a>
+
+  </aside>
+
+
+  <main class="main-content">
+
+    <div class="page-header">
+
+      <h1>
+        答案処理状況
+      </h1>
+
+      <button
+        id="reloadButton"
+        class="btn"
+      >
+        更新
+      </button>
+
+    </div>
+
+
+    <div class="card">
+
+      <div
+        id="processingSummary"
+      >
+        読み込み中...
+      </div>
+
+    </div>
+
+
+    <div class="card">
+
+      <div style="overflow:auto;">
+
+        <table class="table">
+
+          <thead>
+
+            <tr>
+
+              <th>
+                登録日時
+              </th>
+
+              <th>
+                テスト
+              </th>
+
+              <th>
+                生徒
+              </th>
+
+              <th>
+                QR
+              </th>
+
+              <th>
+                状態
+              </th>
+
+            </tr>
+
+          </thead>
+
+          <tbody
+            id="processingRows"
+          >
+
+            <tr>
+
+              <td
+                colspan="5"
+                style="text-align:center;"
+              >
+                読み込み中...
+              </td>
+
+            </tr>
+
+          </tbody>
+
+        </table>
+
+      </div>
+
+    </div>
+
+  </main>
+
+</div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script src="/js/config.js"></script>
+
+<script src="/js/auth.js"></script>
+
+<script src="/js/teacher/answer-processing.js"></script>
+
+</body>
+</html>

@@ -10,7 +10,7 @@
 
 
   /* =======================================================
-     Supabase設定
+     Supabase
   ======================================================= */
 
   const SUPABASE_URL =
@@ -22,7 +22,7 @@
 
 
   /* =======================================================
-     設定値をWindowへ
+     Global
   ======================================================= */
 
   window.SUPABASE_URL =
@@ -34,17 +34,18 @@
 
 
   /* =======================================================
-     Supabaseライブラリ確認
+     SDK確認
   ======================================================= */
 
   if (
-    !window.supabase
+    !window.supabase ||
+    typeof window.supabase.createClient !==
+      "function"
   ) {
 
     console.error(
       "Supabase JS SDKが読み込まれていません。"
     );
-
 
     return;
 
@@ -52,7 +53,7 @@
 
 
   /* =======================================================
-     Client作成
+     Client
   ======================================================= */
 
   window.supabaseClient =
@@ -76,7 +77,10 @@
             true,
 
           storage:
-            window.localStorage
+            window.localStorage,
+
+          flowType:
+            "pkce"
 
         }
 
@@ -85,27 +89,12 @@
     );
 
 
-  /*
-    既存コードが
-
-      supabaseClient
-
-    と直接参照しているため、
-    グローバル変数としても公開する。
-  */
-
-  var supabaseClient =
-    window.supabaseClient;
-
-
   /* =======================================================
      初期化確認
   ======================================================= */
 
   console.log(
-    "Supabase initialized:",
-    SUPABASE_URL
+    "Supabase initialized"
   );
-
 
 })();

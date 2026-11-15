@@ -1,0 +1,125 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>
+    採点済み答案 - テスト成績システム
+  </title>
+
+  <link
+    rel="stylesheet"
+    href="/css/common.css"
+  >
+
+  <link
+    rel="stylesheet"
+    href="/css/student-result.css"
+  >
+
+</head>
+
+
+<body>
+
+
+<header class="topbar">
+
+  <div class="system-name">
+    テスト成績システム
+  </div>
+
+
+  <div class="topbar-space"></div>
+
+
+  <span id="studentName">
+    -
+  </span>
+
+
+  <button
+    id="logoutButton"
+    class="logout-button"
+    type="button"
+  >
+    ログアウト
+  </button>
+
+</header>
+
+
+
+<main class="student-main">
+
+
+  <div class="page-header">
+
+    <h1 id="testName">
+      -
+    </h1>
+
+  </div>
+
+
+
+  <div
+    id="resultSummary"
+    class="student-result-summary"
+  >
+  </div>
+
+
+
+  <div
+    class="student-result-actions"
+  >
+
+    <a
+      id="originalAnswerLink"
+      class="btn"
+      href="#"
+    >
+      採点前答案を見る
+    </a>
+
+  </div>
+
+
+
+  <div
+    id="markedPages"
+    class="student-answer-pages"
+  >
+
+    読み込み中...
+
+  </div>
+
+
+</main>
+
+
+
+<script
+  src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+></script>
+
+<script src="/js/config.js"></script>
+
+<script src="/js/auth.js"></script>
+
+<script src="/js/student/result.js"></script>
+
+
+</body>
+
+</html>

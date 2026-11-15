@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 
@@ -14,14 +15,338 @@
     答案アップロード - テスト成績システム
   </title>
 
+
   <link
     rel="stylesheet"
     href="/css/common.css"
   >
 
+  <style>
+
+    .upload-main {
+
+      max-width:1100px;
+
+      margin:0 auto;
+
+      padding:25px;
+
+    }
+
+
+    .upload-card {
+
+      background:#fff;
+
+      border:
+        1px solid #d0d6dc;
+
+      padding:20px;
+
+      margin-bottom:18px;
+
+    }
+
+
+    .upload-title {
+
+      margin:0 0 8px;
+
+      font-size:20px;
+
+    }
+
+
+    .upload-description {
+
+      color:#666;
+
+      font-size:13px;
+
+      line-height:1.7;
+
+    }
+
+
+    .form-row {
+
+      display:grid;
+
+      grid-template-columns:
+        180px
+        1fr;
+
+      gap:15px;
+
+      align-items:center;
+
+      margin-bottom:15px;
+
+    }
+
+
+    .form-label {
+
+      font-weight:700;
+
+    }
+
+
+    select,
+    input[type="file"] {
+
+      width:100%;
+
+      box-sizing:border-box;
+
+    }
+
+
+    .drop-zone {
+
+      border:
+        2px dashed #b7bec6;
+
+      padding:45px 20px;
+
+      text-align:center;
+
+      background:#fafbfc;
+
+      cursor:pointer;
+
+      transition:
+        .15s ease;
+
+    }
+
+
+    .drop-zone.dragover {
+
+      border-color:#555;
+
+      background:#f1f3f5;
+
+    }
+
+
+    .drop-zone-title {
+
+      font-size:17px;
+
+      font-weight:700;
+
+      margin-bottom:8px;
+
+    }
+
+
+    .drop-zone-description {
+
+      color:#777;
+
+      font-size:13px;
+
+      line-height:1.7;
+
+    }
+
+
+    .selected-files {
+
+      margin-top:15px;
+
+    }
+
+
+    .selected-file {
+
+      display:flex;
+
+      align-items:center;
+
+      justify-content:space-between;
+
+      gap:10px;
+
+      padding:10px;
+
+      border-bottom:
+        1px solid #e1e5e8;
+
+      font-size:13px;
+
+    }
+
+
+    .selected-file-name {
+
+      overflow:hidden;
+
+      text-overflow:ellipsis;
+
+      white-space:nowrap;
+
+    }
+
+
+    .selected-file-size {
+
+      color:#777;
+
+      white-space:nowrap;
+
+    }
+
+
+    .upload-actions {
+
+      display:flex;
+
+      gap:10px;
+
+      justify-content:flex-end;
+
+      margin-top:20px;
+
+    }
+
+
+    .progress-wrap {
+
+      display:none;
+
+      margin-top:20px;
+
+    }
+
+
+    .progress-bar {
+
+      height:10px;
+
+      background:#e5e7eb;
+
+      overflow:hidden;
+
+      border-radius:3px;
+
+    }
+
+
+    .progress-value {
+
+      width:0;
+
+      height:100%;
+
+      background:#555;
+
+      transition:
+        width .15s ease;
+
+    }
+
+
+    .progress-text {
+
+      margin-top:7px;
+
+      font-size:12px;
+
+      color:#666;
+
+    }
+
+
+    .message {
+
+      display:none;
+
+      padding:12px;
+
+      margin-bottom:15px;
+
+      border:1px solid #d0d6dc;
+
+      background:#f7f8f9;
+
+    }
+
+
+    .message.error {
+
+      color:#b42318;
+
+      background:#fff4f2;
+
+      border-color:#efc2bc;
+
+    }
+
+
+    .message.success {
+
+      color:#26743b;
+
+      background:#f0faf2;
+
+      border-color:#b7d9c0;
+
+    }
+
+
+    .rules {
+
+      font-size:13px;
+
+      color:#555;
+
+      line-height:1.8;
+
+    }
+
+
+    .rules strong {
+
+      color:#222;
+
+    }
+
+
+    @media(max-width:700px) {
+
+      .upload-main {
+
+        padding:15px;
+
+      }
+
+
+      .form-row {
+
+        grid-template-columns:1fr;
+
+        gap:5px;
+
+      }
+
+
+      .upload-actions {
+
+        flex-direction:column;
+
+      }
+
+    }
+
+  </style>
+
 </head>
 
+
 <body>
+
 
 <header class="topbar">
 
@@ -29,15 +354,19 @@
     テスト成績システム
   </div>
 
+
   <div class="topbar-space"></div>
+
 
   <span id="teacherName">
     -
   </span>
 
+
   <button
     id="logoutButton"
     class="logout-button"
+    type="button"
   >
     ログアウト
   </button>
@@ -45,193 +374,263 @@
 </header>
 
 
-<div class="teacher-layout">
 
-  <aside class="sidebar">
+<main class="upload-main">
 
-    <div class="sidebar-title">
-      答案
-    </div>
 
-    <a
-      href="/teacher/answers/upload"
-      class="menu-link active"
-    >
+  <div
+    id="message"
+    class="message"
+  ></div>
+
+
+
+  <section class="upload-card">
+
+    <h1 class="upload-title">
       答案アップロード
-    </a>
-
-    <a
-      href="/teacher/answers/processing"
-      class="menu-link"
-    >
-      処理状況
-    </a>
-
-    <a
-      href="/teacher/answers/regions"
-      class="menu-link"
-    >
-      答案切り出し
-    </a>
-
-    <a
-      href="/teacher/answers/unmatched"
-      class="menu-link"
-    >
-      未紐付け答案
-    </a>
-
-    <a
-      href="/teacher/answers/matched"
-      class="menu-link"
-    >
-      紐付け済み答案
-    </a>
-
-  </aside>
+    </h1>
 
 
-  <main class="main-content">
+    <p class="upload-description">
 
-    <div class="page-header">
+      生徒の答案をアップロードします。
+      PDF、JPEG、JPG、PNG、WEBP、ZIPに対応しています。
 
-      <h1>
-        答案アップロード
-      </h1>
+      ZIPの場合は内部の対応ファイルを展開して処理します。
 
-    </div>
+    </p>
 
-
-    <div class="card">
-
-      <div class="form-group">
-
-        <label>
-          テスト
-        </label>
-
-        <select id="testSelect">
-
-          <option value="">
-            読み込み中...
-          </option>
-
-        </select>
-
-      </div>
+  </section>
 
 
-      <div class="form-group">
 
-        <label>
-          答案ファイル
-        </label>
-
-        <input
-          id="answerFiles"
-          type="file"
-          multiple
-          accept="
-            .jpg,
-            .jpeg,
-            .png,
-            .webp,
-            .gif,
-            .bmp,
-            .pdf,
-            .zip,
-            image/jpeg,
-            image/png,
-            image/webp,
-            image/gif,
-            image/bmp,
-            application/pdf,
-            application/zip
-          "
-        >
-
-      </div>
+  <section class="upload-card">
 
 
-      <div
-        style="
-          background:#f3f5f7;
-          border:1px solid #d0d6dc;
-          padding:14px;
-          margin-bottom:16px;
-        "
+    <div class="form-row">
+
+      <label
+        class="form-label"
+        for="testSelect"
+      >
+        テスト
+      </label>
+
+
+      <select
+        id="testSelect"
       >
 
-        <strong>
-          対応形式
-        </strong>
+        <option value="">
+          テストを選択してください
+        </option>
 
-        <p>
-          JPG / JPEG / PNG / WEBP / GIF / BMP / PDF / ZIP
-        </p>
+      </select>
 
-        <p>
-          ZIPには複数の画像・PDFをまとめて入れられます。
-        </p>
+    </div>
 
-        <p>
-          複数ページ答案にも対応します。
-        </p>
+
+
+    <div class="form-row">
+
+      <label
+        class="form-label"
+        for="answerType"
+      >
+        答案種類
+      </label>
+
+
+      <select
+        id="answerType"
+      >
+
+        <option value="student_answer">
+          生徒答案
+        </option>
+
+        <option value="model_answer">
+          解答用紙・模範解答
+        </option>
+
+      </select>
+
+    </div>
+
+
+  </section>
+
+
+
+  <section class="upload-card">
+
+
+    <div
+      id="dropZone"
+      class="drop-zone"
+    >
+
+      <div class="drop-zone-title">
+        ファイルをここへドロップ
+      </div>
+
+
+      <div class="drop-zone-description">
+
+        またはクリックして選択
+
+        <br>
+
+        PDF / JPG / JPEG / PNG / WEBP / ZIP
 
       </div>
+
+
+      <input
+        id="fileInput"
+        type="file"
+        multiple
+        accept="
+          .pdf,
+          .jpg,
+          .jpeg,
+          .png,
+          .webp,
+          .zip,
+          application/pdf,
+          image/jpeg,
+          image/png,
+          image/webp,
+          application/zip
+        "
+        hidden
+      >
+
+    </div>
+
+
+
+    <div
+      id="selectedFiles"
+      class="selected-files"
+    ></div>
+
+
+
+    <div class="upload-actions">
+
+      <button
+        id="clearButton"
+        class="btn"
+        type="button"
+      >
+        クリア
+      </button>
 
 
       <button
         id="uploadButton"
         class="btn btn-primary"
+        type="button"
+        disabled
       >
-        アップロード開始
+        アップロード
       </button>
+
+    </div>
+
+
+
+    <div
+      id="progressWrap"
+      class="progress-wrap"
+    >
+
+      <div class="progress-bar">
+
+        <div
+          id="progressValue"
+          class="progress-value"
+        ></div>
+
+      </div>
 
 
       <div
-        id="message"
-        style="
-          margin-top:14px;
-          min-height:22px;
-        "
-      ></div>
+        id="progressText"
+        class="progress-text"
+      >
+        0%
+      </div>
 
     </div>
 
 
-    <div class="card">
+  </section>
 
-      <h3>
-        処理状況
-      </h3>
 
-      <div id="uploadList"></div>
+
+  <section class="upload-card">
+
+    <div class="rules">
+
+      <strong>
+        アップロード仕様
+      </strong>
+
+      <br>
+
+      ・PDFはページ単位で処理します。
+
+      <br>
+
+      ・JPEG / JPG / PNG / WEBPは画像答案として処理します。
+
+      <br>
+
+      ・ZIPは展開して内部のPDF・画像を処理します。
+
+      <br>
+
+      ・複数ファイルを一度に選択できます。
+
+      <br>
+
+      ・生徒答案はアップロード後に答案紐付け処理を行います。
+
+      <br>
+
+      ・解答用紙・模範解答は模範解答Storageへ保存します。
 
     </div>
 
-  </main>
+  </section>
 
-</div>
+
+</main>
+
 
 
 <script
   src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
 ></script>
 
-<script
-  src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"
-></script>
 
 <script
-  src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"
+  src="/js/config.js"
 ></script>
 
-<script src="/js/config.js"></script>
 
-<script src="/js/auth.js"></script>
+<script
+  src="/js/auth.js"
+></script>
 
-<script src="/js/teacher/answer-upload.js"></script>
+
+<script
+  src="/js/teacher/answers-upload.js"
+></script>
+
 
 </body>
 

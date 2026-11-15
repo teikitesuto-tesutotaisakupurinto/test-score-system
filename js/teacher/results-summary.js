@@ -1,3 +1,4 @@
+
 (function () {
 
   "use strict";
@@ -79,9 +80,13 @@
 
     if (testId) {
 
-      document.getElementById(
-        "testSelect"
-      ).value =
+      const select =
+        document.getElementById(
+          "testSelect"
+        );
+
+
+      select.value =
         testId;
 
 
@@ -131,6 +136,7 @@
         error
       );
 
+
       return;
 
     }
@@ -158,14 +164,20 @@
             test => `
 
               <option
-                value="${escapeHtml(test.id)}"
+                value="${escapeHtml(
+                  test.id
+                )}"
               >
 
-                ${escapeHtml(test.name)}
+                ${escapeHtml(
+                  test.name
+                )}
 
                 ${
                   test.subject
-                    ? ` / ${escapeHtml(test.subject)}`
+                    ? ` / ${escapeHtml(
+                        test.subject
+                      )}`
                     : ""
                 }
 
@@ -246,10 +258,8 @@
     */
 
     const {
-      data:
-        studentData,
-      error:
-        studentError
+      data: studentData,
+      error: studentError
     } =
       await supabaseClient
         .from(
@@ -279,6 +289,7 @@
         studentError
       );
 
+
       return;
 
     }
@@ -293,10 +304,8 @@
     */
 
     const {
-      data:
-        answerData,
-      error:
-        answerError
+      data: answerData,
+      error: answerError
     } =
       await supabaseClient
         .from(
@@ -324,6 +333,7 @@
         answerError
       );
 
+
       return;
 
     }
@@ -334,14 +344,12 @@
 
 
     /*
-      設問
+      解答欄
     */
 
     const {
-      data:
-        questionData,
-      error:
-        questionError
+      data: questionData,
+      error: questionError
     } =
       await supabaseClient
         .from(
@@ -391,6 +399,7 @@
         questionError
       );
 
+
       return;
 
     }
@@ -401,7 +410,7 @@
 
 
     /*
-      採点
+      scores
     */
 
     const answerIds =
@@ -411,15 +420,17 @@
       );
 
 
+    scores =
+      [];
+
+
     if (
       answerIds.length
     ) {
 
       const {
-        data:
-          scoreData,
-        error:
-          scoreError
+        data: scoreData,
+        error: scoreError
       } =
         await supabaseClient
           .from(
@@ -448,6 +459,7 @@
           scoreError
         );
 
+
         return;
 
       }
@@ -455,10 +467,6 @@
 
       scores =
         scoreData || [];
-
-    } else {
-
-      scores = [];
 
     }
 
@@ -468,9 +476,7 @@
 
     renderTestInformation();
 
-
     renderSummaryCards();
-
 
     renderSummaryTable();
 
@@ -478,17 +484,13 @@
 
 
   /* =====================================================
-     結果行作成
+     結果行
   ===================================================== */
 
   function buildResultRows() {
 
     /*
-      answer_sheet
-      ↓
-      student
-      ↓
-      question score
+      生徒 → 答案
     */
 
     const answerByStudent =
@@ -508,13 +510,23 @@
 
 
         /*
-          同じ生徒に複数答案がある場合、
-          最初の答案を使用。
+          同一生徒に複数答案がある場合、
+          最新答案を使用する。
         */
 
-        if (
-          !answerByStudent.has(
+        const existing =
+          answerByStudent.get(
             answer.student_id
+          );
+
+
+        if (
+          !existing ||
+          new Date(
+            answer.created_at
+          ) >
+          new Date(
+            existing.created_at
           )
         ) {
 
@@ -529,6 +541,10 @@
     );
 
 
+    /*
+      答案＋設問 → 点数
+    */
+
     const scoreMap =
       new Map();
 
@@ -536,12 +552,8 @@
     scores.forEach(
       score => {
 
-        const key =
-          `${score.answer_sheet_id}__${score.layout_box_id}`;
-
-
         scoreMap.set(
-          key,
+          `${score.answer_sheet_id}__${score.layout_box_id}`,
           Number(
             score.score
           ) || 0
@@ -562,11 +574,6 @@
             student.id
           );
 
-
-        /*
-          テストを受けていない生徒も
-          総括表には表示する。
-        */
 
         const questionScores =
           {};
@@ -599,6 +606,7 @@
                   scoreMap.get(
                     key
                   );
+
 
                 total +=
                   value;
@@ -634,7 +642,10 @@
 
           questionScores,
 
-          total
+          total,
+
+          rank:
+            null
 
         });
 
@@ -643,7 +654,7 @@
 
 
     /*
-      合計点降順
+      受験者だけ順位計算
     */
 
     const ranked =
@@ -689,13 +700,9 @@
         );
 
 
-    /*
-      順位
-      同点は同順位
-    */
-
     let lastScore =
       null;
+
 
     let lastRank =
       0;
@@ -732,26 +739,7 @@
 
 
     /*
-      未受験
-    */
-
-    rows
-      .filter(
-        row =>
-          !row.answerSheetId
-      )
-      .forEach(
-        row => {
-
-          row.rank =
-            null;
-
-        }
-      );
-
-
-    /*
-      生徒番号順に表示
+      表示は生徒番号順
     */
 
     rows.sort(
@@ -840,12 +828,12 @@
 
 
   /* =====================================================
-     サマリー
+     集計カード
   ===================================================== */
 
   function renderSummaryCards() {
 
-    const completedRows =
+    const completed =
       resultRows.filter(
         row =>
           row.answerSheetId
@@ -853,7 +841,7 @@
 
 
     const values =
-      completedRows.map(
+      completed.map(
         row =>
           row.total
       );
@@ -872,7 +860,8 @@
             ) =>
               sum + value,
             0
-          ) / count
+          ) /
+          count
         : 0;
 
 
@@ -980,7 +969,7 @@
 
 
   /* =====================================================
-     結果総括表
+     総括表
   ===================================================== */
 
   function renderSummaryTable() {
@@ -1014,6 +1003,26 @@
 
 
     /*
+      満点
+    */
+
+    const maxTotal =
+      questionResults.reduce(
+        (
+          sum,
+          question
+        ) =>
+          sum +
+          (
+            Number(
+              question.points
+            ) || 0
+          ),
+        0
+      );
+
+
+    /*
       ヘッダー
     */
 
@@ -1021,21 +1030,17 @@
 
       <tr>
 
-
         <th>
           順位
         </th>
-
 
         <th>
           生徒番号
         </th>
 
-
         <th>
           氏名
         </th>
-
 
         ${
           questionResults
@@ -1061,10 +1066,7 @@
                     "
                   >
 
-                    ${
-                      question.points ??
-                      "-"
-                    }点
+                    ${question.points ?? "-"}点
 
                   </span>
 
@@ -1075,16 +1077,17 @@
             .join("")
         }
 
-
         <th>
           合計
         </th>
 
-
         <th>
-          平均
+          平均点
         </th>
 
+        <th>
+          得点率
+        </th>
 
       </tr>
 
@@ -1092,7 +1095,7 @@
 
 
     /*
-      行
+      本文
     */
 
     tbody.innerHTML =
@@ -1100,63 +1103,53 @@
         .map(
           row => {
 
-            const average =
+            const averagePoint =
+              row.answerSheetId &&
               questionResults.length
                 ? (
                     row.total /
-                    questionResults
-                      .reduce(
-                        (
-                          sum,
-                          question
-                        ) =>
-                          sum +
-                          (
-                            Number(
-                              question.points
-                            ) || 0
-                          ),
-                        0
-                      )
+                    questionResults.length
+                  )
+                : null;
+
+
+            const percentage =
+              row.answerSheetId &&
+              maxTotal > 0
+
+                ? (
+                    row.total /
+                    maxTotal
                   ) *
                   100
-                : 0;
+
+                : null;
 
 
             return `
 
               <tr>
 
-
                 <td
                   class="rank"
                 >
-
-                  ${
-                    row.rank ??
-                    "-"
-                  }
-
+                  ${row.rank ?? "-"}
                 </td>
 
 
                 <td>
-
                   ${escapeHtml(
                     row.studentNo ||
                     ""
                   )}
-
                 </td>
 
 
                 <td>
-
                   ${escapeHtml(
                     row.name ||
                     ""
                   )}
-
                 </td>
 
 
@@ -1215,13 +1208,25 @@
                 >
 
                   ${
-                    row.answerSheetId
-                      ? `${average.toFixed(1)}%`
-                      : "-"
+                    averagePoint === null
+                      ? "-"
+                      : averagePoint.toFixed(1)
                   }
 
                 </td>
 
+
+                <td
+                  class="center"
+                >
+
+                  ${
+                    percentage === null
+                      ? "-"
+                      : `${percentage.toFixed(1)}%`
+                  }
+
+                </td>
 
               </tr>
 
@@ -1259,6 +1264,22 @@
     }
 
 
+    const maxTotal =
+      questionResults.reduce(
+        (
+          sum,
+          question
+        ) =>
+          sum +
+          (
+            Number(
+              question.points
+            ) || 0
+          ),
+        0
+      );
+
+
     const rows = [];
 
 
@@ -1281,38 +1302,37 @@
 
       "合計",
 
-      "平均"
+      "平均点",
+
+      "得点率"
 
     ]);
-
-
-    const maxTotal =
-      questionResults.reduce(
-        (
-          sum,
-          question
-        ) =>
-          sum +
-          (
-            Number(
-              question.points
-            ) || 0
-          ),
-        0
-      );
 
 
     resultRows.forEach(
       row => {
 
-        const average =
-          maxTotal
+        const averagePoint =
+          row.answerSheetId &&
+          questionResults.length
+
+            ? row.total /
+              questionResults.length
+
+            : "";
+
+
+        const percentage =
+          row.answerSheetId &&
+          maxTotal > 0
+
             ? (
                 row.total /
                 maxTotal
               ) *
               100
-            : 0;
+
+            : "";
 
 
         rows.push([
@@ -1337,9 +1357,13 @@
             ? row.total
             : "",
 
-          row.answerSheetId
-            ? `${average.toFixed(1)}%`
-            : ""
+          averagePoint === ""
+            ? ""
+            : averagePoint.toFixed(1),
+
+          percentage === ""
+            ? ""
+            : `${percentage.toFixed(1)}%`
 
         ]);
 
@@ -1396,7 +1420,9 @@
 
 
     link.download =
-      `${testData.name}-結果総括表.csv`;
+      `${sanitizeFilename(
+        testData.name
+      )}-結果総括表.csv`;
 
 
     link.click();
@@ -1428,7 +1454,7 @@
 
 
   /* =====================================================
-     クリア
+     リセット
   ===================================================== */
 
   function clearResult() {
@@ -1484,6 +1510,27 @@
       "click",
       logout
     );
+
+
+  /* =====================================================
+     ファイル名
+  ===================================================== */
+
+  function sanitizeFilename(
+    value
+  ) {
+
+    return String(
+      value || ""
+    )
+      .replace(
+        /[\\/:*?"<>|]/g,
+        "_"
+      )
+      .trim() ||
+      "results";
+
+  }
 
 
   /* =====================================================

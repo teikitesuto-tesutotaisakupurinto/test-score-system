@@ -2,7 +2,7 @@
    テスト成績システム
    解答用紙登録
 
-   対応:
+   入力:
    JPG
    JPEG
    PNG
@@ -12,62 +12,40 @@
    PDF
    ZIP
 
-   ZIP
    ↓
-   展開
+
+   共通file-parser
+
    ↓
-   画像 / PDF
+
+   全ページPNG
+
    ↓
-   ページ画像
-   ↓
+
    Supabase Storage
+
    ↓
+
    test_pages
-
-   PDFはページごとにPNGへ変換して保存
 ========================================================= */
 
-
-/* =========================================================
-   状態
-========================================================= */
 
 const pageParams =
   new URLSearchParams(
     window.location.search
   );
 
+
 const pageTestId =
   pageParams.get("id");
 
 
-let currentTest = null;
-
-let registeredPages = [];
-
-
-/* =========================================================
-   対応拡張子
-========================================================= */
-
-const IMAGE_EXTENSIONS = [
-  "jpg",
-  "jpeg",
-  "png",
-  "webp",
-  "gif",
-  "bmp"
-];
+let currentTest =
+  null;
 
 
-const PDF_EXTENSIONS = [
-  "pdf"
-];
-
-
-const ZIP_EXTENSIONS = [
-  "zip"
-];
+let registeredPages =
+  [];
 
 
 /* =========================================================
@@ -118,9 +96,11 @@ async function initializeTestPages() {
       "テストが指定されていません。"
     );
 
+
     window.location.replace(
       "/teacher/tests"
     );
+
 
     return;
 
@@ -202,14 +182,15 @@ async function loadTest() {
   if (error) {
 
     console.error(
-      "テスト取得エラー:",
       error
     );
+
 
     showMessage(
       "テスト情報を取得できませんでした。",
       true
     );
+
 
     return;
 
@@ -222,6 +203,7 @@ async function loadTest() {
       "指定されたテストが見つかりません。",
       true
     );
+
 
     return;
 
@@ -246,21 +228,24 @@ async function loadTest() {
 
     教科：
     ${escapeHtml(
-      data.subject || "-"
+      data.subject ||
+      "-"
     )}
 
     ／
 
     学年：
     ${escapeHtml(
-      data.grade || "-"
+      data.grade ||
+      "-"
     )}
 
     ／
 
     クラス：
     ${escapeHtml(
-      data.class_name || "-"
+      data.class_name ||
+      "-"
     )}
 
     ／
@@ -274,7 +259,7 @@ async function loadTest() {
 
 
 /* =========================================================
-   登録済みページ取得
+   ページ取得
 ========================================================= */
 
 async function loadPages() {
@@ -303,7 +288,8 @@ async function loadPages() {
       .order(
         "page_no",
         {
-          ascending: true
+          ascending:
+            true
         }
       );
 
@@ -311,14 +297,15 @@ async function loadPages() {
   if (error) {
 
     console.error(
-      "ページ取得エラー:",
       error
     );
+
 
     showMessage(
       "登録済みページを取得できませんでした。",
       true
     );
+
 
     return;
 
@@ -352,7 +339,9 @@ async function renderPages() {
     `${registeredPages.length}ページ`;
 
 
-  if (!registeredPages.length) {
+  if (
+    !registeredPages.length
+  ) {
 
     container.innerHTML = `
 
@@ -360,14 +349,17 @@ async function renderPages() {
         style="
           grid-column:1/-1;
           text-align:center;
-          padding:35px;
           color:#777;
+          padding:35px;
         "
       >
+
         解答用紙が登録されていません。
+
       </div>
 
     `;
+
 
     return;
 
@@ -387,6 +379,7 @@ async function renderPages() {
             "
           >
 
+
             <div
               style="
                 display:flex;
@@ -400,10 +393,11 @@ async function renderPages() {
                 ${page.page_no}ページ
               </strong>
 
+
               <button
                 type="button"
                 class="btn"
-                data-delete-page="${page.id}"
+                data-delete-page="${escapeHtml(page.id)}"
               >
                 削除
               </button>
@@ -411,8 +405,9 @@ async function renderPages() {
             </div>
 
 
+
             <div
-              id="page-preview-${page.id}"
+              id="page-preview-${escapeHtml(page.id)}"
               style="
                 height:300px;
                 border:1px solid #d0d6dc;
@@ -423,8 +418,11 @@ async function renderPages() {
                 overflow:hidden;
               "
             >
+
               読み込み中...
+
             </div>
+
 
 
             <div
@@ -444,6 +442,7 @@ async function renderPages() {
 
             </div>
 
+
           </div>
 
         `
@@ -452,7 +451,7 @@ async function renderPages() {
 
 
   /*
-    画像URL取得
+    各ページ画像
   */
 
   for (
@@ -480,10 +479,13 @@ async function renderPages() {
 
         button.addEventListener(
           "click",
-          () =>
-            deletePage(
+          async () => {
+
+            await deletePage(
               button.dataset.deletePage
-            )
+            );
+
+          }
         );
 
       }
@@ -493,7 +495,7 @@ async function renderPages() {
 
 
 /* =========================================================
-   ページ画像
+   Storage画像
 ========================================================= */
 
 async function renderPageImage(
@@ -533,24 +535,55 @@ async function renderPageImage(
     target.textContent =
       "画像を取得できません。";
 
+
     return;
 
   }
 
 
-  target.innerHTML = `
+  if (
+    !data?.signedUrl
+  ) {
 
-    <img
-      src="${escapeHtml(data.signedUrl)}"
-      alt="解答用紙"
-      style="
-        max-width:100%;
-        max-height:100%;
-        object-fit:contain;
-      "
-    >
+    target.textContent =
+      "画像URLを取得できません。";
+
+
+    return;
+
+  }
+
+
+  const image =
+    document.createElement(
+      "img"
+    );
+
+
+  image.src =
+    data.signedUrl;
+
+
+  image.alt =
+    "解答用紙";
+
+
+  image.style.cssText = `
+
+    max-width:100%;
+    max-height:100%;
+    object-fit:contain;
 
   `;
+
+
+  target.innerHTML =
+    "";
+
+
+  target.appendChild(
+    image
+  );
 
 }
 
@@ -567,12 +600,15 @@ document
     "click",
     async () => {
 
+      const input =
+        document.getElementById(
+          "pageFile"
+        );
+
+
       const files =
         [
-          ...
-          document.getElementById(
-            "pageFile"
-          ).files
+          ...input.files
         ];
 
 
@@ -582,6 +618,7 @@ document
           "解答用紙ファイルを選択してください。",
           true
         );
+
 
         return;
 
@@ -596,6 +633,7 @@ document
 
       button.disabled =
         true;
+
 
       button.textContent =
         "登録中...";
@@ -618,21 +656,19 @@ document
         await loadPages();
 
 
+        input.value =
+          "";
+
+
         showMessage(
           "解答用紙の登録が完了しました。"
         );
 
 
-        document.getElementById(
-          "pageFile"
-        ).value =
-          "";
-
-
       } catch (error) {
 
         console.error(
-          "解答用紙登録エラー:",
+          "解答用紙登録:",
           error
         );
 
@@ -649,6 +685,7 @@ document
       button.disabled =
         false;
 
+
       button.textContent =
         "解答用紙を登録";
 
@@ -657,398 +694,59 @@ document
 
 
 /* =========================================================
-   入力ファイル判定
+   ファイル処理
 ========================================================= */
 
 async function processInputFile(
   file
 ) {
 
-  const extension =
-    getExtension(
-      file.name
-    );
-
-
-  /*
-    ZIP
-  */
-
   if (
-    ZIP_EXTENSIONS
-      .includes(extension)
-  ) {
-
-    await processZip(
-      file
-    );
-
-    return;
-
-  }
-
-
-  /*
-    PDF
-  */
-
-  if (
-    PDF_EXTENSIONS
-      .includes(extension)
-  ) {
-
-    await processPdf(
-      file
-    );
-
-    return;
-
-  }
-
-
-  /*
-    画像
-  */
-
-  if (
-    IMAGE_EXTENSIONS
-      .includes(extension)
-  ) {
-
-    await processImage(
-      file
-    );
-
-    return;
-
-  }
-
-
-  throw new Error(
-    `${file.name}：対応していないファイル形式です。`
-  );
-
-}
-
-
-/* =========================================================
-   画像登録
-========================================================= */
-
-async function processImage(
-  file
-) {
-
-  const image =
-    await loadImageFromBlob(
-      file
-    );
-
-
-  const pageNo =
-    await getNextPageNo();
-
-
-  const path =
-    `${pageTestId}/page-${String(pageNo).padStart(3,"0")}-${crypto.randomUUID()}.png`;
-
-
-  /*
-    解答用紙はPNGへ統一
-  */
-
-  const pngBlob =
-    await convertImageToPng(
-      file
-    );
-
-
-  const {
-    error: uploadError
-  } =
-    await supabaseClient
-      .storage
-      .from(
-        "model-answers"
-      )
-      .upload(
-        path,
-        pngBlob,
-        {
-          contentType:
-            "image/png",
-          upsert:
-            false
-        }
-      );
-
-
-  if (uploadError) {
-
-    throw uploadError;
-
-  }
-
-
-  await insertTestPage({
-
-    pageNo,
-
-    path,
-
-    width:
-      image.naturalWidth,
-
-    height:
-      image.naturalHeight
-
-  });
-
-}
-
-
-/* =========================================================
-   ZIP
-========================================================= */
-
-async function processZip(
-  file
-) {
-
-  if (
-    typeof JSZip ===
-    "undefined"
+    !window.TEST_SCORE_FILES
   ) {
 
     throw new Error(
-      "ZIP処理ライブラリが読み込まれていません。"
+      "ファイル処理エンジンが読み込まれていません。"
     );
 
   }
 
 
-  const zip =
-    await JSZip.loadAsync(
-      file
-    );
+  const pages =
+    await window.TEST_SCORE_FILES
+      .parseFile(
+        file
+      );
 
 
-  const entries = [];
-
-
-  for (
-    const [
-      path,
-      entry
-    ]
-    of Object.entries(
-      zip.files
-    )
+  if (
+    !pages ||
+    !pages.length
   ) {
-
-    if (
-      entry.dir
-    ) {
-
-      continue;
-
-    }
-
-
-    const extension =
-      getExtension(
-        path
-      );
-
-
-    if (
-      ![
-        ...IMAGE_EXTENSIONS,
-        ...PDF_EXTENSIONS
-      ].includes(
-        extension
-      )
-    ) {
-
-      continue;
-
-    }
-
-
-    const blob =
-      await entry.async(
-        "blob"
-      );
-
-
-    entries.push({
-
-      path,
-
-      name:
-        path
-          .split("/")
-          .pop(),
-
-      blob
-
-    });
-
-  }
-
-
-  if (!entries.length) {
 
     throw new Error(
-      "ZIP内に対応ファイルがありません。"
+      `${file.name}からページを取得できませんでした。`
     );
 
   }
 
 
-  entries.sort(
-    (a, b) =>
-      a.path.localeCompare(
-        b.path,
-        undefined,
-        {
-          numeric:
-            true
-        }
-      )
-  );
-
+  /*
+    PDFやZIPは複数ページになる。
+    入力順に登録する。
+  */
 
   for (
-    const entry
-    of entries
+    const page
+    of pages
   ) {
 
-    const extension =
-      getExtension(
-        entry.name
-      );
-
-
-    if (
-      PDF_EXTENSIONS
-        .includes(
-          extension
-        )
-    ) {
-
-      await processPdf(
-        entry.blob,
-        entry.name
-      );
-
-    } else {
-
-      await processImage(
-        entry.blob,
-        entry.name
-      );
-
-    }
-
-  }
-
-}
-
-
-/* =========================================================
-   PDF
-========================================================= */
-
-async function processPdf(
-  file,
-  originalName
-) {
-
-  const pdf =
-    await loadPdf(
-      file
-    );
-
-
-  if (!pdf) {
-
-    throw new Error(
-      `${originalName || file.name}：PDFを読み込めませんでした。`
-    );
-
-  }
-
-
-  for (
-    let pageNo = 1;
-    pageNo <= pdf.numPages;
-    pageNo++
-  ) {
-
-    const page =
-      await pdf.getPage(
-        pageNo
-      );
-
-
-    /*
-      高解像度
-    */
-
-    const viewport =
-      page.getViewport({
-        scale:
-          2
-      });
-
-
-    const canvas =
-      document.createElement(
-        "canvas"
-      );
-
-
-    canvas.width =
-      Math.ceil(
-        viewport.width
-      );
-
-
-    canvas.height =
-      Math.ceil(
-        viewport.height
-      );
-
-
-    const context =
-      canvas.getContext(
-        "2d"
-      );
-
-
-    await page.render({
-
-      canvasContext:
-        context,
-
-      viewport
-
-    }).promise;
-
-
-    const blob =
-      await canvasToBlob(
-        canvas
-      );
-
-
-    const nextPage =
+    const pageNo =
       await getNextPageNo();
 
 
     const path =
-      `${pageTestId}/page-${String(nextPage).padStart(3,"0")}-${crypto.randomUUID()}.png`;
+      `${pageTestId}/page-${String(pageNo).padStart(3, "0")}-${crypto.randomUUID()}.png`;
 
 
     const {
@@ -1062,13 +760,15 @@ async function processPdf(
         )
         .upload(
           path,
-          blob,
+          page.blob,
           {
+
             contentType:
               "image/png",
 
             upsert:
               false
+
           }
         );
 
@@ -1082,16 +782,15 @@ async function processPdf(
 
     await insertTestPage({
 
-      pageNo:
-        nextPage,
+      pageNo,
 
       path,
 
       width:
-        canvas.width,
+        page.width,
 
       height:
-        canvas.height
+        page.height
 
     });
 
@@ -1101,77 +800,7 @@ async function processPdf(
 
 
 /* =========================================================
-   PDF.js
-========================================================= */
-
-async function loadPdf(
-  blob
-) {
-
-  if (
-    !window.pdfjsLib
-  ) {
-
-    await loadPdfJs();
-
-  }
-
-
-  if (
-    !window.pdfjsLib
-  ) {
-
-    throw new Error(
-      "PDF.jsを読み込めませんでした。"
-    );
-
-  }
-
-
-  const buffer =
-    await blob.arrayBuffer();
-
-
-  return await window.pdfjsLib
-    .getDocument({
-      data:
-        buffer
-    })
-    .promise;
-
-}
-
-
-async function loadPdfJs() {
-
-  /*
-    PDF.js 4.x は
-    ESM版を使用する。
-  */
-
-  if (
-    window.pdfjsLib
-  ) {
-
-    return;
-
-  }
-
-
-  const module =
-    await import(
-      "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs"
-    );
-
-
-  window.pdfjsLib =
-    module;
-
-}
-
-
-/* =========================================================
-   次のページ番号
+   次ページ番号
 ========================================================= */
 
 async function getNextPageNo() {
@@ -1279,161 +908,6 @@ async function insertTestPage({
 
 
 /* =========================================================
-   画像をPNGへ
-========================================================= */
-
-async function convertImageToPng(
-  blob
-) {
-
-  const image =
-    await loadImageFromBlob(
-      blob
-    );
-
-
-  const canvas =
-    document.createElement(
-      "canvas"
-    );
-
-
-  canvas.width =
-    image.naturalWidth;
-
-
-  canvas.height =
-    image.naturalHeight;
-
-
-  const context =
-    canvas.getContext(
-      "2d"
-    );
-
-
-  context.drawImage(
-    image,
-    0,
-    0
-  );
-
-
-  return await canvasToBlob(
-    canvas
-  );
-
-}
-
-
-/* =========================================================
-   Blob画像
-========================================================= */
-
-function loadImageFromBlob(
-  blob
-) {
-
-  return new Promise(
-    (
-      resolve,
-      reject
-    ) => {
-
-      const image =
-        new Image();
-
-
-      const url =
-        URL.createObjectURL(
-          blob
-        );
-
-
-      image.onload =
-        () => {
-
-          URL.revokeObjectURL(
-            url
-          );
-
-          resolve(
-            image
-          );
-
-        };
-
-
-      image.onerror =
-        () => {
-
-          URL.revokeObjectURL(
-            url
-          );
-
-          reject(
-            new Error(
-              "画像を読み込めませんでした。"
-            )
-          );
-
-        };
-
-
-      image.src =
-        url;
-
-    }
-  );
-
-}
-
-
-/* =========================================================
-   Canvas → PNG
-========================================================= */
-
-function canvasToBlob(
-  canvas
-) {
-
-  return new Promise(
-    (
-      resolve,
-      reject
-    ) => {
-
-      canvas.toBlob(
-        blob => {
-
-          if (!blob) {
-
-            reject(
-              new Error(
-                "画像変換に失敗しました。"
-              )
-            );
-
-            return;
-
-          }
-
-
-          resolve(
-            blob
-          );
-
-        },
-        "image/png"
-      );
-
-    }
-  );
-
-}
-
-
-/* =========================================================
    ページ削除
 ========================================================= */
 
@@ -1463,9 +937,10 @@ async function deletePage(
         .from(
           "test_pages"
         )
-        .select(
-          "id,image_path"
-        )
+        .select(`
+          id,
+          image_path
+        `)
         .eq(
           "id",
           pageId
@@ -1514,14 +989,28 @@ async function deletePage(
       page?.image_path
     ) {
 
-      await supabaseClient
-        .storage
-        .from(
-          "model-answers"
-        )
-        .remove([
-          page.image_path
-        ]);
+      const {
+        error:
+          storageError
+      } =
+        await supabaseClient
+          .storage
+          .from(
+            "model-answers"
+          )
+          .remove([
+            page.image_path
+          ]);
+
+
+      if (storageError) {
+
+        console.error(
+          "Storage削除:",
+          storageError
+        );
+
+      }
 
     }
 
@@ -1536,11 +1025,14 @@ async function deletePage(
 
   } catch (error) {
 
-    console.error(error);
+    console.error(
+      error
+    );
+
 
     showMessage(
       error.message ||
-      "削除に失敗しました。",
+      "ページの削除に失敗しました。",
       true
     );
 
@@ -1566,6 +1058,7 @@ document
       ).value =
         "";
 
+
       showMessage(
         ""
       );
@@ -1575,7 +1068,7 @@ document
 
 
 /* =========================================================
-   Logout
+   ログアウト
 ========================================================= */
 
 document
@@ -1611,39 +1104,6 @@ function showMessage(
     error
       ? "#c62828"
       : "#16834b";
-
-}
-
-
-/* =========================================================
-   拡張子
-========================================================= */
-
-function getExtension(
-  filename
-) {
-
-  const clean =
-    String(filename)
-      .split("?")[0]
-      .toLowerCase();
-
-
-  const parts =
-    clean.split(".");
-
-
-  if (
-    parts.length < 2
-  ) {
-
-    return "";
-
-  }
-
-
-  return parts
-    .pop();
 
 }
 

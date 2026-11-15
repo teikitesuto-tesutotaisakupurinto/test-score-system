@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>
+    クラス作成 - テスト成績システム
+  </title>
+
+  <link
+    rel="stylesheet"
+    href="/css/common.css"
+  >
+
+</head>
+
+<body>
+
+<header class="topbar">
+
+  <div class="system-name">
+    テスト成績システム
+  </div>
+
+  <div class="topbar-space"></div>
+
+  <span id="teacherName">
+    -
+  </span>
+
+  <button
+    id="logoutButton"
+    class="logout-button"
+  >
+    ログアウト
+  </button>
+
+</header>
+
+
+<div class="teacher-layout">
+
+  <aside class="sidebar">
+
+    <div class="sidebar-title">
+      クラス
+    </div>
+
+    <a
+      href="/teacher/classes"
+      class="menu-link"
+    >
+      クラス管理
+    </a>
+
+    <a
+      href="/teacher/classes/new"
+      class="menu-link active"
+    >
+      クラス作成
+    </a>
+
+  </aside>
+
+
+  <main class="main-content">
+
+    <div class="page-header">
+
+      <h1>
+        クラス作成
+      </h1>
+
+    </div>
+
+
+    <div class="card">
+
+      <form id="classForm">
+
+        <div class="form-group">
+
+          <label for="grade">
+            学年
+          </label>
+
+          <input
+            id="grade"
+            type="text"
+            placeholder="中3"
+            maxlength="30"
+            required
+          >
+
+        </div>
+
+
+        <div class="form-group">
+
+          <label for="className">
+            クラス名
+          </label>
+
+          <input
+            id="className"
+            type="text"
+            placeholder="1組"
+            maxlength="50"
+            required
+          >
+
+        </div>
+
+
+        <div
+          id="message"
+          style="
+            min-height:22px;
+            margin-bottom:12px;
+          "
+        ></div>
+
+
+        <div
+          style="
+            display:flex;
+            gap:8px;
+          "
+        >
+
+          <button
+            id="saveButton"
+            type="submit"
+            class="btn btn-primary"
+          >
+            作成する
+          </button>
+
+          <a
+            href="/teacher/classes"
+            class="btn"
+          >
+            戻る
+          </a>
+
+        </div>
+
+      </form>
+
+    </div>
+
+  </main>
+
+</div>
+
+
+<script
+  src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+></script>
+
+<script src="/js/config.js"></script>
+
+<script src="/js/auth.js"></script>
+
+<script src="/js/teacher/class-new.js"></script>
+
+</body>
+</html>

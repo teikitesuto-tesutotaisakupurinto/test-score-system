@@ -1,313 +1,240 @@
 
 <!doctype html>
 <html lang="ja">
-
 <head>
-
-  <meta charset="utf-8">
-
-  <meta
-    name="viewport"
-    content="width=device-width,initial-scale=1"
-  >
-
-  <title>答案アップロード - テスト成績システム</title>
-
-  <link
-    rel="stylesheet"
-    href="/css/style.css"
-  >
-
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>答案アップロード</title>
+<link rel="stylesheet" href="/css/style.css">
 </head>
-
 
 <body>
 
-<header class="topbar">
+<div class="app">
 
-  <div class="system-name">
-    テスト成績システム
-  </div>
+  <aside class="side">
 
-  <div class="topbar-space"></div>
+    <h2>
+      答案管理
+    </h2>
 
-  <span id="teacherName">
-    -
-  </span>
+    <a href="/teacher.html">
+      ダッシュボード
+    </a>
 
-  <button
-    id="logoutButton"
-    type="button"
-    class="logout-button"
-  >
-    ログアウト
-  </button>
+    <a
+      class="active"
+      href="/teacher/answers/upload.html"
+    >
+      アップロード
+    </a>
 
-</header>
+    <a href="/teacher-answers-unmatched.html">
+      未紐付け
+    </a>
 
+    <a href="/teacher-marking.html">
+      採点
+    </a>
 
-<main class="main">
-
-  <div class="top">
-
-    <div>
-
-      <h1>
-        答案アップロード
-      </h1>
-
-      <p class="small muted">
-        生徒の答案をアップロードします。
-      </p>
-
-    </div>
-
-  </div>
+  </aside>
 
 
-  <div class="card">
+  <main class="main">
 
-    <!-- テスト -->
-
-    <div class="form-row">
-
-      <label for="test">
-        テスト
-      </label>
-
-      <select
-        id="test"
-      >
-
-        <option value="">
-          テストを選択してください
-        </option>
-
-      </select>
-
-    </div>
+    <h1>
+      答案アップロード
+    </h1>
 
 
-    <!-- 答案種類 -->
+    <div class="card">
 
-    <div class="form-row">
+      <div class="form-row">
 
-      <label for="answerType">
-        答案種類
-      </label>
+        <label>
+          テスト
+        </label>
 
-      <select
-        id="answerType"
-      >
+        <select id="test"></select>
 
-        <option value="student">
-          生徒答案
-        </option>
+      </div>
 
-        <option value="model">
-          解答用紙・模範解答
-        </option>
-
-      </select>
-
-    </div>
-
-
-    <!-- ファイル -->
-
-    <div class="form-row">
-
-      <label for="files">
-        ファイル
-      </label>
 
       <input
         id="files"
         type="file"
         multiple
-        accept=".pdf,.jpg,.jpeg,.png,.webp,.zip"
+        accept="image/*,.pdf"
       >
 
-    </div>
 
+      <p class="small">
 
-    <p class="small muted">
+        QR読み取り・PDFページ分割・生徒紐付けの本処理は、スキャナ形式とPDF構造を確定した後に接続します。
 
-      PDF / JPG / JPEG / PNG / WEBP / ZIP
+      </p>
 
-      <br>
-
-      ZIPの場合は内部の対応ファイルを展開して処理します。
-
-    </p>
-
-
-    <!-- 選択ファイル -->
-
-    <div
-      id="fileList"
-      class="file-list"
-      hidden
-    ></div>
-
-
-    <!-- 操作 -->
-
-    <div class="actions">
 
       <button
-        id="uploadButton"
-        type="button"
         class="primary"
+        id="upload"
+        type="button"
       >
         アップロード
       </button>
 
 
-      <button
-        id="clearButton"
-        type="button"
-      >
-        クリア
-      </button>
+      <p id="msg"></p>
 
     </div>
 
+  </main>
 
-    <!-- 進捗 -->
+</div>
 
-    <div
-      id="progressArea"
-      hidden
-    >
-
-      <div
-        class="progress-track"
-      >
-
-        <div
-          id="progressBar"
-          class="progress-bar"
-        ></div>
-
-      </div>
-
-
-      <p
-        id="progressText"
-        class="small muted"
-      >
-        待機中
-      </p>
-
-    </div>
-
-
-    <!-- メッセージ -->
-
-    <p
-      id="message"
-      class="message"
-      aria-live="polite"
-    ></p>
-
-
-    <!-- 処理結果 -->
-
-    <div
-      id="result"
-      hidden
-    ></div>
-
-  </div>
-
-
-  <!-- アップロード仕様 -->
-
-  <div class="card">
-
-    <h2>
-      アップロード仕様
-    </h2>
-
-    <p class="small muted">
-
-      ・PDFはページ単位で処理します。
-
-      <br>
-
-      ・JPEG / JPG / PNG / WEBPは画像答案として処理します。
-
-      <br>
-
-      ・ZIPは展開して内部のPDF・画像を処理します。
-
-      <br>
-
-      ・複数ファイルを一度に選択できます。
-
-      <br>
-
-      ・生徒答案はQRコードを読み取り、生徒を自動で特定します。
-
-      <br>
-
-      ・QR枠が設定されている場合は、その枠を優先して読み取ります。
-
-      <br>
-
-      ・答案ページはページ番号で解答用紙と対応します。
-
-      <br>
-
-      ・source_page_idは使用しません。
-
-    </p>
-
-  </div>
-
-</main>
-
-
-<!-- Supabase -->
 
 <script
   src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
 ></script>
-
-
-<!-- PDF -->
-
-<script
-  src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"
-></script>
-
-
-<!-- ZIP -->
-
-<script
-  src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"
-></script>
-
-
-<!-- QR -->
-
-<script
-  src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"
-></script>
-
-
-<!-- 共通 -->
 
 <script src="/js/config.js"></script>
 
 <script src="/js/auth.js"></script>
 
 
-<!-- 答案アップロード -->
+<script>
 
-<script src="/js/teacher/answers-upload.js"></script>
+requireRole(
+  "teacher"
+).then(
+  load
+);
+
+
+async function load() {
+
+  const {
+    data
+  } =
+    await SB
+      .from("tests")
+      .select(
+        "id,name"
+      )
+      .order(
+        "created_at",
+        {
+          ascending:
+            false
+        }
+      );
+
+
+  document
+    .getElementById("test")
+    .innerHTML =
+      (data || [])
+        .map(
+          test =>
+            `<option value="${test.id}">${test.name}</option>`
+        )
+        .join("");
+
+}
+
+
+document
+  .getElementById("upload")
+  .addEventListener(
+    "click",
+    async () => {
+
+      const files =
+        [
+          ...
+          document
+            .getElementById("files")
+            .files
+        ];
+
+
+      if (!files.length) {
+
+        return;
+
+      }
+
+
+      const message =
+        document
+          .getElementById("msg");
+
+
+      const test =
+        document
+          .getElementById("test");
+
+
+      message.textContent =
+        "アップロード中...";
+
+
+      for (
+        const file
+        of files
+      ) {
+
+        const path =
+          `uploads/${crypto.randomUUID()}-${file.name}`;
+
+
+        const {
+          error
+        } =
+          await SB
+            .storage
+            .from("answers")
+            .upload(
+              path,
+              file
+            );
+
+
+        if (error) {
+
+          message.textContent =
+            error.message;
+
+          return;
+
+        }
+
+
+        await SB
+          .from("answer_sheets")
+          .insert({
+
+            test_id:
+              test.value,
+
+            file_path:
+              path,
+
+            status:
+              "unmatched"
+
+          });
+
+      }
+
+
+      message.textContent =
+        "アップロードしました。QR紐付け待ちです。";
+
+    }
+  );
+
+</script>
 
 </body>
-
 </html>

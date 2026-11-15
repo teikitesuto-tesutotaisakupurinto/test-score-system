@@ -1,25 +1,76 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 
 <head>
 
-  <meta charset="UTF-8">
+<meta charset="UTF-8">
 
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
-  >
+<meta
+  name="viewport"
+  content="width=device-width,initial-scale=1"
+>
 
-  <title>
-    テスト一覧 - テスト成績システム
-  </title>
+<title>テスト管理 - テスト成績システム</title>
 
-  <link
-    rel="stylesheet"
-    href="/css/common.css"
-  >
+<link
+  rel="stylesheet"
+  href="/css/common.css"
+>
 
+<style>
+
+.main {
+  max-width:1200px;
+  margin:0 auto;
+  padding:25px;
+}
+
+.toolbar {
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  margin-bottom:15px;
+}
+
+.table-wrap {
+  overflow:auto;
+  background:#fff;
+  border:1px solid #d5dbe0;
+}
+
+table {
+  width:100%;
+  border-collapse:collapse;
+  min-width:900px;
+}
+
+th,
+td {
+  padding:10px;
+  border-bottom:1px solid #e1e5e8;
+  text-align:left;
+}
+
+th {
+  background:#f3f5f7;
+}
+
+.actions {
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+}
+
+.empty {
+  padding:40px;
+  text-align:center;
+  color:#777;
+}
+
+</style>
 </head>
+
 
 <body>
 
@@ -31,13 +82,12 @@
 
   <div class="topbar-space"></div>
 
-  <span id="teacherName">
-    -
-  </span>
+  <span id="teacherName">-</span>
 
   <button
     id="logoutButton"
     class="logout-button"
+    type="button"
   >
     ログアウト
   </button>
@@ -45,188 +95,343 @@
 </header>
 
 
-<div class="teacher-layout">
+<main class="main">
 
-  <aside class="sidebar">
+  <h1>
+    テスト管理
+  </h1>
 
-    <div class="sidebar-title">
-      テスト
-    </div>
 
-    <a
-      href="/teacher/tests"
-      class="menu-link active"
+  <div class="toolbar">
+
+    <button
+      id="newButton"
+      class="btn btn-primary"
+      type="button"
     >
-      テスト一覧
-    </a>
+      新しいテスト
+    </button>
 
-    <a
-      href="/teacher/tests/new"
-      class="menu-link"
+    <button
+      id="refreshButton"
+      class="btn"
+      type="button"
     >
-      テスト作成
-    </a>
+      更新
+    </button>
 
-  </aside>
-
-
-  <main class="main-content">
-
-    <div class="page-header">
-
-      <h1>
-        テスト一覧
-      </h1>
-
-      <div
-        style="
-          margin-left:auto;
-        "
-      >
-
-        <a
-          href="/teacher/tests/new"
-          class="btn btn-primary"
-        >
-          テスト作成
-        </a>
-
-      </div>
-
-    </div>
+  </div>
 
 
-    <div class="card">
+  <div class="table-wrap">
 
-      <div
-        style="
-          display:flex;
-          gap:10px;
-          margin-bottom:15px;
-        "
-      >
+    <table>
 
-        <input
-          id="testSearch"
-          type="search"
-          placeholder="テスト名・教科で検索"
-          style="max-width:350px;"
-        >
+      <thead>
 
+        <tr>
+          <th>テスト名</th>
+          <th>教科</th>
+          <th>学年</th>
+          <th>公開</th>
+          <th>操作</th>
+        </tr>
 
-        <select
-          id="statusFilter"
-          style="max-width:170px;"
-        >
+      </thead>
 
-          <option value="">
-            全状態
-          </option>
+      <tbody id="testBody">
 
-          <option value="draft">
-            下書き
-          </option>
+        <tr>
+          <td
+            colspan="5"
+            class="empty"
+          >
+            読み込み中...
+          </td>
+        </tr>
 
-          <option value="open">
-            実施前
-          </option>
+      </tbody>
 
-          <option value="marking">
-            採点中
-          </option>
+    </table>
 
-          <option value="completed">
-            採点完了
-          </option>
+  </div>
 
-          <option value="published">
-            公開済み
-          </option>
-
-        </select>
-
-      </div>
+</main>
 
 
-      <div style="overflow:auto;">
-
-        <table class="table">
-
-          <thead>
-
-            <tr>
-
-              <th>
-                テスト名
-              </th>
-
-              <th>
-                教科
-              </th>
-
-              <th>
-                学年
-              </th>
-
-              <th>
-                実施日
-              </th>
-
-              <th>
-                満点
-              </th>
-
-              <th>
-                状態
-              </th>
-
-              <th>
-                操作
-              </th>
-
-            </tr>
-
-          </thead>
-
-
-          <tbody id="testRows">
-
-            <tr>
-
-              <td
-                colspan="7"
-                style="
-                  text-align:center;
-                "
-              >
-                読み込み中...
-              </td>
-
-            </tr>
-
-          </tbody>
-
-        </table>
-
-      </div>
-
-    </div>
-
-  </main>
-
-</div>
-
-
-<script
-  src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
-></script>
-
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/js/config.js"></script>
-
 <script src="/js/auth.js"></script>
 
-<script src="/js/teacher/tests.js"></script>
+
+<script>
+
+(async function () {
+
+  const profile =
+    await requireTeacher();
+
+  if (!profile) {
+    return;
+  }
+
+
+  document.getElementById(
+    "teacherName"
+  ).textContent =
+    profile.name || "先生";
+
+
+  document.getElementById(
+    "logoutButton"
+  ).addEventListener(
+    "click",
+    logout
+  );
+
+
+  const body =
+    document.getElementById(
+      "testBody"
+    );
+
+
+  async function loadTests() {
+
+    body.innerHTML = `
+
+      <tr>
+        <td colspan="5" class="empty">
+          読み込み中...
+        </td>
+      </tr>
+
+    `;
+
+
+    const {
+      data,
+      error
+    } =
+      await supabaseClient
+        .from("tests")
+        .select(`
+          id,
+          name,
+          subject,
+          grade,
+          results_published,
+          created_at
+        `)
+        .order(
+          "created_at",
+          {
+            ascending:false
+          }
+        );
+
+
+    if (error) {
+
+      body.innerHTML = `
+
+        <tr>
+          <td colspan="5" class="empty">
+            ${escapeHtml(error.message)}
+          </td>
+        </tr>
+
+      `;
+
+      return;
+
+    }
+
+
+    if (!data?.length) {
+
+      body.innerHTML = `
+
+        <tr>
+          <td colspan="5" class="empty">
+            テストがありません。
+          </td>
+        </tr>
+
+      `;
+
+      return;
+
+    }
+
+
+    body.innerHTML =
+      data.map(
+        test => `
+
+          <tr>
+
+            <td>
+              ${escapeHtml(test.name)}
+            </td>
+
+            <td>
+              ${escapeHtml(test.subject || "-")}
+            </td>
+
+            <td>
+              ${escapeHtml(test.grade || "-")}
+            </td>
+
+            <td>
+              ${
+                test.results_published
+                  ? "公開中"
+                  : "非公開"
+              }
+            </td>
+
+            <td>
+
+              <div class="actions">
+
+                <button
+                  type="button"
+                  class="btn"
+                  data-edit="${test.id}"
+                >
+                  編集
+                </button>
+
+                <button
+                  type="button"
+                  class="btn"
+                  data-pages="${test.id}"
+                >
+                  解答用紙
+                </button>
+
+                <button
+                  type="button"
+                  class="btn"
+                  data-publish="${test.id}"
+                >
+                  公開設定
+                </button>
+
+              </div>
+
+            </td>
+
+          </tr>
+
+        `
+      ).join("");
+
+
+    body
+      .querySelectorAll("[data-edit]")
+      .forEach(
+        button => {
+
+          button.addEventListener(
+            "click",
+            () => {
+
+              location.href =
+                `/teacher/tests/edit?id=${encodeURIComponent(
+                  button.dataset.edit
+                )}`;
+
+            }
+          );
+
+        }
+      );
+
+
+    body
+      .querySelectorAll("[data-pages]")
+      .forEach(
+        button => {
+
+          button.addEventListener(
+            "click",
+            () => {
+
+              location.href =
+                `/teacher/tests/pages?test=${encodeURIComponent(
+                  button.dataset.pages
+                )}`;
+
+            }
+          );
+
+        }
+      );
+
+
+    body
+      .querySelectorAll("[data-publish]")
+      .forEach(
+        button => {
+
+          button.addEventListener(
+            "click",
+            () => {
+
+              location.href =
+                `/teacher/tests/publish?test=${encodeURIComponent(
+                  button.dataset.publish
+                )}`;
+
+            }
+          );
+
+        }
+      );
+
+  }
+
+
+  document.getElementById(
+    "newButton"
+  ).addEventListener(
+    "click",
+    () => {
+
+      location.href =
+        "/teacher/tests/edit";
+
+    }
+  );
+
+
+  document.getElementById(
+    "refreshButton"
+  ).addEventListener(
+    "click",
+    loadTests
+  );
+
+
+  function escapeHtml(value) {
+
+    return String(value ?? "")
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#039;");
+
+  }
+
+
+  await loadTests();
+
+})();
+
+</script>
 
 </body>
-
 </html>

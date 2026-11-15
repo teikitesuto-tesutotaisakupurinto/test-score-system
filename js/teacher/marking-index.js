@@ -1,34 +1,11 @@
 
-/* =========================================================
-   テスト成績システム
-   採点答案一覧
-
-   役割:
-     tests
-       ↓
-     answer_sheets
-       ↓
-     answer_sheet_pages
-       ↓
-     採点画面
-
-   注意:
-     answer_sheets.status = matched は
-     「生徒紐付け済み」を意味するだけであり、
-     「採点済み」とは判定しない。
-
-   採点完了判定・成績計算完了判定は
-   採点データの実構造確認後に行う。
-========================================================= */
-
 (function () {
 
   "use strict";
 
 
-  /* =======================================================
-     DOM
-  ======================================================= */
+  let currentTestId = "";
+
 
   const teacherName =
     document.getElementById(
@@ -50,15 +27,11 @@
       "status"
     );
 
-  const answerGrid =
+  const tableWrap =
     document.getElementById(
-      "answerGrid"
+      "markingTableWrap"
     );
 
-
-  /* =======================================================
-     INIT
-  ======================================================= */
 
   document.addEventListener(
     "DOMContentLoaded",
@@ -69,10 +42,6 @@
   async function initialize() {
 
     try {
-
-      /*
-       * ログイン確認
-       */
 
       const profile =
         await getProfile();
@@ -103,10 +72,6 @@
       }
 
 
-      /*
-       * 先生名
-       */
-
       if (teacherName) {
 
         teacherName.textContent =
@@ -116,16 +81,48 @@
       }
 
 
-      /*
-       * イベント
-       */
+      testSelect.addEventListener(
+        "change",
+        async () => {
 
-      setupEvents();
+          currentTestId =
+            testSelect.value ||
+            "";
+
+          await loadMarkingTable();
+
+        }
+      );
 
 
-      /*
-       * テスト一覧
-       */
+      refreshButton.addEventListener(
+        "click",
+        loadMarkingTable
+      );
+
+
+      document
+        .getElementById(
+          "logoutButton"
+        )
+        ?.addEventListener(
+          "click",
+          async event => {
+
+            event.preventDefault();
+
+            if (
+              typeof logout ===
+              "function"
+            ) {
+
+              await logout();
+
+            }
+
+          }
+        );
+
 
       await loadTests();
 
@@ -133,14 +130,12 @@
     } catch (error) {
 
       console.error(
-        "marking-index initialize:",
         error
       );
 
-
       showStatus(
         error.message ||
-        "採点画面の初期化に失敗しました。",
+        "初期化に失敗しました。",
         true
       );
 
@@ -149,62 +144,6 @@
   }
 
 
-  /* =======================================================
-     EVENTS
-  ======================================================= */
-
-  function setupEvents() {
-
-    testSelect?.addEventListener(
-      "change",
-      async () => {
-
-        await loadAnswers();
-
-      }
-    );
-
-
-    refreshButton?.addEventListener(
-      "click",
-      async () => {
-
-        await loadAnswers();
-
-      }
-    );
-
-
-    document
-      .getElementById(
-        "logoutButton"
-      )
-      ?.addEventListener(
-        "click",
-        async event => {
-
-          event.preventDefault();
-
-
-          if (
-            typeof logout ===
-            "function"
-          ) {
-
-            await logout();
-
-          }
-
-        }
-      );
-
-  }
-
-
-  /* =======================================================
-     TESTS
-  ======================================================= */
-
   async function loadTests() {
 
     const {
@@ -212,9 +151,7 @@
       error
     } =
       await supabaseClient
-        .from(
-          "tests"
-        )
+        .from("tests")
         .select(`
           id,
           name,
@@ -226,17 +163,14 @@
         .order(
           "created_at",
           {
-            ascending:
-              false
+            ascending:false
           }
         );
 
 
     if (error) {
 
-      throw new Error(
-        `テスト一覧の取得に失敗しました: ${error.message}`
-      );
+      throw error;
 
     }
 
@@ -265,23 +199,16 @@
         test.id;
 
 
-      const parts = [
-        test.name,
-        test.subject,
-        test.grade
-      ]
-        .filter(
-          value =>
-            value !== null &&
-            value !== undefined &&
-            String(value).trim() !== ""
-        );
-
-
       option.textContent =
-        parts.join(
-          " / "
-        );
+        [
+          test.name,
+          test.subject,
+          test.grade
+        ]
+          .filter(Boolean)
+          .join(
+            " / "
+          );
 
 
       testSelect.appendChild(
@@ -293,41 +220,42 @@
   }
 
 
-  /* =======================================================
-     ANSWERS
-  ======================================================= */
+  async function loadMarkingTable() {
 
-  async function loadAnswers() {
+    if (!currentTestId) {
 
-    const testId =
-      testSelect?.value ||
-      "";
+      tableWrap.innerHTML = `
 
+        <div class="empty">
+          テストを選択してください。
+        </div>
 
-    if (!testId) {
-
-      clearAnswers();
-
+      `;
 
       showStatus(
         "テストを選択してください。"
       );
-
 
       return;
 
     }
 
 
-    setLoading();
+    tableWrap.innerHTML = `
+
+      <div class="empty">
+        答案を読み込んでいます...
+      </div>
+
+    `;
 
 
     try {
 
       /*
-       * ----------------------------------------------------
-       * answer_sheets
-       * ----------------------------------------------------
+       * -----------------------------------------------
+       * 答案
+       * -----------------------------------------------
        */
 
       const {
@@ -335,61 +263,48 @@
         error: answerError
       } =
         await supabaseClient
-          .from(
-            "answer_sheets"
-          )
+          .from("answer_sheets")
           .select(`
             id,
             test_id,
             student_id,
-            original_file_path,
-            rendered_file_path,
             page_count,
             qr_value,
             status,
-            uploaded_by,
-            uploaded_at,
-            created_at,
-            updated_at
+            uploaded_at
           `)
           .eq(
             "test_id",
-            testId
+            currentTestId
           )
           .order(
             "uploaded_at",
             {
-              ascending:
-                false
+              ascending:false
             }
           );
 
 
       if (answerError) {
 
-        throw new Error(
-          `答案一覧の取得に失敗しました: ${answerError.message}`
-        );
+        throw answerError;
 
       }
 
 
-      /*
-       * 答案が本当に0件なのか確認。
-       */
+      if (!answers?.length) {
 
-      if (
-        !answers ||
-        !answers.length
-      ) {
+        tableWrap.innerHTML = `
 
-        clearAnswers();
+          <div class="empty">
+            このテストには答案がありません。
+          </div>
 
+        `;
 
         showStatus(
-          "このテストには登録済みの答案がありません。"
+          "答案がありません。"
         );
-
 
         return;
 
@@ -397,11 +312,9 @@
 
 
       /*
-       * ----------------------------------------------------
+       * -----------------------------------------------
        * 生徒
-       * ----------------------------------------------------
-       *
-       * student_idが存在する答案だけ取得。
+       * -----------------------------------------------
        */
 
       const studentIds =
@@ -417,8 +330,8 @@
         ];
 
 
-      let students =
-        [];
+      let studentMap =
+        new Map();
 
 
       if (studentIds.length) {
@@ -428,16 +341,12 @@
           error
         } =
           await supabaseClient
-            .from(
-              "students"
-            )
-            .select(
-              `
+            .from("students")
+            .select(`
               id,
               student_no,
               name
-              `
-            )
+            `)
             .in(
               "id",
               studentIds
@@ -446,34 +355,94 @@
 
         if (error) {
 
-          throw new Error(
-            `生徒情報の取得に失敗しました: ${error.message}`
-          );
+          throw error;
 
         }
 
 
-        students =
-          data || [];
+        studentMap =
+          new Map(
+            (data || [])
+              .map(
+                student => [
+                  student.id,
+                  student
+                ]
+              )
+          );
 
       }
 
 
-      const studentMap =
-        new Map(
-          students.map(
-            student => [
-              student.id,
-              student
-            ]
+      /*
+       * -----------------------------------------------
+       * 枠
+       * -----------------------------------------------
+       */
+
+      const {
+        data: boxes,
+        error: boxError
+      } =
+        await supabaseClient
+          .from("layout_boxes")
+          .select(`
+            id,
+            test_id,
+            page_no,
+            box_type,
+            label,
+            question_id,
+            points
+          `)
+          .eq(
+            "test_id",
+            currentTestId
           )
-        );
+          .order(
+            "page_no",
+            {
+              ascending:true
+            }
+          )
+          .order(
+            "created_at",
+            {
+              ascending:true
+            }
+          );
+
+
+      if (boxError) {
+
+        throw boxError;
+
+      }
 
 
       /*
-       * ----------------------------------------------------
-       * answer_sheet_pages
-       * ----------------------------------------------------
+       * 採点対象だけ
+       */
+
+      const questionBoxes =
+        (boxes || [])
+          .filter(
+            box =>
+              String(
+                box.box_type ||
+                ""
+              ).toLowerCase() ===
+              "answer" &&
+              Boolean(
+                box.question_id
+              )
+          );
+
+
+      /*
+       * -----------------------------------------------
+       * scores
+       * -----------------------------------------------
        */
 
       const answerIds =
@@ -484,90 +453,58 @@
 
 
       const {
-        data: pages,
-        error: pageError
+        data: scoreData,
+        error: scoreError
       } =
         await supabaseClient
-          .from(
-            "answer_sheet_pages"
-          )
+          .from("scores")
           .select(`
+            id,
             answer_sheet_id,
-            page_no,
-            file_path,
-            file_type,
-            original_name,
-            width_px,
-            height_px
+            layout_box_id,
+            question_id,
+            score,
+            status
           `)
           .in(
             "answer_sheet_id",
             answerIds
-          )
-          .order(
-            "page_no",
-            {
-              ascending:
-                true
-            }
           );
 
 
-      if (pageError) {
+      if (scoreError) {
 
-        throw new Error(
-          `答案ページの取得に失敗しました: ${pageError.message}`
+        throw scoreError;
+
+      }
+
+
+      const scores =
+        scoreData || [];
+
+
+      const scoreMap =
+        new Map();
+
+
+      for (
+        const score
+        of scores
+      ) {
+
+        scoreMap.set(
+          `${score.answer_sheet_id}:${score.layout_box_id}`,
+          score
         );
 
       }
 
 
-      /*
-       * 答案IDごとのページ数
-       */
-
-      const pageMap =
-        new Map();
-
-
-      for (
-        const page
-        of pages || []
-      ) {
-
-        if (
-          !pageMap.has(
-            page.answer_sheet_id
-          )
-        ) {
-
-          pageMap.set(
-            page.answer_sheet_id,
-            []
-          );
-
-        }
-
-
-        pageMap
-          .get(
-            page.answer_sheet_id
-          )
-          .push(
-            page
-          );
-
-      }
-
-
-      /*
-       * カード生成
-       */
-
-      renderAnswers(
+      renderTable(
         answers,
         studentMap,
-        pageMap
+        questionBoxes,
+        scoreMap
       );
 
 
@@ -579,12 +516,20 @@
     } catch (error) {
 
       console.error(
-        "loadAnswers:",
         error
       );
 
 
-      clearAnswers();
+      tableWrap.innerHTML = `
+
+        <div class="empty">
+          ${escapeHtml(
+            error.message ||
+            "答案の取得に失敗しました。"
+          )}
+        </div>
+
+      `;
 
 
       showStatus(
@@ -598,392 +543,264 @@
   }
 
 
-  /* =======================================================
-     RENDER
-  ======================================================= */
-
-  function renderAnswers(
+  function renderTable(
     answers,
     studentMap,
-    pageMap
+    questionBoxes,
+    scoreMap
   ) {
 
-    answerGrid.innerHTML =
-      "";
+    /*
+     * 問題列
+     */
+
+    const questionColumns =
+      questionBoxes.map(
+        box => {
+
+          const label =
+            box.label ||
+            "設問";
 
 
-    for (
-      const answer
-      of answers
-    ) {
+          return `
 
-      const student =
-        answer.student_id
-          ? studentMap.get(
+            <th>
+              ${escapeHtml(label)}
+              <br>
+              <span style="font-weight:400">
+                ${Number(
+                  box.points
+                ) || 0}点
+              </span>
+            </th>
+
+          `;
+
+        }
+      ).join("");
+
+
+    const rows =
+      answers.map(
+        answer => {
+
+          const student =
+            studentMap.get(
               answer.student_id
-            )
-          : null;
+            );
 
 
-      const pages =
-        pageMap.get(
-          answer.id
-        ) ||
-        [];
+          let markedCount =
+            0;
 
 
-      answerGrid.appendChild(
-        createAnswerCard(
-          answer,
-          student,
-          pages
-        )
-      );
+          let totalScore =
+            0;
 
-    }
 
-  }
+          for (
+            const box
+            of questionBoxes
+          ) {
 
+            const score =
+              scoreMap.get(
+                `${answer.id}:${box.id}`
+              );
 
-  /* =======================================================
-     CARD
-  ======================================================= */
 
-  function createAnswerCard(
-    answer,
-    student,
-    pages
-  ) {
+            if (
+              score &&
+              score.status ===
+                "marked"
+            ) {
 
-    const card =
-      document.createElement(
-        "article"
-      );
+              markedCount +=
+                1;
 
 
-    card.className =
-      "answer-card";
+              totalScore +=
+                Number(
+                  score.score
+                ) || 0;
 
+            }
 
-    /*
-     * 生徒名
-     */
+          }
 
-    const title =
-      document.createElement(
-        "div"
-      );
 
+          const totalQuestions =
+            questionBoxes.length;
 
-    title.className =
-      "answer-card-title";
 
+          const allMarked =
+            totalQuestions > 0 &&
+            markedCount ===
+              totalQuestions;
 
-    if (student) {
 
-      title.textContent =
-        `${student.student_no || ""} ${student.name || ""}`.trim();
+          const cells =
+            questionBoxes.map(
+              box => {
 
-    } else {
+                const score =
+                  scoreMap.get(
+                    `${answer.id}:${box.id}`
+                  );
 
-      title.textContent =
-        "未紐付け答案";
 
-    }
+                if (
+                  score &&
+                  score.status ===
+                    "marked"
+                ) {
 
+                  return `
 
-    /*
-     * メタ情報
-     */
+                    <td class="question-marked">
+                      ${escapeHtml(
+                        String(
+                          score.score
+                        )
+                      )}
+                    </td>
 
-    const meta =
-      document.createElement(
-        "div"
-      );
+                  `;
 
+                }
 
-    meta.className =
-      "answer-card-meta";
 
+                return `
 
-    const statusText =
-      getAnswerStatusText(
-        answer
-      );
+                  <td class="question-unmarked">
+                    未採点
+                  </td>
 
+                `;
 
-    const actualPageCount =
-      pages.length;
+              }
+            ).join("");
 
 
-    const registeredPageCount =
-      Number(
-        answer.page_count ||
-        0
-      );
+          const status =
+            allMarked
+              ? "全設問採点済み"
+              : `採点中 ${markedCount}/${totalQuestions}`;
 
 
-    const pageCount =
-      actualPageCount ||
-      registeredPageCount;
+          return `
 
+            <tr>
 
-    const lines = [];
+              <td>
 
+                <div class="student-name">
+                  ${escapeHtml(
+                    student
+                      ? student.student_no
+                      : "未紐付け"
+                  )}
+                </div>
 
-    lines.push(
-      `答案ID: ${answer.id}`
-    );
+              </td>
 
 
-    lines.push(
-      `ページ数: ${pageCount}`
-    );
+              <td>
 
+                ${escapeHtml(
+                  student
+                    ? student.name
+                    : "-"
+                )}
 
-    if (
-      answer.qr_value
-    ) {
+              </td>
 
-      lines.push(
-        `QR: ${answer.qr_value}`
-      );
 
-    }
+              ${cells}
 
 
-    lines.push(
-      `状態: ${statusText}`
-    );
+              <td class="total-score">
+                ${totalScore}点
+              </td>
 
 
-    if (
-      answer.uploaded_at
-    ) {
+              <td>
+                ${escapeHtml(status)}
+              </td>
 
-      lines.push(
-        `登録日時: ${formatDate(answer.uploaded_at)}`
-      );
 
-    }
+              <td>
 
+                <a
+                  class="btn btn-primary detail-button"
+                  href="/teacher/marking/mark?answer=${encodeURIComponent(
+                    answer.id
+                  )}"
+                >
+                  詳細
+                </a>
 
-    meta.textContent =
-      lines.join(
-        "\n"
-      );
+              </td>
 
+            </tr>
 
-    /*
-     * actions
-     */
+          `;
 
-    const actions =
-      document.createElement(
-        "div"
-      );
+        }
+      ).join("");
 
 
-    actions.className =
-      "answer-card-actions";
+    tableWrap.innerHTML = `
 
+      <table class="marking-table">
 
-    /*
-     * 詳細
-     */
+        <thead>
 
-    const detail =
-      document.createElement(
-        "a"
-      );
+          <tr>
 
+            <th>
+              生徒番号
+            </th>
 
-    detail.className =
-      "btn btn-primary";
+            <th>
+              生徒名
+            </th>
 
+            ${questionColumns}
 
-    detail.textContent =
-      "詳細";
+            <th>
+              合計
+            </th>
 
+            <th>
+              状態
+            </th>
 
-    /*
-     * 現在のRenderルート:
-     *
-     * /teacher/marking/mark
-     *
-     * answer_idを渡す。
-     */
+            <th>
+              操作
+            </th>
 
-    detail.href =
-      `/teacher/marking/mark?answer_id=${encodeURIComponent(
-        answer.id
-      )}`;
+          </tr>
 
+        </thead>
 
-    /*
-     * 採点
-     */
 
-    const marking =
-      document.createElement(
-        "a"
-      );
+        <tbody>
+          ${rows}
+        </tbody>
 
-
-    marking.className =
-      "btn";
-
-
-    marking.textContent =
-      "採点する";
-
-
-    marking.style.marginTop =
-      "8px";
-
-
-    marking.href =
-      `/teacher/marking/mark?answer_id=${encodeURIComponent(
-        answer.id
-      )}`;
-
-
-    actions.appendChild(
-      detail
-    );
-
-
-    actions.appendChild(
-      marking
-    );
-
-
-    card.appendChild(
-      title
-    );
-
-
-    card.appendChild(
-      meta
-    );
-
-
-    card.appendChild(
-      actions
-    );
-
-
-    return card;
-
-  }
-
-
-  /* =======================================================
-     STATUS
-  ======================================================= */
-
-  function getAnswerStatusText(
-    answer
-  ) {
-
-    /*
-     * 重要:
-     *
-     * answer_sheets.status = matched
-     * は生徒紐付け状態。
-     *
-     * 採点済みとは判定しない。
-     */
-
-    switch (
-      String(
-        answer.status ||
-        ""
-      ).toLowerCase()
-    ) {
-
-      case "matched":
-
-        return "生徒紐付け済み・採点前";
-
-      case "unmatched":
-
-        return "未紐付け";
-
-      case "processing":
-
-        return "処理中";
-
-      case "error":
-
-        return "エラー";
-
-      default:
-
-        return (
-          answer.status ||
-          "未処理"
-        );
-
-    }
-
-  }
-
-
-  /* =======================================================
-     CLEAR
-  ======================================================= */
-
-  function clearAnswers() {
-
-    answerGrid.innerHTML = `
-
-      <div class="empty">
-        テストを選択してください。
-      </div>
+      </table>
 
     `;
 
   }
 
-
-  /* =======================================================
-     LOADING
-  ======================================================= */
-
-  function setLoading() {
-
-    answerGrid.innerHTML = `
-
-      <div class="empty">
-        答案を読み込んでいます...
-      </div>
-
-    `;
-
-
-    showStatus(
-      "答案を取得しています..."
-    );
-
-  }
-
-
-  /* =======================================================
-     STATUS MESSAGE
-  ======================================================= */
 
   function showStatus(
     text,
     error = false
   ) {
-
-    if (!statusElement) {
-
-      return;
-
-    }
-
 
     statusElement.textContent =
       text;
@@ -997,38 +814,35 @@
   }
 
 
-  /* =======================================================
-     DATE
-  ======================================================= */
-
-  function formatDate(
+  function escapeHtml(
     value
   ) {
 
-    const date =
-      new Date(
-        value
-      );
-
-
-    if (
-      Number.isNaN(
-        date.getTime()
+    return String(
+      value ??
+      ""
+    )
+      .replaceAll(
+        "&",
+        "&amp;"
       )
-    ) {
-
-      return String(
-        value
+      .replaceAll(
+        "<",
+        "&lt;"
+      )
+      .replaceAll(
+        ">",
+        "&gt;"
+      )
+      .replaceAll(
+        '"',
+        "&quot;"
+      )
+      .replaceAll(
+        "'",
+        "&#039;"
       );
-
-    }
-
-
-    return date.toLocaleString(
-      "ja-JP"
-    );
 
   }
-
 
 })();

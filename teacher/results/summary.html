@@ -19,6 +19,11 @@
     href="/css/common.css"
   >
 
+  <link
+    rel="stylesheet"
+    href="/css/results.css"
+  >
+
 </head>
 
 
@@ -31,14 +36,11 @@
     テスト成績システム
   </div>
 
-
   <div class="topbar-space"></div>
-
 
   <span id="teacherName">
     -
   </span>
-
 
   <button
     id="logoutButton"
@@ -112,7 +114,6 @@
 
     <div class="card">
 
-
       <div class="form-group">
 
         <label for="testSelect">
@@ -131,7 +132,6 @@
         </select>
 
       </div>
-
 
     </div>
 
@@ -162,45 +162,43 @@
     >
 
 
-      <div
-        style="
-          display:flex;
-          align-items:center;
-          justify-content:space-between;
-          margin-bottom:12px;
-        "
-      >
+      <div class="results-toolbar">
 
-        <h3 style="margin:0;">
+        <h3>
           結果総括表
         </h3>
 
 
-        <button
-          id="exportCsvButton"
-          class="btn"
-          type="button"
-        >
-          CSV出力
-        </button>
+        <div class="results-actions">
+
+          <button
+            id="exportCsvButton"
+            class="btn"
+            type="button"
+          >
+            CSV出力
+          </button>
+
+
+          <button
+            id="printButton"
+            class="btn btn-primary"
+            type="button"
+          >
+            印刷
+          </button>
+
+        </div>
 
       </div>
 
 
 
-      <div
-        style="
-          overflow:auto;
-        "
-      >
+      <div class="results-table-wrap">
 
         <table
           id="summaryTable"
-          style="
-            width:100%;
-            border-collapse:collapse;
-            min-width:700px;
-          "
+          class="results-table"
         >
 
           <thead></thead>

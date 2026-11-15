@@ -1,21 +1,16 @@
 
 /* =========================================================
    テスト成績システム
-   採点 完全版
+   js/teacher/marking.js
 
-   採点対象
+   最終採点仕様
    ---------------------------------------------------------
    answer_regions
+       ↓
+   設問ごとの自動クロップ画像
+       ↓
+   採点
 
-   解答用紙のlayout_boxesは
-   ここでは描画しない。
-
-   answer_regionsに自動クロップされた
-   生徒答案画像だけを表示。
-
-
-   キー操作
-   ---------------------------------------------------------
    L
      → ○
      → 配点満点
@@ -24,52 +19,22 @@
      → ×
      → 0点
 
-   数字
-     → 点数入力
-     → 複数桁対応
+   数字キー
+     → 複数桁
+     → 部分点
 
-   Enter
-     → 現在の点数を確定候補
-
-   Backspace
-     → 数字入力削除
-
-   Escape
-     → 数字入力解除
-
-
-   配点制限
-   ---------------------------------------------------------
-   score < 0
-     → 保存不可
-
-   score > points
+   配点超過
      → 警告
      → 保存不可
 
-   score = points
-     → 保存可能
+   保存
+     → scores
+     → mark_objects
 
-   score < points
-     → 部分点として保存可能
-
-
-   DB
+   注意
    ---------------------------------------------------------
-   scores
-   mark_objects
-
-
-   最終返却
-   ---------------------------------------------------------
-   mark_objects
-      +
-   scores
-      ↓
-   元答案画像へ焼き込み
-
-   このファイルでは
-   元答案画像そのものを書き換えない。
+   layout_boxesは採点画面に枠として描画しない。
+   元答案画像もこの画面では変更しない。
 ========================================================= */
 
 (function () {
@@ -78,16 +43,14 @@
 
 
   /* =======================================================
-     State
+     STATE
   ======================================================= */
 
-  let currentAnswerSheetId = null;
+  let answerSheetId = null;
 
-  let currentTestId = null;
+  let testId = null;
 
-  let currentStudent = null;
-
-  let currentAnswerPages = [];
+  let student = null;
 
   let regions = [];
 
@@ -99,9 +62,11 @@
 
   let selectedRegion = null;
 
-  let numericInput = "";
+  let numericBuffer = "";
 
-  let activeMarkType = null;
+  let selectedMarkType = null;
+
+  let saving = false;
 
 
   /* =======================================================
@@ -109,33 +74,23 @@
   ======================================================= */
 
   const answerSelect =
-    document.getElementById(
-      "answerSelect"
-    );
+    document.getElementById("answerSelect");
 
   const questionList =
-    document.getElementById(
-      "questionList"
-    );
+    document.getElementById("questionList");
 
   const answerViewer =
-    document.getElementById(
-      "answerViewer"
-    );
+    document.getElementById("answerViewer");
 
   const statusElement =
-    document.getElementById(
-      "status"
-    );
+    document.getElementById("status");
 
   const saveButton =
-    document.getElementById(
-      "saveButton"
-    );
+    document.getElementById("saveButton");
 
 
   /* =======================================================
-     Initialize
+     INIT
   ======================================================= */
 
   async function initialize() {
@@ -145,24 +100,51 @@
       const profile =
         await requireTeacher();
 
-
       if (!profile) {
-
         return;
+      }
+
+
+      const teacherName =
+        document.getElementById("teacherName");
+
+      if (teacherName) {
+
+        teacherName.textContent =
+          profile.name || "先生";
 
       }
 
 
-      document.getElementById(
-        "teacherName"
-      ).textContent =
-        profile.name ||
-        "先生";
-
+      setupEvents();
 
       await loadAnswers();
 
-      setupEvents();
+
+      /*
+        URLから答案を直接指定
+      */
+
+      const params =
+        new URLSearchParams(
+          window.location.search
+        );
+
+      const requestedAnswer =
+        params.get("answer");
+
+
+      if (requestedAnswer) {
+
+        answerSelect.value =
+          requestedAnswer;
+
+        answerSheetId =
+          requestedAnswer;
+
+        await loadAnswer();
+
+      }
 
     } catch (error) {
 
@@ -170,7 +152,6 @@
         "marking initialize:",
         error
       );
-
 
       showError(
         error.message ||
@@ -183,7 +164,62 @@
 
 
   /* =======================================================
-     Answers
+     EVENTS
+  ======================================================= */
+
+  function setupEvents() {
+
+    answerSelect?.addEventListener(
+      "change",
+      async () => {
+
+        answerSheetId =
+          answerSelect.value || null;
+
+        numericBuffer = "";
+
+        selectedMarkType = null;
+
+        selectedRegion = null;
+
+        if (!answerSheetId) {
+
+          clearScreen();
+
+          return;
+
+        }
+
+        await loadAnswer();
+
+      }
+    );
+
+
+    saveButton?.addEventListener(
+      "click",
+      saveCurrent
+    );
+
+
+    document.addEventListener(
+      "keydown",
+      handleKeyboard
+    );
+
+
+    document
+      .getElementById("logoutButton")
+      ?.addEventListener(
+        "click",
+        logout
+      );
+
+  }
+
+
+  /* =======================================================
+     ANSWER LIST
   ======================================================= */
 
   async function loadAnswers() {
@@ -193,9 +229,7 @@
       error
     } =
       await supabaseClient
-        .from(
-          "answer_sheets"
-        )
+        .from("answer_sheets")
         .select(`
           id,
           test_id,
@@ -213,16 +247,13 @@
         .order(
           "created_at",
           {
-            ascending:
-              false
+            ascending:false
           }
         );
 
 
     if (error) {
-
       throw error;
-
     }
 
 
@@ -235,12 +266,9 @@
         ...new Set(
           answers
             .map(
-              item =>
-                item.student_id
+              item => item.student_id
             )
-            .filter(
-              Boolean
-            )
+            .filter(Boolean)
         )
       ];
 
@@ -249,20 +277,14 @@
       new Map();
 
 
-    if (
-      studentIds.length
-    ) {
+    if (studentIds.length) {
 
       const {
-        data:
-          studentData,
-        error:
-          studentError
+        data: studentData,
+        error: studentError
       } =
         await supabaseClient
-          .from(
-            "students"
-          )
+          .from("students")
           .select(`
             id,
             student_no,
@@ -275,23 +297,19 @@
 
 
       if (studentError) {
-
         throw studentError;
-
       }
 
 
       studentMap =
         new Map(
-          (
-            studentData ||
-            []
-          ).map(
-            student => [
-              student.id,
-              student
-            ]
-          )
+          (studentData || [])
+            .map(
+              student => [
+                student.id,
+                student
+              ]
+            )
         );
 
     }
@@ -308,33 +326,24 @@
           .map(
             answer => {
 
-              const student =
+              const s =
                 studentMap.get(
                   answer.student_id
                 );
 
 
               const label =
-
-                student
-
-                  ? `${student.student_no} / ${student.name}`
-
-                  : answer.id;
+                s
+                  ? `${s.student_no} / ${s.name}`
+                  : `未紐付け / ${answer.id}`;
 
 
               return `
 
                 <option
-                  value="${escapeHtml(
-                    answer.id
-                  )}"
+                  value="${escapeHtml(answer.id)}"
                 >
-
-                  ${escapeHtml(
-                    label
-                  )}
-
+                  ${escapeHtml(label)}
                 </option>
 
               `;
@@ -346,71 +355,11 @@
 
     `;
 
-
-    window.__markingAnswers =
-      answers;
-
-
-    window.__markingStudents =
-      studentMap;
-
   }
 
 
   /* =======================================================
-     Events
-  ======================================================= */
-
-  function setupEvents() {
-
-    answerSelect.addEventListener(
-      "change",
-      async () => {
-
-        currentAnswerSheetId =
-          answerSelect.value ||
-          null;
-
-
-        if (!currentAnswerSheetId) {
-
-          clearScreen();
-
-          return;
-
-        }
-
-
-        await loadAnswer();
-
-      }
-    );
-
-
-    saveButton.addEventListener(
-      "click",
-      saveCurrentMark
-    );
-
-
-    document.addEventListener(
-      "keydown",
-      handleKeyboard
-    );
-
-
-    document.getElementById(
-      "logoutButton"
-    ).addEventListener(
-      "click",
-      logout
-    );
-
-  }
-
-
-  /* =======================================================
-     Load Answer
+     LOAD ANSWER
   ======================================================= */
 
   async function loadAnswer() {
@@ -421,15 +370,11 @@
 
 
     const {
-      data:
-        answer,
-      error:
-        answerError
+      data: answer,
+      error: answerError
     } =
       await supabaseClient
-        .from(
-          "answer_sheets"
-        )
+        .from("answer_sheets")
         .select(`
           id,
           test_id,
@@ -438,36 +383,35 @@
         `)
         .eq(
           "id",
-          currentAnswerSheetId
+          answerSheetId
         )
         .single();
 
 
     if (answerError) {
-
       throw answerError;
+    }
+
+
+    if (!answer.student_id) {
+
+      throw new Error(
+        "この答案は生徒に紐付いていません。"
+      );
 
     }
 
 
-    currentTestId =
+    testId =
       answer.test_id;
 
 
-    /*
-      Student
-    */
-
     const {
-      data:
-        student,
-      error:
-        studentError
+      data: studentData,
+      error: studentError
     } =
       await supabaseClient
-        .from(
-          "students"
-        )
+        .from("students")
         .select(`
           id,
           student_no,
@@ -481,103 +425,49 @@
 
 
     if (studentError) {
-
       throw studentError;
-
     }
 
 
-    currentStudent =
-      student;
+    student =
+      studentData;
 
 
     /*
-      Pages
+      answer_regions
     */
 
     const {
-      data:
-        pageData,
-      error:
-        pageError
+      data: regionData,
+      error: regionError
     } =
       await supabaseClient
-        .from(
-          "answer_sheet_pages"
-        )
-        .select(`
-          id,
-          page_no,
-          file_path,
-          width_px,
-          height_px
-        `)
-        .eq(
-          "answer_sheet_id",
-          currentAnswerSheetId
-        )
-        .order(
-          "page_no",
-          {
-            ascending:
-              true
-          }
-        );
-
-
-    if (pageError) {
-
-      throw pageError;
-
-    }
-
-
-    currentAnswerPages =
-      pageData || [];
-
-
-    /*
-      Regions
-    */
-
-    const {
-      data:
-        regionData,
-      error:
-        regionError
-    } =
-      await supabaseClient
-        .from(
-          "answer_regions"
-        )
+        .from("answer_regions")
         .select(`
           id,
           answer_sheet_id,
           layout_box_id,
           page_no,
+          image_path,
           x,
           y,
           width,
-          height,
-          image_path
+          height
         `)
         .eq(
           "answer_sheet_id",
-          currentAnswerSheetId
+          answerSheetId
         )
         .order(
           "page_no",
           {
-            ascending:
-              true
+            ascending:true
           }
         );
 
 
     if (regionError) {
-
       throw regionError;
-
     }
 
 
@@ -586,22 +476,15 @@
 
 
     /*
-      Layout boxes
-
-      表示・配点情報のみ使用。
-      枠線は描画しない。
+      layout_boxes
     */
 
     const {
-      data:
-        boxData,
-      error:
-        boxError
+      data: boxData,
+      error: boxError
     } =
       await supabaseClient
-        .from(
-          "layout_boxes"
-        )
+        .from("layout_boxes")
         .select(`
           id,
           question_id,
@@ -615,21 +498,18 @@
         `)
         .eq(
           "test_id",
-          currentTestId
+          testId
         )
         .order(
           "created_at",
           {
-            ascending:
-              true
+            ascending:true
           }
         );
 
 
     if (boxError) {
-
       throw boxError;
-
     }
 
 
@@ -638,36 +518,31 @@
 
 
     /*
-      Scores
+      scores
     */
 
     const {
-      data:
-        scoreData,
-      error:
-        scoreError
+      data: scoreData,
+      error: scoreError
     } =
       await supabaseClient
-        .from(
-          "scores"
-        )
+        .from("scores")
         .select(`
           id,
           layout_box_id,
           question_id,
           score,
-          status
+          status,
+          marked_at
         `)
         .eq(
           "answer_sheet_id",
-          currentAnswerSheetId
+          answerSheetId
         );
 
 
     if (scoreError) {
-
       throw scoreError;
-
     }
 
 
@@ -676,21 +551,18 @@
 
 
     /*
-      Marks
+      mark_objects
     */
 
     const {
-      data:
-        markData,
-      error:
-        markError
+      data: markData,
+      error: markError
     } =
       await supabaseClient
-        .from(
-          "mark_objects"
-        )
+        .from("mark_objects")
         .select(`
           id,
+          answer_sheet_id,
           layout_box_id,
           question_id,
           object_type,
@@ -707,21 +579,18 @@
         `)
         .eq(
           "answer_sheet_id",
-          currentAnswerSheetId
+          answerSheetId
         )
         .order(
           "created_at",
           {
-            ascending:
-              true
+            ascending:true
           }
         );
 
 
     if (markError) {
-
       throw markError;
-
     }
 
 
@@ -729,49 +598,39 @@
       markData || [];
 
 
-    /*
-      Render
-    */
-
     renderQuestionList();
 
 
-    if (
-      regions.length
-    ) {
+    if (regions.length) {
 
-      selectRegion(
+      await selectRegion(
         regions[0]
       );
 
     } else {
 
-      renderEmptyViewer(
-        "この答案には自動クロップされた解答欄がありません。"
+      renderEmpty(
+        "自動クロップされた解答欄がありません。"
       );
 
     }
 
 
     setStatus(
-      `${currentStudent?.student_no || ""} / ${
-        currentStudent?.name || ""
-      } の採点`
+      `${student.student_no} / ${student.name} の採点`
     );
 
   }
 
 
   /* =======================================================
-     Question List
+     QUESTION LIST
   ======================================================= */
 
   function renderQuestionList() {
 
     if (!questionList) {
-
       return;
-
     }
 
 
@@ -807,22 +666,7 @@
               );
 
 
-            const label =
-              box?.label ||
-              "設問";
-
-
-            const points =
-              Number(
-                box?.points
-              ) || 0;
-
-
-            const value =
-              score?.score;
-
-
-            const isSelected =
+            const selected =
               selectedRegion?.id ===
               region.id;
 
@@ -831,7 +675,7 @@
 
               <div
                 class="question-item ${
-                  isSelected
+                  selected
                     ? "selected"
                     : ""
                 }"
@@ -840,35 +684,32 @@
                 )}"
               >
 
-                <div
-                  class="question-title"
-                >
+                <div class="question-title">
+
                   ${escapeHtml(
-                    label
+                    box?.label ||
+                    "設問"
                   )}
+
                 </div>
 
 
-                <div
-                  class="question-score"
-                >
+                <div class="question-score">
+
                   配点：
-                  ${points}点
+                  ${Number(
+                    box?.points
+                  ) || 0}点
+
                 </div>
 
 
-                <div
-                  class="question-status"
-                >
+                <div class="question-status">
 
                   ${
-                    value !== undefined &&
-                    value !== null
-
-                      ? `得点：${value}点`
-
+                    score
+                      ? `得点：${score.score}点`
                       : "未採点"
-
                   }
 
                 </div>
@@ -891,7 +732,7 @@
 
           element.addEventListener(
             "click",
-            () => {
+            async () => {
 
               const region =
                 regions.find(
@@ -903,7 +744,7 @@
 
               if (region) {
 
-                selectRegion(
+                await selectRegion(
                   region
                 );
 
@@ -919,7 +760,7 @@
 
 
   /* =======================================================
-     Select Region
+     REGION
   ======================================================= */
 
   async function selectRegion(
@@ -929,12 +770,10 @@
     selectedRegion =
       region;
 
-
-    numericInput =
+    numericBuffer =
       "";
 
-
-    activeMarkType =
+    selectedMarkType =
       null;
 
 
@@ -949,19 +788,12 @@
 
 
   /* =======================================================
-     Render Region
+     REGION VIEW
   ======================================================= */
 
   async function renderRegion(
     region
   ) {
-
-    if (!answerViewer) {
-
-      return;
-
-    }
-
 
     answerViewer.innerHTML =
       "";
@@ -989,56 +821,42 @@
       "answer-card";
 
 
-    /*
-      Header
-    */
+    wrapper.innerHTML = `
 
-    const header =
-      document.createElement(
-        "div"
-      );
+      <div class="answer-header">
+
+        <div class="answer-header-title">
+
+          ${escapeHtml(
+            box?.label ||
+            "設問"
+          )}
+
+        </div>
 
 
-    header.className =
-      "answer-header";
+        <div class="answer-header-meta">
 
-
-    header.innerHTML = `
-
-      <div
-        class="answer-header-title"
-      >
-        ${escapeHtml(
-          box?.label ||
-          "設問"
-        )}
-      </div>
-
-      <div
-        class="answer-header-meta"
-      >
-        配点：${
-          Number(
+          配点：
+          ${Number(
             box?.points
-          ) || 0
-        }点
-        ${
-          score
-            ? ` / 現在：${score.score}点`
-            : ""
-        }
+          ) || 0}点
+
+          ${
+            score
+              ? ` / 現在：${score.score}点`
+              : ""
+          }
+
+        </div>
+
       </div>
 
     `;
 
 
-    wrapper.appendChild(
-      header
-    );
-
-
     /*
-      Image
+      クロップ画像
     */
 
     const imageWrap =
@@ -1061,11 +879,6 @@
       "region-image";
 
 
-    image.alt =
-      box?.label ||
-      "解答欄";
-
-
     const {
       data,
       error
@@ -1082,9 +895,7 @@
 
 
     if (error) {
-
       throw error;
-
     }
 
 
@@ -1112,12 +923,11 @@
       );
 
 
-    warning.className =
-      "warning";
-
-
     warning.id =
       "scoreWarning";
+
+    warning.className =
+      "warning";
 
 
     wrapper.appendChild(
@@ -1126,7 +936,7 @@
 
 
     /*
-      Mark toolbar
+      Mark buttons
     */
 
     const toolbar =
@@ -1149,7 +959,6 @@
         ○
       </button>
 
-
       <button
         type="button"
         class="mark-button"
@@ -1157,7 +966,6 @@
       >
         ×
       </button>
-
 
       <button
         type="button"
@@ -1167,7 +975,6 @@
         △
       </button>
 
-
       <button
         type="button"
         class="mark-button"
@@ -1176,7 +983,6 @@
         ◎
       </button>
 
-
       <button
         type="button"
         class="mark-button"
@@ -1184,7 +990,6 @@
       >
         文字
       </button>
-
 
       <button
         type="button"
@@ -1222,24 +1027,17 @@
         点数
       </label>
 
-
       <input
         id="scoreInput"
         class="score-input"
         type="number"
         step="0.1"
         min="0"
-        max="${
-          Number(
-            box?.points
-          ) || 0
-        }"
         value="${
           score?.score ??
           ""
         }"
       >
-
 
       <button
         id="setScoreButton"
@@ -1248,7 +1046,6 @@
       >
         点数設定
       </button>
-
 
       <button
         id="clearScoreButton"
@@ -1272,7 +1069,7 @@
 
 
     /*
-      Mark events
+      Mark selection
     */
 
     toolbar
@@ -1286,7 +1083,7 @@
             "click",
             () => {
 
-              activeMarkType =
+              selectedMarkType =
                 button.dataset.mark;
 
 
@@ -1299,16 +1096,11 @@
 
                     item.classList.toggle(
                       "active",
-                      item ===
-                        button
+                      item === button
                     );
 
                   }
                 );
-
-
-              numericInput =
-                "";
 
             }
           );
@@ -1317,38 +1109,25 @@
       );
 
 
-    /*
-      Score
-    */
-
     document.getElementById(
       "setScoreButton"
-    )
-      ?.addEventListener(
-        "click",
-        () => {
-
-          setScoreFromInput();
-
-        }
-      );
+    )?.addEventListener(
+      "click",
+      setScoreFromInput
+    );
 
 
     document.getElementById(
       "clearScoreButton"
-    )
-      ?.addEventListener(
-        "click",
-        () => {
-
-          clearCurrentScore();
-
-        }
-      );
+    )?.addEventListener(
+      "click",
+      clearCurrentScore
+    );
 
 
     /*
-      Image click
+      クロップ画像クリック
+      → 選択中の採点記号を配置
     */
 
     image.addEventListener(
@@ -1356,18 +1135,16 @@
       event => {
 
         if (
-          !activeMarkType
+          !selectedMarkType
         ) {
-
           return;
-
         }
 
 
-        createMarkAtImagePosition(
+        createMarkAtImage(
           event,
           image,
-          activeMarkType
+          selectedMarkType
         );
 
       }
@@ -1377,7 +1154,7 @@
 
 
   /* =======================================================
-     Keyboard
+     KEYBOARD
   ======================================================= */
 
   function handleKeyboard(
@@ -1385,15 +1162,9 @@
   ) {
 
     if (!selectedRegion) {
-
       return;
-
     }
 
-
-    /*
-      input内では独自処理しない。
-    */
 
     if (
       event.target instanceof
@@ -1403,9 +1174,7 @@
       event.target instanceof
       HTMLSelectElement
     ) {
-
       return;
-
     }
 
 
@@ -1414,8 +1183,8 @@
 
 
     /*
-      L
-      */
+      L = ○ + 満点
+    */
 
     if (
       key === "l" ||
@@ -1425,7 +1194,14 @@
       event.preventDefault();
 
 
-      setFullScore();
+      setScoreValue(
+        getMaxPoints()
+      );
+
+
+      replaceQuestionMarks(
+        "circle"
+      );
 
 
       return;
@@ -1434,8 +1210,8 @@
 
 
     /*
-      K
-      */
+      K = × + 0
+    */
 
     if (
       key === "k" ||
@@ -1445,7 +1221,14 @@
       event.preventDefault();
 
 
-      setZeroScore();
+      setScoreValue(
+        0
+      );
+
+
+      replaceQuestionMarks(
+        "x"
+      );
 
 
       return;
@@ -1466,11 +1249,25 @@
       event.preventDefault();
 
 
-      numericInput +=
+      numericBuffer +=
         key;
 
 
-      showNumericPreview();
+      const input =
+        document.getElementById(
+          "scoreInput"
+        );
+
+
+      if (input) {
+
+        input.value =
+          numericBuffer;
+
+      }
+
+
+      validateLiveScore();
 
 
       return;
@@ -1487,17 +1284,31 @@
     ) {
 
       if (
-        numericInput.length
+        numericBuffer.length
       ) {
 
-        numericInput =
-          numericInput.slice(
+        numericBuffer =
+          numericBuffer.slice(
             0,
             -1
           );
 
 
-        showNumericPreview();
+        const input =
+          document.getElementById(
+            "scoreInput"
+          );
+
+
+        if (input) {
+
+          input.value =
+            numericBuffer;
+
+        }
+
+
+        validateLiveScore();
 
       }
 
@@ -1516,20 +1327,23 @@
     ) {
 
       if (
-        numericInput.length
+        numericBuffer.length
       ) {
 
-        setScore(
+        setScoreValue(
           Number(
-            numericInput
+            numericBuffer
           )
         );
 
 
-        numericInput =
+        numericBuffer =
           "";
 
       }
+
+
+      return;
 
     }
 
@@ -1542,13 +1356,23 @@
       key === "Escape"
     ) {
 
-      numericInput =
+      numericBuffer =
         "";
 
-      activeMarkType =
+      selectedMarkType =
         null;
 
-      clearMarkButtonState();
+
+      document
+        .querySelectorAll(
+          ".mark-button"
+        )
+        .forEach(
+          button =>
+            button.classList.remove(
+              "active"
+            )
+        );
 
     }
 
@@ -1556,144 +1380,28 @@
 
 
   /* =======================================================
-     L = Full Score
+     SCORE
   ======================================================= */
 
-  function setFullScore() {
+  function getMaxPoints() {
 
     const box =
       getSelectedBox();
 
 
-    if (!box) {
-
-      return;
-
-    }
-
-
-    setScore(
-      Number(
-        box.points
-      ) || 0
-    );
-
-
-    createMark(
-      "circle"
-    );
+    return Number(
+      box?.points
+    ) || 0;
 
   }
 
-
-  /* =======================================================
-     K = Zero
-  ======================================================= */
-
-  function setZeroScore() {
-
-    setScore(
-      0
-    );
-
-
-    createMark(
-      "x"
-    );
-
-  }
-
-
-  /* =======================================================
-     Numeric Preview
-  ======================================================= */
-
-  function showNumericPreview() {
-
-    const input =
-      document.getElementById(
-        "scoreInput"
-      );
-
-
-    if (input) {
-
-      input.value =
-        numericInput;
-
-    }
-
-  }
-
-
-  /* =======================================================
-     Score Input
-  ======================================================= */
-
-  function setScoreFromInput() {
-
-    const input =
-      document.getElementById(
-        "scoreInput"
-      );
-
-
-    if (!input) {
-
-      return;
-
-    }
-
-
-    const value =
-      Number(
-        input.value
-      );
-
-
-    setScore(
-      value
-    );
-
-  }
-
-
-  /* =======================================================
-     Score Validation
-  ======================================================= */
 
   function validateScore(
-    score
+    value
   ) {
 
-    const box =
-      getSelectedBox();
-
-
-    if (!box) {
-
-      return {
-
-        ok:false,
-
-        message:
-          "設問が選択されていません。"
-
-      };
-
-    }
-
-
     const max =
-      Number(
-        box.points
-      ) || 0;
-
-
-    const value =
-      Number(
-        score
-      );
+      getMaxPoints();
 
 
     if (
@@ -1730,12 +1438,6 @@
     }
 
 
-    /*
-      ここが重要。
-
-      設定配点以上は禁止。
-    */
-
     if (
       value > max
     ) {
@@ -1745,7 +1447,7 @@
         ok:false,
 
         message:
-          `設定配点 ${max}点を超えています。${max}点以下で設定してください。`
+          `設定配点 ${max}点を超えています。保存できません。`
 
       };
 
@@ -1756,26 +1458,96 @@
 
       ok:true,
 
-      value,
-
-      max
+      value
 
     };
 
   }
 
 
-  /* =======================================================
-     Set Score
-  ======================================================= */
+  function validateLiveScore() {
 
-  function setScore(
-    score
+    const input =
+      document.getElementById(
+        "scoreInput"
+      );
+
+
+    const warning =
+      document.getElementById(
+        "scoreWarning"
+      );
+
+
+    if (
+      !input ||
+      !warning
+    ) {
+      return;
+    }
+
+
+    const value =
+      Number(
+        input.value
+      );
+
+
+    if (
+      Number.isFinite(
+        value
+      ) &&
+      value >
+        getMaxPoints()
+    ) {
+
+      warning.textContent =
+        `設定配点 ${getMaxPoints()}点を超えています。`;
+
+      warning.classList.add(
+        "show"
+      );
+
+    } else {
+
+      warning.classList.remove(
+        "show"
+      );
+
+    }
+
+  }
+
+
+  function setScoreFromInput() {
+
+    const input =
+      document.getElementById(
+        "scoreInput"
+      );
+
+
+    if (!input) {
+      return;
+    }
+
+
+    setScoreValue(
+      Number(
+        input.value
+      )
+    );
+
+  }
+
+
+  function setScoreValue(
+    value
   ) {
 
     const result =
       validateScore(
-        score
+        Number(value)
       );
 
 
@@ -1791,7 +1563,6 @@
 
         warning.textContent =
           result.message;
-
 
         warning.classList.add(
           "show"
@@ -1814,21 +1585,29 @@
     }
 
 
-    let existing =
+    const existing =
       findScore(
         selectedRegion.layout_box_id
       );
 
 
-    if (!existing) {
+    if (existing) {
 
-      existing = {
+      existing.score =
+        result.value;
+
+      existing.status =
+        "marked";
+
+    } else {
+
+      scores.push({
 
         id:
           crypto.randomUUID(),
 
         answer_sheet_id:
-          currentAnswerSheetId,
+          answerSheetId,
 
         layout_box_id:
           selectedRegion.layout_box_id,
@@ -1843,31 +1622,12 @@
         status:
           "marked"
 
-      };
-
-
-      scores.push(
-        existing
-      );
-
-    } else {
-
-      existing.score =
-        result.value;
-
-
-      existing.status =
-        "marked";
+      });
 
     }
 
 
     renderQuestionList();
-
-
-    renderRegion(
-      selectedRegion
-    );
 
 
     return true;
@@ -1876,64 +1636,55 @@
 
 
   /* =======================================================
-     Full / Zero mark
+     MARK
   ======================================================= */
 
-  function createMark(
+  function replaceQuestionMarks(
     type
   ) {
 
     if (!selectedRegion) {
-
       return;
-
     }
+
+
+    marks =
+      marks.filter(
+        mark =>
+          mark.layout_box_id !==
+          selectedRegion.layout_box_id
+      );
 
 
     const box =
       getSelectedBox();
 
 
-    if (!box) {
-
-      return;
-
-    }
-
-
-    /*
-      markはregion画像内の
-      中央付近へ置く。
-
-      元答案座標への変換は
-      answer_regions.x/yを使用する。
-    */
-
-    const regionWidth =
+    const width =
       Number(
         selectedRegion.width
       ) || 100;
 
 
-    const regionHeight =
+    const height =
       Number(
         selectedRegion.height
       ) || 100;
 
 
-    const mark = {
+    marks.push({
 
       id:
         crypto.randomUUID(),
 
       answer_sheet_id:
-        currentAnswerSheetId,
+        answerSheetId,
 
       layout_box_id:
         selectedRegion.layout_box_id,
 
       question_id:
-        box.question_id ||
+        box?.question_id ||
         null,
 
       object_type:
@@ -1947,48 +1698,42 @@
 
       font_size:
         Math.max(
-          30,
+          24,
           Math.min(
             100,
-            regionHeight *
-              0.18
+            height * .18
           )
         ),
 
       stroke_width:
         4,
 
+      /*
+        answer_regions内の座標
+      */
+
       x:
-        regionWidth *
-          0.5,
+        width / 2,
 
       y:
-        regionHeight *
-          0.5,
+        height / 2,
 
       width:
         Math.min(
-          regionWidth *
-            0.2,
+          width * .2,
           100
         ),
 
       height:
         Math.min(
-          regionHeight *
-            0.2,
+          height * .2,
           100
         ),
 
       points:
         null
 
-    };
-
-
-    marks.push(
-      mark
-    );
+    });
 
 
     renderRegion(
@@ -1998,33 +1743,11 @@
   }
 
 
-  /* =======================================================
-     Mark by image click
-  ======================================================= */
-
-  function createMarkAtImagePosition(
+  function createMarkAtImage(
     event,
     image,
     type
   ) {
-
-    if (!selectedRegion) {
-
-      return;
-
-    }
-
-
-    const box =
-      getSelectedBox();
-
-
-    if (!box) {
-
-      return;
-
-    }
-
 
     const rect =
       image.getBoundingClientRect();
@@ -2056,19 +1779,23 @@
       scaleY;
 
 
-    const mark = {
+    const box =
+      getSelectedBox();
+
+
+    marks.push({
 
       id:
         crypto.randomUUID(),
 
       answer_sheet_id:
-        currentAnswerSheetId,
+        answerSheetId,
 
       layout_box_id:
         selectedRegion.layout_box_id,
 
       question_id:
-        box.question_id ||
+        box?.question_id ||
         null,
 
       object_type:
@@ -2082,19 +1809,14 @@
 
       font_size:
         Math.max(
-          30,
-          Math.min(
-            100,
-            image.naturalHeight *
-              0.08
-          )
+          24,
+          image.naturalHeight * .08
         ),
 
       stroke_width:
         4,
 
       x,
-
       y,
 
       width:
@@ -2106,12 +1828,7 @@
       points:
         null
 
-    };
-
-
-    marks.push(
-      mark
-    );
+    });
 
 
     renderRegion(
@@ -2122,15 +1839,13 @@
 
 
   /* =======================================================
-     Clear Score
+     CLEAR SCORE
   ======================================================= */
 
   function clearCurrentScore() {
 
     if (!selectedRegion) {
-
       return;
-
     }
 
 
@@ -2153,10 +1868,15 @@
 
 
   /* =======================================================
-     Save Current
+     SAVE
   ======================================================= */
 
-  async function saveCurrentMark() {
+  async function saveCurrent() {
+
+    if (saving) {
+      return;
+    }
+
 
     if (!selectedRegion) {
 
@@ -2169,26 +1889,11 @@
     }
 
 
-    const box =
-      getSelectedBox();
-
-
-    if (!box) {
-
-      return;
-
-    }
-
-
     const score =
       findScore(
         selectedRegion.layout_box_id
       );
 
-
-    /*
-      点数未設定なら保存不可。
-    */
 
     if (!score) {
 
@@ -2203,7 +1908,9 @@
 
     const validation =
       validateScore(
-        score.score
+        Number(
+          score.score
+        )
       );
 
 
@@ -2218,106 +1925,37 @@
     }
 
 
-    /*
-      既存score
-    */
-
-    const {
-      error:
-        scoreError
-    } =
-      await supabaseClient
-        .from(
-          "scores"
-        )
-        .upsert({
-
-          id:
-            score.id,
-
-          answer_sheet_id:
-            currentAnswerSheetId,
-
-          layout_box_id:
-            box.id,
-
-          question_id:
-            box.question_id ||
-            null,
-
-          score:
-            validation.value,
-
-          status:
-            "marked",
-
-          marked_at:
-            new Date()
-              .toISOString()
-
-        });
+    saving =
+      true;
 
 
-    if (scoreError) {
-
-      throw scoreError;
-
-    }
+    saveButton.disabled =
+      true;
 
 
-    /*
-      この設問の既存markを削除。
+    try {
 
-      その後現在メモリのmarkを保存。
-    */
-
-    const {
-      error:
-        deleteMarkError
-    } =
-      await supabaseClient
-        .from(
-          "mark_objects"
-        )
-        .delete()
-        .eq(
-          "answer_sheet_id",
-          currentAnswerSheetId
-        )
-        .eq(
-          "layout_box_id",
-          box.id
-        );
+      const box =
+        getSelectedBox();
 
 
-    if (deleteMarkError) {
+      /*
+        DB側にも超過防止がある。
+      */
 
-      throw deleteMarkError;
-
-    }
-
-
-    const questionMarks =
-      marks.filter(
-        mark =>
-          mark.layout_box_id ===
-          box.id
-      );
-
-
-    if (
-      questionMarks.length
-    ) {
-
-      const rows =
-        questionMarks.map(
-          mark => ({
+      const {
+        error:
+          scoreError
+      } =
+        await supabaseClient
+          .from("scores")
+          .upsert({
 
             id:
-              mark.id,
+              score.id,
 
             answer_sheet_id:
-              currentAnswerSheetId,
+              answerSheetId,
 
             layout_box_id:
               box.id,
@@ -2326,254 +1964,281 @@
               box.question_id ||
               null,
 
-            object_type:
-              mark.object_type,
+            score:
+              validation.value,
 
-            text_value:
-              mark.text_value ||
-              null,
+            status:
+              "marked",
 
-            color:
-              mark.color ||
-              "#d00000",
+            marked_at:
+              new Date().toISOString()
 
-            font_size:
-              mark.font_size ||
-              42,
+          });
 
-            stroke_width:
-              mark.stroke_width ||
-              4,
 
-            x:
-              mark.x,
+      if (scoreError) {
+        throw scoreError;
+      }
 
-            y:
-              mark.y,
 
-            width:
-              mark.width,
-
-            height:
-              mark.height,
-
-            points:
-              mark.points ||
-              null
-
-          })
-        );
-
+      /*
+        この設問の記号を置き換え
+      */
 
       const {
         error:
-          markError
+          deleteError
       } =
         await supabaseClient
-          .from(
-            "mark_objects"
+          .from("mark_objects")
+          .delete()
+          .eq(
+            "answer_sheet_id",
+            answerSheetId
           )
-          .insert(
-            rows
+          .eq(
+            "layout_box_id",
+            box.id
           );
 
 
-      if (markError) {
-
-        throw markError;
-
+      if (deleteError) {
+        throw deleteError;
       }
 
-    }
 
-
-    /*
-      answer_sheetsをmarkedへ。
-    */
-
-    const {
-      error:
-        answerError
-    } =
-      await supabaseClient
-        .from(
-          "answer_sheets"
-        )
-        .update({
-
-          status:
-            "marked"
-
-        })
-        .eq(
-          "id",
-          currentAnswerSheetId
+      const questionMarks =
+        marks.filter(
+          mark =>
+            mark.layout_box_id ===
+            box.id
         );
 
 
-    if (answerError) {
+      if (questionMarks.length) {
 
-      throw answerError;
+        const rows =
+          questionMarks.map(
+            mark => ({
+
+              id:
+                mark.id,
+
+              answer_sheet_id:
+                answerSheetId,
+
+              layout_box_id:
+                box.id,
+
+              question_id:
+                box.question_id ||
+                null,
+
+              object_type:
+                mark.object_type,
+
+              text_value:
+                mark.text_value ||
+                null,
+
+              color:
+                mark.color ||
+                "#d00000",
+
+              font_size:
+                mark.font_size ||
+                42,
+
+              stroke_width:
+                mark.stroke_width ||
+                4,
+
+              /*
+                answer_regions内座標
+              */
+
+              x:
+                mark.x,
+
+              y:
+                mark.y,
+
+              width:
+                mark.width,
+
+              height:
+                mark.height,
+
+              points:
+                mark.points ||
+                null
+
+            })
+          );
+
+
+        const {
+          error:
+            markError
+        } =
+          await supabaseClient
+            .from("mark_objects")
+            .insert(
+              rows
+            );
+
+
+        if (markError) {
+          throw markError;
+        }
+
+      }
+
+
+      /*
+        全設問が採点済みか確認
+      */
+
+      const allMarked =
+        regions.every(
+          region =>
+            scores.some(
+              item =>
+                item.layout_box_id ===
+                  region.layout_box_id &&
+                item.status ===
+                  "marked"
+            )
+        );
+
+
+      /*
+        全設問完了ならmarked。
+        未完了ならuploadedのまま。
+      */
+
+      const {
+        error:
+          answerError
+      } =
+        await supabaseClient
+          .from("answer_sheets")
+          .update({
+
+            status:
+              allMarked
+                ? "marked"
+                : "uploaded"
+
+          })
+          .eq(
+            "id",
+            answerSheetId
+          );
+
+
+      if (answerError) {
+        throw answerError;
+      }
+
+
+      alert(
+        "採点を保存しました。"
+      );
+
+
+      await loadAnswer();
+
+    } catch (error) {
+
+      console.error(
+        "採点保存:",
+        error
+      );
+
+
+      alert(
+        error.message ||
+        "採点を保存できませんでした。"
+      );
+
+    } finally {
+
+      saving =
+        false;
+
+      saveButton.disabled =
+        false;
 
     }
-
-
-    /*
-      再読み込み
-    */
-
-    await loadAnswer();
-
-
-    alert(
-      "採点を保存しました。"
-    );
 
   }
 
 
   /* =======================================================
-     Find Box
+     FIND
   ======================================================= */
 
   function findBox(
-    layoutBoxId
+    id
   ) {
 
     return boxes.find(
       box =>
-        box.id ===
-        layoutBoxId
+        box.id === id
     ) || null;
 
   }
 
 
-  /* =======================================================
-     Find Score
-  ======================================================= */
-
   function findScore(
-    layoutBoxId
+    id
   ) {
 
     return scores.find(
       score =>
-        score.layout_box_id ===
-        layoutBoxId
+        score.layout_box_id === id
     ) || null;
 
   }
 
 
-  /* =======================================================
-     Selected Box
-  ======================================================= */
-
   function getSelectedBox() {
 
-    if (!selectedRegion) {
-
-      return null;
-
-    }
-
-
-    return findBox(
-      selectedRegion.layout_box_id
-    );
+    return selectedRegion
+      ? findBox(
+          selectedRegion.layout_box_id
+        )
+      : null;
 
   }
 
 
   /* =======================================================
-     Mark Button
+     CLEAR
   ======================================================= */
 
-  function clearMarkButtonState() {
+  function clearScreen() {
 
-    document
-      .querySelectorAll(
-        ".mark-button"
-      )
-      .forEach(
-        button => {
+    regions = [];
 
-          button.classList.remove(
-            "active"
-          );
+    boxes = [];
 
-        }
-      );
+    scores = [];
 
-  }
+    marks = [];
 
+    selectedRegion = null;
 
-  /* =======================================================
-     Empty
-  ======================================================= */
-
-  function renderEmptyViewer(
-    message
-  ) {
-
-    if (!answerViewer) {
-
-      return;
-
-    }
-
+    student = null;
 
     answerViewer.innerHTML = `
 
       <div class="empty">
-
-        ${escapeHtml(
-          message
-        )}
-
+        答案を選択してください。
       </div>
 
     `;
-
-  }
-
-
-  function clearScreen() {
-
-    currentAnswerSheetId =
-      null;
-
-    currentTestId =
-      null;
-
-    currentStudent =
-      null;
-
-    currentAnswerPages =
-      [];
-
-    regions =
-      [];
-
-    boxes =
-      [];
-
-    scores =
-      [];
-
-    marks =
-      [];
-
-    selectedRegion =
-      null;
-
-    numericInput =
-      "";
-
-    activeMarkType =
-      null;
-
 
     questionList.innerHTML = `
 
@@ -2583,17 +2248,23 @@
 
     `;
 
-
-    renderEmptyViewer(
-      "答案を選択してください。"
-    );
-
   }
 
 
-  /* =======================================================
-     Error
-  ======================================================= */
+  function renderEmpty(
+    message
+  ) {
+
+    answerViewer.innerHTML = `
+
+      <div class="empty">
+        ${escapeHtml(message)}
+      </div>
+
+    `;
+
+  }
+
 
   function showError(
     message
@@ -2603,8 +2274,7 @@
       message
     );
 
-
-    renderEmptyViewer(
+    renderEmpty(
       message
     );
 
@@ -2625,45 +2295,21 @@
   }
 
 
-  /* =======================================================
-     Escape
-  ======================================================= */
-
   function escapeHtml(
     value
   ) {
 
     return String(
-      value ??
-      ""
+      value ?? ""
     )
-      .replaceAll(
-        "&",
-        "&amp;"
-      )
-      .replaceAll(
-        "<",
-        "&lt;"
-      )
-      .replaceAll(
-        ">",
-        "&gt;"
-      )
-      .replaceAll(
-        '"',
-        "&quot;"
-      )
-      .replaceAll(
-        "'",
-        "&#039;"
-      );
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#039;");
 
   }
 
-
-  /* =======================================================
-     START
-  ======================================================= */
 
   initialize();
 

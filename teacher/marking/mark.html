@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>
+    採点 - テスト成績システム
+  </title>
+
+  <link
+    rel="stylesheet"
+    href="/css/common.css"
+  >
+
+  <link
+    rel="stylesheet"
+    href="/css/marking.css"
+  >
+
+</head>
+
+<body>
+
+<div class="marking-page">
+
+
+  <!-- =========================================
+       上部ツールバー
+  ========================================== -->
+
+  <div class="marking-toolbar">
+
+
+    <div class="marking-toolbar-row">
+
+
+      <div class="toolbar-group">
+
+        <button
+          class="mark-tool"
+          data-tool="select"
+        >
+          選択
+        </button>
+
+      </div>
+
+
+      <div class="toolbar-group">
+
+        <button
+          class="mark-tool"
+          data-tool="circle"
+        >
+          ○
+        </button>
+
+        <button
+          class="mark-tool"
+          data-tool="x"
+        >
+          ×
+        </button>
+
+        <button
+          class="mark-tool"
+          data-tool="triangle"
+        >
+          △
+        </button>
+
+        <button
+          class="mark-tool"
+          data-tool="double"
+        >
+          ◎
+        </button>
+
+      </div>
+
+
+      <div class="toolbar-group">
+
+        <button
+          class="mark-tool"
+          data-tool="number"
+        >
+          数字
+        </button>
+
+        <button
+          class="mark-tool"
+          data-tool="text"
+        >
+          テキスト
+        </button>
+
+        <button
+          class="mark-tool"
+          data-tool="pen"
+        >
+          描画
+        </button>
+
+      </div>
+
+
+      <div class="toolbar-group">
+
+        <label class="toolbar-label">
+          色
+        </label>
+
+        <input
+          id="markColor"
+          type="color"
+          value="#e53935"
+        >
+
+      </div>
+
+
+      <div class="toolbar-group">
+
+        <label class="toolbar-label">
+          サイズ
+        </label>
+
+        <input
+          id="markSize"
+          type="number"
+          value="42"
+          min="10"
+          max="150"
+          style="width:65px;"
+        >
+
+      </div>
+
+
+      <div class="toolbar-group">
+
+        <input
+          id="markText"
+          type="text"
+          placeholder="テキスト"
+          style="width:150px;"
+        >
+
+      </div>
+
+
+      <div class="toolbar-group">
+
+        <span>
+          L = ○
+        </span>
+
+        <span>
+          K = ×
+        </span>
+
+      </div>
+
+
+    </div>
+
+
+    <div class="marking-toolbar-row">
+
+
+      <button
+        id="zoomOut"
+        class="mark-tool"
+      >
+        −
+      </button>
+
+
+      <span
+        id="zoomValue"
+        class="zoom-value"
+      >
+        100%
+      </span>
+
+
+      <button
+        id="zoomIn"
+        class="mark-tool"
+      >
+        ＋
+      </button>
+
+
+      <button
+        id="fitScreen"
+        class="mark-tool"
+      >
+        全体表示
+      </button>
+
+
+      <span
+        id="questionInfo"
+        class="question-info"
+      >
+        読み込み中...
+      </span>
+
+
+      <span
+        id="pointInfo"
+        class="point-info"
+      >
+      </span>
+
+
+    </div>
+
+  </div>
+
+
+  <!-- =========================================
+       本体
+  ========================================== -->
+
+  <div class="marking-content">
+
+
+    <!-- 左：模範解答 -->
+
+    <aside class="model-pane">
+
+      <div class="model-title">
+        模範解答
+      </div>
+
+
+      <div
+        id="modelAnswer"
+        class="model-image"
+      >
+        読み込み中...
+      </div>
+
+    </aside>
+
+
+    <!-- 右：答案2列 -->
+
+    <section class="answer-area">
+
+      <div
+        id="answerGrid"
+        class="answer-grid"
+      >
+        読み込み中...
+      </div>
+
+    </section>
+
+  </div>
+
+
+  <!-- =========================================
+       下部
+  ========================================== -->
+
+  <div class="marking-footer">
+
+
+    <div
+      id="markingProgress"
+      class="marking-progress"
+    >
+      0 / 0
+    </div>
+
+
+    <button
+      class="footer-score"
+      data-score="0"
+    >
+      0
+    </button>
+
+
+    <button
+      class="footer-score"
+      data-score="1"
+    >
+      1
+    </button>
+
+
+    <button
+      class="footer-score"
+      data-score="2"
+    >
+      2
+    </button>
+
+
+    <button
+      class="footer-score"
+      data-score="3"
+    >
+      3
+    </button>
+
+
+    <button
+      class="footer-score"
+      data-score="4"
+    >
+      4
+    </button>
+
+
+    <button
+      class="footer-score"
+      data-score="5"
+    >
+      5
+    </button>
+
+
+    <button
+      id="nextUnmarked"
+      class="btn btn-primary"
+    >
+      次の未採点
+    </button>
+
+
+    <button
+      id="exitMarking"
+      class="btn"
+    >
+      終了
+    </button>
+
+
+  </div>
+
+</div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script src="/js/config.js"></script>
+
+<script src="/js/auth.js"></script>
+
+<script src="/js/teacher/marking.js"></script>
+
+</body>
+</html>

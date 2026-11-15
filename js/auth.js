@@ -1,204 +1,19 @@
 
 "use strict";
 
-/* =========================================================
-   テスト成績システム
-   共通認証
-========================================================= */
-
 
 /* =========================================================
-   Supabase Client
-   ---------------------------------------------------------
-   現在の config.js は
-
-     window.SUPABASE_URL
-     window.SUPABASE_KEY
-     window.supabaseClient
-
-   を作成する構成。
+   Supabase
 ========================================================= */
 
-function getSupabaseClient() {
+const supabaseClient =
+  window.supabaseClient;
 
-  if (
-    window.supabaseClient
-  ) {
 
-    return window.supabaseClient;
+if (!supabaseClient) {
 
-  }
-
-
-  if (
-    window.SB
-  ) {
-
-    return window.SB;
-
-  }
-
-
-  if (
-    !window.supabase ||
-    typeof window.supabase.createClient !==
-      "function"
-  ) {
-
-    return null;
-
-  }
-
-
-  const url =
-    window.SUPABASE_URL;
-
-
-  const key =
-    window.SUPABASE_KEY;
-
-
-  if (
-    !url ||
-    !key
-  ) {
-
-    return null;
-
-  }
-
-
-  const client =
-    window.supabase.createClient(
-      url,
-      key,
-      {
-
-        auth: {
-
-          persistSession:
-            true,
-
-          autoRefreshToken:
-            true,
-
-          detectSessionInUrl:
-            true,
-
-          storage:
-            window.localStorage,
-
-          flowType:
-            "pkce"
-
-        }
-
-      }
-    );
-
-
-  window.supabaseClient =
-    client;
-
-
-  window.SB =
-    client;
-
-
-  return client;
-
-}
-
-
-/* =========================================================
-   Client
-========================================================= */
-
-const sb =
-  getSupabaseClient();
-
-
-window.SB =
-  sb;
-
-
-/* =========================================================
-   Session
-========================================================= */
-
-async function getSession() {
-
-  const client =
-    getSupabaseClient();
-
-
-  if (!client) {
-
-    throw new Error(
-      "Supabaseの設定を読み込めませんでした。"
-    );
-
-  }
-
-
-  const {
-    data,
-    error
-  } =
-    await client.auth.getSession();
-
-
-  if (error) {
-
-    throw error;
-
-  }
-
-
-  return (
-    data?.session ||
-    null
-  );
-
-}
-
-
-/* =========================================================
-   Current User
-========================================================= */
-
-async function getCurrentUser() {
-
-  const client =
-    getSupabaseClient();
-
-
-  if (!client) {
-
-    throw new Error(
-      "Supabaseの設定を読み込めませんでした。"
-    );
-
-  }
-
-
-  const {
-    data,
-    error
-  } =
-    await client.auth.getUser();
-
-
-  if (error) {
-
-    throw error;
-
-  }
-
-
-  return (
-    data?.user ||
-    null
+  console.error(
+    "Supabase Clientが初期化されていません。"
   );
 
 }
@@ -210,11 +25,7 @@ async function getCurrentUser() {
 
 async function getProfile() {
 
-  const client =
-    getSupabaseClient();
-
-
-  if (!client) {
+  if (!supabaseClient) {
 
     throw new Error(
       "Supabaseの設定を読み込めませんでした。"
@@ -223,8 +34,20 @@ async function getProfile() {
   }
 
 
-  const user =
-    await getCurrentUser();
+  const {
+    data: {
+      user
+    },
+    error: userError
+  } =
+    await supabaseClient.auth.getUser();
+
+
+  if (userError) {
+
+    throw userError;
+
+  }
 
 
   if (!user) {
@@ -234,28 +57,17 @@ async function getProfile() {
   }
 
 
-  /*
-   * profiles.student_id は使用しない。
-   *
-   * 現在必要なのは
-   * id / name / role。
-   */
-
   const {
     data,
     error
   } =
-    await client
-      .from(
-        "profiles"
-      )
-      .select(
-        `
+    await supabaseClient
+      .from("profiles")
+      .select(`
         id,
         name,
         role
-        `
-      )
+      `)
       .eq(
         "id",
         user.id
@@ -272,30 +84,19 @@ async function getProfile() {
   }
 
 
-  if (!data) {
-
-    return {
-
-      id:
-        user.id,
-
-      name:
-        user.email ||
-        "ユーザー",
-
-      role:
-        null,
-
-      user
-
-    };
-
-  }
-
-
   return {
 
-    ...data,
+    id:
+      user.id,
+
+    name:
+      data?.name ||
+      user.email ||
+      "ユーザー",
+
+    role:
+      data?.role ||
+      null,
 
     user
 
@@ -305,18 +106,191 @@ async function getProfile() {
 
 
 /* =========================================================
-   Role Check
+   Session
+========================================================= */
+
+async function getSession() {
+
+  if (!supabaseClient) {
+
+    return null;
+
+  }
+
+
+  const {
+    data,
+    error
+  } =
+    await supabaseClient.auth.getSession();
+
+
+  if (error) {
+
+    throw error;
+
+  }
+
+
+  return data?.session ||
+    null;
+
+}
+
+
+/* =========================================================
+   Current User
+========================================================= */
+
+async function getCurrentUser() {
+
+  if (!supabaseClient) {
+
+    return null;
+
+  }
+
+
+  const {
+    data,
+    error
+  } =
+    await supabaseClient.auth.getUser();
+
+
+  if (error) {
+
+    throw error;
+
+  }
+
+
+  return data?.user ||
+    null;
+
+}
+
+
+/* =========================================================
+   Login
+========================================================= */
+
+async function login(
+  email,
+  password
+) {
+
+  if (!supabaseClient) {
+
+    throw new Error(
+      "Supabaseの設定を読み込めませんでした。"
+    );
+
+  }
+
+
+  const {
+    data,
+    error
+  } =
+    await supabaseClient.auth
+      .signInWithPassword({
+
+        email:
+          email.trim(),
+
+        password
+
+      });
+
+
+  if (error) {
+
+    throw error;
+
+  }
+
+
+  return data;
+
+}
+
+
+/* =========================================================
+   Redirect After Login
+   ---------------------------------------------------------
+   これを必ずwindowへ公開する。
+========================================================= */
+
+async function redirectAfterLogin() {
+
+  const profile =
+    await getProfile();
+
+
+  if (!profile) {
+
+    throw new Error(
+      "プロフィールが見つかりません。"
+    );
+
+  }
+
+
+  if (
+    profile.role === "teacher" ||
+    profile.role === "admin"
+  ) {
+
+    location.replace(
+      "teacher.html"
+    );
+
+    return;
+
+  }
+
+
+  if (
+    profile.role === "student"
+  ) {
+
+    location.replace(
+      "student.html"
+    );
+
+    return;
+
+  }
+
+
+  throw new Error(
+    "ユーザーの権限が設定されていません。"
+  );
+
+}
+
+
+/* =========================================================
+   goByRole
+========================================================= */
+
+async function goByRole() {
+
+  await redirectAfterLogin();
+
+}
+
+
+/* =========================================================
+   Require Role
 ========================================================= */
 
 async function requireRole(
   requiredRole
 ) {
 
-  const client =
-    getSupabaseClient();
-
-
-  if (!client) {
+  if (!supabaseClient) {
 
     throw new Error(
       "Supabaseの設定を読み込めませんでした。"
@@ -332,7 +306,7 @@ async function requireRole(
   if (!user) {
 
     location.replace(
-      "/login"
+      "login.html"
     );
 
     return null;
@@ -347,7 +321,7 @@ async function requireRole(
   if (!profile) {
 
     location.replace(
-      "/login"
+      "login.html"
     );
 
     return null;
@@ -355,28 +329,36 @@ async function requireRole(
   }
 
 
-  const actualRole =
-    profile.role;
+  if (
+    requiredRole === "teacher"
+  ) {
 
+    if (
+      profile.role !== "teacher" &&
+      profile.role !== "admin"
+    ) {
 
-  /*
-   * teacher画面はadminも利用可能。
-   */
+      location.replace(
+        "login.html"
+      );
+
+      return null;
+
+    }
+
+  }
+
 
   if (
-    requiredRole ===
-    "teacher"
+    requiredRole === "admin"
   ) {
 
     if (
-      actualRole !==
-        "teacher" &&
-      actualRole !==
-        "admin"
+      profile.role !== "admin"
     ) {
 
-      redirectByRole(
-        actualRole
+      location.replace(
+        "login.html"
       );
 
       return null;
@@ -386,47 +368,16 @@ async function requireRole(
   }
 
 
-  /*
-   * admin
-   */
-
-  else if (
-    requiredRole ===
-    "admin"
+  if (
+    requiredRole === "student"
   ) {
 
     if (
-      actualRole !==
-      "admin"
+      profile.role !== "student"
     ) {
 
-      redirectByRole(
-        actualRole
-      );
-
-      return null;
-
-    }
-
-  }
-
-
-  /*
-   * student
-   */
-
-  else if (
-    requiredRole ===
-    "student"
-  ) {
-
-    if (
-      actualRole !==
-      "student"
-    ) {
-
-      redirectByRole(
-        actualRole
+      location.replace(
+        "login.html"
       );
 
       return null;
@@ -448,203 +399,32 @@ async function requireRole(
 
 
 /* =========================================================
-   Role Redirect
-========================================================= */
-
-function redirectByRole(
-  role
-) {
-
-  if (
-    role ===
-    "student"
-  ) {
-
-    location.replace(
-      "/student.html"
-    );
-
-    return;
-
-  }
-
-
-  if (
-    role ===
-      "teacher" ||
-    role ===
-      "admin"
-  ) {
-
-    location.replace(
-      "/teacher.html"
-    );
-
-    return;
-
-  }
-
-
-  location.replace(
-    "/login"
-  );
-
-}
-
-
-/* =========================================================
-   Login
-========================================================= */
-
-async function login(
-  email,
-  password
-) {
-
-  const client =
-    getSupabaseClient();
-
-
-  if (!client) {
-
-    throw new Error(
-      "Supabaseの設定を読み込めませんでした。"
-    );
-
-  }
-
-
-  const {
-    data,
-    error
-  } =
-    await client.auth.signInWithPassword({
-
-      email:
-        email.trim(),
-
-      password
-
-    });
-
-
-  if (error) {
-
-    throw error;
-
-  }
-
-
-  return data;
-
-}
-
-
-/* =========================================================
-   Redirect After Login
-   ---------------------------------------------------------
-   これを追加することで、既存コードの
-
-     window.redirectAfterLogin()
-
-   にも対応する。
-========================================================= */
-
-async function redirectAfterLogin() {
-
-  const profile =
-    await getProfile();
-
-
-  if (!profile) {
-
-    throw new Error(
-      "プロフィールを取得できませんでした。"
-    );
-
-  }
-
-
-  if (
-    profile.role ===
-      "teacher" ||
-    profile.role ===
-      "admin"
-  ) {
-
-    location.replace(
-      "/teacher.html"
-    );
-
-    return;
-
-  }
-
-
-  if (
-    profile.role ===
-    "student"
-  ) {
-
-    location.replace(
-      "/student.html"
-    );
-
-    return;
-
-  }
-
-
-  throw new Error(
-    "ユーザーの権限が設定されていません。"
-  );
-
-}
-
-
-/* =========================================================
-   goByRole
-   ---------------------------------------------------------
-   既存コードとの互換用。
-========================================================= */
-
-async function goByRole() {
-
-  await redirectAfterLogin();
-
-}
-
-
-/* =========================================================
    Logout
 ========================================================= */
 
 async function signOut() {
 
-  const client =
-    getSupabaseClient();
+  if (
+    supabaseClient
+  ) {
 
+    try {
 
-  try {
+      await supabaseClient.auth.signOut();
 
-    if (client) {
+    } catch (error) {
 
-      await client.auth.signOut();
+      console.error(
+        error
+      );
 
     }
-
-  } catch (error) {
-
-    console.error(
-      "signOut:",
-      error
-    );
 
   }
 
 
   location.replace(
-    "/login"
+    "login.html"
   );
 
 }
@@ -658,167 +438,19 @@ async function logout() {
 
 
 /* =========================================================
-   Login Page
-========================================================= */
-
-function setupLoginPage() {
-
-  const button =
-    document.getElementById(
-      "loginBtn"
-    );
-
-
-  if (!button) {
-
-    return;
-
-  }
-
-
-  button.addEventListener(
-    "click",
-    async () => {
-
-      const emailElement =
-        document.getElementById(
-          "email"
-        );
-
-
-      const passwordElement =
-        document.getElementById(
-          "password"
-        );
-
-
-      const message =
-        document.getElementById(
-          "loginMsg"
-        );
-
-
-      const email =
-        emailElement?.value.trim() ||
-        "";
-
-
-      const password =
-        passwordElement?.value ||
-        "";
-
-
-      if (!email) {
-
-        if (message) {
-
-          message.textContent =
-            "メールアドレスを入力してください。";
-
-        }
-
-        return;
-
-      }
-
-
-      if (!password) {
-
-        if (message) {
-
-          message.textContent =
-            "パスワードを入力してください。";
-
-        }
-
-        return;
-
-      }
-
-
-      button.disabled =
-        true;
-
-
-      button.textContent =
-        "ログイン中...";
-
-
-      if (message) {
-
-        message.textContent =
-          "";
-
-      }
-
-
-      try {
-
-        await login(
-          email,
-          password
-        );
-
-
-        await redirectAfterLogin();
-
-
-      } catch (error) {
-
-        console.error(
-          "login:",
-          error
-        );
-
-
-        if (message) {
-
-          message.textContent =
-            error.message ||
-            "ログインできませんでした。";
-
-        }
-
-
-        button.disabled =
-          false;
-
-
-        button.textContent =
-          "ログイン";
-
-      }
-
-    }
-  );
-
-}
-
-
-/* =========================================================
-   Login Page Auto Start
-========================================================= */
-
-document.addEventListener(
-  "DOMContentLoaded",
-  () => {
-
-    setupLoginPage();
-
-  }
-);
-
-
-/* =========================================================
    Global
 ========================================================= */
 
 window.SB =
-  sb;
+  supabaseClient;
 
 
 window.supabaseClient =
-  sb;
+  supabaseClient;
+
+
+window.getProfile =
+  getProfile;
 
 
 window.getSession =
@@ -827,14 +459,6 @@ window.getSession =
 
 window.getCurrentUser =
   getCurrentUser;
-
-
-window.getProfile =
-  getProfile;
-
-
-window.requireRole =
-  requireRole;
 
 
 window.login =
@@ -849,9 +473,189 @@ window.redirectAfterLogin =
   redirectAfterLogin;
 
 
+window.requireRole =
+  requireRole;
+
+
 window.signOut =
   signOut;
 
 
 window.logout =
   logout;
+
+
+/* =========================================================
+   Login Page
+========================================================= */
+
+if (
+  location.pathname.endsWith(
+    "/login.html"
+  ) ||
+  location.pathname ===
+    "/login"
+) {
+
+  document.addEventListener(
+    "DOMContentLoaded",
+    () => {
+
+      const button =
+        document.getElementById(
+          "loginBtn"
+        );
+
+
+      if (!button) {
+
+        return;
+
+      }
+
+
+      button.onclick =
+        async () => {
+
+          const emailElement =
+            document.getElementById(
+              "email"
+            );
+
+
+          const passwordElement =
+            document.getElementById(
+              "password"
+            );
+
+
+          const message =
+            document.getElementById(
+              "loginMsg"
+            );
+
+
+          const email =
+            emailElement
+              ?.value
+              .trim() ||
+            "";
+
+
+          const password =
+            passwordElement
+              ?.value ||
+            "";
+
+
+          if (!email) {
+
+            message.textContent =
+              "メールアドレスを入力してください。";
+
+            return;
+
+          }
+
+
+          if (!password) {
+
+            message.textContent =
+              "パスワードを入力してください。";
+
+            return;
+
+          }
+
+
+          button.disabled =
+            true;
+
+
+          button.textContent =
+            "ログイン中...";
+
+
+          message.textContent =
+            "";
+
+
+          try {
+
+            await login(
+              email,
+              password
+            );
+
+
+            await redirectAfterLogin();
+
+
+          } catch (error) {
+
+            console.error(
+              "LOGIN:",
+              error
+            );
+
+
+            message.textContent =
+              error.message ||
+              "ログインできませんでした。";
+
+
+            button.disabled =
+              false;
+
+
+            button.textContent =
+              "ログイン";
+
+          }
+
+        };
+
+
+      /*
+       * 既にログイン済みなら
+       * ロールに応じて移動。
+       */
+
+      getCurrentUser()
+        .then(
+          user => {
+
+            if (!user) {
+
+              return;
+
+            }
+
+
+            redirectAfterLogin()
+              .catch(
+                error => {
+
+                  console.warn(
+                    error
+                  );
+
+                }
+              );
+
+          }
+        )
+        .catch(
+          error => {
+
+            console.warn(
+              error
+            );
+
+          }
+        );
+
+    }
+  );
+
+}

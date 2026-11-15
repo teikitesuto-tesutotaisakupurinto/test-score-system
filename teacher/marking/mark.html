@@ -30,6 +30,7 @@
   display:flex;
   flex-wrap:wrap;
   gap:10px;
+  align-items:center;
   margin-bottom:15px;
 }
 
@@ -46,154 +47,61 @@
   border:1px solid #d5dbe0;
 }
 
-.layout {
-  display:grid;
-  grid-template-columns:320px minmax(0,1fr);
-  gap:15px;
-}
-
-.question-list {
+.marking-table-wrap {
   background:#fff;
   border:1px solid #d5dbe0;
-  max-height:calc(100vh - 170px);
   overflow:auto;
 }
 
-.question-item {
-  padding:12px;
-  border-bottom:1px solid #e3e6e8;
-  cursor:pointer;
+.marking-table {
+  width:100%;
+  border-collapse:collapse;
+  min-width:900px;
 }
 
-.question-item:hover {
-  background:#f5f6f7;
+.marking-table th,
+.marking-table td {
+  border:1px solid #d5dbe0;
+  padding:10px;
+  font-size:13px;
+  white-space:nowrap;
 }
 
-.question-item.selected {
-  background:#eef4fb;
-  border-left:4px solid #2468a8;
-}
-
-.question-title {
+.marking-table th {
+  background:#f3f5f7;
   font-weight:700;
 }
 
-.question-score,
-.question-status {
-  margin-top:5px;
-  font-size:12px;
-  color:#666;
-}
-
-.viewer {
-  min-width:0;
-  background:#dfe3e8;
-  padding:20px;
-  overflow:auto;
-}
-
-.answer-card {
-  max-width:1000px;
-  margin:0 auto;
-  background:#fff;
-}
-
-.answer-header {
-  padding:12px 15px;
-  border-bottom:1px solid #d5dbe0;
-}
-
-.answer-header-title {
-  font-size:18px;
+.student-name {
   font-weight:700;
 }
 
-.answer-header-meta {
-  margin-top:5px;
-  color:#666;
-  font-size:12px;
-}
-
-.region-image-wrap {
-  padding:20px;
+.question-marked {
   text-align:center;
 }
 
-.region-image {
-  display:block;
-  max-width:100%;
-  width:auto;
-  height:auto;
-  margin:0 auto;
+.question-unmarked {
+  text-align:center;
+  color:#b42318;
 }
 
-.mark-toolbar {
-  display:flex;
-  flex-wrap:wrap;
-  gap:8px;
-  padding:12px;
-  border-top:1px solid #d5dbe0;
-}
-
-.mark-button {
-  min-width:52px;
-  height:40px;
-  border:1px solid #bbb;
-  background:#fff;
-  cursor:pointer;
+.total-score {
   font-weight:700;
 }
 
-.mark-button.active {
-  background:#e9ecef;
-  border-color:#333;
-}
-
-.score-area {
-  display:flex;
-  flex-wrap:wrap;
-  gap:8px;
+.detail-button {
+  display:inline-flex;
   align-items:center;
-  padding:12px;
-  border-top:1px solid #d5dbe0;
-}
-
-.score-input {
-  width:100px;
-  height:40px;
-  padding:0 8px;
-  font-size:16px;
-}
-
-.warning {
-  display:none;
-  margin:12px;
-  padding:10px;
-  background:#fff4f2;
-  color:#b42318;
-  border:1px solid #efc2bc;
-}
-
-.warning.show {
-  display:block;
+  justify-content:center;
+  min-width:70px;
 }
 
 .empty {
   padding:50px;
   text-align:center;
   color:#777;
-}
-
-@media(max-width:900px) {
-
-  .layout {
-    grid-template-columns:1fr;
-  }
-
-  .question-list {
-    max-height:300px;
-  }
-
+  background:#fff;
+  border:1px solid #d0d6dc;
 }
 
 </style>
@@ -205,21 +113,23 @@
 
 <header class="topbar">
 
-<div class="system-name">
-テスト成績システム
-</div>
+  <div class="system-name">
+    テスト成績システム
+  </div>
 
-<div class="topbar-space"></div>
+  <div class="topbar-space"></div>
 
-<span id="teacherName">-</span>
+  <span id="teacherName">
+    -
+  </span>
 
-<button
-id="logoutButton"
-class="logout-button"
-type="button"
->
-ログアウト
-</button>
+  <button
+    id="logoutButton"
+    class="logout-button"
+    type="button"
+  >
+    ログアウト
+  </button>
 
 </header>
 
@@ -227,71 +137,46 @@ type="button"
 <main class="main">
 
 
-<div class="toolbar">
+  <div class="toolbar">
 
-<select id="answerSelect">
+    <select id="testSelect">
 
-<option value="">
-答案を選択してください
-</option>
+      <option value="">
+        テストを選択してください
+      </option>
 
-</select>
-
-
-<button
-id="saveButton"
-class="btn btn-primary"
-type="button"
->
-採点を保存
-</button>
+    </select>
 
 
-<a
-href="/teacher/marking"
-class="btn"
->
-採点一覧へ戻る
-</a>
+    <button
+      id="refreshButton"
+      class="btn"
+      type="button"
+    >
+      更新
+    </button>
 
-</div>
-
-
-<div
-id="status"
-class="status"
->
-答案を選択してください。
-</div>
+  </div>
 
 
-<div class="layout">
-
-<aside
-id="questionList"
-class="question-list"
->
-
-<div class="empty">
-答案を選択してください。
-</div>
-
-</aside>
+  <div
+    id="status"
+    class="status"
+  >
+    テストを選択してください。
+  </div>
 
 
-<section
-id="answerViewer"
-class="viewer"
->
+  <div
+    id="markingTableWrap"
+    class="marking-table-wrap"
+  >
 
-<div class="empty">
-答案を選択してください。
-</div>
+    <div class="empty">
+      テストを選択してください。
+    </div>
 
-</section>
-
-</div>
-
+  </div>
 
 </main>
 
@@ -302,106 +187,8 @@ class="viewer"
 
 <script src="/js/auth.js"></script>
 
-
-<script>
-
-/*
-  =========================================================
-  ⑨ Clean URL
-
-  /teacher/marking/mark?answer=UUID
-
-  直接アクセスしてもmarking.jsへ渡す。
-  =========================================================
-*/
-
-(function () {
-
-  const params =
-    new URLSearchParams(
-      window.location.search
-    );
-
-
-  const answerId =
-    params.get("answer");
-
-
-  window.__INITIAL_ANSWER_ID__ =
-    answerId ||
-    null;
-
-
-  /*
-    answerが無い場合は
-    marking.js側で通常の答案選択を使用。
-  */
-
-})();
-
-</script>
-
-
-<script src="/js/teacher/marking.js"></script>
-
-
-<script>
-
-/*
-  marking.jsの初期化後に
-  URLのanswerを確実に選択。
-
-  marking.js側が
-  __INITIAL_ANSWER_ID__
-  を参照する構成にも対応。
-*/
-
-window.addEventListener(
-  "load",
-  () => {
-
-    const answerId =
-      window.__INITIAL_ANSWER_ID__;
-
-
-    if (!answerId) {
-      return;
-    }
-
-
-    const select =
-      document.getElementById(
-        "answerSelect"
-      );
-
-
-    if (!select) {
-      return;
-    }
-
-
-    select.value =
-      answerId;
-
-
-    /*
-      selectイベントを発火。
-    */
-
-    select.dispatchEvent(
-      new Event(
-        "change",
-        {
-          bubbles:true
-        }
-      )
-    );
-
-  }
-);
-
-</script>
-
+<script src="/js/teacher/marking-index.js"></script>
 
 </body>
+
 </html>

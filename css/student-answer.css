@@ -1,34 +1,40 @@
 
 .student-main {
+  max-width: 1200px;
 
-  max-width:1200px;
+  margin: 0 auto;
 
-  margin:0 auto;
-
-  padding:25px;
-
+  padding: 25px;
 }
 
 
+/* =========================================================
+   答案一覧
+========================================================= */
+
 .student-answer-pages {
+  padding: 15px;
 
-  background:#dfe5ea;
+  background: #dfe5ea;
 
-  padding:15px;
-
+  border:
+    1px solid #d0d6dc;
 }
 
 
 .student-answer-page {
-
-  max-width:900px;
+  max-width: 900px;
 
   margin:
-    0 auto 20px;
+    0 auto
+    20px;
 
-  background:#fff;
+  padding: 10px;
 
-  padding:10px;
+  background: #fff;
+
+  border:
+    1px solid #d0d6dc;
 
   box-shadow:
     0 1px 5px
@@ -38,31 +44,88 @@
       0,
       .12
     );
-
 }
 
 
 .student-answer-page-title {
+  padding: 7px;
 
-  padding:6px;
+  margin-bottom: 8px;
 
-  margin-bottom:8px;
+  background: #f2f4f6;
 
-  background:#f2f4f6;
+  border-bottom:
+    1px solid #d5dbe0;
 
-  font-size:13px;
+  font-size: 13px;
 
-  font-weight:700;
-
+  font-weight: 700;
 }
 
 
-.student-answer-page img {
+.student-answer-image {
+  display: block;
 
-  display:block;
+  width: 100%;
 
-  width:100%;
+  height: auto;
 
-  height:auto;
+  user-select: none;
+}
+
+
+/* =========================================================
+   メッセージ
+========================================================= */
+
+.empty-state {
+  padding: 40px;
+
+  text-align: center;
+
+  color: #777;
+
+  background: #fff;
+
+  border:
+    1px solid #d0d6dc;
+}
+
+
+.student-answer-notice {
+  margin-bottom: 15px;
+
+  padding: 12px;
+
+  background: #f5f6f7;
+
+  border:
+    1px solid #d5dbe0;
+
+  line-height: 1.7;
+
+  font-size: 13px;
+}
+
+
+/* =========================================================
+   スマートフォン
+========================================================= */
+
+@media(max-width: 700px) {
+
+  .student-main {
+    padding: 12px;
+  }
+
+
+  .student-answer-pages {
+    padding: 8px;
+  }
+
+
+  .student-answer-page {
+    padding: 6px;
+  }
 
 }

@@ -1,71 +1,61 @@
 
-/* =========================================================
-   テスト一覧
-   js/teacher/tests.js
-========================================================= */
-
 "use strict";
 
+/* =========================================================
+   テスト一覧
+========================================================= */
+
+let DB = null;
 
 let allTests = [];
 
 
 /* =========================================================
-   INITIALIZE
+   INIT
 ========================================================= */
+
+document.addEventListener(
+  "DOMContentLoaded",
+  initializeTests
+);
+
 
 async function initializeTests() {
 
   try {
 
-    const profile =
-      await getProfile();
+    DB =
+      window.supabaseClient ||
+      window.SB;
 
 
-    if (!profile) {
+    if (!DB) {
 
-      window.location.href =
-        "/login";
-
-      return;
-
-    }
-
-
-    /*
-     * 先生・管理者のみ。
-     */
-
-    if (
-      profile.role !== "teacher" &&
-      profile.role !== "admin"
-    ) {
-
-      /*
-       * 現在の学生トップ。
-       */
-
-      window.location.href =
-        "/student/index.html";
-
-      return;
+      throw new Error(
+        "Supabase Clientが初期化されていません。"
+      );
 
     }
 
 
-    const teacherName =
-      document.getElementById(
-        "teacherName"
+    const auth =
+      await requireRole(
+        "teacher"
       );
 
 
-    if (teacherName) {
+    if (!auth) {
 
-      teacherName.textContent =
-        profile.name ||
-        "先生";
+      return;
 
     }
+
+
+    document.getElementById(
+      "teacherName"
+    ).textContent =
+      auth.profile?.name ||
+      "先生";
 
 
     setupEvents();
@@ -126,14 +116,7 @@ function setupEvents() {
       "click",
       async () => {
 
-        if (
-          typeof window.logout ===
-          "function"
-        ) {
-
-          await window.logout();
-
-        }
+        await logout();
 
       }
     );
@@ -142,45 +125,16 @@ function setupEvents() {
 
 
 /* =========================================================
-   LOAD TESTS
+   LOAD
 ========================================================= */
 
 async function loadTests() {
-
-  const tbody =
-    document.getElementById(
-      "testRows"
-    );
-
-
-  if (tbody) {
-
-    tbody.innerHTML = `
-
-      <tr>
-
-        <td
-          colspan="7"
-          style="
-            text-align:center;
-            padding:30px;
-          "
-        >
-          読み込み中...
-        </td>
-
-      </tr>
-
-    `;
-
-  }
-
 
   const {
     data,
     error
   } =
-    await supabaseClient
+    await DB
       .from(
         "tests"
       )
@@ -194,6 +148,7 @@ async function loadTests() {
         test_date,
         max_score,
         status,
+        results_published,
         created_at
         `
       )
@@ -207,25 +162,13 @@ async function loadTests() {
 
   if (error) {
 
-    console.error(
-      "loadTests:",
-      error
-    );
-
-
-    showError(
-      `テスト情報を取得できませんでした: ${error.message}`
-    );
-
-
-    return;
+    throw error;
 
   }
 
 
   allTests =
-    data ||
-    [];
+    data || [];
 
 
   renderTests();
@@ -252,30 +195,22 @@ function renderTests() {
   }
 
 
-  const searchElement =
-    document.getElementById(
-      "testSearch"
-    );
-
-
-  const statusElement =
-    document.getElementById(
-      "statusFilter"
-    );
-
-
   const keyword =
-    searchElement
-      ? searchElement.value
-          .trim()
-          .toLowerCase()
-      : "";
+    (
+      document.getElementById(
+        "testSearch"
+      )?.value ||
+      ""
+    )
+      .trim()
+      .toLowerCase();
 
 
   const status =
-    statusElement
-      ? statusElement.value
-      : "";
+    document.getElementById(
+      "statusFilter"
+    )?.value ||
+    "";
 
 
   const filtered =
@@ -289,11 +224,7 @@ function renderTests() {
             test.grade,
             test.class_name
           ]
-            .filter(
-              value =>
-                value !== null &&
-                value !== undefined
-            )
+            .filter(Boolean)
             .join(" ")
             .toLowerCase();
 
@@ -341,7 +272,9 @@ function renderTests() {
             color:#777;
           "
         >
+
           該当するテストがありません。
+
         </td>
 
       </tr>
@@ -356,10 +289,7 @@ function renderTests() {
   tbody.innerHTML =
     filtered
       .map(
-        test =>
-          renderTestRow(
-            test
-          )
+        renderTestRow
       )
       .join("");
 
@@ -367,37 +297,27 @@ function renderTests() {
 
 
 /* =========================================================
-   TEST ROW
+   ROW
 ========================================================= */
 
 function renderTestRow(
   test
 ) {
 
-  const encoded =
+  const id =
     encodeURIComponent(
       test.id
     );
 
 
-  /*
-   * 現在の実ファイル構成
-   *
-   * 編集
-   *   /teacher/tests/edit
-   *
-   * 枠設定
-   *   /teacher/tests/layout
-   *
-   * 配点
-   *   /teacher/tests/points
-   *
-   * 採点
-   *   /teacher/marking
-   *
-   * 問題ページは存在しないため
-   * /teacher/tests/questions は使用しない。
-   */
+  const status =
+    test.results_published
+      ? "published"
+      : (
+          test.status ||
+          "draft"
+        );
+
 
   return `
 
@@ -446,8 +366,10 @@ function renderTestRow(
 
 
       <td>
-        ${getStatusLabel(
-          test.status
+        ${escapeHtml(
+          getStatusLabel(
+            status
+          )
         )}
       </td>
 
@@ -463,7 +385,7 @@ function renderTestRow(
         >
 
           <a
-            href="/teacher/tests/edit?id=${encoded}"
+            href="/teacher/tests/edit?id=${id}"
             class="btn"
           >
             編集
@@ -471,7 +393,15 @@ function renderTestRow(
 
 
           <a
-            href="/teacher/tests/layout?id=${encoded}"
+            href="/teacher/tests/pages?test=${id}"
+            class="btn"
+          >
+            解答用紙
+          </a>
+
+
+          <a
+            href="/teacher/tests/layout?test=${id}"
             class="btn"
           >
             枠設定
@@ -479,7 +409,7 @@ function renderTestRow(
 
 
           <a
-            href="/teacher/tests/points?id=${encoded}"
+            href="/teacher/tests/points?test=${id}"
             class="btn"
           >
             配点
@@ -487,7 +417,15 @@ function renderTestRow(
 
 
           <a
-            href="/teacher/marking?test=${encoded}"
+            href="/teacher/tests/model-answer?test=${id}"
+            class="btn"
+          >
+            模範解答
+          </a>
+
+
+          <a
+            href="/teacher/marking?test=${id}"
             class="btn btn-primary"
           >
             採点
@@ -532,8 +470,10 @@ function getStatusLabel(
   };
 
 
-  return escapeHtml(
-    labels[status] ||
+  return (
+    labels[
+      status
+    ] ||
     status ||
     ""
   );
@@ -542,23 +482,12 @@ function getStatusLabel(
 
 
 /* =========================================================
-   FORMAT
+   NUMBER
 ========================================================= */
 
 function formatNumber(
   value
 ) {
-
-  if (
-    value === null ||
-    value === undefined ||
-    value === ""
-  ) {
-
-    return "";
-
-  }
-
 
   const number =
     Number(
@@ -604,37 +533,35 @@ function showError(
     );
 
 
-  if (tbody) {
+  if (!tbody) {
 
-    tbody.innerHTML = `
-
-      <tr>
-
-        <td
-          colspan="7"
-          style="
-            text-align:center;
-            padding:30px;
-            color:#c62828;
-          "
-        >
-
-          ${escapeHtml(
-            message
-          )}
-
-        </td>
-
-      </tr>
-
-    `;
+    return;
 
   }
 
 
-  console.error(
-    message
-  );
+  tbody.innerHTML = `
+
+    <tr>
+
+      <td
+        colspan="7"
+        style="
+          text-align:center;
+          padding:30px;
+          color:#c62828;
+        "
+      >
+
+        ${escapeHtml(
+          message
+        )}
+
+      </td>
+
+    </tr>
+
+  `;
 
 }
 
@@ -647,18 +574,9 @@ function escapeHtml(
   value
 ) {
 
-  if (
-    value === null ||
-    value === undefined
-  ) {
-
-    return "";
-
-  }
-
-
   return String(
-    value
+    value ??
+    ""
   )
     .replaceAll(
       "&",
@@ -682,10 +600,3 @@ function escapeHtml(
     );
 
 }
-
-
-/* =========================================================
-   START
-========================================================= */
-
-initializeTests();

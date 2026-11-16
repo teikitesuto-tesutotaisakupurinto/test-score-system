@@ -2,43 +2,35 @@
 "use strict";
 
 /* =========================================================
-   テスト成績システム
-   js/teacher/test-publish.js
+   テスト公開状態
 
-   公開状態確認
-
-   公開処理はここでは行わない。
-
-   正式な流れ
+   重要
    ---------------------------------------------------------
-   採点
-      ↓
-   全答案・全設問完了
-      ↓
-   成績処理
-      ↓
-   結果確定
-      ↓
-   tests.results_published = true
-      ↓
-   生徒へ自動公開
+   この画面から「採点が終わっただけ」で
+   自動公開はしない。
 
-   この画面
+   公開可能条件
    ---------------------------------------------------------
-   ・現在の状態を確認
-   ・公開済み日時を確認
-   ・未確定なら理由を表示
+   1. テストが存在
+   2. answer枠が存在
+   3. 生徒紐付け答案が存在
+   4. 全答案 × 全answer枠が marked
+   5. 成績処理が完了している
+
+   ただし現行DBに
+   「成績処理完了」の専用フラグがない場合は
+   teacherが明示的に公開する。
+
+   生徒側は
+   results_published = true
+   のときだけ結果を表示する。
 ========================================================= */
 
+let DB = null;
 
-let DB =
-  null;
+let tests = [];
 
-let tests =
-  [];
-
-let selectedTest =
-  null;
+let selectedTestId = null;
 
 
 /* =========================================================
@@ -57,9 +49,15 @@ const statusElement =
   );
 
 
-const information =
+const publishButton =
   document.getElementById(
-    "testInformation"
+    "publishButton"
+  );
+
+
+const unpublishButton =
+  document.getElementById(
+    "unpublishButton"
   );
 
 
@@ -91,117 +89,33 @@ async function initialize() {
     }
 
 
-    const result =
+    const auth =
       await requireRole(
         "teacher"
       );
 
 
-    if (!result) {
+    if (!auth) {
 
       return;
 
     }
 
 
-    const teacherName =
-      document.getElementById(
-        "teacherName"
-      );
+    document.getElementById(
+      "teacherName"
+    ).textContent =
+      auth.profile?.name ||
+      "先生";
 
 
-    if (teacherName) {
-
-      teacherName.textContent =
-        result.profile?.name ||
-        "先生";
-
-    }
-
-
-    document
-      .getElementById(
-        "logoutButton"
-      )
-      ?.addEventListener(
-        "click",
-        async () => {
-
-          await logout();
-
-        }
-      );
-
-
-    testSelect?.addEventListener(
-      "change",
-      async () => {
-
-        selectedTest =
-          tests.find(
-            test =>
-              test.id ===
-              testSelect.value
-          ) ||
-          null;
-
-
-        await renderStatus();
-
-      }
-    );
+    setupEvents();
 
 
     await loadTests();
 
 
-    const params =
-      new URLSearchParams(
-        location.search
-      );
-
-
-    const requestedTest =
-      params.get(
-        "test"
-      ) ||
-      params.get(
-        "id"
-      );
-
-
-    if (
-      requestedTest
-    ) {
-
-      const found =
-        tests.find(
-          test =>
-            test.id ===
-            requestedTest
-        );
-
-
-      if (found) {
-
-        selectedTest =
-          found;
-
-
-        testSelect.value =
-          found.id;
-
-
-        await renderStatus();
-
-        return;
-
-      }
-
-    }
-
-
-    renderStatus();
+    selectFromUrl();
 
 
   } catch (error) {
@@ -212,13 +126,61 @@ async function initialize() {
     );
 
 
-    showStatus(
+    showError(
       error.message ||
-      "公開状態を取得できませんでした。",
-      "error"
+      "公開状態を読み込めませんでした。"
     );
 
   }
+
+}
+
+
+/* =========================================================
+   EVENTS
+========================================================= */
+
+function setupEvents() {
+
+  testSelect?.addEventListener(
+    "change",
+    async () => {
+
+      selectedTestId =
+        testSelect.value ||
+        null;
+
+
+      await updateStatus();
+
+    }
+  );
+
+
+  publishButton?.addEventListener(
+    "click",
+    publishTest
+  );
+
+
+  unpublishButton?.addEventListener(
+    "click",
+    unpublishTest
+  );
+
+
+  document
+    .getElementById(
+      "logoutButton"
+    )
+    ?.addEventListener(
+      "click",
+      async () => {
+
+        await logout();
+
+      }
+    );
 
 }
 
@@ -245,8 +207,7 @@ async function loadTests() {
         grade,
         class_name,
         results_published,
-        results_published_at,
-        created_at
+        results_published_at
         `
       )
       .order(
@@ -265,15 +226,7 @@ async function loadTests() {
 
 
   tests =
-    data ||
-    [];
-
-
-  if (!testSelect) {
-
-    return;
-
-  }
+    data || [];
 
 
   testSelect.innerHTML = `
@@ -282,48 +235,83 @@ async function loadTests() {
       テストを選択してください
     </option>
 
+    ${
+      tests
+        .map(
+          test => `
+
+            <option
+              value="${escapeHtml(
+                test.id
+              )}"
+            >
+
+              ${escapeHtml(
+                [
+                  test.name,
+                  test.subject,
+                  test.grade,
+                  test.class_name
+                ]
+                  .filter(Boolean)
+                  .join(
+                    " / "
+                  )
+              )}
+
+            </option>
+
+          `
+        )
+        .join("")
+    }
+
   `;
 
-
-  tests.forEach(
-    test => {
-
-      const option =
-        document.createElement(
-          "option"
-        );
+}
 
 
-      option.value =
-        test.id;
+/* =========================================================
+   URL
+========================================================= */
+
+function selectFromUrl() {
+
+  const params =
+    new URLSearchParams(
+      location.search
+    );
 
 
-      option.textContent =
-        [
-          test.name,
-          test.subject,
-          test.grade,
-          test.class_name
-        ]
-          .filter(
-            value =>
-              value !== null &&
-              value !== undefined &&
-              String(
-                value
-              ).trim() !== ""
-          )
-          .join(
-            " / "
-          );
+  const requested =
+    params.get(
+      "test"
+    ) ||
+    params.get(
+      "id"
+    );
 
 
-      testSelect.appendChild(
-        option
-      );
+  if (
+    requested &&
+    tests.some(
+      test =>
+        test.id ===
+        requested
+    )
+  ) {
 
-    }
-  );
+    selectedTestId =
+      requested;
+
+
+    testSelect.value =
+      requested;
+
+
+    updateStatus();
+
+  }
 
 }
 
@@ -332,179 +320,505 @@ async function loadTests() {
    STATUS
 ========================================================= */
 
-async function renderStatus() {
+async function updateStatus() {
 
-  if (!selectedTest) {
+  if (!selectedTestId) {
 
-    hideInformation();
-
-
-    showStatus(
+    setStatus(
       "テストを選択してください。"
     );
 
 
+    publishButton.disabled =
+      true;
+
+
+    unpublishButton.disabled =
+      true;
+
+
     return;
 
   }
 
 
-  renderInformation();
+  const test =
+    tests.find(
+      item =>
+        item.id ===
+        selectedTestId
+    );
+
+
+  if (!test) {
+
+    return;
+
+  }
+
+
+  try {
+
+    setStatus(
+      "公開条件を確認しています..."
+    );
+
+
+    const readiness =
+      await checkReadiness();
+
+
+    if (
+      test.results_published
+    ) {
+
+      setStatus(
+        `公開済みです。公開日時：${formatDate(
+          test.results_published_at
+        )}`
+      );
+
+
+      publishButton.disabled =
+        true;
+
+
+      unpublishButton.disabled =
+        false;
+
+
+      return;
+
+    }
+
+
+    if (
+      readiness.ready
+    ) {
+
+      setStatus(
+        "成績処理が完了しており、公開可能です。"
+      );
+
+
+      publishButton.disabled =
+        false;
+
+
+    } else {
+
+      setStatus(
+        readiness.message,
+        true
+      );
+
+
+      publishButton.disabled =
+        true;
+
+    }
+
+
+    unpublishButton.disabled =
+      true;
+
+
+  } catch (error) {
+
+    showError(
+      error.message ||
+      "公開条件を確認できませんでした。"
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   READINESS
+========================================================= */
+
+async function checkReadiness() {
+
+  const {
+    data:boxes,
+    error:boxError
+  } =
+    await DB
+      .from(
+        "layout_boxes"
+      )
+      .select(
+        "id"
+      )
+      .eq(
+        "test_id",
+        selectedTestId
+      )
+      .eq(
+        "box_type",
+        "answer"
+      );
+
+
+  if (boxError) {
+
+    throw boxError;
+
+  }
+
+
+  const answerBoxCount =
+    boxes?.length ||
+    0;
+
+
+  if (!answerBoxCount) {
+
+    return {
+
+      ready:false,
+
+      message:
+        "採点対象の解答欄がありません。"
+
+    };
+
+  }
+
+
+  const {
+    data:answers,
+    error:answerError
+  } =
+    await DB
+      .from(
+        "answer_sheets"
+      )
+      .select(
+        `
+        id,
+        student_id,
+        status
+        `
+      )
+      .eq(
+        "test_id",
+        selectedTestId
+      )
+      .not(
+        "student_id",
+        "is",
+        null
+      )
+      .in(
+        "status",
+        [
+          "marking",
+          "marked",
+          "published"
+        ]
+      );
+
+
+  if (answerError) {
+
+    throw answerError;
+
+  }
+
+
+  if (!answers?.length) {
+
+    return {
+
+      ready:false,
+
+      message:
+        "生徒に紐付いた答案がありません。"
+
+    };
+
+  }
 
 
   /*
-   * すでに公開済み
+   * 各答案のscore件数を取得。
    */
+
+  const answerIds =
+    answers.map(
+      answer =>
+        answer.id
+    );
+
+
+  const {
+    data:scores,
+    error:scoreError
+  } =
+    await DB
+      .from(
+        "scores"
+      )
+      .select(
+        `
+        answer_sheet_id,
+        layout_box_id,
+        status
+        `
+      )
+      .in(
+        "answer_sheet_id",
+        answerIds
+      )
+      .eq(
+        "status",
+        "marked"
+      );
+
+
+  if (scoreError) {
+
+    throw scoreError;
+
+  }
+
+
+  const markedSet =
+    new Set(
+      (
+        scores ||
+        []
+      ).map(
+        score =>
+          `${score.answer_sheet_id}:${score.layout_box_id}`
+      )
+    );
+
+
+  const required =
+    answerIds.length *
+    answerBoxCount;
+
+
+  const marked =
+    markedSet.size;
+
 
   if (
-    selectedTest.results_published ===
-    true
+    marked <
+    required
   ) {
 
-    showStatus(
-      `
-        <div class="status-title">
-          結果確定・公開済み
-        </div>
+    return {
 
-        公開日時：
-        ${escapeHtml(
-          formatDate(
-            selectedTest.results_published_at
-          )
-        )}
-      `,
-      "public"
-    );
+      ready:false,
 
+      message:
+        `未採点があります。${marked} / ${required}件が採点済みです。`
 
-    setInformation(
-      "processingStatus",
-      "完了"
-    );
-
-
-    setInformation(
-      "publishedStatus",
-      "公開済み"
-    );
-
-
-    return;
+    };
 
   }
 
 
   /*
-   * 未公開。
-   *
-   * ここでは公開処理を行わない。
+   * 全答案がmarkedになっているかも確認。
    */
 
-  showStatus(
-    `
-      <div class="status-title">
-        未確定・非公開
-      </div>
-
-      成績処理が完了するまで、
-      生徒には点数・答案を表示しません。
-
-      <br>
-
-      全採点終了後、成績処理が完了すると
-      自動的に公開されます。
-    `,
-    "processing"
-  );
+  const incomplete =
+    answers.filter(
+      answer =>
+        answer.status !==
+        "marked"
+    );
 
 
-  setInformation(
-    "processingStatus",
-    "処理中または未確定"
-  );
+  if (incomplete.length) {
+
+    return {
+
+      ready:false,
+
+      message:
+        `${incomplete.length}件の答案がまだ確定状態ではありません。`
+
+    };
+
+  }
 
 
-  setInformation(
-    "publishedStatus",
-    "非公開"
-  );
+  return {
+
+    ready:true,
+
+    message:
+      "公開可能"
+
+  };
 
 }
 
 
 /* =========================================================
-   INFORMATION
+   PUBLISH
 ========================================================= */
 
-function renderInformation() {
+async function publishTest() {
 
-  if (!information) {
+  if (!selectedTestId) {
 
     return;
 
   }
 
 
-  information.style.display =
-    "grid";
+  const readiness =
+    await checkReadiness();
 
 
-  setInformation(
-    "testName",
-    selectedTest.name ||
-    "-"
-  );
+  if (
+    !readiness.ready
+  ) {
 
+    setStatus(
+      readiness.message,
+      true
+    );
 
-  setInformation(
-    "testSubject",
-    selectedTest.subject ||
-    "-"
-  );
-
-
-  setInformation(
-    "processingStatus",
-    "確認中..."
-  );
-
-
-  setInformation(
-    "publishedStatus",
-    "確認中..."
-  );
-
-}
-
-
-function hideInformation() {
-
-  if (information) {
-
-    information.style.display =
-      "none";
+    return;
 
   }
 
-}
 
-
-function setInformation(
-  id,
-  value
-) {
-
-  const element =
-    document.getElementById(
-      id
+  const confirmed =
+    window.confirm(
+      "このテストの成績を生徒へ公開しますか？"
     );
 
 
-  if (element) {
+  if (!confirmed) {
 
-    element.textContent =
-      value;
+    return;
+
+  }
+
+
+  publishButton.disabled =
+    true;
+
+
+  try {
+
+    const {
+      error
+    } =
+      await DB
+        .from(
+          "tests"
+        )
+        .update({
+
+          results_published:
+            true,
+
+          results_published_at:
+            new Date().toISOString()
+
+        })
+        .eq(
+          "id",
+          selectedTestId
+        );
+
+
+    if (error) {
+
+      throw error;
+
+    }
+
+
+    /*
+     * 答案側もpublishedへ。
+     */
+
+    const {
+      error:
+        answerError
+    } =
+      await DB
+        .from(
+          "answer_sheets"
+        )
+        .update({
+
+          status:
+            "published"
+
+        })
+        .eq(
+          "test_id",
+          selectedTestId
+        )
+        .eq(
+          "status",
+          "marked"
+        );
+
+
+    if (answerError) {
+
+      console.warn(
+        "answer publish:",
+        answerError
+      );
+
+    }
+
+
+    const test =
+      tests.find(
+        item =>
+          item.id ===
+          selectedTestId
+      );
+
+
+    if (test) {
+
+      test.results_published =
+        true;
+
+      test.results_published_at =
+        new Date().toISOString();
+
+    }
+
+
+    await updateStatus();
+
+
+  } catch (error) {
+
+    console.error(
+      "publish:",
+      error
+    );
+
+
+    showError(
+      error.message ||
+      "公開に失敗しました。"
+    );
+
+
+  } finally {
+
+    publishButton.disabled =
+      false;
 
   }
 
@@ -512,12 +826,144 @@ function setInformation(
 
 
 /* =========================================================
-   STATUS
+   UNPUBLISH
 ========================================================= */
 
-function showStatus(
-  message,
-  type = ""
+async function unpublishTest() {
+
+  if (!selectedTestId) {
+
+    return;
+
+  }
+
+
+  const confirmed =
+    window.confirm(
+      "公開を停止しますか？生徒画面から結果が見えなくなります。"
+    );
+
+
+  if (!confirmed) {
+
+    return;
+
+  }
+
+
+  unpublishButton.disabled =
+    true;
+
+
+  try {
+
+    const {
+      error
+    } =
+      await DB
+        .from(
+          "tests"
+        )
+        .update({
+
+          results_published:
+            false,
+
+          results_published_at:
+            null
+
+        })
+        .eq(
+          "id",
+          selectedTestId
+        );
+
+
+    if (error) {
+
+      throw error;
+
+    }
+
+
+    /*
+     * 公開解除しても採点済み状態は
+     * markedへ戻す。
+     */
+
+    await DB
+      .from(
+        "answer_sheets"
+      )
+      .update({
+
+        status:
+          "marked"
+
+      })
+      .eq(
+        "test_id",
+        selectedTestId
+      )
+      .eq(
+        "status",
+        "published"
+      );
+
+
+    const test =
+      tests.find(
+        item =>
+          item.id ===
+          selectedTestId
+      );
+
+
+    if (test) {
+
+      test.results_published =
+        false;
+
+      test.results_published_at =
+        null;
+
+    }
+
+
+    await updateStatus();
+
+
+  } catch (error) {
+
+    console.error(
+      "unpublish:",
+      error
+    );
+
+
+    showError(
+      error.message ||
+      "公開停止に失敗しました。"
+    );
+
+
+  } finally {
+
+    unpublishButton.disabled =
+      false;
+
+  }
+
+}
+
+
+/* =========================================================
+   UI
+========================================================= */
+
+function setStatus(
+  text,
+  error = false
 ) {
 
   if (!statusElement) {
@@ -527,21 +973,29 @@ function showStatus(
   }
 
 
+  statusElement.textContent =
+    text;
+
+
   statusElement.className =
-    `status ${
-      type || ""
-    }`;
-
-
-  statusElement.innerHTML =
-    message;
+    error
+      ? "status error"
+      : "status";
 
 }
 
 
-/* =========================================================
-   DATE
-========================================================= */
+function showError(
+  text
+) {
+
+  setStatus(
+    text,
+    true
+  );
+
+}
+
 
 function formatDate(
   value
@@ -572,32 +1026,11 @@ function formatDate(
 
 
   return date.toLocaleString(
-    "ja-JP",
-    {
-      year:
-        "numeric",
-
-      month:
-        "2-digit",
-
-      day:
-        "2-digit",
-
-      hour:
-        "2-digit",
-
-      minute:
-        "2-digit"
-
-    }
+    "ja-JP"
   );
 
 }
 
-
-/* =========================================================
-   ESCAPE
-========================================================= */
 
 function escapeHtml(
   value

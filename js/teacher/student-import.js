@@ -1,297 +1,544 @@
+
+"use strict";
+
 /* =========================================================
    生徒CSV一括登録
+
+   CSV
+   ---------------------------------------------------------
+   氏名,学年,クラス
+
+   ・UTF-8 BOM対応
+   ・引用符対応
+   ・氏名必須
+   ・学年 / クラス任意
+   ・生徒番号はDB側で自動発行
+   ・大量データは分割INSERT
 ========================================================= */
 
-let importStudents = [];
+
+let DB =
+  null;
+
+
+let importStudents =
+  [];
+
+
+let importing =
+  false;
+
+
+/* =========================================================
+   DOM
+========================================================= */
+
+const csvFile =
+  document.getElementById(
+    "csvFile"
+  );
+
+
+const previewButton =
+  document.getElementById(
+    "previewButton"
+  );
+
+
+const importButton =
+  document.getElementById(
+    "importButton"
+  );
+
+
+const previewArea =
+  document.getElementById(
+    "previewArea"
+  );
+
+
+const previewRows =
+  document.getElementById(
+    "previewRows"
+  );
+
+
+const previewCount =
+  document.getElementById(
+    "previewCount"
+  );
+
+
+const message =
+  document.getElementById(
+    "message"
+  );
+
+
+const progressArea =
+  document.getElementById(
+    "importProgress"
+  );
+
+
+const progressBar =
+  document.getElementById(
+    "progressBar"
+  );
+
+
+const progressText =
+  document.getElementById(
+    "progressText"
+  );
+
+
+/* =========================================================
+   INIT
+========================================================= */
+
+document.addEventListener(
+  "DOMContentLoaded",
+  initializeImport
+);
 
 
 async function initializeImport() {
 
-  const profile =
-    await getProfile();
+  try {
+
+    DB =
+      window.supabaseClient ||
+      window.SB;
 
 
-  if (!profile) {
+    if (!DB) {
 
-    window.location.href =
-      "/login";
+      throw new Error(
+        "Supabase Clientが初期化されていません。"
+      );
 
-    return;
+    }
+
+
+    const auth =
+      await requireRole(
+        "teacher"
+      );
+
+
+    if (!auth) {
+
+      return;
+
+    }
+
+
+    document.getElementById(
+      "teacherName"
+    ).textContent =
+      auth.profile?.name ||
+      "先生";
+
+
+    setupEvents();
+
+
+  } catch (error) {
+
+    console.error(
+      "student-import:",
+      error
+    );
+
+
+    showMessage(
+      error.message ||
+      "CSV一括登録画面を起動できませんでした。",
+      true
+    );
 
   }
-
-
-  if (
-    profile.role !== "teacher" &&
-    profile.role !== "admin"
-  ) {
-
-    window.location.href =
-      "/student/dashboard";
-
-    return;
-
-  }
-
-
-  document.getElementById(
-    "teacherName"
-  ).textContent =
-    profile.name || "先生";
 
 }
 
 
-initializeImport();
+/* =========================================================
+   EVENTS
+========================================================= */
 
+function setupEvents() {
 
-/*
-  ログアウト
-*/
+  document
+    .getElementById(
+      "logoutButton"
+    )
+    ?.addEventListener(
+      "click",
+      async () => {
 
-document
-  .getElementById(
-    "logoutButton"
-  )
-  .addEventListener(
-    "click",
-    logout
-  );
-
-
-/*
-  CSVプレビュー
-*/
-
-document
-  .getElementById(
-    "previewButton"
-  )
-  .addEventListener(
-    "click",
-    async () => {
-
-      const file =
-        document.getElementById(
-          "csvFile"
-        ).files[0];
-
-
-      const message =
-        document.getElementById(
-          "message"
-        );
-
-
-      if (!file) {
-
-        message.textContent =
-          "CSVファイルを選択してください。";
-
-        message.style.color =
-          "#c62828";
-
-        return;
+        await logout();
 
       }
+    );
 
 
-      try {
+  csvFile?.addEventListener(
+    "change",
+    () => {
 
-        const text =
-          await readFile(
-            file
-          );
+      importStudents =
+        [];
 
-
-        importStudents =
-          parseCSV(
-            text
-          );
+      previewArea.style.display =
+        "none";
 
 
-        if (
-          !importStudents.length
-        ) {
-
-          throw new Error(
-            "登録できるデータがありません。"
-          );
-
-        }
-
-
-        renderPreview();
-
-
-        document.getElementById(
-          "importButton"
-        ).disabled =
-          false;
-
-
-        message.textContent =
-          `${importStudents.length}人を登録できます。`;
-
-        message.style.color =
-          "#16834b";
-
-
-      } catch (error) {
-
-        console.error(error);
-
-        message.textContent =
-          error.message ||
-          "CSVを読み込めませんでした。";
-
-        message.style.color =
-          "#c62828";
-
-      }
-
-    }
-  );
-
-
-/*
-  CSV登録
-*/
-
-document
-  .getElementById(
-    "importButton"
-  )
-  .addEventListener(
-    "click",
-    async () => {
-
-      if (
-        !importStudents.length
-      ) {
-
-        return;
-
-      }
-
-
-      const button =
-        document.getElementById(
-          "importButton"
-        );
-
-
-      const message =
-        document.getElementById(
-          "message"
-        );
-
-
-      button.disabled =
+      importButton.disabled =
         true;
 
-      button.textContent =
-        "登録中...";
 
-
-      try {
-
-        const rows =
-          importStudents.map(
-            student => ({
-
-              name:
-                student.name,
-
-              grade:
-                student.grade ||
-                null,
-
-              class_name:
-                student.className ||
-                null
-
-            })
-          );
-
-
-        const {
-          data,
-          error
-        } =
-          await supabaseClient
-            .from("students")
-            .insert(rows)
-            .select(
-              "id,student_no,name"
-            );
-
-
-        if (error) {
-
-          throw error;
-
-        }
-
-
-        message.textContent =
-          `${data.length}人を登録しました。`;
-
-        message.style.color =
-          "#16834b";
-
-
-        /*
-          登録された番号を表示
-        */
-
-        const numberList =
-          data
-            .map(
-              student =>
-                `${student.name}：${student.student_no}`
-            )
-            .join("\n");
-
-
-        alert(
-          `登録完了\n\n${numberList}`
-        );
-
-
-        window.location.href =
-          "/teacher/students";
-
-
-      } catch (error) {
-
-        console.error(error);
-
-        message.textContent =
-          error.message ||
-          "一括登録に失敗しました。";
-
-        message.style.color =
-          "#c62828";
-
-
-        button.disabled =
-          false;
-
-        button.textContent =
-          "登録する";
-
-      }
+      showMessage(
+        ""
+      );
 
     }
   );
 
 
-/*
-  ファイル読み込み
-*/
+  previewButton?.addEventListener(
+    "click",
+    previewCsv
+  );
 
-function readFile(file) {
+
+  importButton?.addEventListener(
+    "click",
+    importCsv
+  );
+
+}
+
+
+/* =========================================================
+   PREVIEW
+========================================================= */
+
+async function previewCsv() {
+
+  if (importing) {
+
+    return;
+
+  }
+
+
+  const file =
+    csvFile?.files?.[0];
+
+
+  if (!file) {
+
+    showMessage(
+      "CSVファイルを選択してください。",
+      true
+    );
+
+    return;
+
+  }
+
+
+  previewButton.disabled =
+    true;
+
+
+  try {
+
+    const text =
+      await readFile(
+        file
+      );
+
+
+    importStudents =
+      parseCSV(
+        text
+      );
+
+
+    if (!importStudents.length) {
+
+      throw new Error(
+        "登録できるデータがありません。"
+      );
+
+    }
+
+
+    /*
+     * 空行・氏名空欄は除外済み。
+     */
+
+    renderPreview();
+
+
+    importButton.disabled =
+      false;
+
+
+    showMessage(
+      `${importStudents.length}人を登録できます。`
+    );
+
+
+  } catch (error) {
+
+    console.error(
+      error
+    );
+
+
+    importStudents =
+      [];
+
+
+    importButton.disabled =
+      true;
+
+
+    previewArea.style.display =
+      "none";
+
+
+    showMessage(
+      error.message ||
+      "CSVを読み込めませんでした。",
+      true
+    );
+
+  } finally {
+
+    previewButton.disabled =
+      false;
+
+  }
+
+}
+
+
+/* =========================================================
+   IMPORT
+========================================================= */
+
+async function importCsv() {
+
+  if (
+    importing ||
+    !importStudents.length
+  ) {
+
+    return;
+
+  }
+
+
+  const confirmed =
+    window.confirm(
+      `${importStudents.length}人を登録します。よろしいですか？`
+    );
+
+
+  if (!confirmed) {
+
+    return;
+
+  }
+
+
+  importing =
+    true;
+
+
+  setControlsDisabled(
+    true
+  );
+
+
+  progressArea.classList.add(
+    "show"
+  );
+
+
+  const chunkSize =
+    200;
+
+
+  let inserted =
+    0;
+
+
+  try {
+
+    for (
+      let start = 0;
+      start <
+      importStudents.length;
+      start +=
+        chunkSize
+    ) {
+
+      const chunk =
+        importStudents.slice(
+          start,
+          start +
+            chunkSize
+        );
+
+
+      const rows =
+        chunk.map(
+          student => ({
+
+            name:
+              student.name,
+
+            grade:
+              student.grade ||
+              null,
+
+            class_name:
+              student.className ||
+              null
+
+          })
+        );
+
+
+      const {
+        data,
+        error
+      } =
+        await DB
+          .from(
+            "students"
+          )
+          .insert(
+            rows
+          )
+          .select(
+            `
+            id,
+            student_no,
+            name
+            `
+          );
+
+
+      if (error) {
+
+        throw error;
+
+      }
+
+
+      inserted +=
+        (
+          data?.length ||
+          chunk.length
+        );
+
+
+      updateProgress(
+        Math.min(
+          start +
+            chunk.length,
+          importStudents.length
+        ),
+        importStudents.length
+      );
+
+
+      /*
+       * 大量登録時にブラウザUIを固めない。
+       */
+
+      await yieldBrowser();
+
+    }
+
+
+    showMessage(
+      `${inserted}人を登録しました。`
+    );
+
+
+    /*
+     * 登録番号を画面に出す。
+     * alertは使わない。
+     */
+
+    const resultText =
+      "登録された生徒番号は生徒一覧で確認できます。";
+
+
+    showMessage(
+      `${inserted}人を登録しました。\n${resultText}`
+    );
+
+
+    setTimeout(
+      () => {
+
+        location.href =
+          "/teacher/students";
+
+      },
+      700
+    );
+
+
+  } catch (error) {
+
+    console.error(
+      "student import:",
+      error
+    );
+
+
+    showMessage(
+      error.message ||
+      "一括登録に失敗しました。",
+      true
+    );
+
+
+    importButton.disabled =
+      false;
+
+
+  } finally {
+
+    importing =
+      false;
+
+
+    setControlsDisabled(
+      false
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   FILE
+========================================================= */
+
+function readFile(
+  file
+) {
 
   return new Promise(
     (
@@ -306,7 +553,10 @@ function readFile(file) {
       reader.onload =
         () =>
           resolve(
-            reader.result
+            String(
+              reader.result ||
+              ""
+            )
           );
 
 
@@ -330,27 +580,43 @@ function readFile(file) {
 }
 
 
-/*
-  CSV解析
-*/
+/* =========================================================
+   CSV
+========================================================= */
 
-function parseCSV(text) {
+function parseCSV(
+  text
+) {
 
-  const lines =
-    text
+  const normalized =
+    String(
+      text ||
+      ""
+    )
       .replace(
         /^\uFEFF/,
         ""
-      )
-      .split(/\r?\n/)
+      );
+
+
+  const lines =
+    splitCSVLines(
+      normalized
+    )
       .filter(
         line =>
-          line.trim() !== ""
+          line.some(
+            value =>
+              String(
+                value
+              ).trim() !== ""
+          )
       );
 
 
   if (
-    lines.length < 2
+    lines.length <
+    2
   ) {
 
     return [];
@@ -359,12 +625,14 @@ function parseCSV(text) {
 
 
   const headers =
-    parseCSVLine(
-      lines[0]
-    ).map(
-      header =>
-        header.trim()
-    );
+    lines[0]
+      .map(
+        header =>
+          String(
+            header
+          )
+            .trim()
+      );
 
 
   const nameIndex =
@@ -400,7 +668,8 @@ function parseCSV(text) {
 
 
   if (
-    nameIndex === -1
+    nameIndex ===
+    -1
   ) {
 
     throw new Error(
@@ -413,35 +682,28 @@ function parseCSV(text) {
   return lines
     .slice(1)
     .map(
-      line => {
+      values => ({
 
-        const values =
-          parseCSVLine(
-            line
-          );
-
-
-        return {
-
-          name:
+        name:
+          cleanCell(
             values[nameIndex]
-              ?.trim() || "",
+          ),
 
-          grade:
-            gradeIndex >= 0
-              ? values[gradeIndex]
-                  ?.trim() || ""
-              : "",
+        grade:
+          gradeIndex >= 0
+            ? cleanCell(
+                values[gradeIndex]
+              )
+            : "",
 
-          className:
-            classIndex >= 0
-              ? values[classIndex]
-                  ?.trim() || ""
-              : ""
+        className:
+          classIndex >= 0
+            ? cleanCell(
+                values[classIndex]
+              )
+            : ""
 
-        };
-
-      }
+      })
     )
     .filter(
       student =>
@@ -450,6 +712,170 @@ function parseCSV(text) {
 
 }
 
+
+/* =========================================================
+   CSV LINES
+========================================================= */
+
+function splitCSVLines(
+  text
+) {
+
+  const result =
+    [];
+
+
+  let row =
+    [];
+
+
+  let current =
+    "";
+
+
+  let quoted =
+    false;
+
+
+  for (
+    let i = 0;
+    i < text.length;
+    i++
+  ) {
+
+    const char =
+      text[i];
+
+
+    if (
+      char ===
+      '"'
+    ) {
+
+      if (
+        quoted &&
+        text[i + 1] ===
+        '"'
+      ) {
+
+        current +=
+          '"';
+
+        i++;
+
+      } else {
+
+        quoted =
+          !quoted;
+
+      }
+
+
+      continue;
+
+    }
+
+
+    if (
+      char ===
+      "," &&
+      !quoted
+    ) {
+
+      row.push(
+        current
+      );
+
+
+      current =
+        "";
+
+
+      continue;
+
+    }
+
+
+    if (
+      (
+        char ===
+        "\n" ||
+        char ===
+        "\r"
+      ) &&
+      !quoted
+    ) {
+
+      if (
+        char ===
+        "\r" &&
+        text[i + 1] ===
+        "\n"
+      ) {
+
+        i++;
+
+      }
+
+
+      row.push(
+        current
+      );
+
+
+      result.push(
+        row
+      );
+
+
+      row =
+        [];
+
+
+      current =
+        "";
+
+
+      continue;
+
+    }
+
+
+    current +=
+      char;
+
+  }
+
+
+  row.push(
+    current
+  );
+
+
+  if (
+    row.some(
+      value =>
+        String(
+          value
+        ).trim() !== ""
+    )
+  ) {
+
+    result.push(
+      row
+    );
+
+  }
+
+
+  return result;
+
+}
+
+
+/* =========================================================
+   HEADER
+========================================================= */
 
 function findHeader(
   headers,
@@ -464,15 +890,20 @@ function findHeader(
     const index =
       headers.findIndex(
         header =>
-          header
+          String(
+            header
+          )
+            .toLowerCase() ===
+          String(
+            candidate
+          )
             .toLowerCase()
-            ===
-          candidate.toLowerCase()
       );
 
 
     if (
-      index >= 0
+      index >=
+      0
     ) {
 
       return index;
@@ -487,107 +918,13 @@ function findHeader(
 }
 
 
-/*
-  CSV 1行解析
-*/
-
-function parseCSVLine(
-  line
-) {
-
-  const result = [];
-
-  let current = "";
-
-  let quoted = false;
-
-
-  for (
-    let i = 0;
-    i < line.length;
-    i++
-  ) {
-
-    const char =
-      line[i];
-
-
-    if (
-      char === '"'
-    ) {
-
-      if (
-        quoted &&
-        line[i + 1] === '"'
-      ) {
-
-        current += '"';
-
-        i++;
-
-      } else {
-
-        quoted =
-          !quoted;
-
-      }
-
-      continue;
-
-    }
-
-
-    if (
-      char === "," &&
-      !quoted
-    ) {
-
-      result.push(
-        current
-      );
-
-      current = "";
-
-      continue;
-
-    }
-
-
-    current +=
-      char;
-
-  }
-
-
-  result.push(
-    current
-  );
-
-
-  return result;
-
-}
-
-
-/*
-  プレビュー
-*/
+/* =========================================================
+   PREVIEW
+========================================================= */
 
 function renderPreview() {
 
-  const area =
-    document.getElementById(
-      "previewArea"
-    );
-
-
-  const tbody =
-    document.getElementById(
-      "previewRows"
-    );
-
-
-  tbody.innerHTML =
+  previewRows.innerHTML =
     importStudents
       .map(
         student => `
@@ -619,27 +956,154 @@ function renderPreview() {
       .join("");
 
 
-  area.style.display =
+  previewCount.textContent =
+    `${importStudents.length}件`;
+
+  
+  previewArea.style.display =
     "block";
 
 }
 
 
-function escapeHtml(
-  value
+/* =========================================================
+   PROGRESS
+========================================================= */
+
+function updateProgress(
+  current,
+  total
 ) {
 
-  if (
-    value === null ||
-    value === undefined
-  ) {
+  const percent =
+    total
+      ? Math.round(
+          current /
+          total *
+          100
+        )
+      : 0;
 
-    return "";
+
+  progressBar.style.width =
+    `${percent}%`;
+
+
+  progressText.textContent =
+    `${current} / ${total}人 (${percent}%)`;
+
+}
+
+
+/* =========================================================
+   CONTROLS
+========================================================= */
+
+function setControlsDisabled(
+  disabled
+) {
+
+  if (csvFile) {
+
+    csvFile.disabled =
+      disabled;
 
   }
 
 
-  return String(value)
+  if (previewButton) {
+
+    previewButton.disabled =
+      disabled;
+
+  }
+
+
+  if (importButton) {
+
+    importButton.disabled =
+      disabled;
+
+
+    importButton.textContent =
+      disabled
+        ? "登録中..."
+        : "登録する";
+
+  }
+
+}
+
+
+/* =========================================================
+   MESSAGE
+========================================================= */
+
+function showMessage(
+  text,
+  error = false
+) {
+
+  message.textContent =
+    text;
+
+
+  message.className =
+    error
+      ? "import-message error"
+      : text
+        ? "import-message success"
+        : "import-message";
+
+}
+
+
+/* =========================================================
+   YIELD
+========================================================= */
+
+function yieldBrowser() {
+
+  return new Promise(
+    resolve =>
+      setTimeout(
+        resolve,
+        0
+      )
+  );
+
+}
+
+
+/* =========================================================
+   CELL
+========================================================= */
+
+function cleanCell(
+  value
+) {
+
+  return String(
+    value ??
+    ""
+  )
+    .trim();
+
+}
+
+
+/* =========================================================
+   ESCAPE
+========================================================= */
+
+function escapeHtml(
+  value
+) {
+
+  return String(
+    value ??
+    ""
+  )
     .replaceAll(
       "&",
       "&amp;"

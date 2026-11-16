@@ -12,7 +12,7 @@
 >
 
 <title>
-  デジタル採点 - テスト成績システム
+  デジタル採点
 </title>
 
 <link
@@ -20,10 +20,590 @@
   href="/css/common.css"
 >
 
-<link
-  rel="stylesheet"
-  href="/css/marking.css?v=20261116"
->
+<style>
+
+* {
+  box-sizing:border-box;
+}
+
+
+body {
+  margin:0;
+  background:#eef2f5;
+  color:#222;
+}
+
+
+.marking-main {
+  width:100%;
+  max-width:1900px;
+  margin:0 auto;
+  padding:12px;
+}
+
+
+/* =====================================================
+   TOOLBAR
+===================================================== */
+
+.toolbar {
+  position:sticky;
+  top:0;
+  z-index:100;
+
+  display:flex;
+  align-items:center;
+  gap:7px;
+
+  padding:8px 10px;
+
+  margin-bottom:8px;
+
+  background:#fff;
+
+  border:1px solid #d0d6dc;
+}
+
+
+.toolbar-title {
+  font-size:18px;
+  font-weight:700;
+}
+
+
+.toolbar-space {
+  flex:1;
+}
+
+
+.mark-toolbar {
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:5px;
+
+  padding:7px;
+
+  margin-bottom:8px;
+
+  background:#fff;
+
+  border:1px solid #d0d6dc;
+}
+
+
+.mark-toolbar-title {
+  font-size:12px;
+  font-weight:700;
+  margin-right:4px;
+}
+
+
+.mark-tool {
+  min-width:44px;
+  height:36px;
+
+  padding:0 9px;
+
+  background:#fff;
+
+  border:1px solid #b8c1c9;
+
+  border-radius:4px;
+
+  cursor:pointer;
+
+  font-weight:700;
+}
+
+
+.mark-tool.active {
+  background:#e9ecef;
+  border-color:#222;
+}
+
+
+.keyboard-help {
+  margin-left:8px;
+
+  color:#666;
+
+  font-size:11px;
+}
+
+
+/* =====================================================
+   STATUS
+===================================================== */
+
+.status {
+  min-height:34px;
+
+  margin-bottom:8px;
+
+  padding:8px 10px;
+
+  background:#fff;
+
+  border:1px solid #d0d6dc;
+
+  font-size:12px;
+}
+
+
+.status.error {
+  color:#b42318;
+
+  border-color:#efc2bc;
+
+  background:#fff8f7;
+}
+
+
+/* =====================================================
+   QUESTION
+===================================================== */
+
+.question-header {
+  display:flex;
+
+  align-items:center;
+
+  gap:10px;
+
+  margin-bottom:8px;
+
+  padding:9px 11px;
+
+  background:#fff;
+
+  border:1px solid #d0d6dc;
+}
+
+
+.question-info {
+  min-width:0;
+}
+
+
+.question-title {
+  font-size:18px;
+
+  font-weight:700;
+}
+
+
+.question-meta {
+  margin-top:2px;
+
+  color:#666;
+
+  font-size:12px;
+}
+
+
+.question-space {
+  flex:1;
+}
+
+
+.navigation {
+  display:flex;
+
+  gap:5px;
+}
+
+
+/* =====================================================
+   PROGRESS
+===================================================== */
+
+.progress {
+  margin-bottom:8px;
+
+  padding:8px 10px;
+
+  background:#fff;
+
+  border:1px solid #d0d6dc;
+}
+
+
+.progress-text {
+  color:#555;
+
+  font-size:11px;
+
+  margin-bottom:5px;
+}
+
+
+.progress-track {
+  height:6px;
+
+  overflow:hidden;
+
+  background:#e1e5e8;
+
+  border-radius:3px;
+}
+
+
+.progress-bar {
+  width:0;
+
+  height:100%;
+
+  background:#1769aa;
+
+  transition:width .12s;
+}
+
+
+/* =====================================================
+   ANSWER GRID
+===================================================== */
+
+.answer-grid-wrap {
+  width:100%;
+
+  overflow:auto;
+
+  padding:6px;
+
+  background:#dfe4e8;
+
+  border:1px solid #cbd2d8;
+}
+
+
+.answer-grid {
+  display:grid;
+
+  grid-template-columns:
+    repeat(
+      auto-fit,
+      minmax(
+        300px,
+        1fr
+      )
+    );
+
+  gap:7px;
+
+  width:100%;
+}
+
+
+.answer-card {
+  min-width:0;
+
+  background:#fff;
+
+  border:1px solid #c8ced4;
+
+  border-radius:3px;
+
+  overflow:hidden;
+}
+
+
+.answer-card.active {
+  border:2px solid #1769aa;
+}
+
+
+.answer-card-head {
+  display:flex;
+
+  align-items:center;
+
+  justify-content:space-between;
+
+  gap:6px;
+
+  min-height:30px;
+
+  padding:5px 7px;
+
+  background:#f3f5f7;
+
+  border-bottom:1px solid #d5dbe0;
+}
+
+
+.answer-label {
+  font-size:11px;
+
+  font-weight:700;
+}
+
+
+.answer-state {
+  color:#777;
+
+  font-size:10px;
+}
+
+
+.answer-state.marked {
+  color:#16834b;
+
+  font-weight:700;
+}
+
+
+.answer-image-area {
+  position:relative;
+
+  width:100%;
+
+  min-height:160px;
+
+  background:#f8f9fa;
+
+  overflow:hidden;
+
+  cursor:pointer;
+}
+
+
+.answer-image-area img {
+  display:block;
+
+  width:100%;
+
+  height:auto;
+
+  user-select:none;
+
+  pointer-events:none;
+}
+
+
+.answer-error {
+  min-height:160px;
+
+  display:flex;
+
+  align-items:center;
+
+  justify-content:center;
+
+  padding:20px;
+
+  color:#b42318;
+
+  font-size:11px;
+
+  text-align:center;
+}
+
+
+/* =====================================================
+   MARK OBJECT
+===================================================== */
+
+.mark-object {
+  position:absolute;
+
+  z-index:20;
+
+  color:#d00000;
+
+  line-height:1;
+
+  font-weight:700;
+
+  user-select:none;
+
+  pointer-events:auto;
+
+  cursor:pointer;
+
+  text-shadow:
+    0 0 1px #fff,
+    0 0 2px #fff;
+}
+
+
+.mark-object:hover {
+  outline:1px dashed #d00000;
+}
+
+
+/* =====================================================
+   SCORE
+===================================================== */
+
+.answer-score {
+  display:flex;
+
+  align-items:center;
+
+  justify-content:center;
+
+  gap:4px;
+
+  padding:6px;
+
+  border-top:1px solid #d5dbe0;
+}
+
+
+.score-input {
+  width:68px;
+
+  height:34px;
+
+  padding:0 5px;
+
+  border:1px solid #b8c1c9;
+
+  border-radius:3px;
+
+  text-align:center;
+
+  font-size:16px;
+}
+
+
+.score-button {
+  height:32px;
+
+  min-width:36px;
+
+  padding:0 7px;
+
+  border:1px solid #b8c1c9;
+
+  border-radius:3px;
+
+  background:#fff;
+
+  cursor:pointer;
+
+  font-weight:700;
+}
+
+
+.score-button:hover {
+  background:#f1f4f6;
+}
+
+
+.score-button.primary {
+  background:#1769aa;
+
+  border-color:#1769aa;
+
+  color:#fff;
+}
+
+
+.score-status {
+  padding:0 6px 5px;
+
+  text-align:center;
+
+  color:#777;
+
+  font-size:10px;
+}
+
+
+.score-status.marked {
+  color:#16834b;
+
+  font-weight:700;
+}
+
+
+/* =====================================================
+   COMPLETE
+===================================================== */
+
+.complete {
+  display:none;
+
+  margin-top:8px;
+
+  padding:14px;
+
+  background:#edf8ef;
+
+  border:1px solid #b7d9c0;
+
+  color:#176b35;
+}
+
+
+.complete.show {
+  display:block;
+}
+
+
+.complete-title {
+  font-weight:700;
+
+  margin-bottom:3px;
+}
+
+
+/* =====================================================
+   RESPONSIVE
+===================================================== */
+
+@media(max-width:900px) {
+
+  .marking-main {
+    padding:7px;
+  }
+
+
+  .answer-grid {
+    grid-template-columns:
+      repeat(
+        auto-fit,
+        minmax(
+          270px,
+          1fr
+        )
+      );
+  }
+
+
+  .keyboard-help {
+    width:100%;
+
+    margin-left:0;
+  }
+
+}
+
+
+@media(max-width:600px) {
+
+  .answer-grid {
+    grid-template-columns:
+      1fr;
+  }
+
+
+  .question-header {
+    align-items:flex-start;
+
+    flex-direction:column;
+  }
+
+
+  .question-space {
+    display:none;
+  }
+
+}
+
+</style>
 
 </head>
 
@@ -31,566 +611,297 @@
 <body>
 
 
-<div class="marking-page">
+<header class="topbar">
 
+<div class="system-name">
+  テスト成績システム
+</div>
 
-<header class="marking-toolbar">
 
+<div class="topbar-space"></div>
 
-  <div class="marking-toolbar-row">
 
+<span id="teacherName">
+  -
+</span>
 
-    <strong>
-      デジタル採点
-    </strong>
 
-
-    <span
-      id="questionTitle"
-      class="question-info"
-    >
-      -
-    </span>
-
-
-    <span
-      id="questionMeta"
-      class="point-info"
-    >
-      -
-    </span>
-
-
-    <span
-      id="progressText"
-      class="marking-progress"
-    >
-      0 / 0
-    </span>
-
-
-    <a
-      href="/teacher/marking"
-      class="btn"
-    >
-      戻る
-    </a>
-
-
-    <a
-      id="pointsButton"
-      href="#"
-      class="btn"
-    >
-      配点
-    </a>
-
-
-    <button
-      id="refreshButton"
-      type="button"
-      class="btn"
-    >
-      更新
-    </button>
-
-
-    <button
-      id="logoutButton"
-      type="button"
-      class="btn"
-    >
-      ログアウト
-    </button>
-
-
-  </div>
-
-
-  <div class="marking-toolbar-row">
-
-
-    <div class="toolbar-group">
-
-
-      <span class="toolbar-label">
-        記号
-      </span>
-
-
-      <button
-        type="button"
-        class="mark-tool symbol"
-        data-mark="circle"
-      >
-        ○
-      </button>
-
-
-      <button
-        type="button"
-        class="mark-tool symbol"
-        data-mark="x"
-      >
-        ×
-      </button>
-
-
-      <button
-        type="button"
-        class="mark-tool symbol"
-        data-mark="triangle"
-      >
-        △
-      </button>
-
-
-      <button
-        type="button"
-        class="mark-tool symbol"
-        data-mark="double_circle"
-      >
-        ◎
-      </button>
-
-
-      <button
-        type="button"
-        class="mark-tool"
-        data-mark="text"
-      >
-        文字
-      </button>
-
-
-      <button
-        type="button"
-        class="mark-tool"
-        data-mark="pen"
-      >
-        ペン
-      </button>
-
-
-      <button
-        type="button"
-        class="mark-tool"
-        data-mark="eraser"
-      >
-        消しゴム
-      </button>
-
-
-    </div>
-
-
-    <div class="toolbar-group">
-
-
-      <span class="toolbar-label">
-        点数
-      </span>
-
-
-      <button
-        type="button"
-        class="quick-score full"
-        data-quick-score="full"
-      >
-        L 満点
-      </button>
-
-
-      <button
-        type="button"
-        class="quick-score zero"
-        data-quick-score="zero"
-      >
-        K 0点
-      </button>
-
-
-      <div
-        id="numberToolbar"
-        class="number-toolbar"
-      ></div>
-
-
-    </div>
-
-
-    <div class="toolbar-group">
-
-
-      <input
-        id="markText"
-        type="text"
-        placeholder="文字"
-        autocomplete="off"
-      >
-
-
-      <input
-        id="markSize"
-        type="number"
-        min="10"
-        max="120"
-        value="42"
-        title="文字サイズ"
-      >
-
-
-      <input
-        id="markColor"
-        type="color"
-        value="#d00000"
-        title="色"
-      >
-
-
-    </div>
-
-
-    <span class="shortcut-help">
-
-      L：満点　K：0点　数字：部分点　
-      Backspace：削除　Enter：保存　Escape：解除
-
-    </span>
-
-
-  </div>
-
-
-  <div
-    id="status"
-    class="status"
-  >
-    採点画面を起動しています...
-  </div>
-
-
-  <div
-    id="progress"
-    class="progress"
-  >
-
-    <div
-      id="progressTextBar"
-      class="progress-text"
-    >
-      0 / 0
-    </div>
-
-
-    <div class="progress-track">
-
-      <div
-        id="progressBar"
-        class="progress-bar"
-      ></div>
-
-    </div>
-
-  </div>
-
+<button
+id="logoutButton"
+class="logout-button"
+type="button"
+>
+  ログアウト
+</button>
 
 </header>
 
 
-<main class="marking-content">
+<main class="marking-main">
 
 
-  <section
-    id="answerArea"
-    class="answer-area"
-  >
+<div class="toolbar">
 
-    <div
-      id="answerTableWrap"
-      class="answer-grid"
-    >
 
-      <div class="no-answer">
-        答案を読み込んでいます...
-      </div>
+<div class="toolbar-title">
+  デジタル採点
+</div>
 
-    </div>
 
-  </section>
+<a
+href="/teacher/marking"
+class="btn"
+>
+採点一覧へ戻る
+</a>
+
+
+<a
+id="pointsButton"
+href="#"
+class="btn"
+>
+配点設定
+</a>
+
+
+<button
+id="refreshButton"
+class="btn"
+type="button"
+>
+更新
+</button>
+
+
+<div class="toolbar-space"></div>
+
+
+<span
+id="teacherNameTop"
+style="display:none;"
+>
+</span>
+
+
+</div>
+
+
+<div
+id="status"
+class="status"
+>
+採点画面を起動しています...
+</div>
+
+
+<div
+id="progress"
+class="progress"
+>
+
+<div
+id="progressText"
+class="progress-text"
+>
+0 / 0
+</div>
+
+
+<div class="progress-track">
+
+<div
+id="progressBar"
+class="progress-bar"
+>
+</div>
+
+</div>
+
+</div>
+
+
+<div
+id="markToolbar"
+class="mark-toolbar"
+>
+
+<span class="mark-toolbar-title">
+採点記号
+</span>
+
+
+<button
+type="button"
+class="mark-tool"
+data-mark="circle"
+>
+○
+</button>
+
+
+<button
+type="button"
+class="mark-tool"
+data-mark="x"
+>
+×
+</button>
+
+
+<button
+type="button"
+class="mark-tool"
+data-mark="triangle"
+>
+△
+</button>
+
+
+<button
+type="button"
+class="mark-tool"
+data-mark="double_circle"
+>
+◎
+</button>
+
+
+<button
+type="button"
+class="mark-tool"
+data-mark="text"
+>
+文字
+</button>
+
+
+<button
+type="button"
+class="mark-tool"
+data-mark="pen"
+>
+ペン
+</button>
+
+
+<span class="keyboard-help">
+L：○＋満点 ／ K：×＋0点 ／
+数字：部分点 ／ Backspace：削除 ／
+Enter：保存 ／ Escape：解除
+</span>
+
+</div>
+
+
+<section class="question-header">
+
+
+<div class="question-info">
+
+
+<div
+id="questionTitle"
+class="question-title"
+>
+-
+</div>
+
+
+<div
+id="questionMeta"
+class="question-meta"
+>
+-
+</div>
+
+
+</div>
+
+
+<div class="question-space"></div>
+
+
+<div class="navigation">
+
+
+<button
+id="previousButton"
+class="btn"
+type="button"
+disabled
+>
+前の問題
+</button>
+
+
+<button
+id="nextButton"
+class="btn btn-primary"
+type="button"
+>
+次の問題
+</button>
+
+</div>
+
+
+</section>
+
+
+<section
+id="answerTableWrap"
+class="answer-grid-wrap"
+>
+
+<div class="answer-grid">
+
+<div
+class="empty"
+>
+答案を読み込んでいます...
+</div>
+
+</div>
+
+</section>
+
+
+<div
+id="complete"
+class="complete"
+>
+
+<div class="complete-title">
+全答案・全設問の採点が完了しました。
+</div>
+
+成績結果を確定できる状態になりました。
+
+</div>
 
 
 </main>
 
 
-<footer class="marking-footer">
-
-
-  <button
-    id="previousButton"
-    type="button"
-    class="btn"
-  >
-    前の問題
-  </button>
-
-
-  <button
-    id="nextButton"
-    type="button"
-    class="btn btn-primary"
-  >
-    次の問題
-  </button>
-
-
-  <button
-    id="nextUnmarked"
-    type="button"
-    class="btn"
-  >
-    未採点へ
-  </button>
-
-
-  <span
-    id="teacherName"
-    class="toolbar-label"
-  >
-    -
-  </span>
-
-
-</footer>
-
-
-<div
-  id="complete"
-  class="marking-complete"
->
-
-  採点が完了しました。成績処理を開始します。
-
-</div>
-
-
 <script
-  src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
 ></script>
 
 
 <script
-  src="/js/config.js?v=20261116"
+src="/js/config.js?v=20261116"
 ></script>
 
 
 <script
-  src="/js/auth.js?v=20261116"
+src="/js/auth.js?v=20261116"
 ></script>
 
 
 <script
-  src="/js/teacher/marking.js?v=20261116"
+src="/js/teacher/marking.js?v=20261116"
 ></script>
-
-
-<script>
-
-"use strict";
-
-
-/* =========================================================
-   URL
-========================================================= */
-
-const markingParams =
-  new URLSearchParams(
-    location.search
-  );
-
-
-const markingTestId =
-  markingParams.get(
-    "test"
-  );
-
-
-/* =========================================================
-   POINTS
-========================================================= */
-
-const pointsButton =
-  document.getElementById(
-    "pointsButton"
-  );
-
-
-if (
-  pointsButton &&
-  markingTestId
-) {
-
-  pointsButton.href =
-    `/teacher/tests/points?test=${encodeURIComponent(
-      markingTestId
-    )}`;
-
-}
-
-
-/* =========================================================
-   NUMBER BUTTONS
-========================================================= */
-
-const numberToolbar =
-  document.getElementById(
-    "numberToolbar"
-  );
-
-
-const maxNumbers =
-  100;
-
-
-for (
-  let number = 0;
-  number <= maxNumbers;
-  number++
-) {
-
-  const button =
-    document.createElement(
-      "button"
-    );
-
-
-  button.type =
-    "button";
-
-
-  button.className =
-    "number-button";
-
-
-  button.dataset.score =
-    String(
-      number
-    );
-
-
-  button.textContent =
-    String(
-      number
-    );
-
-
-  numberToolbar.appendChild(
-    button
-  );
-
-}
-
-
-/* =========================================================
-   TOOLBAR STATE
-========================================================= */
-
-document
-  .querySelectorAll(
-    ".mark-tool"
-  )
-  .forEach(
-    button => {
-
-      button.addEventListener(
-        "click",
-        () => {
-
-          document
-            .querySelectorAll(
-              ".mark-tool"
-            )
-            .forEach(
-              item =>
-                item.classList.remove(
-                  "active"
-                )
-            );
-
-
-          button.classList.add(
-            "active"
-          );
-
-
-          window.selectedMarkType =
-            button.dataset.mark;
-
-        }
-      );
-
-    }
-  );
-
-
-/* =========================================================
-   QUICK SCORE
-========================================================= */
-
-document
-  .querySelectorAll(
-    "[data-quick-score]"
-  )
-  .forEach(
-    button => {
-
-      button.addEventListener(
-        "click",
-        () => {
-
-          window.quickScoreAction =
-            button.dataset.quickScore;
-
-        }
-      );
-
-    }
-  );
-
-
-/* =========================================================
-   NUMBER
-========================================================= */
-
-numberToolbar.addEventListener(
-  "click",
-  event => {
-
-    const button =
-      event.target.closest(
-        "[data-score]"
-      );
-
-
-    if (!button) {
-
-      return;
-
-    }
-
-
-    window.quickScoreValue =
-      Number(
-        button.dataset.score
-      );
-
-  }
-);
-
-</script>
-
-
-</div>
 
 
 </body>

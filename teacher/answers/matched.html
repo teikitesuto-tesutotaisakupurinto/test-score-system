@@ -4,209 +4,140 @@
 
 <head>
 
-  <meta charset="UTF-8">
-
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
-  >
-
-  <title>
-    答案確認・紐付け - テスト成績システム
-  </title>
-
-  <link
-    rel="stylesheet"
-    href="/css/common.css"
-  >
-
-  <style>
-
-    .matched-main {
-
-      max-width:1400px;
-
-      margin:0 auto;
-
-      padding:20px;
-
-    }
-
-
-    .toolbar {
-
-      display:flex;
-
-      flex-wrap:wrap;
-
-      gap:10px;
-
-      align-items:center;
-
-      margin-bottom:15px;
-
-    }
-
-
-    .toolbar select {
-
-      min-width:300px;
-
-      height:40px;
-
-      padding:0 10px;
-
-    }
-
-
-    .status {
-
-      padding:10px 12px;
-
-      margin-bottom:15px;
-
-      background:#f5f6f7;
-
-      border:1px solid #d5dbe0;
-
-      font-size:13px;
-
-    }
-
-
-    .answer-table-wrap {
-
-      overflow:auto;
-
-      background:#fff;
-
-      border:1px solid #d5dbe0;
-
-    }
-
-
-    .answer-table {
-
-      width:100%;
-
-      min-width:900px;
-
-      border-collapse:collapse;
-
-    }
-
-
-    .answer-table th {
-
-      padding:10px;
-
-      background:#f1f3f5;
-
-      border-bottom:1px solid #d5dbe0;
-
-      text-align:left;
-
-      white-space:nowrap;
-
-    }
-
-
-    .answer-table td {
-
-      padding:10px;
-
-      border-bottom:1px solid #e3e6e8;
-
-      vertical-align:middle;
-
-    }
-
-
-    .status-badge {
-
-      display:inline-block;
-
-      padding:4px 8px;
-
-      border-radius:3px;
-
-      font-size:12px;
-
-    }
-
-
-    .status-matched {
-
-      background:#edf8ef;
-
-      color:#26743b;
-
-      border:1px solid #b7d9c0;
-
-    }
-
-
-    .status-unmatched {
-
-      background:#fff4f2;
-
-      color:#b42318;
-
-      border:1px solid #efc2bc;
-
-    }
-
-
-    .student-select {
-
-      min-width:220px;
-
-      height:36px;
-
-      padding:0 8px;
-
-    }
-
-
-    .qr-value {
-
-      max-width:260px;
-
-      overflow:hidden;
-
-      text-overflow:ellipsis;
-
-      white-space:nowrap;
-
-      font-family:monospace;
-
-      font-size:12px;
-
-    }
-
-
-    .actions {
-
-      display:flex;
-
-      gap:7px;
-
-      flex-wrap:wrap;
-
-    }
-
-
-    .empty {
-
-      padding:50px;
-
-      text-align:center;
-
-      color:#777;
-
-    }
-
-  </style>
+<meta charset="UTF-8">
+
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1.0"
+>
+
+<title>
+  答案確認・紐付け - テスト成績システム
+</title>
+
+<link
+  rel="stylesheet"
+  href="/css/common.css"
+>
+
+<style>
+
+.matched-main {
+  max-width:1400px;
+  margin:0 auto;
+  padding:20px;
+}
+
+.toolbar {
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  align-items:center;
+  margin-bottom:15px;
+}
+
+.toolbar select {
+  min-width:280px;
+  height:40px;
+  padding:0 10px;
+}
+
+.status {
+  padding:10px 12px;
+  margin-bottom:15px;
+  background:#f5f6f7;
+  border:1px solid #d5dbe0;
+  font-size:13px;
+  white-space:pre-wrap;
+}
+
+.status.error {
+  color:#b42318;
+  background:#fff8f7;
+  border-color:#efc2bc;
+}
+
+.answer-table-wrap {
+  overflow:auto;
+  background:#fff;
+  border:1px solid #d5dbe0;
+}
+
+.answer-table {
+  width:100%;
+  min-width:900px;
+  border-collapse:collapse;
+}
+
+.answer-table th,
+.answer-table td {
+  padding:9px 10px;
+  border-bottom:1px solid #e3e6e8;
+  vertical-align:middle;
+}
+
+.answer-table th {
+  background:#f1f3f5;
+  text-align:left;
+  white-space:nowrap;
+}
+
+.status-badge {
+  display:inline-block;
+  padding:4px 8px;
+  border-radius:3px;
+  font-size:12px;
+}
+
+.status-matched {
+  color:#26743b;
+  background:#edf8ef;
+  border:1px solid #b7d9c0;
+}
+
+.status-unmatched {
+  color:#b42318;
+  background:#fff4f2;
+  border:1px solid #efc2bc;
+}
+
+.student-select {
+  min-width:220px;
+  height:36px;
+  padding:0 8px;
+}
+
+.answer-id {
+  max-width:250px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-family:monospace;
+  font-size:11px;
+}
+
+.qr-value {
+  max-width:220px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-family:monospace;
+  font-size:11px;
+}
+
+.actions {
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+}
+
+.empty {
+  padding:50px;
+  text-align:center;
+  color:#777;
+}
+
+</style>
 
 </head>
 
@@ -216,161 +147,182 @@
 
 <header class="topbar">
 
-  <div class="system-name">
-    テスト成績システム
-  </div>
+<div class="system-name">
+  テスト成績システム
+</div>
 
+<div class="topbar-space"></div>
 
-  <div class="topbar-space"></div>
+<span id="teacherName">
+  -
+</span>
 
-
-  <span id="teacherName">
-    -
-  </span>
-
-
-  <button
-    id="logoutButton"
-    class="logout-button"
-    type="button"
-  >
-    ログアウト
-  </button>
+<button
+id="logoutButton"
+class="logout-button"
+type="button"
+>
+  ログアウト
+</button>
 
 </header>
-
 
 
 <main class="matched-main">
 
 
-  <div class="toolbar">
+<div class="page-header">
 
-    <select id="testSelect">
+<h1>
+  答案確認・紐付け
+</h1>
 
-      <option value="">
-        テストを選択してください
-      </option>
-
-    </select>
+</div>
 
 
-    <select id="statusSelect">
-
-      <option value="all">
-        すべて
-      </option>
-
-      <option value="uploaded">
-        紐付け済み
-      </option>
-
-      <option value="unmatched">
-        未紐付け
-      </option>
-
-    </select>
+<div class="toolbar">
 
 
-    <button
-      id="reloadButton"
-      class="btn"
-      type="button"
-    >
-      更新
-    </button>
+<select id="testSelect">
 
-  </div>
+<option value="">
+  テストを選択してください
+</option>
+
+</select>
 
 
+<select id="statusSelect">
 
-  <div
-    id="status"
-    class="status"
-  >
-    テストを選択してください。
-  </div>
+<option value="all">
+  すべて
+</option>
 
+<option value="uploaded">
+  紐付け済み
+</option>
 
+<option value="unmatched">
+  未紐付け
+</option>
 
-  <div class="answer-table-wrap">
-
-    <table
-      class="answer-table"
-    >
-
-      <thead>
-
-        <tr>
-
-          <th>
-            状態
-          </th>
-
-          <th>
-            生徒番号
-          </th>
-
-          <th>
-            氏名
-          </th>
-
-          <th>
-            QR
-          </th>
-
-          <th>
-            答案ID
-          </th>
-
-          <th>
-            登録日時
-          </th>
-
-          <th>
-            操作
-          </th>
-
-        </tr>
-
-      </thead>
+</select>
 
 
-      <tbody
-        id="answerTableBody"
-      >
+<button
+id="reloadButton"
+class="btn"
+type="button"
+>
+  更新
+</button>
 
-        <tr>
 
-          <td
-            colspan="7"
-            class="empty"
-          >
-            テストを選択してください。
-          </td>
+<a
+id="uploadLink"
+href="/teacher/answers/upload"
+class="btn"
+>
+  答案アップロード
+</a>
 
-        </tr>
 
-      </tbody>
+<a
+id="processingLink"
+href="/teacher/answers/processing"
+class="btn"
+>
+  処理状況
+</a>
 
-    </table>
+</div>
 
-  </div>
+
+<div
+id="status"
+class="status"
+>
+テストを選択してください。
+</div>
+
+
+<div class="answer-table-wrap">
+
+<table class="answer-table">
+
+<thead>
+
+<tr>
+
+<th>
+  状態
+</th>
+
+<th>
+  生徒
+</th>
+
+<th>
+  QR
+</th>
+
+<th>
+  答案ID
+</th>
+
+<th>
+  登録日時
+</th>
+
+<th>
+  操作
+</th>
+
+</tr>
+
+</thead>
+
+
+<tbody
+id="answerTableBody"
+>
+
+<tr>
+
+<td
+colspan="6"
+class="empty"
+>
+  テストを選択してください。
+</td>
+
+</tr>
+
+</tbody>
+
+</table>
+
+</div>
 
 
 </main>
 
 
-
 <script
-  src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
 ></script>
 
-<script src="/js/config.js"></script>
+<script
+src="/js/config.js?v=20261116"
+></script>
 
-<script src="/js/auth.js"></script>
+<script
+src="/js/auth.js?v=20261116"
+></script>
 
-<script src="/js/teacher/answer-matched.js"></script>
+<script
+src="/js/teacher/answer-matched.js?v=20261116"
+></script>
 
 
 </body>

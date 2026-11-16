@@ -11,7 +11,9 @@
   content="width=device-width,initial-scale=1"
 >
 
-<title>テスト編集 - テスト成績システム</title>
+<title>
+  テスト編集 - テスト成績システム
+</title>
 
 <link
   rel="stylesheet"
@@ -22,55 +24,96 @@
 
 .main {
   max-width:800px;
+
   margin:0 auto;
+
   padding:25px;
 }
 
+
 .card {
   background:#fff;
-  border:1px solid #d5dbe0;
+
+  border:
+    1px solid #d5dbe0;
+
   padding:20px;
 }
+
 
 .field {
   margin-bottom:16px;
 }
 
+
 .field label {
   display:block;
+
   margin-bottom:6px;
+
   font-size:13px;
+
   font-weight:700;
 }
 
-.field input,
-.field select {
+
+.field input {
   width:100%;
+
   height:42px;
+
   padding:0 10px;
+
   box-sizing:border-box;
 }
 
+
 .actions {
   display:flex;
-  gap:10px;
+
+  gap:8px;
+
   flex-wrap:wrap;
 }
 
+
 .message {
+  min-height:22px;
+
   margin-bottom:15px;
+
   padding:10px;
+
   display:none;
 }
 
+
 .message.error {
   display:block;
+
   background:#fff4f2;
+
   color:#b42318;
-  border:1px solid #efc2bc;
+
+  border:
+    1px solid #efc2bc;
 }
 
+
+.message.success {
+  display:block;
+
+  background:#f1faf5;
+
+  color:#16834b;
+
+  border:
+    1px solid #a9d8bd;
+}
+
+
 </style>
+
 </head>
 
 
@@ -84,7 +127,9 @@
 
   <div class="topbar-space"></div>
 
-  <span id="teacherName">-</span>
+  <span id="teacherName">
+    -
+  </span>
 
   <button
     id="logoutButton"
@@ -100,7 +145,7 @@
 <main class="main">
 
   <h1 id="pageTitle">
-    テスト作成
+    テスト編集
   </h1>
 
 
@@ -109,6 +154,7 @@
     <div
       id="message"
       class="message"
+      aria-live="polite"
     ></div>
 
 
@@ -121,6 +167,7 @@
       <input
         id="name"
         type="text"
+        maxlength="200"
         required
       >
 
@@ -136,6 +183,7 @@
       <input
         id="subject"
         type="text"
+        maxlength="50"
       >
 
     </div>
@@ -150,6 +198,7 @@
       <input
         id="grade"
         type="text"
+        maxlength="30"
       >
 
     </div>
@@ -164,6 +213,37 @@
       <input
         id="className"
         type="text"
+        maxlength="50"
+      >
+
+    </div>
+
+
+    <div class="field">
+
+      <label for="testDate">
+        実施日
+      </label>
+
+      <input
+        id="testDate"
+        type="date"
+      >
+
+    </div>
+
+
+    <div class="field">
+
+      <label for="maxScore">
+        満点
+      </label>
+
+      <input
+        id="maxScore"
+        type="number"
+        min="0"
+        step="0.5"
       >
 
     </div>
@@ -184,9 +264,26 @@
         id="pagesButton"
         class="btn"
         type="button"
-        disabled
       >
-        解答用紙・枠設定
+        解答用紙・ページ設定
+      </button>
+
+
+      <button
+        id="layoutButton"
+        class="btn"
+        type="button"
+      >
+        枠設定
+      </button>
+
+
+      <button
+        id="pointsButton"
+        class="btn"
+        type="button"
+      >
+        配点設定
       </button>
 
 
@@ -205,35 +302,52 @@
 </main>
 
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="/js/config.js"></script>
-<script src="/js/auth.js"></script>
+<script
+  src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+></script>
+
+<script
+  src="/js/config.js?v=20261116"
+></script>
+
+<script
+  src="/js/auth.js?v=20261116"
+></script>
 
 
 <script>
+
+"use strict";
+
 
 (async function () {
 
   const profile =
     await requireTeacher();
 
+
   if (!profile) {
+
     return;
+
   }
 
 
   document.getElementById(
     "teacherName"
   ).textContent =
-    profile.name || "先生";
+    profile.name ||
+    "先生";
 
 
-  document.getElementById(
-    "logoutButton"
-  ).addEventListener(
-    "click",
-    logout
-  );
+  document
+    .getElementById(
+      "logoutButton"
+    )
+    .addEventListener(
+      "click",
+      logout
+    );
 
 
   const params =
@@ -243,40 +357,95 @@
 
 
   const testId =
-    params.get("id");
+    params.get(
+      "id"
+    ) ||
+    params.get(
+      "test"
+    );
 
 
   const nameInput =
-    document.getElementById("name");
+    document.getElementById(
+      "name"
+    );
+
 
   const subjectInput =
-    document.getElementById("subject");
+    document.getElementById(
+      "subject"
+    );
+
 
   const gradeInput =
-    document.getElementById("grade");
+    document.getElementById(
+      "grade"
+    );
+
 
   const classInput =
-    document.getElementById("className");
+    document.getElementById(
+      "className"
+    );
+
+
+  const dateInput =
+    document.getElementById(
+      "testDate"
+    );
+
+
+  const maxScoreInput =
+    document.getElementById(
+      "maxScore"
+    );
+
 
   const message =
-    document.getElementById("message");
+    document.getElementById(
+      "message"
+    );
+
+
+  const saveButton =
+    document.getElementById(
+      "saveButton"
+    );
+
 
   const pagesButton =
-    document.getElementById("pagesButton");
+    document.getElementById(
+      "pagesButton"
+    );
 
 
-  function showError(text) {
+  const layoutButton =
+    document.getElementById(
+      "layoutButton"
+    );
+
+
+  const pointsButton =
+    document.getElementById(
+      "pointsButton"
+    );
+
+
+  function showMessage(
+    text,
+    type = "error"
+  ) {
 
     message.textContent =
       text;
 
     message.className =
-      "message error";
+      `message ${type}`;
 
   }
 
 
-  function clearError() {
+  function clearMessage() {
 
     message.textContent =
       "";
@@ -290,7 +459,57 @@
   async function loadTest() {
 
     if (!testId) {
+
+      document.getElementById(
+        "pageTitle"
+      ).textContent =
+        "テスト作成";
+
+
       return;
+
+    }
+
+
+    const {
+      data,
+      error
+    } =
+      await supabaseClient
+        .from(
+          "tests"
+        )
+        .select(
+          `
+          id,
+          name,
+          subject,
+          grade,
+          class_name,
+          test_date,
+          max_score
+          `
+        )
+        .eq(
+          "id",
+          testId
+        )
+        .maybeSingle();
+
+
+    if (error) {
+
+      throw error;
+
+    }
+
+
+    if (!data) {
+
+      throw new Error(
+        "指定されたテストが見つかりません。"
+      );
+
     }
 
 
@@ -300,63 +519,55 @@
       "テスト編集";
 
 
-    const {
-      data,
-      error
-    } =
-      await supabaseClient
-        .from("tests")
-        .select(`
-          id,
-          name,
-          subject,
-          grade,
-          class_name
-        `)
-        .eq(
-          "id",
-          testId
-        )
-        .single();
-
-
-    if (error) {
-
-      showError(
-        error.message
-      );
-
-      return;
-
-    }
-
-
     nameInput.value =
-      data.name || "";
+      data.name ||
+      "";
+
 
     subjectInput.value =
-      data.subject || "";
+      data.subject ||
+      "";
+
 
     gradeInput.value =
-      data.grade || "";
+      data.grade ||
+      "";
+
 
     classInput.value =
-      data.class_name || "";
+      data.class_name ||
+      "";
+
+
+    dateInput.value =
+      data.test_date ||
+      "";
+
+
+    maxScoreInput.value =
+      data.max_score ??
+      "";
 
 
     pagesButton.disabled =
       false;
 
+
+    layoutButton.disabled =
+      false;
+
+
+    pointsButton.disabled =
+      false;
+
   }
 
 
-  document.getElementById(
-    "saveButton"
-  ).addEventListener(
+  saveButton.addEventListener(
     "click",
     async () => {
 
-      clearError();
+      clearMessage();
 
 
       const name =
@@ -365,8 +576,41 @@
 
       if (!name) {
 
-        showError(
+        showMessage(
           "テスト名を入力してください。"
+        );
+
+        return;
+
+      }
+
+
+      const maxScoreText =
+        maxScoreInput.value.trim();
+
+
+      const maxScore =
+        maxScoreText ===
+          ""
+          ? null
+          : Number(
+              maxScoreText
+            );
+
+
+      if (
+        maxScoreText !==
+          "" &&
+        (
+          !Number.isFinite(
+            maxScore
+          ) ||
+          maxScore < 0
+        )
+      ) {
+
+        showMessage(
+          "満点を正しく入力してください。"
         );
 
         return;
@@ -388,58 +632,113 @@
 
         class_name:
           classInput.value.trim() ||
-          null
+          null,
+
+        test_date:
+          dateInput.value ||
+          null,
+
+        max_score:
+          maxScore
 
       };
 
 
-      let result;
+      saveButton.disabled =
+        true;
 
 
-      if (testId) {
+      try {
 
-        result =
-          await supabaseClient
-            .from("tests")
-            .update(payload)
-            .eq(
-              "id",
-              testId
-            )
-            .select("id")
-            .single();
-
-      } else {
-
-        result =
-          await supabaseClient
-            .from("tests")
-            .insert(payload)
-            .select("id")
-            .single();
-
-      }
+        let result;
 
 
-      if (result.error) {
+        if (testId) {
 
-        showError(
-          result.error.message
+          result =
+            await supabaseClient
+              .from(
+                "tests"
+              )
+              .update(
+                payload
+              )
+              .eq(
+                "id",
+                testId
+              )
+              .select(
+                "id"
+              )
+              .single();
+
+        } else {
+
+          result =
+            await supabaseClient
+              .from(
+                "tests"
+              )
+              .insert(
+                payload
+              )
+              .select(
+                "id"
+              )
+              .single();
+
+        }
+
+
+        if (result.error) {
+
+          throw result.error;
+
+        }
+
+
+        const savedId =
+          result.data.id;
+
+
+        showMessage(
+          "保存しました。",
+          "success"
         );
 
-        return;
+
+        /*
+         * 新規作成の場合は
+         * 編集画面へ移動。
+         */
+
+        if (!testId) {
+
+          location.href =
+            `/teacher/tests/edit?id=${encodeURIComponent(
+              savedId
+            )}`;
+
+        }
+
+      } catch (error) {
+
+        console.error(
+          error
+        );
+
+
+        showMessage(
+          error.message ||
+          "保存できませんでした。"
+        );
+
+      } finally {
+
+        saveButton.disabled =
+          false;
 
       }
-
-
-      const savedId =
-        result.data.id;
-
-
-      location.href =
-        `/teacher/tests/edit?id=${encodeURIComponent(
-          savedId
-        )}`;
 
     }
   );
@@ -450,7 +749,13 @@
     () => {
 
       if (!testId) {
+
+        showMessage(
+          "先にテストを保存してください。"
+        );
+
         return;
+
       }
 
 
@@ -463,24 +768,87 @@
   );
 
 
-  document.getElementById(
-    "backButton"
-  ).addEventListener(
+  layoutButton.addEventListener(
     "click",
     () => {
 
+      if (!testId) {
+
+        showMessage(
+          "先にテストを保存してください。"
+        );
+
+        return;
+
+      }
+
+
       location.href =
-        "/teacher/tests";
+        `/teacher/tests/layout?test=${encodeURIComponent(
+          testId
+        )}`;
 
     }
   );
 
 
-  await loadTest();
+  pointsButton.addEventListener(
+    "click",
+    () => {
+
+      if (!testId) {
+
+        showMessage(
+          "先にテストを保存してください。"
+        );
+
+        return;
+
+      }
+
+
+      location.href =
+        `/teacher/tests/points?test=${encodeURIComponent(
+          testId
+        )}`;
+
+    }
+  );
+
+
+  document
+    .getElementById(
+      "backButton"
+    )
+    .addEventListener(
+      "click",
+      () => {
+
+        location.href =
+          "/teacher/tests";
+
+      }
+    );
+
+
+  try {
+
+    await loadTest();
+
+  } catch (error) {
+
+    showMessage(
+      error.message ||
+      "テストを読み込めませんでした。"
+    );
+
+  }
 
 })();
 
 </script>
 
+
 </body>
+
 </html>

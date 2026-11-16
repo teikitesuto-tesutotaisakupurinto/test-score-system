@@ -1,3 +1,6 @@
+
+"use strict";
+
 /* =========================================================
    クラス所属生徒
 ========================================================= */
@@ -7,77 +10,132 @@ const params =
     window.location.search
   );
 
+
 const classId =
-  params.get("id");
+  params.get("id") ||
+  params.get("class");
+
+
+let DB =
+  null;
+
+let currentClass =
+  null;
+
+
+/* =========================================================
+   INIT
+========================================================= */
+
+document.addEventListener(
+  "DOMContentLoaded",
+  initializeClassStudents
+);
 
 
 async function initializeClassStudents() {
 
-  const profile =
-    await getProfile();
+  try {
+
+    DB =
+      window.supabaseClient ||
+      window.SB;
 
 
-  if (!profile) {
+    if (!DB) {
 
-    window.location.href =
-      "/login";
+      throw new Error(
+        "Supabase Clientが初期化されていません。"
+      );
 
-    return;
-
-  }
-
-
-  if (
-    profile.role !== "teacher" &&
-    profile.role !== "admin"
-  ) {
-
-    window.location.href =
-      "/student/dashboard";
-
-    return;
-
-  }
+    }
 
 
-  document.getElementById(
-    "teacherName"
-  ).textContent =
-    profile.name || "先生";
+    const auth =
+      await requireRole(
+        "teacher"
+      );
 
 
-  if (!classId) {
+    if (!auth) {
 
-    alert(
-      "クラスが指定されていません。"
+      return;
+
+    }
+
+
+    document.getElementById(
+      "teacherName"
+    ).textContent =
+      auth.profile?.name ||
+      "先生";
+
+
+    document
+      .getElementById(
+        "logoutButton"
+      )
+      ?.addEventListener(
+        "click",
+        async () => {
+
+          await logout();
+
+        }
+      );
+
+
+    if (!classId) {
+
+      throw new Error(
+        "クラスが指定されていません。"
+      );
+
+    }
+
+
+    await loadClass();
+
+
+  } catch (error) {
+
+    console.error(
+      "class-students:",
+      error
     );
 
-    window.location.href =
-      "/teacher/classes";
 
-    return;
+    showError(
+      error.message ||
+      "クラス情報を取得できませんでした。"
+    );
 
   }
-
-
-  await loadClass();
 
 }
 
 
+/* =========================================================
+   CLASS
+========================================================= */
+
 async function loadClass() {
 
   const {
-    data: classData,
-    error: classError
+    data,
+    error
   } =
-    await supabaseClient
-      .from("classes")
-      .select(`
+    await DB
+      .from(
+        "classes"
+      )
+      .select(
+        `
         id,
         name,
         grade
-      `)
+        `
+      )
       .eq(
         "id",
         classId
@@ -85,52 +143,81 @@ async function loadClass() {
       .maybeSingle();
 
 
-  if (classError) {
+  if (error) {
 
-    console.error(classError);
-
-    showError(
-      "クラス情報を取得できませんでした。"
-    );
-
-    return;
+    throw error;
 
   }
 
 
-  if (!classData) {
+  if (!data) {
 
-    showError(
+    throw new Error(
       "指定されたクラスが見つかりません。"
     );
 
-    return;
+  }
+
+
+  currentClass =
+    data;
+
+
+  const title =
+    document.getElementById(
+      "classTitle"
+    );
+
+
+  if (title) {
+
+    title.textContent =
+      [
+        data.grade,
+        data.name
+      ]
+        .filter(
+          value =>
+            value !== null &&
+            value !== undefined &&
+            String(
+              value
+            ).trim() !== ""
+        )
+        .join(
+          " "
+        );
 
   }
 
 
-  document.getElementById(
-    "classTitle"
-  ).textContent =
-    `${classData.grade || ""} ${classData.name}`;
+  const information =
+    document.getElementById(
+      "classInformation"
+    );
 
 
-  document.getElementById(
-    "classInformation"
-  ).innerHTML = `
+  if (information) {
 
-    <strong>
-      ${escapeHtml(
-        classData.grade || ""
-      )}
-      ${escapeHtml(
-        classData.name
-      )}
-    </strong>
+    information.innerHTML = `
 
-    の所属生徒
+      <strong>
+        ${escapeHtml(
+          data.grade ||
+          ""
+        )}
 
-  `;
+        ${escapeHtml(
+          data.name ||
+          ""
+        )}
+      </strong>
+
+      の所属生徒
+
+    `;
+
+  }
 
 
   await loadStudents();
@@ -138,43 +225,63 @@ async function loadClass() {
 }
 
 
+/* =========================================================
+   STUDENTS
+========================================================= */
+
 async function loadStudents() {
 
   const {
     data,
     error
   } =
-    await supabaseClient
-      .from("students")
-      .select(`
+    await DB
+      .from(
+        "students"
+      )
+      .select(
+        `
         id,
         student_no,
         name,
         grade,
         class_name,
         active
-      `)
+        `
+      )
       .eq(
         "class_id",
         classId
       )
       .order(
-        "student_no"
+        "student_no",
+        {
+          ascending:true
+        }
       );
 
 
   if (error) {
 
-    console.error(error);
-
-    showError(
-      "生徒情報を取得できませんでした。"
-    );
-
-    return;
+    throw error;
 
   }
 
+
+  renderStudents(
+    data || []
+  );
+
+}
+
+
+/* =========================================================
+   RENDER
+========================================================= */
+
+function renderStudents(
+  students
+) {
 
   const tbody =
     document.getElementById(
@@ -182,7 +289,14 @@ async function loadStudents() {
     );
 
 
-  if (!data || !data.length) {
+  if (!tbody) {
+
+    return;
+
+  }
+
+
+  if (!students.length) {
 
     tbody.innerHTML = `
 
@@ -190,13 +304,20 @@ async function loadStudents() {
 
         <td
           colspan="6"
-          style="
-            text-align:center;
-            padding:30px;
-            color:#777;
-          "
+          class="empty"
         >
+
           このクラスに生徒が登録されていません。
+
+          <br><br>
+
+          <a
+            href="/teacher/students/new"
+            class="btn btn-primary"
+          >
+            生徒登録
+          </a>
+
         </td>
 
       </tr>
@@ -209,119 +330,264 @@ async function loadStudents() {
 
 
   tbody.innerHTML =
-    data
-      .map(
-        student => `
+    "";
 
-          <tr>
 
-            <td>
-              <strong>
-                ${escapeHtml(
-                  student.student_no
-                )}
-              </strong>
-            </td>
+  students.forEach(
+    student => {
 
-            <td>
-              ${escapeHtml(
-                student.name
-              )}
-            </td>
+      tbody.appendChild(
+        createStudentRow(
+          student
+        )
+      );
 
-            <td>
-              ${escapeHtml(
-                student.grade || ""
-              )}
-            </td>
-
-            <td>
-              ${escapeHtml(
-                student.class_name || ""
-              )}
-            </td>
-
-            <td>
-              ${
-                student.active
-                  ? "在籍"
-                  : "無効"
-              }
-            </td>
-
-            <td>
-
-              <a
-                href="/teacher/students/edit?id=${encodeURIComponent(student.id)}"
-                class="btn"
-              >
-                編集
-              </a>
-
-            </td>
-
-          </tr>
-
-        `
-      )
-      .join("");
+    }
+  );
 
 }
 
+
+/* =========================================================
+   ROW
+========================================================= */
+
+function createStudentRow(
+  student
+) {
+
+  const row =
+    document.createElement(
+      "tr"
+    );
+
+
+  const number =
+    document.createElement(
+      "td"
+    );
+
+
+  number.innerHTML = `
+
+    <strong>
+      ${escapeHtml(
+        student.student_no ||
+        ""
+      )}
+    </strong>
+
+  `;
+
+
+  const name =
+    document.createElement(
+      "td"
+    );
+
+
+  name.textContent =
+    student.name ||
+    "";
+
+
+  const grade =
+    document.createElement(
+      "td"
+    );
+
+
+  grade.textContent =
+    student.grade ||
+    currentClass?.grade ||
+    "";
+
+
+  const className =
+    document.createElement(
+      "td"
+    );
+
+
+  className.textContent =
+    student.class_name ||
+    currentClass?.name ||
+    "";
+
+
+  const status =
+    document.createElement(
+      "td"
+    );
+
+
+  const badge =
+    document.createElement(
+      "span"
+    );
+
+
+  badge.className =
+    student.active
+      ? "student-status active"
+      : "student-status inactive";
+
+
+  badge.textContent =
+    student.active
+      ? "在籍"
+      : "無効";
+
+
+  status.appendChild(
+    badge
+  );
+
+
+  const actions =
+    document.createElement(
+      "td"
+    );
+
+
+  const edit =
+    document.createElement(
+      "a"
+    );
+
+
+  edit.href =
+    `/teacher/students/edit?id=${encodeURIComponent(
+      student.id
+    )}`;
+
+
+  edit.className =
+    "btn";
+
+
+  edit.textContent =
+    "編集";
+
+
+  actions.appendChild(
+    edit
+  );
+
+
+  row.append(
+    number,
+    name,
+    grade,
+    className,
+    status,
+    actions
+  );
+
+
+  return row;
+
+}
+
+
+/* =========================================================
+   ERROR
+========================================================= */
 
 function showError(
   message
 ) {
 
-  document.getElementById(
-    "classInformation"
-  ).innerHTML = `
+  const information =
+    document.getElementById(
+      "classInformation"
+    );
 
-    <span
-      style="
-        color:#c62828;
-      "
-    >
-      ${escapeHtml(message)}
-    </span>
 
-  `;
+  if (information) {
+
+    information.innerHTML = `
+
+      <span
+        style="
+          color:#b42318;
+        "
+      >
+
+        ${escapeHtml(
+          message
+        )}
+
+      </span>
+
+    `;
+
+  }
+
+
+  const tbody =
+    document.getElementById(
+      "studentRows"
+    );
+
+
+  if (tbody) {
+
+    tbody.innerHTML = `
+
+      <tr>
+
+        <td
+          colspan="6"
+          class="empty"
+        >
+
+          ${escapeHtml(
+            message
+          )}
+
+        </td>
+
+      </tr>
+
+    `;
+
+  }
 
 }
 
 
-document
-  .getElementById(
-    "logoutButton"
-  )
-  .addEventListener(
-    "click",
-    logout
-  );
-
+/* =========================================================
+   ESCAPE
+========================================================= */
 
 function escapeHtml(
   value
 ) {
 
-  if (
-    value === null ||
-    value === undefined
-  ) {
-
-    return "";
-
-  }
-
-
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
+  return String(
+    value ??
+    ""
+  )
+    .replaceAll(
+      "&",
+      "&amp;"
+    )
+    .replaceAll(
+      "<",
+      "&lt;"
+    )
+    .replaceAll(
+      ">",
+      "&gt;"
+    )
+    .replaceAll(
+      '"',
+      "&quot;"
+    )
+    .replaceAll(
+      "'",
+      "&#039;"
+    );
 
 }
-
-
-initializeClassStudents();

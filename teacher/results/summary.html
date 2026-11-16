@@ -1,28 +1,157 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 
 <head>
 
-  <meta charset="UTF-8">
+<meta charset="UTF-8">
 
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
-  >
+<meta
+  name="viewport"
+  content="width=device-width,initial-scale=1.0"
+>
 
-  <title>
-    結果総括表 - テスト成績システム
-  </title>
+<title>
+  結果総括表 - テスト成績システム
+</title>
 
-  <link
-    rel="stylesheet"
-    href="/css/common.css"
-  >
+<link
+  rel="stylesheet"
+  href="/css/common.css"
+>
 
-  <link
-    rel="stylesheet"
-    href="/css/results.css"
-  >
+<link
+  rel="stylesheet"
+  href="/css/results.css"
+>
+
+<style>
+
+.result-status {
+  margin-bottom:15px;
+
+  padding:12px;
+
+  background:#fff;
+
+  border:1px solid #d0d6dc;
+
+  font-size:13px;
+}
+
+
+.result-status.processing {
+  color:#7a4b00;
+
+  background:#fff8e8;
+
+  border-color:#e6c979;
+}
+
+
+.result-status.completed {
+  color:#16834b;
+
+  background:#f1faf5;
+
+  border-color:#a9d8bd;
+}
+
+
+.summary-cards {
+  display:grid;
+
+  grid-template-columns:
+    repeat(
+      4,
+      minmax(
+        0,
+        1fr
+      )
+    );
+
+  gap:12px;
+}
+
+
+.summary-card {
+  padding:15px;
+
+  background:#fff;
+
+  border:1px solid #d0d6dc;
+}
+
+
+.summary-card-label {
+  color:#666;
+
+  font-size:12px;
+}
+
+
+.summary-card-value {
+  margin-top:5px;
+
+  font-size:22px;
+
+  font-weight:700;
+}
+
+
+.results-table-wrap {
+  overflow:auto;
+}
+
+
+.results-table {
+  width:100%;
+
+  border-collapse:collapse;
+}
+
+
+.results-table th,
+.results-table td {
+  padding:8px;
+
+  border:1px solid #d0d6dc;
+
+  white-space:nowrap;
+}
+
+
+.results-table th {
+  background:#f3f5f7;
+}
+
+
+.unpublished {
+  color:#777;
+
+  text-align:center;
+
+  padding:35px;
+}
+
+
+@media(max-width:800px) {
+
+  .summary-cards {
+    grid-template-columns:
+      repeat(
+        2,
+        minmax(
+          0,
+          1fr
+        )
+      );
+
+  }
+
+}
+
+</style>
 
 </head>
 
@@ -32,203 +161,282 @@
 
 <header class="topbar">
 
-  <div class="system-name">
-    テスト成績システム
-  </div>
+<div class="system-name">
+  テスト成績システム
+</div>
 
-  <div class="topbar-space"></div>
 
-  <span id="teacherName">
-    -
-  </span>
+<div class="topbar-space"></div>
 
-  <button
-    id="logoutButton"
-    class="logout-button"
-    type="button"
-  >
-    ログアウト
-  </button>
+
+<span id="teacherName">
+  -
+</span>
+
+
+<button
+id="logoutButton"
+class="logout-button"
+type="button"
+>
+  ログアウト
+</button>
 
 </header>
-
 
 
 <div class="teacher-layout">
 
 
-  <aside class="sidebar">
+<aside class="sidebar">
 
-    <div class="sidebar-title">
-      成績
-    </div>
-
-
-    <a
-      href="/teacher/results/summary"
-      class="menu-link active"
-    >
-      結果総括表
-    </a>
+<div class="sidebar-title">
+  成績
+</div>
 
 
-    <a
-      href="/teacher/results/students"
-      class="menu-link"
-    >
-      生徒別成績
-    </a>
+<a
+href="/teacher/results/summary"
+class="menu-link active"
+>
+  結果総括表
+</a>
 
 
-    <a
-      href="/teacher/results/questions"
-      class="menu-link"
-    >
-      設問別分析
-    </a>
+<a
+href="/teacher/results/students"
+class="menu-link"
+>
+  生徒別成績
+</a>
 
 
-    <a
-      href="/teacher/results/return"
-      class="menu-link"
-    >
-      答案返却
-    </a>
-
-  </aside>
+<a
+href="/teacher/results/questions"
+class="menu-link"
+>
+  設問別分析
+</a>
 
 
+<a
+href="/teacher/results/return"
+class="menu-link"
+>
+  答案返却
+</a>
 
-  <main class="main-content">
-
-
-    <div class="page-header">
-
-      <h1>
-        結果総括表
-      </h1>
-
-    </div>
+</aside>
 
 
-
-    <div class="card">
-
-      <div class="form-group">
-
-        <label for="testSelect">
-          テスト
-        </label>
+<main class="main-content">
 
 
-        <select
-          id="testSelect"
-        >
+<div class="page-header">
 
-          <option value="">
-            テストを選択してください
-          </option>
-
-        </select>
-
-      </div>
-
-    </div>
-
-
-
-    <div
-      id="testInformation"
-      class="card"
-      style="display:none;"
-    >
-    </div>
-
-
-
-    <div
-      id="summaryCards"
-      class="card"
-      style="display:none;"
-    >
-    </div>
-
-
-
-    <div
-      id="summaryTableCard"
-      class="card"
-      style="display:none;"
-    >
-
-
-      <div class="results-toolbar">
-
-        <h3>
-          結果総括表
-        </h3>
-
-
-        <div class="results-actions">
-
-          <button
-            id="exportCsvButton"
-            class="btn"
-            type="button"
-          >
-            CSV出力
-          </button>
-
-
-          <button
-            id="printButton"
-            class="btn btn-primary"
-            type="button"
-          >
-            印刷
-          </button>
-
-        </div>
-
-      </div>
-
-
-
-      <div class="results-table-wrap">
-
-        <table
-          id="summaryTable"
-          class="results-table"
-        >
-
-          <thead></thead>
-
-          <tbody></tbody>
-
-        </table>
-
-      </div>
-
-
-    </div>
-
-
-  </main>
+<h1>
+  結果総括表
+</h1>
 
 </div>
 
 
+<div
+id="resultStatus"
+class="result-status"
+>
+テストを選択してください。
+</div>
+
+
+<div class="card">
+
+<div class="form-group">
+
+<label for="testSelect">
+  テスト
+</label>
+
+
+<select
+id="testSelect"
+>
+
+<option value="">
+  テストを選択してください
+</option>
+
+</select>
+
+</div>
+
+</div>
+
+
+<div
+id="testInformation"
+class="card"
+style="display:none;"
+>
+</div>
+
+
+<div
+id="summaryCards"
+class="card"
+style="display:none;"
+>
+
+<div class="summary-cards">
+
+<div class="summary-card">
+
+<div class="summary-card-label">
+  受験者数
+</div>
+
+<div
+id="candidateCount"
+class="summary-card-value"
+>
+0
+</div>
+
+</div>
+
+
+<div class="summary-card">
+
+<div class="summary-card-label">
+  平均点
+</div>
+
+<div
+id="averageScore"
+class="summary-card-value"
+>
+0
+</div>
+
+</div>
+
+
+<div class="summary-card">
+
+<div class="summary-card-label">
+  最高点
+</div>
+
+<div
+id="maxScore"
+class="summary-card-value"
+>
+0
+</div>
+
+</div>
+
+
+<div class="summary-card">
+
+<div class="summary-card-label">
+  最低点
+</div>
+
+<div
+id="minScore"
+class="summary-card-value"
+>
+0
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+
+<div
+id="summaryTableCard"
+class="card"
+style="display:none;"
+>
+
+
+<div class="results-toolbar">
+
+<h3>
+  結果総括表
+</h3>
+
+
+<div class="results-actions">
+
+<button
+id="exportCsvButton"
+class="btn"
+type="button"
+>
+CSV出力
+</button>
+
+
+<button
+id="printButton"
+class="btn btn-primary"
+type="button"
+>
+印刷
+</button>
+
+</div>
+
+</div>
+
+
+<div class="results-table-wrap">
+
+<table
+id="summaryTable"
+class="results-table"
+>
+
+<thead></thead>
+
+<tbody></tbody>
+
+</table>
+
+</div>
+
+
+</div>
+
+
+</main>
+
+</div>
+
 
 <script
-  src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
 ></script>
 
 
-<script src="/js/config.js"></script>
+<script
+src="/js/config.js?v=20261116"
+></script>
 
-<script src="/js/auth.js"></script>
 
-<script src="/js/teacher/results-summary.js"></script>
+<script
+src="/js/auth.js?v=20261116"
+></script>
+
+
+<script
+src="/js/teacher/results-summary.js?v=20261116"
+></script>
 
 
 </body>

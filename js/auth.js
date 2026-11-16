@@ -2,19 +2,45 @@
 "use strict";
 
 /* =========================================================
-   テスト成績システム
-   js/auth.js
+   認証共通
+
+   teacher
+   ---------------------------------------------------------
+   profiles.role = teacher / admin
+
+   student
+   ---------------------------------------------------------
+   profiles.role = student
+   ↓
+   students.auth_user_id = auth.uid()
+
+   生徒IDはURLから取得しない。
+========================================================= */
+
+
+/* =========================================================
+   CLIENT
 ========================================================= */
 
 function getSupabaseClient() {
 
-  if (window.supabaseClient) {
+  if (
+    window.supabaseClient
+  ) {
+
     return window.supabaseClient;
+
   }
 
-  if (window.SB) {
+
+  if (
+    window.SB
+  ) {
+
     return window.SB;
+
   }
+
 
   if (
     !window.supabase ||
@@ -28,11 +54,16 @@ function getSupabaseClient() {
 
   }
 
+
   const url =
-    window.SUPABASE_URL || "";
+    window.SUPABASE_URL ||
+    "";
+
 
   const key =
-    window.SUPABASE_KEY || "";
+    window.SUPABASE_KEY ||
+    "";
+
 
   if (!url || !key) {
 
@@ -42,26 +73,43 @@ function getSupabaseClient() {
 
   }
 
+
   const client =
     window.supabase.createClient(
       url,
       key,
       {
+
         auth: {
-          persistSession: true,
-          autoRefreshToken: true,
-          detectSessionInUrl: true,
-          storage: window.localStorage,
-          flowType: "pkce"
+
+          persistSession:
+            true,
+
+          autoRefreshToken:
+            true,
+
+          detectSessionInUrl:
+            true,
+
+          storage:
+            window.localStorage,
+
+          flowType:
+            "pkce"
+
         }
+
       }
     );
+
 
   window.supabaseClient =
     client;
 
+
   window.SB =
     client;
+
 
   return client;
 
@@ -74,6 +122,7 @@ const sb =
 
 window.SB =
   sb;
+
 
 window.supabaseClient =
   sb;
@@ -88,23 +137,31 @@ async function getSession() {
   const client =
     getSupabaseClient();
 
+
   const {
     data,
     error
   } =
     await client.auth.getSession();
 
+
   if (error) {
+
     throw error;
+
   }
 
-  return data?.session || null;
+
+  return (
+    data?.session ||
+    null
+  );
 
 }
 
 
 /* =========================================================
-   CURRENT USER
+   USER
 ========================================================= */
 
 async function getCurrentUser() {
@@ -112,17 +169,25 @@ async function getCurrentUser() {
   const client =
     getSupabaseClient();
 
+
   const {
     data,
     error
   } =
     await client.auth.getUser();
 
+
   if (error) {
+
     throw error;
+
   }
 
-  return data?.user || null;
+
+  return (
+    data?.user ||
+    null
+  );
 
 }
 
@@ -136,31 +201,33 @@ async function getProfile() {
   const client =
     getSupabaseClient();
 
+
   const user =
     await getCurrentUser();
 
 
   if (!user) {
+
     return null;
+
   }
 
-
-  /*
-   * profiles.student_id は存在しないため
-   * 取得しない。
-   */
 
   const {
     data,
     error
   } =
     await client
-      .from("profiles")
-      .select(`
+      .from(
+        "profiles"
+      )
+      .select(
+        `
         id,
         name,
         role
-      `)
+        `
+      )
       .eq(
         "id",
         user.id
@@ -199,6 +266,148 @@ async function getProfile() {
 
 
 /* =========================================================
+   STUDENT
+========================================================= */
+
+async function getStudentForUser(
+  userId
+) {
+
+  const client =
+    getSupabaseClient();
+
+
+  const {
+    data,
+    error
+  } =
+    await client
+      .from(
+        "students"
+      )
+      .select(
+        `
+        id,
+        student_no,
+        name,
+        grade,
+        class_name,
+        active,
+        auth_user_id
+        `
+      )
+      .eq(
+        "auth_user_id",
+        userId
+      )
+      .eq(
+        "active",
+        true
+      )
+      .maybeSingle();
+
+
+  if (error) {
+
+    throw new Error(
+      `生徒情報取得エラー: ${error.message}`
+    );
+
+  }
+
+
+  return data || null;
+
+}
+
+
+/* =========================================================
+   REQUIRE STUDENT
+========================================================= */
+
+async function requireStudent() {
+
+  const user =
+    await getCurrentUser();
+
+
+  if (!user) {
+
+    location.replace(
+      "/login"
+    );
+
+    return null;
+
+  }
+
+
+  const profile =
+    await getProfile();
+
+
+  if (!profile) {
+
+    location.replace(
+      "/login"
+    );
+
+    return null;
+
+  }
+
+
+  if (
+    profile.role !==
+    "student"
+  ) {
+
+    redirectByRole(
+      profile.role
+    );
+
+    return null;
+
+  }
+
+
+  /*
+   * ここが生徒認証の本体。
+   *
+   * URLのstudent_idは信用しない。
+   * Authユーザー自身のauth_user_idから
+   * studentsを取得する。
+   */
+
+  const student =
+    await getStudentForUser(
+      user.id
+    );
+
+
+  if (!student) {
+
+    throw new Error(
+      "ログイン中の生徒情報が登録されていません。"
+    );
+
+  }
+
+
+  return {
+
+    user,
+
+    profile,
+
+    student
+
+  };
+
+}
+
+
+/* =========================================================
    REDIRECT
 ========================================================= */
 
@@ -207,11 +416,12 @@ function redirectByRole(
 ) {
 
   if (
-    role === "student"
+    role ===
+    "student"
   ) {
 
     location.replace(
-      "/student/index.html"
+      "/student/tests/index.html"
     );
 
     return;
@@ -220,8 +430,10 @@ function redirectByRole(
 
 
   if (
-    role === "teacher" ||
-    role === "admin"
+    role ===
+      "teacher" ||
+    role ===
+      "admin"
   ) {
 
     location.replace(
@@ -308,12 +520,15 @@ async function requireRole(
 
 
   if (
-    requiredRole === "teacher"
+    requiredRole ===
+    "teacher"
   ) {
 
     if (
-      profile.role !== "teacher" &&
-      profile.role !== "admin"
+      profile.role !==
+        "teacher" &&
+      profile.role !==
+        "admin"
     ) {
 
       redirectByRole(
@@ -328,11 +543,13 @@ async function requireRole(
 
 
   if (
-    requiredRole === "admin"
+    requiredRole ===
+    "admin"
   ) {
 
     if (
-      profile.role !== "admin"
+      profile.role !==
+      "admin"
     ) {
 
       redirectByRole(
@@ -347,11 +564,13 @@ async function requireRole(
 
 
   if (
-    requiredRole === "student"
+    requiredRole ===
+    "student"
   ) {
 
     if (
-      profile.role !== "student"
+      profile.role !==
+      "student"
     ) {
 
       redirectByRole(
@@ -393,23 +612,28 @@ async function login(
     data,
     error
   } =
-    await client.auth.signInWithPassword({
+    await client.auth
+      .signInWithPassword({
 
-      email:
-        String(
-          email || ""
-        ).trim(),
+        email:
+          String(
+            email ||
+            ""
+          ).trim(),
 
-      password:
-        String(
-          password || ""
-        )
+        password:
+          String(
+            password ||
+            ""
+          )
 
-    });
+      });
 
 
   if (error) {
+
     throw error;
+
   }
 
 
@@ -457,222 +681,48 @@ async function logout() {
 
 
 /* =========================================================
-   LOGIN PAGE
-========================================================= */
-
-function setupLoginPage() {
-
-  const loginButton =
-    document.getElementById(
-      "loginBtn"
-    );
-
-
-  if (!loginButton) {
-    return;
-  }
-
-
-  const emailInput =
-    document.getElementById(
-      "email"
-    );
-
-
-  const passwordInput =
-    document.getElementById(
-      "password"
-    );
-
-
-  const message =
-    document.getElementById(
-      "loginMsg"
-    );
-
-
-  loginButton.addEventListener(
-    "click",
-    async () => {
-
-      const email =
-        emailInput?.value.trim() ||
-        "";
-
-
-      const password =
-        passwordInput?.value ||
-        "";
-
-
-      if (!email) {
-
-        if (message) {
-
-          message.textContent =
-            "メールアドレスを入力してください。";
-
-        }
-
-        emailInput?.focus();
-
-        return;
-
-      }
-
-
-      if (!password) {
-
-        if (message) {
-
-          message.textContent =
-            "パスワードを入力してください。";
-
-        }
-
-        passwordInput?.focus();
-
-        return;
-
-      }
-
-
-      loginButton.disabled =
-        true;
-
-
-      loginButton.textContent =
-        "ログイン中...";
-
-
-      if (message) {
-
-        message.textContent =
-          "";
-
-      }
-
-
-      try {
-
-        await login(
-          email,
-          password
-        );
-
-
-        await redirectAfterLogin();
-
-
-      } catch (error) {
-
-        console.error(
-          "LOGIN ERROR:",
-          error
-        );
-
-
-        if (message) {
-
-          message.textContent =
-            error.message ||
-            "ログインできませんでした。";
-
-        }
-
-
-        loginButton.disabled =
-          false;
-
-
-        loginButton.textContent =
-          "ログイン";
-
-      }
-
-    }
-  );
-
-
-  emailInput?.addEventListener(
-    "keydown",
-    event => {
-
-      if (
-        event.key === "Enter"
-      ) {
-
-        event.preventDefault();
-
-        loginButton.click();
-
-      }
-
-    }
-  );
-
-
-  passwordInput?.addEventListener(
-    "keydown",
-    event => {
-
-      if (
-        event.key === "Enter"
-      ) {
-
-        event.preventDefault();
-
-        loginButton.click();
-
-      }
-
-    }
-  );
-
-}
-
-
-/* =========================================================
-   AUTO START
-========================================================= */
-
-document.addEventListener(
-  "DOMContentLoaded",
-  () => {
-
-    setupLoginPage();
-
-  }
-);
-
-
-/* =========================================================
    GLOBAL
 ========================================================= */
 
 window.getSession =
   getSession;
 
+
 window.getCurrentUser =
   getCurrentUser;
+
 
 window.getProfile =
   getProfile;
 
+
+window.getStudentForUser =
+  getStudentForUser;
+
+
+window.requireStudent =
+  requireStudent;
+
+
 window.requireRole =
   requireRole;
+
 
 window.login =
   login;
 
+
 window.goByRole =
   goByRole;
+
 
 window.redirectAfterLogin =
   redirectAfterLogin;
 
+
 window.signOut =
   signOut;
+
 
 window.logout =
   logout;

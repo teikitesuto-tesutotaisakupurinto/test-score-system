@@ -1,192 +1,319 @@
+
+"use strict";
+
 /* =========================================================
    生徒登録
 ========================================================= */
 
+let DB = null;
+
+
+/* =========================================================
+   INIT
+========================================================= */
+
+document.addEventListener(
+  "DOMContentLoaded",
+  initializeStudentNew
+);
+
 
 async function initializeStudentNew() {
 
-  const profile =
-    await getProfile();
+  try {
+
+    DB =
+      window.supabaseClient ||
+      window.SB;
 
 
-  if (!profile) {
+    if (!DB) {
 
-    window.location.href =
-      "/login";
+      throw new Error(
+        "Supabase Clientが初期化されていません。"
+      );
 
-    return;
+    }
+
+
+    const auth =
+      await requireRole(
+        "teacher"
+      );
+
+
+    if (!auth) {
+
+      return;
+
+    }
+
+
+    const teacherName =
+      document.getElementById(
+        "teacherName"
+      );
+
+
+    if (teacherName) {
+
+      teacherName.textContent =
+        auth.profile?.name ||
+        "先生";
+
+    }
+
+
+    document
+      .getElementById(
+        "logoutButton"
+      )
+      ?.addEventListener(
+        "click",
+        async () => {
+
+          await logout();
+
+        }
+      );
+
+
+    document
+      .getElementById(
+        "studentForm"
+      )
+      ?.addEventListener(
+        "submit",
+        handleSubmit
+      );
+
+
+  } catch (error) {
+
+    console.error(
+      "student-new:",
+      error
+    );
+
+
+    showMessage(
+      error.message ||
+      "生徒登録画面を起動できませんでした。"
+    );
 
   }
-
-
-  if (
-    profile.role !== "teacher" &&
-    profile.role !== "admin"
-  ) {
-
-    window.location.href =
-      "/student/dashboard";
-
-    return;
-
-  }
-
-
-  document.getElementById(
-    "teacherName"
-  ).textContent =
-    profile.name || "先生";
 
 }
 
 
-initializeStudentNew();
+/* =========================================================
+   SUBMIT
+========================================================= */
+
+async function handleSubmit(
+  event
+) {
+
+  event.preventDefault();
 
 
-/*
-  ログアウト
-*/
+  const name =
+    document
+      .getElementById(
+        "studentName"
+      )
+      .value
+      .trim();
 
-document
-  .getElementById(
-    "logoutButton"
-  )
-  .addEventListener(
-    "click",
-    logout
+
+  const grade =
+    document
+      .getElementById(
+        "studentGrade"
+      )
+      .value
+      .trim();
+
+
+  const className =
+    document
+      .getElementById(
+        "studentClass"
+      )
+      .value
+      .trim();
+
+
+  if (!name) {
+
+    showMessage(
+      "氏名を入力してください。"
+    );
+
+    return;
+
+  }
+
+
+  const button =
+    document.getElementById(
+      "saveButton"
+    );
+
+
+  button.disabled =
+    true;
+
+
+  button.textContent =
+    "登録中...";
+
+
+  showMessage(
+    ""
   );
 
 
-/*
-  登録
-*/
+  try {
 
-document
-  .getElementById(
-    "studentForm"
-  )
-  .addEventListener(
-    "submit",
-    async event => {
+    /*
+     * student_noはDB側の
+     * BEFORE INSERT TRIGGERで
+     * ランダム6桁を発行する。
+     *
+     * クライアント側では生成しない。
+     */
 
-      event.preventDefault();
+    const {
+      data,
+      error
+    } =
+      await DB
+        .from(
+          "students"
+        )
+        .insert({
 
+          name,
 
-      const name =
-        document.getElementById(
-          "studentName"
-        ).value.trim();
+          grade:
+            grade ||
+            null,
 
+          class_name:
+            className ||
+            null
 
-      const grade =
-        document.getElementById(
-          "studentGrade"
-        ).value.trim();
-
-
-      const className =
-        document.getElementById(
-          "studentClass"
-        ).value.trim();
-
-
-      const message =
-        document.getElementById(
-          "formMessage"
-        );
-
-
-      const button =
-        document.getElementById(
-          "saveButton"
-        );
+        })
+        .select(
+          `
+          id,
+          student_no,
+          name,
+          grade,
+          class_name
+          `
+        )
+        .single();
 
 
-      message.textContent = "";
+    if (error) {
 
-
-      if (!name) {
-
-        message.textContent =
-          "氏名を入力してください。";
-
-        return;
-
-      }
-
-
-      button.disabled = true;
-
-      button.textContent =
-        "登録中...";
-
-
-      try {
-
-        /*
-          student_noはSQL側の
-          BEFORE INSERT TRIGGERで
-          ランダム6桁が発行される
-        */
-
-        const {
-          data,
-          error
-        } =
-          await supabaseClient
-            .from("students")
-            .insert({
-
-              name,
-
-              grade:
-                grade || null,
-
-              class_name:
-                className || null
-
-            })
-            .select(
-              "id,student_no,name,grade,class_name"
-            )
-            .single();
-
-
-        if (error) {
-
-          throw error;
-
-        }
-
-
-        /*
-          登録完了
-        */
-
-        alert(
-          `生徒を登録しました。\n\n生徒番号：${data.student_no}`
-        );
-
-
-        window.location.href =
-          "/teacher/students";
-
-      } catch (error) {
-
-        console.error(error);
-
-
-        message.textContent =
-          error.message ||
-          "生徒登録に失敗しました。";
-
-
-        button.disabled = false;
-
-        button.textContent =
-          "登録する";
-
-      }
+      throw error;
 
     }
-  );
+
+
+    if (!data?.id) {
+
+      throw new Error(
+        "登録結果を取得できませんでした。"
+      );
+
+    }
+
+
+    /*
+     * alertではなく画面上で表示。
+     */
+
+    showMessage(
+      `生徒を登録しました。\n生徒番号：${data.student_no || ""}`,
+      "success"
+    );
+
+
+    /*
+     * 登録後は一覧へ。
+     */
+
+    setTimeout(
+      () => {
+
+        location.href =
+          "/teacher/students";
+
+      },
+      500
+    );
+
+
+  } catch (error) {
+
+    console.error(
+      "student insert:",
+      error
+    );
+
+
+    showMessage(
+      error.message ||
+      "生徒登録に失敗しました。"
+    );
+
+
+    button.disabled =
+      false;
+
+
+    button.textContent =
+      "登録する";
+
+  }
+
+}
+
+
+/* =========================================================
+   MESSAGE
+========================================================= */
+
+function showMessage(
+  text,
+  type = "error"
+) {
+
+  const message =
+    document.getElementById(
+      "formMessage"
+    );
+
+
+  if (!message) {
+
+    return;
+
+  }
+
+
+  message.textContent =
+    text;
+
+
+  message.style.color =
+    type ===
+      "success"
+      ? "#16834b"
+      : "#c62828";
+
+}

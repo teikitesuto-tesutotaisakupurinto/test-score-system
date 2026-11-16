@@ -1,15 +1,30 @@
+
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <title>生徒一覧 - テスト成績システム</title>
+<meta charset="UTF-8">
 
-  <link rel="stylesheet" href="/css/common.css">
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1.0"
+>
+
+<title>
+  生徒一覧 - テスト成績システム
+</title>
+
+<link
+  rel="stylesheet"
+  href="/css/common.css"
+>
+
 </head>
 
+
 <body>
+
 
 <header class="topbar">
 
@@ -17,13 +32,19 @@
     テスト成績システム
   </div>
 
+
   <div class="topbar-space"></div>
 
-  <span id="teacherName">-</span>
+
+  <span id="teacherName">
+    -
+  </span>
+
 
   <button
     id="logoutButton"
     class="logout-button"
+    type="button"
   >
     ログアウト
   </button>
@@ -33,271 +54,357 @@
 
 <div class="teacher-layout">
 
-  <aside class="sidebar">
 
-    <div class="sidebar-title">
-      管理
-    </div>
+<aside class="sidebar">
+
+
+  <div class="sidebar-title">
+    管理
+  </div>
+
+
+  <a
+    href="/teacher/dashboard"
+    class="menu-link"
+  >
+    ダッシュボード
+  </a>
+
+
+  <div class="sidebar-title">
+    生徒
+  </div>
+
+
+  <a
+    href="/teacher/students"
+    class="menu-link active"
+  >
+    生徒一覧
+  </a>
+
+
+  <a
+    href="/teacher/students/new"
+    class="menu-link"
+  >
+    生徒登録
+  </a>
+
+
+  <a
+    href="/teacher/students/import"
+    class="menu-link"
+  >
+    CSV一括登録
+  </a>
+
+
+  <a
+    href="/teacher/students/qr"
+    class="menu-link"
+  >
+    QRシール発行
+  </a>
+
+
+  <div class="sidebar-title">
+    クラス
+  </div>
+
+
+  <a
+    href="/teacher/classes"
+    class="menu-link"
+  >
+    クラス管理
+  </a>
+
+
+  <a
+    href="/teacher/classes/new"
+    class="menu-link"
+  >
+    クラス作成
+  </a>
+
+
+  <div class="sidebar-title">
+    テスト
+  </div>
+
+
+  <a
+    href="/teacher/tests"
+    class="menu-link"
+  >
+    テスト一覧
+  </a>
+
+
+  <a
+    href="/teacher/tests/new"
+    class="menu-link"
+  >
+    テスト作成
+  </a>
+
+
+  <div class="sidebar-title">
+    答案
+  </div>
+
+
+  <a
+    href="/teacher/answers/upload"
+    class="menu-link"
+  >
+    答案アップロード
+  </a>
+
+
+  <a
+    href="/teacher/answers/processing"
+    class="menu-link"
+  >
+    処理状況
+  </a>
+
+
+  <div class="sidebar-title">
+    採点
+  </div>
+
+
+  <a
+    href="/teacher/marking"
+    class="menu-link"
+  >
+    デジタル採点
+  </a>
+
+
+  <div class="sidebar-title">
+    成績
+  </div>
+
+
+  <a
+    href="/teacher/results/summary"
+    class="menu-link"
+  >
+    結果総括表
+  </a>
+
+
+  <a
+    href="/teacher/results/return"
+    class="menu-link"
+  >
+    答案返却
+  </a>
+
+
+</aside>
+
+
+<main class="main-content">
+
+
+<div class="page-header">
+
+
+  <h1>
+    生徒一覧
+  </h1>
+
+
+  <div
+    style="
+      margin-left:auto;
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+    "
+  >
 
     <a
-      href="/teacher/dashboard"
-      class="menu-link"
+      href="/teacher/students/import"
+      class="btn"
     >
-      ダッシュボード
+      CSV一括登録
     </a>
 
-
-    <div class="sidebar-title">
-      生徒
-    </div>
-
-    <a
-      href="/teacher/students"
-      class="menu-link active"
-    >
-      生徒一覧
-    </a>
-
-    <a
-      href="/teacher/students/new"
-      class="menu-link"
-    >
-      生徒登録
-    </a>
 
     <a
       href="/teacher/students/qr"
-      class="menu-link"
+      class="btn"
     >
       QRシール発行
     </a>
 
 
-    <div class="sidebar-title">
-      クラス
-    </div>
-
     <a
-      href="/teacher/classes"
-      class="menu-link"
+      href="/teacher/students/new"
+      class="btn btn-primary"
     >
-      クラス管理
+      生徒登録
     </a>
 
+  </div>
 
-    <div class="sidebar-title">
-      テスト
-    </div>
-
-    <a
-      href="/teacher/tests"
-      class="menu-link"
-    >
-      テスト一覧
-    </a>
-
-    <a
-      href="/teacher/tests/new"
-      class="menu-link"
-    >
-      テスト作成
-    </a>
-
-
-    <div class="sidebar-title">
-      答案
-    </div>
-
-    <a
-      href="/teacher/answers/upload"
-      class="menu-link"
-    >
-      答案アップロード
-    </a>
-
-
-    <div class="sidebar-title">
-      採点
-    </div>
-
-    <a
-      href="/teacher/marking"
-      class="menu-link"
-    >
-      デジタル採点
-    </a>
-
-
-    <div class="sidebar-title">
-      成績
-    </div>
-
-    <a
-      href="/teacher/results"
-      class="menu-link"
-    >
-      結果総括表
-    </a>
-
-    <a
-      href="/teacher/return"
-      class="menu-link"
-    >
-      答案返却
-    </a>
-
-  </aside>
-
-
-  <main class="main-content">
-
-    <div class="page-header">
-
-      <h1>
-        生徒一覧
-      </h1>
-
-      <div style="margin-left:auto;display:flex;gap:8px;">
-
-        <a
-          href="/teacher/students/import"
-          class="btn"
-        >
-          CSV一括登録
-        </a>
-
-        <a
-          href="/teacher/students/qr"
-          class="btn"
-        >
-          QRシール発行
-        </a>
-
-        <a
-          href="/teacher/students/new"
-          class="btn btn-primary"
-        >
-          生徒登録
-        </a>
-
-      </div>
-
-    </div>
-
-
-    <div class="card">
-
-      <div
-        style="
-          display:flex;
-          gap:10px;
-          margin-bottom:15px;
-        "
-      >
-
-        <input
-          id="studentSearch"
-          type="search"
-          placeholder="生徒番号・氏名で検索"
-          style="max-width:350px;"
-        >
-
-        <select
-          id="gradeFilter"
-          style="max-width:150px;"
-        >
-
-          <option value="">
-            全学年
-          </option>
-
-        </select>
-
-
-        <select
-          id="classFilter"
-          style="max-width:150px;"
-        >
-
-          <option value="">
-            全クラス
-          </option>
-
-        </select>
-
-      </div>
-
-
-      <div style="overflow:auto;">
-
-        <table class="table">
-
-          <thead>
-
-            <tr>
-
-              <th>
-                生徒番号
-              </th>
-
-              <th>
-                氏名
-              </th>
-
-              <th>
-                学年
-              </th>
-
-              <th>
-                クラス
-              </th>
-
-              <th>
-                状態
-              </th>
-
-              <th>
-                操作
-              </th>
-
-            </tr>
-
-          </thead>
-
-
-          <tbody id="studentRows">
-
-            <tr>
-
-              <td
-                colspan="6"
-                style="text-align:center;"
-              >
-                読み込み中...
-              </td>
-
-            </tr>
-
-          </tbody>
-
-        </table>
-
-      </div>
-
-    </div>
-
-  </main>
 
 </div>
 
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<div class="card">
 
-<script src="/js/config.js"></script>
 
-<script src="/js/auth.js"></script>
+  <div
+    style="
+      display:flex;
+      gap:10px;
+      margin-bottom:15px;
+      flex-wrap:wrap;
+    "
+  >
 
-<script src="/js/teacher/students.js"></script>
+
+    <input
+      id="studentSearch"
+      type="search"
+      placeholder="生徒番号・氏名で検索"
+      style="
+        max-width:350px;
+        width:100%;
+      "
+      autocomplete="off"
+    >
+
+
+    <select
+      id="gradeFilter"
+      style="max-width:150px;"
+    >
+
+      <option value="">
+        全学年
+      </option>
+
+    </select>
+
+
+    <select
+      id="classFilter"
+      style="max-width:150px;"
+    >
+
+      <option value="">
+        全クラス
+      </option>
+
+    </select>
+
+
+  </div>
+
+
+  <div
+    style="
+      overflow:auto;
+    "
+  >
+
+
+    <table class="table">
+
+
+      <thead>
+
+        <tr>
+
+          <th>
+            生徒番号
+          </th>
+
+          <th>
+            氏名
+          </th>
+
+          <th>
+            学年
+          </th>
+
+          <th>
+            クラス
+          </th>
+
+          <th>
+            状態
+          </th>
+
+          <th>
+            操作
+          </th>
+
+        </tr>
+
+      </thead>
+
+
+      <tbody id="studentRows">
+
+        <tr>
+
+          <td
+            colspan="6"
+            style="
+              text-align:center;
+            "
+          >
+            読み込み中...
+          </td>
+
+        </tr>
+
+      </tbody>
+
+
+    </table>
+
+
+  </div>
+
+
+</div>
+
+
+</main>
+
+
+</div>
+
+
+<script
+  src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+></script>
+
+
+<script
+  src="/js/config.js?v=20261116"
+></script>
+
+
+<script
+  src="/js/auth.js?v=20261116"
+></script>
+
+
+<script
+  src="/js/teacher/students.js?v=20261116"
+></script>
+
 
 </body>
+
 </html>

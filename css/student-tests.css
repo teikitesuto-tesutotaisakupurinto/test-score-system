@@ -3,356 +3,187 @@
    生徒テスト一覧
 ========================================================= */
 
-.student-main {
+.student-tests-main {
+  max-width: 1100px;
 
-  max-width:
-    1200px;
+  margin: 0 auto;
 
-  margin:
-    0 auto;
-
-  padding:
-    25px;
-
+  padding: 22px;
 }
 
 
-.page-description {
+.student-tests-header {
+  display: flex;
 
-  margin:
-    6px 0 0;
+  align-items: center;
 
-  color:
-    #666;
+  justify-content: space-between;
 
-  font-size:
-    13px;
+  gap: 10px;
 
+  flex-wrap: wrap;
+
+  margin-bottom: 18px;
 }
 
 
-.student-test-section {
+.student-tests-title {
+  margin: 0;
 
-  margin-top:
-    20px;
-
+  font-size: 24px;
 }
 
 
-.section-header {
+.student-tests-subtitle {
+  margin-top: 5px;
 
-  display:
-    flex;
+  color: #666;
 
-  align-items:
-    center;
-
-  justify-content:
-    space-between;
-
-  gap:
-    12px;
-
-  margin-bottom:
-    12px;
-
+  font-size: 13px;
 }
 
 
-.section-header h2 {
+.student-test-list {
+  display: grid;
 
-  margin:
-    0;
-
-  font-size:
-    18px;
-
-}
-
-
-.student-test-grid {
-
-  display:
-    grid;
-
-  grid-template-columns:
-    repeat(
-      3,
-      minmax(
-        0,
-        1fr
-      )
-    );
-
-  gap:
-    15px;
-
+  gap: 10px;
 }
 
 
 .student-test-card {
+  padding: 16px;
 
-  display:
-    flex;
-
-  flex-direction:
-    column;
-
-  background:
-    #fff;
+  background: #fff;
 
   border:
     1px solid #d0d6dc;
 
-  border-radius:
-    5px;
+  border-radius: 5px;
+}
 
-  padding:
-    18px;
 
-  min-height:
-    220px;
-
+.student-test-card:hover {
+  border-color: #b8c1c9;
 }
 
 
 .student-test-title {
+  font-size: 17px;
 
-  font-size:
-    17px;
-
-  font-weight:
-    700;
-
-  line-height:
-    1.5;
-
-  margin-bottom:
-    12px;
-
+  font-weight: 700;
 }
 
 
-.student-test-info {
+.student-test-meta {
+  margin-top: 5px;
 
-  color:
-    #555;
+  color: #666;
 
-  font-size:
-    13px;
-
-  line-height:
-    1.9;
-
+  font-size: 12px;
 }
 
 
-.student-test-published {
+.student-test-score {
+  display: inline-flex;
 
-  display:
-    inline-block;
+  align-items: baseline;
 
-  margin-top:
-    10px;
+  gap: 4px;
 
-  padding:
-    3px 8px;
+  margin-top: 10px;
 
-  border:
-    1px solid #b7d9c0;
+  font-size: 22px;
 
-  border-radius:
-    3px;
+  font-weight: 700;
+}
 
-  background:
-    #edf8ef;
 
-  color:
-    #26743b;
+.student-test-score small {
+  color: #666;
 
-  font-size:
-    12px;
+  font-size: 12px;
 
+  font-weight: 400;
 }
 
 
 .student-test-actions {
+  display: flex;
 
-  display:
-    flex;
+  gap: 7px;
 
-  gap:
-    8px;
+  flex-wrap: wrap;
 
-  flex-wrap:
-    wrap;
-
-  margin-top:
-    auto;
-
-  padding-top:
-    18px;
-
+  margin-top: 12px;
 }
 
 
-.student-test-actions .btn {
+.student-test-status {
+  display: inline-block;
 
-  flex:
-    1;
+  margin-top: 8px;
 
-  min-width:
-    130px;
+  padding: 3px 7px;
 
-  text-align:
-    center;
+  border-radius: 3px;
 
-  text-decoration:
-    none;
-
+  font-size: 11px;
 }
 
 
-.loading-state {
-
-  padding:
-    50px;
-
-  text-align:
-    center;
-
-  color:
-    #777;
-
-  background:
-    #fff;
+.student-test-status.published {
+  background: #edf8ef;
 
   border:
-    1px solid #d0d6dc;
+    1px solid #b7d9c0;
 
+  color: #176b35;
+}
+
+
+.student-test-status.pending {
+  background: #f5f6f7;
+
+  border:
+    1px solid #d5dbe0;
+
+  color: #666;
 }
 
 
 .empty-state {
+  padding: 50px 20px;
 
-  grid-column:
-    1 / -1;
-
-  padding:
-    50px;
-
-  text-align:
-    center;
-
-  color:
-    #777;
-
-  background:
-    #fff;
+  background: #fff;
 
   border:
     1px solid #d0d6dc;
 
+  text-align: center;
+
+  color: #777;
 }
 
 
-/* =========================================================
-   生徒ヘッダー
-========================================================= */
+@media(max-width: 600px) {
 
-.student-header-info {
-
-  display:
-    flex;
-
-  align-items:
-    center;
-
-  margin-right:
-    12px;
-
-  font-size:
-    13px;
-
-  white-space:
-    nowrap;
-
-}
-
-
-/* =========================================================
-   Responsive
-========================================================= */
-
-@media (
-  max-width: 950px
-) {
-
-  .student-test-grid {
-
-    grid-template-columns:
-      repeat(
-        2,
-        minmax(
-          0,
-          1fr
-        )
-      );
-
-  }
-
-}
-
-
-@media (
-  max-width: 650px
-) {
-
-  .student-main {
-
-    padding:
-      15px;
-
+  .student-tests-main {
+    padding: 12px;
   }
 
 
-  .student-test-grid {
-
-    grid-template-columns:
-      1fr;
-
-  }
-
-
-  .student-test-card {
-
-    min-height:
-      auto;
-
+  .student-tests-title {
+    font-size: 21px;
   }
 
 
   .student-test-actions {
-
-    flex-direction:
-      column;
-
+    flex-direction: column;
   }
 
 
   .student-test-actions .btn {
-
-    width:
-      100%;
-
-  }
-
-
-  .student-header-info {
-
-    display:
-      none;
-
+    width: 100%;
   }
 
 }

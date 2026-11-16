@@ -24,19 +24,27 @@
 
 .points-main {
   max-width:1200px;
+
   margin:0 auto;
+
   padding:22px;
 }
 
+
 .toolbar {
   display:flex;
+
   flex-wrap:wrap;
+
   gap:8px;
+
   margin-bottom:15px;
 }
 
+
 .status {
   padding:10px 12px;
+
   margin-bottom:15px;
 
   background:#f5f6f7;
@@ -48,12 +56,15 @@
   white-space:pre-wrap;
 }
 
+
 .status.error {
   color:#b42318;
 }
 
+
 .test-info {
   margin-bottom:15px;
+
   padding:15px;
 
   background:#fff;
@@ -63,10 +74,13 @@
   border-radius:6px;
 }
 
+
 .test-name {
   font-size:18px;
+
   font-weight:700;
 }
+
 
 .test-meta {
   margin-top:5px;
@@ -76,6 +90,7 @@
   font-size:13px;
 }
 
+
 .table-wrap {
   overflow-x:auto;
 
@@ -84,11 +99,13 @@
   border:1px solid #d0d6dc;
 }
 
+
 .points-table {
   width:100%;
 
   border-collapse:collapse;
 }
+
 
 .points-table th,
 .points-table td {
@@ -101,6 +118,7 @@
   vertical-align:middle;
 }
 
+
 .points-table th {
   background:#f3f5f7;
 
@@ -108,6 +126,7 @@
 
   text-align:left;
 }
+
 
 .points-input {
   width:110px;
@@ -125,11 +144,13 @@
   background:#fff;
 }
 
+
 .points-input:focus {
   outline:none;
 
   border-color:#1769aa;
 }
+
 
 .total-row td {
   background:#f8fafb;
@@ -137,9 +158,11 @@
   font-weight:700;
 }
 
+
 .total-points {
   font-size:18px;
 }
+
 
 .empty {
   padding:50px;
@@ -148,6 +171,7 @@
 
   color:#777;
 }
+
 
 .next-area {
   display:flex;
@@ -253,19 +277,20 @@ href="#"
 
 
 <a
-href="/teacher/students/qr"
-class="btn"
->
-生徒QR発行
-</a>
-
-
-<a
 id="markingButton"
 class="btn btn-primary"
 href="#"
 >
 採点へ
+</a>
+
+
+<a
+id="resultsButton"
+class="btn"
+href="#"
+>
+成績処理
 </a>
 
 
@@ -296,10 +321,11 @@ class="btn"
 
 
 <a
-href="/teacher/students/qr"
+id="markingButtonBottom"
+href="#"
 class="btn btn-primary"
 >
-配点設定完了・生徒QR発行へ
+配点設定完了・採点へ
 </a>
 
 
@@ -329,10 +355,6 @@ src="/js/auth.js?v=20261116"
 "use strict";
 
 
-/* =========================================================
-   DB
-========================================================= */
-
 const DB =
   window.supabaseClient ||
   window.SB;
@@ -347,20 +369,12 @@ if (!DB) {
 }
 
 
-/* =========================================================
-   STATE
-========================================================= */
-
 let testId =
   null;
 
 let boxes =
   [];
 
-
-/* =========================================================
-   DOM
-========================================================= */
 
 const statusElement =
   document.getElementById(
@@ -374,16 +388,6 @@ const tableWrap =
   );
 
 
-const teacherName =
-  document.getElementById(
-    "teacherName"
-  );
-
-
-/* =========================================================
-   INIT
-========================================================= */
-
 document.addEventListener(
   "DOMContentLoaded",
   initialize
@@ -393,10 +397,6 @@ document.addEventListener(
 async function initialize() {
 
   try {
-
-    /*
-     * 認証
-     */
 
     const result =
       await requireRole(
@@ -411,18 +411,16 @@ async function initialize() {
     }
 
 
-    teacherName.textContent =
+    document.getElementById(
+      "teacherName"
+    ).textContent =
       result.profile?.name ||
       "先生";
 
 
-    /*
-     * URL
-     */
-
     const params =
       new URLSearchParams(
-        window.location.search
+        location.search
       );
 
 
@@ -443,14 +441,12 @@ async function initialize() {
 
     setLinks();
 
-
     await load();
-
 
   } catch (error) {
 
     console.error(
-      "points initialize:",
+      "points:",
       error
     );
 
@@ -465,13 +461,9 @@ async function initialize() {
 }
 
 
-/* =========================================================
-   LINKS
-========================================================= */
-
 function setLinks() {
 
-  const encoded =
+  const id =
     encodeURIComponent(
       testId
     );
@@ -480,28 +472,30 @@ function setLinks() {
   document.getElementById(
     "layoutButton"
   ).href =
-    `/teacher/tests/layout?test=${encoded}`;
+    `/teacher/tests/layout?test=${id}`;
 
 
   document.getElementById(
     "markingButton"
   ).href =
-    `/teacher/marking?test=${encoded}`;
+    `/teacher/marking?test=${id}`;
+
+
+  document.getElementById(
+    "markingButtonBottom"
+  ).href =
+    `/teacher/marking?test=${id}`;
+
+
+  document.getElementById(
+    "resultsButton"
+  ).href =
+    `/teacher/results/summary?test=${id}`;
 
 }
 
 
-/* =========================================================
-   LOAD
-========================================================= */
-
 async function load() {
-
-  /*
-   * -------------------------------------------------------
-   * TEST
-   * -------------------------------------------------------
-   */
 
   setStatus(
     "テスト情報を取得しています..."
@@ -509,8 +503,8 @@ async function load() {
 
 
   const {
-    data: test,
-    error: testError
+    data:test,
+    error:testError
   } =
     await DB
       .from(
@@ -576,14 +570,8 @@ async function load() {
       );
 
 
-  /*
-   * -------------------------------------------------------
-   * LAYOUT BOXES
-   * -------------------------------------------------------
-   */
-
   setStatus(
-    "設問枠を取得しています..."
+    "解答欄を取得しています..."
   );
 
 
@@ -603,8 +591,7 @@ async function load() {
         label,
         question_id,
         points,
-        sort_order,
-        created_at
+        sort_order
         `
       )
       .eq(
@@ -632,23 +619,7 @@ async function load() {
   }
 
 
-  /*
-   * =====================================================
-   * 現在のDB構造に合わせる
-   *
-   * question_id はNULLでもOK。
-   *
-   * answer枠を配点対象にする。
-   *
-   * 除外:
-   *   QR
-   *   氏名
-   *   合計
-   *   小計
-   * =====================================================
-   */
-
-  const excludedLabels =
+  const excluded =
     new Set([
       "QR",
       "氏名",
@@ -660,56 +631,23 @@ async function load() {
   boxes =
     (data || [])
       .filter(
-        box => {
-
-          const type =
-            String(
-              box.box_type ||
-              ""
-            )
+        box =>
+          String(
+            box.box_type ||
+            ""
+          )
             .trim()
-            .toLowerCase();
-
-
-          /*
-           * answer以外は対象外。
-           */
-
-          if (
-            type !==
-            "answer"
-          ) {
-
-            return false;
-
-          }
-
-
-          const label =
+            .toLowerCase() ===
+          "answer"
+      )
+      .filter(
+        box =>
+          !excluded.has(
             String(
               box.label ||
               ""
-            ).trim();
-
-
-          /*
-           * 集計・識別枠は除外。
-           */
-
-          if (
-            excludedLabels.has(
-              label
-            )
-          ) {
-
-            return false;
-
-          }
-
-
-          return true;
-
-        }
+            ).trim()
+          )
       );
 
 
@@ -723,10 +661,6 @@ async function load() {
 }
 
 
-/* =========================================================
-   RENDER
-========================================================= */
-
 function render() {
 
   if (!boxes.length) {
@@ -735,11 +669,7 @@ function render() {
 
       <div class="empty">
 
-        採点対象の設問枠がありません。
-
-        <br><br>
-
-        枠設定で「解答欄」を作成してください。
+        採点対象の解答欄がありません。
 
         <br><br>
 
@@ -755,13 +685,6 @@ function render() {
       </div>
 
     `;
-
-
-    setStatus(
-      "採点対象の解答欄がありません。",
-      true
-    );
-
 
     return;
 
@@ -785,11 +708,7 @@ function render() {
       <tr>
 
         <th>
-          No.
-        </th>
-
-        <th>
-          設問
+          問
         </th>
 
         <th>
@@ -808,15 +727,13 @@ function render() {
 
     </thead>
 
-
     <tbody></tbody>
-
 
     <tfoot>
 
       <tr class="total-row">
 
-        <td colspan="3">
+        <td colspan="2">
           合計配点
         </td>
 
@@ -829,10 +746,11 @@ function render() {
             0
           </span>
 
+          点
+
         </td>
 
         <td>
-          点
         </td>
 
       </tr>
@@ -860,56 +778,30 @@ function render() {
         );
 
 
-      /*
-       * No.
-       */
-
-      const numberCell =
+      const number =
         document.createElement(
           "td"
         );
 
 
-      numberCell.textContent =
-        index + 1;
-
-
-      /*
-       * 設問
-       */
-
-      const labelCell =
-        document.createElement(
-          "td"
-        );
-
-
-      labelCell.textContent =
+      number.textContent =
         box.label ||
         `問${index + 1}`;
 
 
-      /*
-       * ページ
-       */
-
-      const pageCell =
+      const page =
         document.createElement(
           "td"
         );
 
 
-      pageCell.textContent =
+      page.textContent =
         `${Number(
           box.page_no
         ) || 1}ページ`;
 
 
-      /*
-       * 配点
-       */
-
-      const pointsCell =
+      const points =
         document.createElement(
           "td"
         );
@@ -925,16 +817,16 @@ function render() {
         "number";
 
 
+      input.className =
+        "points-input";
+
+
       input.min =
         "0";
 
 
       input.step =
         "0.1";
-
-
-      input.className =
-        "points-input";
 
 
       input.value =
@@ -949,64 +841,59 @@ function render() {
       );
 
 
-      pointsCell.appendChild(
+      points.appendChild(
         input
       );
 
 
-      /*
-       * 保存
-       */
-
-      const actionCell =
+      const action =
         document.createElement(
           "td"
         );
 
 
-      const saveButton =
+      const save =
         document.createElement(
           "button"
         );
 
 
-      saveButton.type =
+      save.type =
         "button";
 
 
-      saveButton.className =
+      save.className =
         "btn";
 
 
-      saveButton.textContent =
+      save.textContent =
         "保存";
 
 
-      saveButton.addEventListener(
+      save.addEventListener(
         "click",
         async () => {
 
           await savePoint(
             box,
             input,
-            saveButton
+            save
           );
 
         }
       );
 
 
-      actionCell.appendChild(
-        saveButton
+      action.appendChild(
+        save
       );
 
 
       row.append(
-        numberCell,
-        labelCell,
-        pageCell,
-        pointsCell,
-        actionCell
+        number,
+        page,
+        points,
+        action
       );
 
 
@@ -1032,10 +919,6 @@ function render() {
 }
 
 
-/* =========================================================
-   SAVE POINT
-========================================================= */
-
 async function savePoint(
   box,
   input,
@@ -1051,24 +934,12 @@ async function savePoint(
   if (
     !Number.isFinite(
       value
-    )
-  ) {
-
-    showError(
-      "配点を入力してください。"
-    );
-
-    return;
-
-  }
-
-
-  if (
+    ) ||
     value < 0
   ) {
 
     showError(
-      "配点は0以上にしてください。"
+      "配点を正しく入力してください。"
     );
 
     return;
@@ -1094,10 +965,7 @@ async function savePoint(
           "layout_boxes"
         )
         .update({
-
-          points:
-            value
-
+          points:value
         })
         .eq(
           "id",
@@ -1124,28 +992,19 @@ async function savePoint(
 
 
     setStatus(
-      `${box.label || "設問"} の配点を ${formatNumber(
+      `${box.label || "設問"}：${formatNumber(
         value
       )}点で保存しました。`
     );
 
-
   } catch (error) {
-
-    console.error(
-      "save point:",
-      error
-    );
-
 
     button.textContent =
       "保存";
 
-
     showError(
       `配点保存エラー: ${error.message}`
     );
-
 
   } finally {
 
@@ -1157,17 +1016,11 @@ async function savePoint(
 }
 
 
-/* =========================================================
-   TOTAL
-========================================================= */
-
 function updateTotal() {
 
   const inputs =
-    Array.from(
-      document.querySelectorAll(
-        ".points-input"
-      )
+    document.querySelectorAll(
+      ".points-input"
     );
 
 
@@ -1205,24 +1058,17 @@ function updateTotal() {
     );
 
 
-  if (!totalElement) {
+  if (totalElement) {
 
-    return;
+    totalElement.textContent =
+      formatNumber(
+        total
+      );
 
   }
 
-
-  totalElement.textContent =
-    formatNumber(
-      total
-    );
-
 }
 
-
-/* =========================================================
-   STATUS
-========================================================= */
 
 function setStatus(
   message,
@@ -1253,15 +1099,11 @@ function showError(
 }
 
 
-/* =========================================================
-   FORMAT
-========================================================= */
-
 function formatNumber(
   value
 ) {
 
-  const number =
+  const n =
     Number(
       value
     );
@@ -1269,7 +1111,7 @@ function formatNumber(
 
   if (
     !Number.isFinite(
-      number
+      n
     )
   ) {
 
@@ -1278,29 +1120,14 @@ function formatNumber(
   }
 
 
-  if (
-    Number.isInteger(
-      number
-    )
-  ) {
-
-    return String(
-      number
-    );
-
-  }
-
-
-  return number.toFixed(
-    1
-  );
+  return Number.isInteger(
+    n
+  )
+    ? String(n)
+    : n.toFixed(1);
 
 }
 
-
-/* =========================================================
-   LOGOUT
-========================================================= */
 
 document
   .getElementById(
@@ -1310,26 +1137,7 @@ document
     "click",
     async () => {
 
-      if (
-        typeof window.logout ===
-        "function"
-      ) {
-
-        await window.logout();
-
-        return;
-
-      }
-
-
-      if (
-        typeof window.signOut ===
-        "function"
-      ) {
-
-        await window.signOut();
-
-      }
+      await logout();
 
     }
   );

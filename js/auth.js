@@ -4,69 +4,17 @@
 /* =========================================================
    テスト成績システム
    js/auth.js
-
-   共通認証
-
-   対応:
-   ---------------------------------------------------------
-   teacher
-   admin
-   student
-
-   遷移:
-   ---------------------------------------------------------
-   teacher / admin
-      → /teacher/index.html
-
-   student
-      → /student/index.html
-
-   profiles:
-   ---------------------------------------------------------
-   id
-   name
-   role
-
-   student_id は使用しない。
-========================================================= */
-
-
-/* =========================================================
-   SUPABASE CLIENT
 ========================================================= */
 
 function getSupabaseClient() {
 
-  /*
-   * 現在の config.js が作成するClient
-   */
-
-  if (
-    window.supabaseClient
-  ) {
-
+  if (window.supabaseClient) {
     return window.supabaseClient;
-
   }
 
-
-  /*
-   * 念のためSBも確認
-   */
-
-  if (
-    window.SB
-  ) {
-
+  if (window.SB) {
     return window.SB;
-
   }
-
-
-  /*
-   * config.jsがClientを作っていない場合、
-   * グローバル設定から作成。
-   */
 
   if (
     !window.supabase ||
@@ -74,86 +22,51 @@ function getSupabaseClient() {
       "function"
   ) {
 
-    console.error(
+    throw new Error(
       "Supabase JS SDKが読み込まれていません。"
     );
 
-    return null;
-
   }
-
 
   const url =
-    window.SUPABASE_URL ||
-    window.APP_CONFIG?.SUPABASE_URL ||
-    "";
-
+    window.SUPABASE_URL || "";
 
   const key =
-    window.SUPABASE_KEY ||
-    window.APP_CONFIG?.SUPABASE_ANON_KEY ||
-    "";
+    window.SUPABASE_KEY || "";
 
+  if (!url || !key) {
 
-  if (
-    !url ||
-    !key
-  ) {
-
-    console.error(
-      "Supabaseの設定がありません。"
+    throw new Error(
+      "Supabaseの設定を読み込めませんでした。"
     );
 
-    return null;
-
   }
-
 
   const client =
     window.supabase.createClient(
       url,
       key,
       {
-
         auth: {
-
-          persistSession:
-            true,
-
-          autoRefreshToken:
-            true,
-
-          detectSessionInUrl:
-            true,
-
-          storage:
-            window.localStorage,
-
-          flowType:
-            "pkce"
-
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: true,
+          storage: window.localStorage,
+          flowType: "pkce"
         }
-
       }
     );
-
 
   window.supabaseClient =
     client;
 
-
   window.SB =
     client;
-
 
   return client;
 
 }
 
-
-/* =========================================================
-   CLIENT
-========================================================= */
 
 const sb =
   getSupabaseClient();
@@ -161,7 +74,6 @@ const sb =
 
 window.SB =
   sb;
-
 
 window.supabaseClient =
   sb;
@@ -176,34 +88,17 @@ async function getSession() {
   const client =
     getSupabaseClient();
 
-
-  if (!client) {
-
-    throw new Error(
-      "Supabaseの設定を読み込めませんでした。"
-    );
-
-  }
-
-
   const {
     data,
     error
   } =
     await client.auth.getSession();
 
-
   if (error) {
-
     throw error;
-
   }
 
-
-  return (
-    data?.session ||
-    null
-  );
+  return data?.session || null;
 
 }
 
@@ -217,34 +112,17 @@ async function getCurrentUser() {
   const client =
     getSupabaseClient();
 
-
-  if (!client) {
-
-    throw new Error(
-      "Supabaseの設定を読み込めませんでした。"
-    );
-
-  }
-
-
   const {
     data,
     error
   } =
     await client.auth.getUser();
 
-
   if (error) {
-
     throw error;
-
   }
 
-
-  return (
-    data?.user ||
-    null
-  );
+  return data?.user || null;
 
 }
 
@@ -258,37 +136,18 @@ async function getProfile() {
   const client =
     getSupabaseClient();
 
-
-  if (!client) {
-
-    throw new Error(
-      "Supabaseの設定を読み込めませんでした。"
-    );
-
-  }
-
-
   const user =
     await getCurrentUser();
 
 
   if (!user) {
-
     return null;
-
   }
 
 
   /*
-   * 重要:
-   *
-   * profiles.student_id は取得しない。
-   *
-   * 現在必要なのは
-   *
-   * id
-   * name
-   * role
+   * profiles.student_id は存在しないため
+   * 取得しない。
    */
 
   const {
@@ -296,16 +155,12 @@ async function getProfile() {
     error
   } =
     await client
-      .from(
-        "profiles"
-      )
-      .select(
-        `
+      .from("profiles")
+      .select(`
         id,
         name,
         role
-        `
-      )
+      `)
       .eq(
         "id",
         user.id
@@ -322,30 +177,19 @@ async function getProfile() {
   }
 
 
-  if (!data) {
-
-    return {
-
-      id:
-        user.id,
-
-      name:
-        user.email ||
-        "ユーザー",
-
-      role:
-        null,
-
-      user
-
-    };
-
-  }
-
-
   return {
 
-    ...data,
+    id:
+      user.id,
+
+    name:
+      data?.name ||
+      user.email ||
+      "ユーザー",
+
+    role:
+      data?.role ||
+      null,
 
     user
 
@@ -355,20 +199,15 @@ async function getProfile() {
 
 
 /* =========================================================
-   REDIRECT BY ROLE
+   REDIRECT
 ========================================================= */
 
 function redirectByRole(
   role
 ) {
 
-  /*
-   * 生徒
-   */
-
   if (
-    role ===
-    "student"
+    role === "student"
   ) {
 
     location.replace(
@@ -380,15 +219,9 @@ function redirectByRole(
   }
 
 
-  /*
-   * 先生・管理者
-   */
-
   if (
-    role ===
-      "teacher" ||
-    role ===
-      "admin"
+    role === "teacher" ||
+    role === "admin"
   ) {
 
     location.replace(
@@ -400,20 +233,12 @@ function redirectByRole(
   }
 
 
-  /*
-   * 不明
-   */
-
   location.replace(
     "/login"
   );
 
 }
 
-
-/* =========================================================
-   REDIRECT AFTER LOGIN
-========================================================= */
 
 async function redirectAfterLogin() {
 
@@ -437,10 +262,6 @@ async function redirectAfterLogin() {
 }
 
 
-/* =========================================================
-   GO BY ROLE
-========================================================= */
-
 async function goByRole() {
 
   await redirectAfterLogin();
@@ -455,19 +276,6 @@ async function goByRole() {
 async function requireRole(
   requiredRole
 ) {
-
-  const client =
-    getSupabaseClient();
-
-
-  if (!client) {
-
-    throw new Error(
-      "Supabaseの設定を読み込めませんでした。"
-    );
-
-  }
-
 
   const user =
     await getCurrentUser();
@@ -499,22 +307,32 @@ async function requireRole(
   }
 
 
-  /*
-   * teacher
-   *
-   * adminも先生画面を利用可能。
-   */
+  if (
+    requiredRole === "teacher"
+  ) {
+
+    if (
+      profile.role !== "teacher" &&
+      profile.role !== "admin"
+    ) {
+
+      redirectByRole(
+        profile.role
+      );
+
+      return null;
+
+    }
+
+  }
+
 
   if (
-    requiredRole ===
-    "teacher"
+    requiredRole === "admin"
   ) {
 
     if (
-      profile.role !==
-        "teacher" &&
-      profile.role !==
-        "admin"
+      profile.role !== "admin"
     ) {
 
       redirectByRole(
@@ -528,43 +346,12 @@ async function requireRole(
   }
 
 
-  /*
-   * admin
-   */
-
-  else if (
-    requiredRole ===
-    "admin"
+  if (
+    requiredRole === "student"
   ) {
 
     if (
-      profile.role !==
-      "admin"
-    ) {
-
-      redirectByRole(
-        profile.role
-      );
-
-      return null;
-
-    }
-
-  }
-
-
-  /*
-   * student
-   */
-
-  else if (
-    requiredRole ===
-    "student"
-  ) {
-
-    if (
-      profile.role !==
-      "student"
+      profile.role !== "student"
     ) {
 
       redirectByRole(
@@ -602,41 +389,27 @@ async function login(
     getSupabaseClient();
 
 
-  if (!client) {
-
-    throw new Error(
-      "Supabaseの設定を読み込めませんでした。"
-    );
-
-  }
-
-
   const {
     data,
     error
   } =
-    await client.auth
-      .signInWithPassword({
+    await client.auth.signInWithPassword({
 
-        email:
-          String(
-            email ||
-            ""
-          ).trim(),
+      email:
+        String(
+          email || ""
+        ).trim(),
 
-        password:
-          String(
-            password ||
-            ""
-          )
+      password:
+        String(
+          password || ""
+        )
 
-      });
+    });
 
 
   if (error) {
-
     throw error;
-
   }
 
 
@@ -646,7 +419,7 @@ async function login(
 
 
 /* =========================================================
-   SIGN OUT
+   LOGOUT
 ========================================================= */
 
 async function signOut() {
@@ -657,11 +430,7 @@ async function signOut() {
 
   try {
 
-    if (client) {
-
-      await client.auth.signOut();
-
-    }
+    await client.auth.signOut();
 
   } catch (error) {
 
@@ -693,10 +462,6 @@ async function logout() {
 
 function setupLoginPage() {
 
-  /*
-   * login.html以外では何もしない。
-   */
-
   const loginButton =
     document.getElementById(
       "loginBtn"
@@ -704,9 +469,7 @@ function setupLoginPage() {
 
 
   if (!loginButton) {
-
     return;
-
   }
 
 
@@ -831,17 +594,12 @@ function setupLoginPage() {
   );
 
 
-  /*
-   * Enterキー
-   */
-
   emailInput?.addEventListener(
     "keydown",
     event => {
 
       if (
-        event.key ===
-        "Enter"
+        event.key === "Enter"
       ) {
 
         event.preventDefault();
@@ -859,8 +617,7 @@ function setupLoginPage() {
     event => {
 
       if (
-        event.key ===
-        "Enter"
+        event.key === "Enter"
       ) {
 
         event.preventDefault();
@@ -876,7 +633,7 @@ function setupLoginPage() {
 
 
 /* =========================================================
-   LOGIN PAGE AUTO START
+   AUTO START
 ========================================================= */
 
 document.addEventListener(
@@ -896,34 +653,26 @@ document.addEventListener(
 window.getSession =
   getSession;
 
-
 window.getCurrentUser =
   getCurrentUser;
-
 
 window.getProfile =
   getProfile;
 
-
 window.requireRole =
   requireRole;
-
 
 window.login =
   login;
 
-
 window.goByRole =
   goByRole;
-
 
 window.redirectAfterLogin =
   redirectAfterLogin;
 
-
 window.signOut =
   signOut;
-
 
 window.logout =
   logout;

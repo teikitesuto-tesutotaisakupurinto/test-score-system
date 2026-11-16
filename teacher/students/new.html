@@ -1,23 +1,24 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 
 <head>
 
-  <meta charset="UTF-8">
+<meta charset="UTF-8">
 
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
-  >
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1.0"
+>
 
-  <title>
-    生徒登録 - テスト成績システム
-  </title>
+<title>
+  生徒登録 - テスト成績システム
+</title>
 
-  <link
-    rel="stylesheet"
-    href="/css/common.css"
-  >
+<link
+  rel="stylesheet"
+  href="/css/common.css"
+>
 
 </head>
 
@@ -38,6 +39,7 @@
   <button
     id="logoutButton"
     class="logout-button"
+    type="button"
   >
     ログアウト
   </button>
@@ -68,6 +70,13 @@
     </a>
 
     <a
+      href="/teacher/students/import"
+      class="menu-link"
+    >
+      CSV一括登録
+    </a>
+
+    <a
       href="/teacher/students/qr"
       class="menu-link"
     >
@@ -89,6 +98,7 @@
 
 
     <div class="card">
+
 
       <div
         style="
@@ -118,6 +128,7 @@
 
       <form id="studentForm">
 
+
         <div class="form-group">
 
           <label for="studentName">
@@ -143,6 +154,7 @@
             gap:15px;
           "
         >
+
 
           <div class="form-group">
 
@@ -175,6 +187,7 @@
 
           </div>
 
+
         </div>
 
 
@@ -185,6 +198,7 @@
             margin-bottom:10px;
             color:#c62828;
           "
+          aria-live="polite"
         ></div>
 
 
@@ -203,6 +217,7 @@
             登録する
           </button>
 
+
           <a
             href="/teacher/students"
             class="btn"
@@ -212,9 +227,12 @@
 
         </div>
 
+
       </form>
 
+
     </div>
+
 
   </main>
 
@@ -225,11 +243,17 @@
   src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
 ></script>
 
-<script src="/js/config.js"></script>
+<script
+  src="/js/config.js?v=20261116"
+></script>
 
-<script src="/js/auth.js"></script>
+<script
+  src="/js/auth.js?v=20261116"
+></script>
 
-<script src="/js/teacher/student-new.js"></script>
+<script
+  src="/js/teacher/student-new.js?v=20261116"
+></script>
 
 </body>
 

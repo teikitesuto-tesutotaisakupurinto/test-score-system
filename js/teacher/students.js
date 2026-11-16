@@ -1,52 +1,173 @@
+
+"use strict";
+
 /* =========================================================
    生徒一覧
+
+   ・生徒一覧取得
+   ・検索
+   ・学年絞り込み
+   ・クラス絞り込み
+   ・編集画面への遷移
 ========================================================= */
 
-let allStudents = [];
 
+let DB =
+  null;
+
+
+let allStudents =
+  [];
+
+
+/* =========================================================
+   INIT
+========================================================= */
+
+document.addEventListener(
+  "DOMContentLoaded",
+  initializeStudents
+);
+
+
+async function initializeStudents() {
+
+  try {
+
+    DB =
+      window.supabaseClient ||
+      window.SB;
+
+
+    if (!DB) {
+
+      throw new Error(
+        "Supabase Clientが初期化されていません。"
+      );
+
+    }
+
+
+    const auth =
+      await requireRole(
+        "teacher"
+      );
+
+
+    if (!auth) {
+
+      return;
+
+    }
+
+
+    const teacherName =
+      document.getElementById(
+        "teacherName"
+      );
+
+
+    if (teacherName) {
+
+      teacherName.textContent =
+        auth.profile?.name ||
+        "先生";
+
+    }
+
+
+    setupEvents();
+
+
+    await loadStudents();
+
+
+  } catch (error) {
+
+    console.error(
+      "students:",
+      error
+    );
+
+
+    renderError(
+      error.message ||
+      "生徒情報を取得できませんでした。"
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   EVENTS
+========================================================= */
+
+function setupEvents() {
+
+  document
+    .getElementById(
+      "studentSearch"
+    )
+    ?.addEventListener(
+      "input",
+      renderStudents
+    );
+
+
+  document
+    .getElementById(
+      "gradeFilter"
+    )
+    ?.addEventListener(
+      "change",
+      renderStudents
+    );
+
+
+  document
+    .getElementById(
+      "classFilter"
+    )
+    ?.addEventListener(
+      "change",
+      renderStudents
+    );
+
+
+  document
+    .getElementById(
+      "logoutButton"
+    )
+    ?.addEventListener(
+      "click",
+      async () => {
+
+        await logout();
+
+      }
+    );
+
+}
+
+
+/* =========================================================
+   LOAD
+========================================================= */
 
 async function loadStudents() {
-
-  const profile =
-    await getProfile();
-
-
-  if (!profile) {
-
-    window.location.href =
-      "/login";
-
-    return;
-
-  }
-
-
-  if (
-    profile.role !== "teacher" &&
-    profile.role !== "admin"
-  ) {
-
-    window.location.href =
-      "/student/dashboard";
-
-    return;
-
-  }
-
-
-  document.getElementById(
-    "teacherName"
-  ).textContent =
-    profile.name || "先生";
-
 
   const {
     data,
     error
   } =
-    await supabaseClient
-      .from("students")
-      .select(`
+    await DB
+      .from(
+        "students"
+      )
+      .select(
+        `
         id,
         student_no,
         name,
@@ -54,85 +175,40 @@ async function loadStudents() {
         class_name,
         active,
         created_at
-      `)
+        `
+      )
       .order(
         "student_no",
         {
-          ascending: true
+          ascending:true
         }
       );
 
 
   if (error) {
 
-    console.error(error);
-
-    document.getElementById(
-      "studentRows"
-    ).innerHTML = `
-
-      <tr>
-
-        <td
-          colspan="6"
-          style="
-            text-align:center;
-            color:#c62828;
-          "
-        >
-          生徒情報を取得できませんでした。
-        </td>
-
-      </tr>
-
-    `;
-
-    return;
+    throw error;
 
   }
 
 
   allStudents =
-    data || [];
+    data ||
+    [];
 
 
   createFilters();
 
   renderStudents();
 
-
 }
 
 
+/* =========================================================
+   FILTERS
+========================================================= */
+
 function createFilters() {
-
-  const grades =
-    [
-      ...new Set(
-        allStudents
-          .map(
-            student =>
-              student.grade
-          )
-          .filter(Boolean)
-      )
-    ]
-    .sort();
-
-
-  const classes =
-    [
-      ...new Set(
-        allStudents
-          .map(
-            student =>
-              student.class_name
-          )
-          .filter(Boolean)
-      )
-    ]
-    .sort();
-
 
   const gradeFilter =
     document.getElementById(
@@ -144,6 +220,62 @@ function createFilters() {
     document.getElementById(
       "classFilter"
     );
+
+
+  if (
+    !gradeFilter ||
+    !classFilter
+  ) {
+
+    return;
+
+  }
+
+
+  const grades =
+    [
+      ...new Set(
+        allStudents
+          .map(
+            student =>
+              student.grade
+          )
+          .filter(
+            value =>
+              value !== null &&
+              value !== undefined &&
+              String(
+                value
+              ).trim() !== ""
+          )
+      )
+    ]
+      .sort(
+        compareValues
+      );
+
+
+  const classes =
+    [
+      ...new Set(
+        allStudents
+          .map(
+            student =>
+              student.class_name
+          )
+          .filter(
+            value =>
+              value !== null &&
+              value !== undefined &&
+              String(
+                value
+              ).trim() !== ""
+          )
+      )
+    ]
+      .sort(
+        compareValues
+      );
 
 
   gradeFilter.innerHTML = `
@@ -158,9 +290,15 @@ function createFilters() {
           grade => `
 
             <option
-              value="${escapeHtml(grade)}"
+              value="${escapeHtml(
+                grade
+              )}"
             >
-              ${escapeHtml(grade)}
+
+              ${escapeHtml(
+                grade
+              )}
+
             </option>
 
           `
@@ -183,9 +321,15 @@ function createFilters() {
           className => `
 
             <option
-              value="${escapeHtml(className)}"
+              value="${escapeHtml(
+                className
+              )}"
             >
-              ${escapeHtml(className)}
+
+              ${escapeHtml(
+                className
+              )}
+
             </option>
 
           `
@@ -198,26 +342,60 @@ function createFilters() {
 }
 
 
+/* =========================================================
+   RENDER
+========================================================= */
+
 function renderStudents() {
 
-  const keyword =
+  const tbody =
+    document.getElementById(
+      "studentRows"
+    );
+
+
+  if (!tbody) {
+
+    return;
+
+  }
+
+
+  const searchElement =
     document.getElementById(
       "studentSearch"
-    ).value
+    );
+
+
+  const gradeElement =
+    document.getElementById(
+      "gradeFilter"
+    );
+
+
+  const classElement =
+    document.getElementById(
+      "classFilter"
+    );
+
+
+  const keyword =
+    (
+      searchElement?.value ||
+      ""
+    )
       .trim()
       .toLowerCase();
 
 
   const grade =
-    document.getElementById(
-      "gradeFilter"
-    ).value;
+    gradeElement?.value ||
+    "";
 
 
   const className =
-    document.getElementById(
-      "classFilter"
-    ).value;
+    classElement?.value ||
+    "";
 
 
   const filtered =
@@ -225,7 +403,18 @@ function renderStudents() {
       student => {
 
         const searchTarget =
-          `${student.student_no || ""} ${student.name || ""}`
+          [
+            student.student_no,
+            student.name
+          ]
+            .filter(
+              value =>
+                value !== null &&
+                value !== undefined
+            )
+            .join(
+              " "
+            )
             .toLowerCase();
 
 
@@ -243,7 +432,8 @@ function renderStudents() {
 
         if (
           grade &&
-          student.grade !== grade
+          student.grade !==
+            grade
         ) {
 
           return false;
@@ -253,7 +443,8 @@ function renderStudents() {
 
         if (
           className &&
-          student.class_name !== className
+          student.class_name !==
+            className
         ) {
 
           return false;
@@ -264,12 +455,6 @@ function renderStudents() {
         return true;
 
       }
-    );
-
-
-  const tbody =
-    document.getElementById(
-      "studentRows"
     );
 
 
@@ -287,7 +472,9 @@ function renderStudents() {
             color:#777;
           "
         >
+
           該当する生徒がいません。
+
         </td>
 
       </tr>
@@ -302,146 +489,205 @@ function renderStudents() {
   tbody.innerHTML =
     filtered
       .map(
-        student => `
-
-          <tr>
-
-            <td>
-
-              <strong>
-                ${escapeHtml(
-                  student.student_no
-                )}
-              </strong>
-
-            </td>
-
-
-            <td>
-              ${escapeHtml(
-                student.name
-              )}
-            </td>
-
-
-            <td>
-              ${escapeHtml(
-                student.grade || ""
-              )}
-            </td>
-
-
-            <td>
-              ${escapeHtml(
-                student.class_name || ""
-              )}
-            </td>
-
-
-            <td>
-
-              ${
-                student.active
-                  ? `<span style="color:#16834b;">在籍</span>`
-                  : `<span style="color:#c62828;">無効</span>`
-              }
-
-            </td>
-
-
-            <td>
-
-              <a
-                href="/teacher/students/edit?id=${encodeURIComponent(student.id)}"
-                class="btn"
-              >
-                編集
-              </a>
-
-            </td>
-
-          </tr>
-
-        `
+        createStudentRow
       )
-      .join("");
+      .join(
+        ""
+      );
 
 }
 
 
-/*
-  検索
-*/
+/* =========================================================
+   ROW
+========================================================= */
 
-document
-  .getElementById(
-    "studentSearch"
-  )
-  .addEventListener(
-    "input",
-    renderStudents
+function createStudentRow(
+  student
+) {
+
+  const status =
+    student.active
+      ? `
+        <span
+          style="
+            color:#16834b;
+            font-weight:700;
+          "
+        >
+          在籍
+        </span>
+      `
+      : `
+        <span
+          style="
+            color:#c62828;
+            font-weight:700;
+          "
+        >
+          無効
+        </span>
+      `;
+
+
+  return `
+
+    <tr>
+
+
+      <td>
+
+        <strong>
+          ${escapeHtml(
+            student.student_no ||
+            ""
+          )}
+        </strong>
+
+      </td>
+
+
+      <td>
+
+        ${escapeHtml(
+          student.name ||
+          ""
+        )}
+
+      </td>
+
+
+      <td>
+
+        ${escapeHtml(
+          student.grade ||
+          ""
+        )}
+
+      </td>
+
+
+      <td>
+
+        ${escapeHtml(
+          student.class_name ||
+          ""
+        )}
+
+      </td>
+
+
+      <td>
+
+        ${status}
+
+      </td>
+
+
+      <td>
+
+        <a
+          href="/teacher/students/edit?id=${encodeURIComponent(
+            student.id
+          )}"
+          class="btn"
+        >
+          編集
+        </a>
+
+      </td>
+
+
+    </tr>
+
+  `;
+
+}
+
+
+/* =========================================================
+   SORT
+========================================================= */
+
+function compareValues(
+  a,
+  b
+) {
+
+  return String(
+    a
+  ).localeCompare(
+    String(
+      b
+    ),
+    "ja",
+    {
+      numeric:true
+    }
   );
 
-
-/*
-  学年
-*/
-
-document
-  .getElementById(
-    "gradeFilter"
-  )
-  .addEventListener(
-    "change",
-    renderStudents
-  );
+}
 
 
-/*
-  クラス
-*/
+/* =========================================================
+   ERROR
+========================================================= */
 
-document
-  .getElementById(
-    "classFilter"
-  )
-  .addEventListener(
-    "change",
-    renderStudents
-  );
+function renderError(
+  errorMessage
+) {
 
-
-/*
-  ログアウト
-*/
-
-document
-  .getElementById(
-    "logoutButton"
-  )
-  .addEventListener(
-    "click",
-    logout
-  );
+  const tbody =
+    document.getElementById(
+      "studentRows"
+    );
 
 
-/*
-  HTMLエスケープ
-*/
+  if (!tbody) {
 
-function escapeHtml(value) {
-
-  if (
-    value === null ||
-    value === undefined
-  ) {
-
-    return "";
+    return;
 
   }
 
 
-  return String(value)
+  tbody.innerHTML = `
+
+    <tr>
+
+      <td
+        colspan="6"
+        style="
+          text-align:center;
+          padding:30px;
+          color:#c62828;
+        "
+      >
+
+        ${escapeHtml(
+          errorMessage
+        )}
+
+      </td>
+
+    </tr>
+
+  `;
+
+}
+
+
+/* =========================================================
+   ESCAPE
+========================================================= */
+
+function escapeHtml(
+  value
+) {
+
+  return String(
+    value ??
+    ""
+  )
     .replaceAll(
       "&",
       "&amp;"
@@ -464,10 +710,3 @@ function escapeHtml(value) {
     );
 
 }
-
-
-/*
-  開始
-*/
-
-loadStudents();

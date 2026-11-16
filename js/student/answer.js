@@ -1,60 +1,36 @@
 
-/* =========================================================
-   テスト成績システム
-   生徒用 採点前答案表示 完全版
-
-   対応
-   ---------------------------------------------------------
-   ・JPG
-   ・JPEG
-   ・PNG
-   ・WEBP
-   ・GIF
-   ・PDF
-
-   ZIPについて
-   ---------------------------------------------------------
-   ZIPはアップロード時に展開・ページ化する。
-   生徒画面ではZIPそのものを扱わない。
-
-   認証
-   ---------------------------------------------------------
-   Supabase Auth
-       ↓
-   requireStudent()
-       ↓
-   students.auth_user_id
-       ↓
-   自分のstudent.id
-
-   公開
-   ---------------------------------------------------------
-   tests.results_published = true
-
-   答案
-   ---------------------------------------------------------
-   自分のanswer_sheetsだけ取得
-
-   Storage
-   ---------------------------------------------------------
-   answer-files
-       ↓
-   自分の公開済み答案だけSigned URL取得
-========================================================= */
-
+"use strict";
 
 /* =========================================================
-   IIFE
+   生徒用 未採点答案表示
+
+   仕様
+   ---------------------------------------------------------
+   ・自分自身の答案だけ
+   ・student_idはURLから取得しない
+   ・採点済み記号を表示しない
+   ・scoresを表示しない
+   ・mark_objectsを表示しない
+   ・元答案のみ表示
+   ・results_published=trueになった後は
+     「採点済み答案を見る」側へ誘導可能
+
+   注意
+   ---------------------------------------------------------
+   この画面では採点結果を絶対に表示しない。
 ========================================================= */
+
 
 (function () {
 
-  "use strict";
+  let student = null;
 
+  let test = null;
 
-  /* =======================================================
-     URL
-  ======================================================= */
+  let answer = null;
+
+  let pages = [];
+
 
   const params =
     new URLSearchParams(
@@ -69,34 +45,12 @@
 
 
   /* =======================================================
-     状態
-  ======================================================= */
-
-  let profile = null;
-
-  let student = null;
-
-  let test = null;
-
-  let answer = null;
-
-  let pages = [];
-
-
-  /* =======================================================
-     初期化
+     INIT
   ======================================================= */
 
   async function initialize() {
 
     try {
-
-      /*
-        生徒認証
-
-        roleだけでなく
-        students.auth_user_idまで確認。
-      */
 
       const auth =
         await requireStudent();
@@ -109,37 +63,31 @@
       }
 
 
-      profile =
-        auth.profile;
-
-
       student =
         auth.student;
 
 
-      /*
-        ヘッダー
-      */
+      document.getElementById(
+        "studentName"
+      ).textContent =
+        student.name ||
+        auth.profile?.name ||
+        "生徒";
 
-      const studentName =
-        document.getElementById(
-          "studentName"
+
+      document
+        .getElementById(
+          "logoutButton"
+        )
+        ?.addEventListener(
+          "click",
+          async () => {
+
+            await logout();
+
+          }
         );
 
-
-      if (studentName) {
-
-        studentName.textContent =
-          student.name ||
-          profile.name ||
-          "生徒";
-
-      }
-
-
-      /*
-        test ID
-      */
 
       if (!testId) {
 
@@ -147,37 +95,29 @@
           "テストが指定されていません。"
         );
 
-
         return;
 
       }
 
 
-      /*
-        公開済みテスト確認
-      */
-
-      const loaded =
+      const available =
         await loadTest();
 
 
-      if (!loaded) {
+      if (!available) {
 
         return;
 
       }
 
 
-      /*
-        自分の答案
-      */
-
       await loadAnswer();
+
 
     } catch (error) {
 
       console.error(
-        "student/answer:",
+        "student answer:",
         error
       );
 
@@ -193,7 +133,7 @@
 
 
   /* =======================================================
-     テスト取得
+     TEST
   ======================================================= */
 
   async function loadTest() {
@@ -206,23 +146,20 @@
         .from(
           "tests"
         )
-        .select(`
+        .select(
+          `
           id,
           name,
           subject,
           grade,
           class_name,
-          max_score,
           results_published,
           results_published_at
-        `)
+          `
+        )
         .eq(
           "id",
           testId
-        )
-        .eq(
-          "results_published",
-          true
         )
         .maybeSingle();
 
@@ -237,9 +174,8 @@
     if (!data) {
 
       showError(
-        "このテストは現在公開されていません。"
+        "テストが見つかりません。"
       );
-
 
       return false;
 
@@ -250,7 +186,69 @@
       data;
 
 
-    renderTestInformation();
+    document.getElementById(
+      "testName"
+    ).textContent =
+      data.name ||
+      "";
+
+
+    /*
+     * 公開済みなら
+     * 採点済み答案画面へ誘導できる状態。
+     *
+     * ただし、この画面自体では
+     * 採点記号・点数を表示しない。
+     */
+
+    if (
+      data.results_published
+    ) {
+
+      const notice =
+        document.createElement(
+          "div"
+        );
+
+
+      notice.style.cssText = `
+        margin-bottom:12px;
+        padding:10px;
+        background:#edf8ef;
+        border:1px solid #b7d9c0;
+        color:#176b35;
+      `;
+
+
+      notice.innerHTML = `
+
+        採点結果が確定しています。
+
+        <br><br>
+
+        <a
+          href="/student/tests/result.html?test=${encodeURIComponent(
+            testId
+          )}"
+          class="btn btn-primary"
+        >
+          成績・採点済み答案を見る
+        </a>
+
+      `;
+
+
+      const container =
+        document.getElementById(
+          "answerPages"
+        );
+
+
+      container?.before(
+        notice
+      );
+
+    }
 
 
     return true;
@@ -259,126 +257,10 @@
 
 
   /* =======================================================
-     テスト情報
-  ======================================================= */
-
-  function renderTestInformation() {
-
-    const title =
-      document.getElementById(
-        "testName"
-      );
-
-
-    if (title) {
-
-      title.textContent =
-        test.name;
-
-    }
-
-
-    /*
-      testMetaがHTMLに存在する場合
-    */
-
-    const meta =
-      document.getElementById(
-        "testMeta"
-      );
-
-
-    if (meta) {
-
-      const values =
-        [];
-
-
-      if (
-        test.subject
-      ) {
-
-        values.push(
-          `教科：${test.subject}`
-        );
-
-      }
-
-
-      if (
-        test.grade
-      ) {
-
-        values.push(
-          `学年：${test.grade}`
-        );
-
-      }
-
-
-      if (
-        test.class_name
-      ) {
-
-        values.push(
-          `クラス：${test.class_name}`
-        );
-
-      }
-
-
-      if (
-        test.max_score !==
-          null &&
-        test.max_score !==
-          undefined
-      ) {
-
-        values.push(
-          `満点：${test.max_score}点`
-        );
-
-      }
-
-
-      if (
-        test.results_published_at
-      ) {
-
-        values.push(
-          `公開：${formatDate(
-            test.results_published_at
-          )}`
-        );
-
-      }
-
-
-      meta.textContent =
-        values.join(
-          " ／ "
-        );
-
-    }
-
-  }
-
-
-  /* =======================================================
-     自分の答案取得
+     ANSWER
   ======================================================= */
 
   async function loadAnswer() {
-
-    /*
-      student_idはURLから取得しない。
-
-      requireStudent()
-      ↓
-      student.id
-
-      で本人を確定。
-    */
 
     const {
       data,
@@ -388,12 +270,14 @@
         .from(
           "answer_sheets"
         )
-        .select(`
+        .select(
+          `
           id,
           student_id,
           status,
           created_at
-        `)
+          `
+        )
         .eq(
           "test_id",
           testId
@@ -402,18 +286,20 @@
           "student_id",
           student.id
         )
-        .neq(
+        .not(
           "status",
-          "unmatched"
+          "is",
+          null
         )
         .order(
           "created_at",
           {
-            ascending:
-              false
+            ascending:false
           }
         )
-        .limit(1)
+        .limit(
+          1
+        )
         .maybeSingle();
 
 
@@ -437,16 +323,8 @@
       data;
 
 
-    /*
-      ページ取得
-    */
-
     await loadPages();
 
-
-    /*
-      表示
-    */
 
     await renderPages();
 
@@ -454,7 +332,7 @@
 
 
   /* =======================================================
-     answer_sheet_pages
+     PAGES
   ======================================================= */
 
   async function loadPages() {
@@ -467,16 +345,17 @@
         .from(
           "answer_sheet_pages"
         )
-        .select(`
+        .select(
+          `
           id,
-          answer_sheet_id,
           page_no,
           file_path,
           file_type,
           original_name,
           width_px,
           height_px
-        `)
+          `
+        )
         .eq(
           "answer_sheet_id",
           answer.id
@@ -484,8 +363,7 @@
         .order(
           "page_no",
           {
-            ascending:
-              true
+            ascending:true
           }
         );
 
@@ -504,7 +382,7 @@
 
 
   /* =======================================================
-     ページ表示
+     RENDER
   ======================================================= */
 
   async function renderPages() {
@@ -535,10 +413,6 @@
     }
 
 
-    /*
-      ページを順番に表示
-    */
-
     for (
       const page
       of pages
@@ -560,7 +434,7 @@
 
 
   /* =======================================================
-     ページElement
+     PAGE
   ======================================================= */
 
   async function createPageElement(
@@ -576,10 +450,6 @@
     wrapper.className =
       "student-answer-page";
 
-
-    /*
-      ページ番号
-    */
 
     const title =
       document.createElement(
@@ -600,27 +470,109 @@
     );
 
 
-    /*
-      ファイルURL
-    */
+    if (
+      !page.file_path
+    ) {
 
-    let signedUrl = null;
+      return wrapper;
+
+    }
 
 
     try {
 
-      signedUrl =
-        await createSignedUrl(
-          page.file_path
+      const {
+        data,
+        error
+      } =
+        await supabaseClient
+          .storage
+          .from(
+            "answer-files"
+          )
+          .createSignedUrl(
+            page.file_path,
+            3600
+          );
+
+
+      if (
+        error ||
+        !data?.signedUrl
+      ) {
+
+        throw new Error(
+          "答案ファイルを取得できませんでした。"
         );
 
-    } catch (error) {
+      }
 
-      console.error(
-        `ページ${page.page_no} URL:`,
-        error
+
+      const image =
+        document.createElement(
+          "img"
+        );
+
+
+      image.className =
+        "student-answer-image";
+
+
+      image.src =
+        data.signedUrl;
+
+
+      image.alt =
+        `答案 ${page.page_no}ページ`;
+
+
+      image.loading =
+        "lazy";
+
+
+      image.decoding =
+        "async";
+
+
+      image.addEventListener(
+        "error",
+        () => {
+
+          image.remove();
+
+
+          const errorElement =
+            document.createElement(
+              "div"
+            );
+
+
+          errorElement.className =
+            "empty-state";
+
+
+          errorElement.style.color =
+            "#b42318";
+
+
+          errorElement.textContent =
+            "答案画像を表示できませんでした。";
+
+
+          wrapper.appendChild(
+            errorElement
+          );
+
+        }
       );
 
+
+      wrapper.appendChild(
+        image
+      );
+
+
+    } catch (error) {
 
       const errorElement =
         document.createElement(
@@ -633,88 +585,19 @@
 
 
       errorElement.style.color =
-        "#c62828";
+        "#b42318";
 
 
       errorElement.textContent =
-        "答案ファイルを取得できませんでした。";
+        error.message ||
+        "答案を取得できませんでした。";
 
 
       wrapper.appendChild(
         errorElement
       );
 
-
-      return wrapper;
-
     }
-
-
-    /*
-      ファイル形式判定
-    */
-
-    const fileType =
-      getFileType(
-        page
-      );
-
-
-    /*
-      PDF
-    */
-
-    if (
-      fileType ===
-      "pdf"
-    ) {
-
-      appendPdfViewer(
-        wrapper,
-        signedUrl,
-        page
-      );
-
-
-      return wrapper;
-
-    }
-
-
-    /*
-      画像
-    */
-
-    if (
-      isImageType(
-        fileType
-      )
-    ) {
-
-      appendImageViewer(
-        wrapper,
-        signedUrl,
-        page
-      );
-
-
-      return wrapper;
-
-    }
-
-
-    /*
-      不明形式
-
-      MIME情報が不明でも
-      画像URLならimgで試す。
-    */
-
-    appendImageViewer(
-      wrapper,
-      signedUrl,
-      page
-    );
 
 
     return wrapper;
@@ -723,380 +606,7 @@
 
 
   /* =======================================================
-     Signed URL
-  ======================================================= */
-
-  async function createSignedUrl(
-    filePath
-  ) {
-
-    if (!filePath) {
-
-      throw new Error(
-        "file_pathがありません。"
-      );
-
-    }
-
-
-    const {
-      data,
-      error
-    } =
-      await supabaseClient
-        .storage
-        .from(
-          "answer-files"
-        )
-        .createSignedUrl(
-          filePath,
-          3600
-        );
-
-
-    if (error) {
-
-      throw error;
-
-    }
-
-
-    if (
-      !data?.signedUrl
-    ) {
-
-      throw new Error(
-        "Signed URLを取得できませんでした。"
-      );
-
-    }
-
-
-    return data.signedUrl;
-
-  }
-
-
-  /* =======================================================
-     画像表示
-  ======================================================= */
-
-  function appendImageViewer(
-    wrapper,
-    url,
-    page
-  ) {
-
-    const image =
-      document.createElement(
-        "img"
-      );
-
-
-    image.className =
-      "student-answer-image";
-
-
-    image.src =
-      url;
-
-
-    image.alt =
-      `答案 ${page.page_no}ページ`;
-
-
-    image.loading =
-      "lazy";
-
-
-    image.decoding =
-      "async";
-
-
-    /*
-      画像読み込みエラー
-    */
-
-    image.addEventListener(
-      "error",
-      () => {
-
-        image.remove();
-
-
-        const errorElement =
-          document.createElement(
-            "div"
-          );
-
-
-        errorElement.className =
-          "empty-state";
-
-
-        errorElement.style.color =
-          "#c62828";
-
-
-        errorElement.textContent =
-          "答案画像を表示できませんでした。";
-
-
-        wrapper.appendChild(
-          errorElement
-        );
-
-      }
-    );
-
-
-    wrapper.appendChild(
-      image
-    );
-
-  }
-
-
-  /* =======================================================
-     PDF表示
-     
-     PDF.jsをここで動的ロード。
-
-     通常の運用ではPDFは
-     answer_sheet_pagesのページ画像へ
-     変換しておくため、この分岐は保険。
-  ======================================================= */
-
-  async function appendPdfViewer(
-    wrapper,
-    url,
-    page
-  ) {
-
-    /*
-      まずブラウザ標準PDF表示を使用。
-
-      PDF.jsが読み込まれていなくても
-      動作する。
-    */
-
-    const frame =
-      document.createElement(
-        "iframe"
-      );
-
-
-    frame.className =
-      "student-answer-pdf";
-
-
-    frame.src =
-      url;
-
-
-    frame.title =
-      `答案PDF ${page.page_no}ページ`;
-
-
-    frame.loading =
-      "lazy";
-
-
-    frame.setAttribute(
-      "allow",
-      "fullscreen"
-    );
-
-
-    wrapper.appendChild(
-      frame
-    );
-
-  }
-
-
-  /* =======================================================
-     ファイル形式取得
-  ======================================================= */
-
-  function getFileType(
-    page
-  ) {
-
-    /*
-      file_typeを優先
-    */
-
-    if (
-      page.file_type
-    ) {
-
-      const value =
-        String(
-          page.file_type
-        )
-          .toLowerCase()
-          .trim();
-
-
-      if (
-        value.includes(
-          "pdf"
-        )
-      ) {
-
-        return "pdf";
-
-      }
-
-
-      if (
-        value.includes(
-          "jpeg"
-        )
-      ) {
-
-        return "jpeg";
-
-      }
-
-
-      if (
-        value.includes(
-          "jpg"
-        )
-      ) {
-
-        return "jpg";
-
-      }
-
-
-      if (
-        value.includes(
-          "png"
-        )
-      ) {
-
-        return "png";
-
-      }
-
-
-      if (
-        value.includes(
-          "webp"
-        )
-      ) {
-
-        return "webp";
-
-      }
-
-
-      if (
-        value.includes(
-          "gif"
-        )
-      ) {
-
-        return "gif";
-
-      }
-
-    }
-
-
-    /*
-      file_pathから判定
-    */
-
-    return getFileExtension(
-      page.file_path
-    );
-
-  }
-
-
-  /* =======================================================
-     拡張子
-  ======================================================= */
-
-  function getFileExtension(
-    value
-  ) {
-
-    if (!value) {
-
-      return "";
-
-    }
-
-
-    const clean =
-      String(
-        value
-      )
-        .split("?")[0]
-        .split("#")[0];
-
-
-    const parts =
-      clean.split(
-        "."
-      );
-
-
-    if (
-      parts.length <
-      2
-    ) {
-
-      return "";
-
-    }
-
-
-    return parts
-      .pop()
-      .toLowerCase();
-
-  }
-
-
-  /* =======================================================
-     画像判定
-  ======================================================= */
-
-  function isImageType(
-    type
-  ) {
-
-    return [
-
-      "jpg",
-
-      "jpeg",
-
-      "png",
-
-      "webp",
-
-      "gif"
-
-    ].includes(
-      String(
-        type ||
-        ""
-      )
-        .toLowerCase()
-    );
-
-  }
-
-
-  /* =======================================================
-     答案なし
+     EMPTY
   ======================================================= */
 
   function renderNoAnswer() {
@@ -1116,9 +626,7 @@
 
     container.innerHTML = `
 
-      <div
-        class="empty-state"
-      >
+      <div class="empty-state">
 
         このテストの答案はありません。
 
@@ -1130,7 +638,7 @@
 
 
   /* =======================================================
-     エラー
+     ERROR
   ======================================================= */
 
   function showError(
@@ -1143,138 +651,42 @@
       );
 
 
-    if (container) {
-
-      container.innerHTML = `
-
-        <div
-          class="empty-state"
-          style="
-            color:#c62828;
-          "
-        >
-
-          ${escapeHtml(
-            message
-          )}
-
-        </div>
-
-      `;
+    if (!container) {
 
       return;
 
     }
 
 
-    alert(
-      message
-    );
+    container.innerHTML = `
+
+      <div
+        class="empty-state"
+        style="color:#b42318;"
+      >
+
+        ${escapeHtml(
+          message
+        )}
+
+      </div>
+
+    `;
 
   }
 
 
   /* =======================================================
-     Logout
-  ======================================================= */
-
-  const logoutButton =
-    document.getElementById(
-      "logoutButton"
-    );
-
-
-  if (logoutButton) {
-
-    logoutButton.addEventListener(
-      "click",
-      async () => {
-
-        await logout();
-
-      }
-    );
-
-  }
-
-
-  /* =======================================================
-     日付
-  ======================================================= */
-
-  function formatDate(
-    value
-  ) {
-
-    if (!value) {
-
-      return "";
-
-    }
-
-
-    const date =
-      new Date(
-        value
-      );
-
-
-    if (
-      Number.isNaN(
-        date.getTime()
-      )
-    ) {
-
-      return "";
-
-    }
-
-
-    return date.toLocaleString(
-      "ja-JP",
-      {
-
-        year:
-          "numeric",
-
-        month:
-          "2-digit",
-
-        day:
-          "2-digit",
-
-        hour:
-          "2-digit",
-
-        minute:
-          "2-digit"
-
-      }
-    );
-
-  }
-
-
-  /* =======================================================
-     HTML Escape
+     ESCAPE
   ======================================================= */
 
   function escapeHtml(
     value
   ) {
 
-    if (
-      value === null ||
-      value === undefined
-    ) {
-
-      return "";
-
-    }
-
-
     return String(
-      value
+      value ??
+      ""
     )
       .replaceAll(
         "&",
@@ -1299,10 +711,6 @@
 
   }
 
-
-  /* =======================================================
-     START
-  ======================================================= */
 
   initialize();
 

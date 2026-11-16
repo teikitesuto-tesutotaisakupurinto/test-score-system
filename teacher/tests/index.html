@@ -20,6 +20,74 @@
   href="/css/common.css"
 >
 
+<style>
+
+.test-actions {
+
+  display:flex;
+
+  flex-wrap:wrap;
+
+  gap:6px;
+
+}
+
+
+.test-actions .btn {
+
+  white-space:nowrap;
+
+}
+
+
+.test-create-grid {
+
+  display:grid;
+
+  grid-template-columns:
+    2fr
+    1fr
+    1fr;
+
+  gap:10px;
+
+}
+
+
+@media(max-width:800px) {
+
+  .test-create-grid {
+
+    grid-template-columns:
+      1fr;
+
+  }
+
+}
+
+
+.test-status {
+
+  font-size:12px;
+
+  color:#666;
+
+}
+
+
+.test-empty {
+
+  padding:30px;
+
+  text-align:center;
+
+  color:#777;
+
+}
+
+
+</style>
+
 </head>
 
 
@@ -64,12 +132,19 @@
 </div>
 
 
+<!-- =====================================================
+     CREATE
+====================================================== -->
+
 <section class="card">
 
 
 <h2>
   新しいテスト
 </h2>
+
+
+<div class="test-create-grid">
 
 
 <div class="form-group">
@@ -120,13 +195,26 @@
 </div>
 
 
+</div>
+
+
+<div
+  style="
+    margin-top:12px;
+  "
+>
+
+
 <button
   id="createButton"
   class="btn btn-primary"
   type="button"
 >
-新しいテストを作成
+  新しいテストを作成
 </button>
+
+
+</div>
 
 
 </section>
@@ -139,29 +227,39 @@
 ></p>
 
 
+<!-- =====================================================
+     LIST
+====================================================== -->
+
 <section class="card">
 
 
+<h2>
+  テスト一覧
+</h2>
+
+
 <table class="table">
+
 
 <thead>
 
 <tr>
 
 <th>
-テスト名
+  テスト名
 </th>
 
 <th>
-教科
+  教科
 </th>
 
 <th>
-学年
+  学年
 </th>
 
 <th>
-操作
+  操作
 </th>
 
 </tr>
@@ -176,12 +274,13 @@
 <td
   colspan="4"
 >
-読み込み中...
+  読み込み中...
 </td>
 
 </tr>
 
 </tbody>
+
 
 </table>
 
@@ -280,10 +379,6 @@ async function initialize() {
 
   try {
 
-    /*
-     * 認証
-     */
-
     const result =
       await requireRole(
         "teacher"
@@ -360,7 +455,7 @@ function setupEvents() {
 
 
 /* =========================================================
-   LOAD TESTS
+   LOAD
 ========================================================= */
 
 async function loadTests() {
@@ -393,14 +488,15 @@ async function loadTests() {
         subject,
         grade,
         class_name,
+        results_published,
+        results_published_at,
         created_at
         `
       )
       .order(
         "created_at",
         {
-          ascending:
-            false
+          ascending:false
         }
       );
 
@@ -415,8 +511,7 @@ async function loadTests() {
 
 
   renderTests(
-    data ||
-    []
+    data || []
   );
 
 }
@@ -442,7 +537,7 @@ function renderTests(
 
         <td
           colspan="4"
-          style="text-align:center;"
+          class="test-empty"
         >
           テストがありません。
         </td>
@@ -465,9 +560,9 @@ function renderTests(
         );
 
 
-      /*
-       * テスト名
-       */
+      /* ---------------------------------------------------
+         名前
+      --------------------------------------------------- */
 
       const nameCell =
         document.createElement(
@@ -480,9 +575,9 @@ function renderTests(
         "";
 
 
-      /*
-       * 教科
-       */
+      /* ---------------------------------------------------
+         教科
+      --------------------------------------------------- */
 
       const subjectCell =
         document.createElement(
@@ -495,9 +590,9 @@ function renderTests(
         "";
 
 
-      /*
-       * 学年
-       */
+      /* ---------------------------------------------------
+         学年
+      --------------------------------------------------- */
 
       const gradeCell =
         document.createElement(
@@ -510,9 +605,9 @@ function renderTests(
         "";
 
 
-      /*
-       * 操作
-       */
+      /* ---------------------------------------------------
+         操作
+      --------------------------------------------------- */
 
       const actionCell =
         document.createElement(
@@ -526,61 +621,106 @@ function renderTests(
         );
 
 
-      actions.style.display =
-        "flex";
-
-
-      actions.style.flexWrap =
-        "wrap";
-
-
-      actions.style.gap =
-        "6px";
+      actions.className =
+        "test-actions";
 
 
       /*
        * 枠設定
        */
 
-      const layoutLink =
+      actions.appendChild(
         createActionLink(
           `/teacher/tests/layout?test=${encodeURIComponent(
             test.id
           )}`,
           "枠設定"
-        );
+        )
+      );
 
 
       /*
-       * 配点設定
+       * 配点
        */
 
-      const pointsLink =
+      actions.appendChild(
         createActionLink(
           `/teacher/tests/points?test=${encodeURIComponent(
             test.id
           )}`,
           "配点設定"
-        );
+        )
+      );
+
+
+      /*
+       * クロップ
+       */
+
+      actions.appendChild(
+        createActionLink(
+          `/teacher/answers/regions?test=${encodeURIComponent(
+            test.id
+          )}`,
+          "答案クロップ"
+        )
+      );
 
 
       /*
        * 採点
+       *
+       * select.htmlは経由しない。
        */
 
-      const markingLink =
+      actions.appendChild(
         createActionLink(
           `/teacher/marking?test=${encodeURIComponent(
             test.id
           )}`,
           "採点"
+        )
+      );
+
+
+      /*
+       * 結果
+       */
+
+      actions.appendChild(
+        createActionLink(
+          `/teacher/results/summary?test=${encodeURIComponent(
+            test.id
+          )}`,
+          test.results_published
+            ? "結果"
+            : "成績処理"
+        )
+      );
+
+
+      /*
+       * 公開状態
+       */
+
+      const status =
+        document.createElement(
+          "span"
         );
 
 
-      actions.append(
-        layoutLink,
-        pointsLink,
-        markingLink
+      status.className =
+        "test-status";
+
+
+      status.textContent =
+        test.results_published
+          ? "公開済み"
+          : "未確定";
+
+
+      actions.appendChild(
+        status
       );
 
 
@@ -640,7 +780,7 @@ function createActionLink(
 
 
 /* =========================================================
-   CREATE TEST
+   CREATE
 ========================================================= */
 
 async function createTest() {
@@ -706,33 +846,6 @@ async function createTest() {
 
   try {
 
-    /*
-     * 現在のtestsテーブルに合わせる。
-     */
-
-    const insertData = {
-
-      name,
-
-      subject:
-        subject ||
-        null,
-
-      grade:
-        grade ||
-        null
-
-    };
-
-
-    /*
-     * created_byが現在のDBに存在する場合だけ
-     * 使用したいところだが、
-     * スキーマ差でINSERT失敗するのを防ぐため
-     * ここでは送らない。
-     */
-
-
     const {
       data,
       error
@@ -741,9 +854,19 @@ async function createTest() {
         .from(
           "tests"
         )
-        .insert(
-          insertData
-        )
+        .insert({
+
+          name,
+
+          subject:
+            subject ||
+            null,
+
+          grade:
+            grade ||
+            null
+
+        })
         .select(
           "id"
         )
@@ -767,8 +890,7 @@ async function createTest() {
 
 
     /*
-     * 作成後は実在する
-     * teacher/tests/layout.htmlへ。
+     * 作成直後は枠設定。
      */
 
     location.href =

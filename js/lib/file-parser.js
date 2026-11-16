@@ -1,18 +1,13 @@
+
 /* =========================================================
    テスト成績システム
    共通ファイル解析
 
-   対応:
-   JPG
-   JPEG
-   PNG
-   WEBP
-   GIF
-   BMP
+   JPG / JPEG / PNG / WEBP / GIF / BMP
    PDF
    ZIP
 
-   出力はすべて
+   すべて
    「ページ画像」
    に統一する。
 ========================================================= */
@@ -22,33 +17,23 @@
   "use strict";
 
 
-  /* =======================================================
-     対応形式
-  ======================================================= */
-
   const IMAGE_EXTENSIONS = [
-
     "jpg",
     "jpeg",
     "png",
     "webp",
     "gif",
     "bmp"
-
   ];
 
 
   const PDF_EXTENSIONS = [
-
     "pdf"
-
   ];
 
 
   const ZIP_EXTENSIONS = [
-
     "zip"
-
   ];
 
 
@@ -94,12 +79,11 @@
     filename
   ) {
 
-    return IMAGE_EXTENSIONS
-      .includes(
-        getExtension(
-          filename
-        )
-      );
+    return IMAGE_EXTENSIONS.includes(
+      getExtension(
+        filename
+      )
+    );
 
   }
 
@@ -108,12 +92,11 @@
     filename
   ) {
 
-    return PDF_EXTENSIONS
-      .includes(
-        getExtension(
-          filename
-        )
-      );
+    return PDF_EXTENSIONS.includes(
+      getExtension(
+        filename
+      )
+    );
 
   }
 
@@ -122,12 +105,11 @@
     filename
   ) {
 
-    return ZIP_EXTENSIONS
-      .includes(
-        getExtension(
-          filename
-        )
-      );
+    return ZIP_EXTENSIONS.includes(
+      getExtension(
+        filename
+      )
+    );
 
   }
 
@@ -214,11 +196,10 @@
 
 
     const pages =
-      await window.TEST_SCORE_PDF
-        .pdfToPages(
-          file,
-          2
-        );
+      await window.TEST_SCORE_PDF.pdfToPages(
+        file,
+        2
+      );
 
 
     return pages.map(
@@ -277,10 +258,6 @@
     const entries = [];
 
 
-    /*
-      ZIP内を取得
-    */
-
     for (
       const [
         path,
@@ -291,10 +268,6 @@
       )
     ) {
 
-      /*
-        フォルダ除外
-      */
-
       if (
         entry.dir
       ) {
@@ -303,10 +276,6 @@
 
       }
 
-
-      /*
-        対応ファイルだけ
-      */
 
       if (
         !isImage(path) &&
@@ -340,10 +309,6 @@
     }
 
 
-    /*
-      何もない
-    */
-
     if (
       !entries.length
     ) {
@@ -356,17 +321,19 @@
 
 
     /*
-      ファイル名順
-    */
+     * ZIP内のファイル順を安定化。
+     */
 
     entries.sort(
-      (a, b) =>
+      (
+        a,
+        b
+      ) =>
         a.path.localeCompare(
           b.path,
           undefined,
           {
-            numeric:
-              true
+            numeric:true
           }
         )
     );
@@ -379,25 +346,27 @@
       1;
 
 
-    /*
-      ZIP内部ファイル処理
-    */
-
     for (
       const entry
       of entries
     ) {
-
-
-      /*
-        PDF
-      */
 
       if (
         isPdf(
           entry.name
         )
       ) {
+
+        if (
+          !window.TEST_SCORE_PDF
+        ) {
+
+          throw new Error(
+            "PDF処理エンジンが読み込まれていません。"
+          );
+
+        }
+
 
         const pages =
           await window.TEST_SCORE_PDF
@@ -444,10 +413,6 @@
 
       }
 
-
-      /*
-        画像
-      */
 
       const image =
         await loadImage(
@@ -502,13 +467,22 @@
     file
   ) {
 
+    if (!file) {
+
+      throw new Error(
+        "ファイルが指定されていません。"
+      );
+
+    }
+
+
     if (
       isZip(
         file.name
       )
     ) {
 
-      return await parseZip(
+      return parseZip(
         file
       );
 
@@ -521,7 +495,7 @@
       )
     ) {
 
-      return await parsePdf(
+      return parsePdf(
         file
       );
 
@@ -534,7 +508,7 @@
       )
     ) {
 
-      return await parseImage(
+      return parseImage(
         file
       );
 
@@ -549,65 +523,7 @@
 
 
   /* =======================================================
-     Image → PNG
-  ======================================================= */
-
-  async function imageToPng(
-    image
-  ) {
-
-    const canvas =
-      document.createElement(
-        "canvas"
-      );
-
-
-    canvas.width =
-      image.naturalWidth;
-
-
-    canvas.height =
-      image.naturalHeight;
-
-
-    const context =
-      canvas.getContext(
-        "2d"
-      );
-
-
-    /*
-      背景を白に統一
-    */
-
-    context.fillStyle =
-      "#ffffff";
-
-
-    context.fillRect(
-      0,
-      0,
-      canvas.width,
-      canvas.height
-    );
-
-
-    context.drawImage(
-      image,
-      0,
-      0
-    );
-
-
-    return await canvasToPng(
-      canvas
-    );
-
-  }
-
-
-  /* =======================================================
-     Blob → Image
+     画像読み込み
   ======================================================= */
 
   function loadImage(
@@ -666,6 +582,64 @@
           url;
 
       }
+    );
+
+  }
+
+
+  /* =======================================================
+     Image → PNG
+  ======================================================= */
+
+  async function imageToPng(
+    image
+  ) {
+
+    const canvas =
+      document.createElement(
+        "canvas"
+      );
+
+
+    canvas.width =
+      image.naturalWidth;
+
+
+    canvas.height =
+      image.naturalHeight;
+
+
+    const context =
+      canvas.getContext(
+        "2d"
+      );
+
+
+    /*
+     * 透過画像でも答案背景を白に統一。
+     */
+
+    context.fillStyle =
+      "#ffffff";
+
+
+    context.fillRect(
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
+
+
+    context.drawImage(
+      image,
+      0,
+      0
+    );
+
+
+    return canvasToPng(
+      canvas
     );
 
   }

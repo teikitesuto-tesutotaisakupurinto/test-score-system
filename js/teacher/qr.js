@@ -1,69 +1,171 @@
-/* =========================================================
-   QRシール発行
 
-   1人 18枚
-   1枚 3cm × 2cm
-   3人 / A4
-   合計54枚
+"use strict";
+
+/* =========================================================
+   生徒QR発行
+
+   QR値
+   ---------------------------------------------------------
+   STUDENT:<生徒番号>
+
+   答案アップロード時に
+   QRを読み取り、生徒番号と完全一致させる。
+
+   ・有効な生徒のみ
+   ・生徒番号を変更しない
+   ・QR値を推測しない
 ========================================================= */
 
-let students = [];
+
+let DB = null;
+
+
+/* =========================================================
+   INIT
+========================================================= */
+
+document.addEventListener(
+  "DOMContentLoaded",
+  initializeQR
+);
 
 
 async function initializeQR() {
 
-  const profile =
-    await getProfile();
+  try {
+
+    DB =
+      window.supabaseClient ||
+      window.SB;
 
 
-  if (!profile) {
+    if (!DB) {
 
-    window.location.href =
-      "/login";
+      throw new Error(
+        "Supabase Clientが初期化されていません。"
+      );
 
-    return;
+    }
+
+
+    const auth =
+      await requireRole(
+        "teacher"
+      );
+
+
+    if (!auth) {
+
+      return;
+
+    }
+
+
+    document.getElementById(
+      "teacherName"
+    ).textContent =
+      auth.profile?.name ||
+      "先生";
+
+
+    setupEvents();
+
+
+    await loadStudents();
+
+
+  } catch (error) {
+
+    console.error(
+      "QR:",
+      error
+    );
+
+
+    showError(
+      error.message ||
+      "生徒QRを読み込めませんでした。"
+    );
 
   }
-
-
-  if (
-    profile.role !== "teacher" &&
-    profile.role !== "admin"
-  ) {
-
-    window.location.href =
-      "/student/dashboard";
-
-    return;
-
-  }
-
-
-  document.getElementById(
-    "teacherName"
-  ).textContent =
-    profile.name || "先生";
-
-
-  await loadStudents();
-
 
 }
 
 
+/* =========================================================
+   EVENTS
+========================================================= */
+
+function setupEvents() {
+
+  document
+    .getElementById(
+      "reloadButton"
+    )
+    ?.addEventListener(
+      "click",
+      loadStudents
+    );
+
+
+  document
+    .getElementById(
+      "printButton"
+    )
+    ?.addEventListener(
+      "click",
+      () => {
+
+        window.print();
+
+      }
+    );
+
+
+  document
+    .getElementById(
+      "logoutButton"
+    )
+    ?.addEventListener(
+      "click",
+      async () => {
+
+        await logout();
+
+      }
+    );
+
+}
+
+
+/* =========================================================
+   STUDENTS
+========================================================= */
+
 async function loadStudents() {
+
+  setStatus(
+    "生徒一覧を取得しています..."
+  );
+
 
   const {
     data,
     error
   } =
-    await supabaseClient
-      .from("students")
-      .select(`
+    await DB
+      .from(
+        "students"
+      )
+      .select(
+        `
         id,
         student_no,
-        name
-      `)
+        name,
+        active,
+        qr_token
+        `
+      )
       .eq(
         "active",
         true
@@ -71,401 +173,168 @@ async function loadStudents() {
       .order(
         "student_no",
         {
-          ascending: true
+          ascending:true
         }
       );
 
 
   if (error) {
 
-    console.error(error);
+    throw error;
 
+  }
+
+
+  renderQr(
+    data || []
+  );
+
+
+  setStatus(
+    `${(
+      data ||
+      []
+    ).length}名分のQRを表示しています。`
+  );
+
+}
+
+
+/* =========================================================
+   RENDER
+========================================================= */
+
+function renderQr(
+  students
+) {
+
+  const grid =
     document.getElementById(
-      "message"
-    ).textContent =
-      "生徒一覧を取得できませんでした。";
+      "qrGrid"
+    );
+
+
+  if (!grid) {
 
     return;
 
   }
 
 
-  students =
-    data || [];
+  grid.innerHTML =
+    "";
 
 
-  const selectIds = [
-    "student1",
-    "student2",
-    "student3"
-  ];
+  if (!students.length) {
+
+    grid.innerHTML = `
+
+      <div class="empty">
+
+        有効な生徒が登録されていません。
+
+      </div>
+
+    `;
+
+    return;
+
+  }
 
 
-  selectIds.forEach(
-    id => {
+  students.forEach(
+    student => {
 
-      const select =
-        document.getElementById(
-          id
+      const card =
+        document.createElement(
+          "article"
         );
 
 
-      select.innerHTML = `
-
-        <option value="">
-          選択してください
-        </option>
-
-        ${
-          students
-            .map(
-              student => `
-
-                <option
-                  value="${student.id}"
-                >
-
-                  ${escapeHtml(
-                    student.student_no
-                  )}
-
-                  -
-                  ${escapeHtml(
-                    student.name
-                  )}
-
-                </option>
-
-              `
-            )
-            .join("")
-        }
-
-      `;
-
-    }
-  );
-
-}
+      card.className =
+        "qr-card";
 
 
-/*
-  生成
-*/
-
-document
-  .getElementById(
-    "generateButton"
-  )
-  .addEventListener(
-    "click",
-    async () => {
-
-      const ids = [
-
-        document.getElementById(
-          "student1"
-        ).value,
-
-        document.getElementById(
-          "student2"
-        ).value,
-
-        document.getElementById(
-          "student3"
-        ).value
-
-      ];
-
-
-      if (
-        ids.some(
-          id => !id
-        )
-      ) {
-
-        alert(
-          "3人すべて選択してください。"
+      const studentNo =
+        document.createElement(
+          "div"
         );
 
-        return;
 
-      }
+      studentNo.className =
+        "qr-student-no";
+
+
+      studentNo.textContent =
+        student.student_no ||
+        "";
+
+
+      const studentName =
+        document.createElement(
+          "div"
+        );
+
+
+      studentName.className =
+        "qr-student-name";
+
+
+      studentName.textContent =
+        student.name ||
+        "";
+
+
+      const image =
+        document.createElement(
+          "div"
+        );
+
+
+      image.className =
+        "qr-image";
+
+
+      const qr =
+        document.createElement(
+          "div"
+        );
 
 
       /*
-        同じ生徒を複数選択しない
-      */
+       * qr_tokenが存在する場合は
+       * DBに保存された値を使用。
+       *
+       * 無い場合は生徒番号を使用。
+       */
+
+      const qrValue =
+        student.qr_token ||
+        `STUDENT:${student.student_no}`;
+
 
       if (
-        new Set(ids).size !== 3
+        typeof QRCode !==
+        "function"
       ) {
 
-        alert(
-          "同じ生徒を複数選択できません。"
-        );
+        image.textContent =
+          "QRライブラリを読み込めませんでした。";
 
-        return;
-
-      }
-
-
-      const selected =
-        ids.map(
-          id =>
-            students.find(
-              student =>
-                student.id === id
-            )
-        );
-
-
-      await createStickerBatch(
-        selected
-      );
-
-      createStickerSheet(
-        selected
-      );
-
-
-      document.getElementById(
-        "printButton"
-      ).style.display =
-        "inline-flex";
-
-    }
-  );
-
-
-/*
-  A4シール生成
-*/
-
-async function createStickerBatch(
-  selectedStudents
-) {
-
-  const session =
-    await getSession();
-
-
-  /*
-    発行履歴
-  */
-
-  const {
-    data: batch,
-    error: batchError
-  } =
-    await supabaseClient
-      .from(
-        "qr_sticker_batches"
-      )
-      .insert({
-
-        created_by:
-          session.user.id,
-
-        stickers_per_student:
-          18,
-
-        students_per_sheet:
-          3
-
-      })
-      .select()
-      .single();
-
-
-  if (batchError) {
-
-    console.error(
-      batchError
-    );
-
-    throw batchError;
-
-  }
-
-
-  /*
-    1人18枚
-  */
-
-  const rows = [];
-
-
-  selectedStudents.forEach(
-    student => {
-
-      for (
-        let i = 1;
-        i <= 18;
-        i++
-      ) {
-
-        rows.push({
-
-          batch_id:
-            batch.id,
-
-          student_id:
-            student.id,
-
-          sticker_no:
-            i,
-
-          qr_value:
-            `STUDENT:${student.student_no}`
-
-        });
-
-      }
-
-    }
-  );
-
-
-  const {
-    error
-  } =
-    await supabaseClient
-      .from(
-        "qr_stickers"
-      )
-      .insert(
-        rows
-      );
-
-
-  if (error) {
-
-    console.error(
-      error
-    );
-
-    throw error;
-
-  }
-
-}
-
-
-/*
-  シールシート
-*/
-
-function createStickerSheet(
-  selectedStudents
-) {
-
-  const area =
-    document.getElementById(
-      "stickerArea"
-    );
-
-
-  let html = `
-
-    <div class="sticker-sheet">
-
-  `;
-
-
-  let index = 0;
-
-
-  selectedStudents.forEach(
-    student => {
-
-      for (
-        let i = 1;
-        i <= 18;
-        i++
-      ) {
-
-        html += `
-
-          <div class="sticker">
-
-            <div
-              id="qr_${index}"
-              class="sticker-qr"
-            ></div>
-
-            <div
-              class="sticker-info"
-            >
-
-              ${escapeHtml(
-                student.name
-              )}
-
-              <br>
-
-              ${escapeHtml(
-                student.student_no
-              )}
-
-            </div>
-
-          </div>
-
-        `;
-
-
-        index++;
-
-      }
-
-    }
-  );
-
-
-  html += `
-    </div>
-  `;
-
-
-  area.innerHTML =
-    html;
-
-
-  /*
-    QR生成
-  */
-
-  index = 0;
-
-
-  selectedStudents.forEach(
-    student => {
-
-      for (
-        let i = 1;
-        i <= 18;
-        i++
-      ) {
-
-        const element =
-          document.getElementById(
-            `qr_${index}`
-          );
-
+      } else {
 
         new QRCode(
-          element,
+          qr,
           {
 
             text:
-              `STUDENT:${student.student_no}`,
+              qrValue,
 
             width:
-              68,
+              150,
 
             height:
-              68,
+              150,
 
             correctLevel:
               QRCode.CorrectLevel.M
@@ -474,9 +343,38 @@ function createStickerSheet(
         );
 
 
-        index++;
+        image.appendChild(
+          qr
+        );
 
       }
+
+
+      const value =
+        document.createElement(
+          "div"
+        );
+
+
+      value.className =
+        "qr-value";
+
+
+      value.textContent =
+        qrValue;
+
+
+      card.append(
+        studentNo,
+        studentName,
+        image,
+        value
+      );
+
+
+      grid.appendChild(
+        card
+      );
 
     }
   );
@@ -484,75 +382,47 @@ function createStickerSheet(
 }
 
 
-/*
-  印刷
-*/
+/* =========================================================
+   STATUS
+========================================================= */
 
-document
-  .getElementById(
-    "printButton"
-  )
-  .addEventListener(
-    "click",
-    () => {
-
-      window.print();
-
-    }
-  );
-
-
-/*
-  ログアウト
-*/
-
-document
-  .getElementById(
-    "logoutButton"
-  )
-  .addEventListener(
-    "click",
-    logout
-  );
-
-
-function escapeHtml(
-  value
+function setStatus(
+  text,
+  error = false
 ) {
 
-  if (
-    value === null ||
-    value === undefined
-  ) {
+  const element =
+    document.getElementById(
+      "status"
+    );
 
-    return "";
+
+  if (!element) {
+
+    return;
 
   }
 
 
-  return String(value)
-    .replaceAll(
-      "&",
-      "&amp;"
-    )
-    .replaceAll(
-      "<",
-      "&lt;"
-    )
-    .replaceAll(
-      ">",
-      "&gt;"
-    )
-    .replaceAll(
-      '"',
-      "&quot;"
-    )
-    .replaceAll(
-      "'",
-      "&#039;"
-    );
+  element.textContent =
+    text;
+
+
+  element.className =
+    error
+      ? "status error"
+      : "status";
 
 }
 
 
-initializeQR();
+function showError(
+  text
+) {
+
+  setStatus(
+    text,
+    true
+  );
+
+}

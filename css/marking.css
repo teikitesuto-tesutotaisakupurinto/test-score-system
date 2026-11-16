@@ -1,5 +1,7 @@
+
 /* =========================================================
    デジタル採点
+   高速・串刺し採点UI
 ========================================================= */
 
 * {
@@ -31,12 +33,12 @@ body {
   display: flex;
   flex-direction: column;
 
-  background: #dce5ed;
+  background: #c8d5e0;
 }
 
 
 /* =========================================================
-   ツールバー
+   上部ツールバー
 ========================================================= */
 
 .marking-toolbar {
@@ -45,7 +47,7 @@ body {
   background: #f5f6f7;
 
   border-bottom:
-    1px solid #9da7b0;
+    1px solid #8f9aa4;
 }
 
 
@@ -96,16 +98,18 @@ body {
   color: #555;
 
   font-size: 12px;
+
+  white-space: nowrap;
 }
 
 
 .mark-tool {
-  min-width: 36px;
+  min-width: 38px;
 
   height: 32px;
 
   padding:
-    4px 8px;
+    3px 8px;
 
   border:
     1px solid #adb6be;
@@ -117,10 +121,12 @@ body {
   color: #222;
 
   cursor: pointer;
+
+  font-weight: 700;
 }
 
 
-.mark-tool:hover:not(:disabled) {
+.mark-tool:hover {
   background: #edf3f8;
 }
 
@@ -143,8 +149,54 @@ body {
 }
 
 
+/* =========================================================
+   ○ × △ ◎
+========================================================= */
+
+.mark-tool.symbol {
+  min-width: 42px;
+
+  font-size: 18px;
+
+  line-height: 1;
+}
+
+
+/* =========================================================
+   点数入力
+========================================================= */
+
 #scoreInput {
-  width: 75px;
+  width: 72px;
+
+  height: 32px;
+
+  padding:
+    4px 7px;
+
+  border:
+    1px solid #adb6be;
+
+  border-radius: 3px;
+
+  background: #fff;
+
+  font-size: 14px;
+
+  text-align: center;
+}
+
+
+#scoreInput:focus {
+  outline: none;
+
+  border-color:
+    #1769aa;
+}
+
+
+#markText {
+  width: 130px;
 
   height: 32px;
 
@@ -160,20 +212,11 @@ body {
 }
 
 
-#markText {
-  width: 140px;
+#markText:focus {
+  outline: none;
 
-  height: 32px;
-
-  padding:
-    4px 7px;
-
-  border:
-    1px solid #adb6be;
-
-  border-radius: 3px;
-
-  background: #fff;
+  border-color:
+    #1769aa;
 }
 
 
@@ -203,6 +246,8 @@ body {
     1px solid #adb6be;
 
   border-radius: 3px;
+
+  background: #fff;
 }
 
 
@@ -210,6 +255,8 @@ body {
   font-size: 12px;
 
   color: #555;
+
+  white-space: nowrap;
 }
 
 
@@ -255,6 +302,8 @@ body {
   font-size: 13px;
 
   font-weight: 700;
+
+  white-space: nowrap;
 }
 
 
@@ -267,18 +316,21 @@ body {
 
   min-height: 0;
 
-  display: grid;
+  display: flex;
 
-  grid-template-columns:
-    150px minmax(0, 1fr);
+  overflow: hidden;
 }
 
 
 /* =========================================================
    模範解答
+   ---------------------------------------------------------
+   必要な場合のみ表示。
 ========================================================= */
 
 .model-pane {
+  flex: 0 0 150px;
+
   min-width: 0;
 
   background: #fff;
@@ -347,33 +399,44 @@ body {
 
 /* =========================================================
    答案エリア
+   ---------------------------------------------------------
+   画面いっぱい。
 ========================================================= */
 
 .answer-area {
+  flex: 1;
+
   min-width: 0;
+
   min-height: 0;
 
   overflow: auto;
 
-  padding: 8px;
+  padding: 7px;
 
   background: #c0d0df;
 }
 
+
+/* =========================================================
+   答案グリッド
+   ---------------------------------------------------------
+   列数はJS側で画面サイズに応じて変更可能。
+========================================================= */
 
 .answer-grid {
   display: grid;
 
   grid-template-columns:
     repeat(
-      2,
+      auto-fit,
       minmax(
-        280px,
+        300px,
         1fr
       )
     );
 
-  gap: 8px;
+  gap: 7px;
 
   align-items: start;
 }
@@ -406,6 +469,15 @@ body {
 
   border:
     2px solid #ed8052;
+
+  box-shadow:
+    0 1px 2px
+    rgba(
+      0,
+      0,
+      0,
+      .08
+    );
 }
 
 
@@ -419,7 +491,7 @@ body {
       23,
       105,
       170,
-      .2
+      .22
     );
 }
 
@@ -430,21 +502,33 @@ body {
 }
 
 
+.answer-card.error {
+  border-color:
+    #b42318;
+}
+
+
+/* =========================================================
+   答案ヘッダー
+   ---------------------------------------------------------
+   生徒名・生徒番号は表示しない。
+========================================================= */
+
 .answer-header {
-  min-height: 28px;
+  min-height: 26px;
 
   display: flex;
 
   align-items: center;
 
   padding:
-    0 7px;
+    0 6px;
 
   background: #ed8052;
 
   color: #fff;
 
-  font-size: 12px;
+  font-size: 11px;
 
   font-weight: 700;
 }
@@ -452,37 +536,35 @@ body {
 
 .answer-card.selected
 .answer-header {
-  background: #1769aa;
+  background:
+    #1769aa;
 }
 
 
 .answer-card.done
 .answer-header {
-  background: #16834b;
+  background:
+    #16834b;
 }
 
 
 .answer-status {
   margin-left: auto;
+
+  font-size: 11px;
 }
 
 
 /* =========================================================
-   答案画像
+   答案画像ステージ
 ========================================================= */
 
 .answer-stage {
   position: relative;
 
-  display: flex;
+  width: 100%;
 
-  align-items: center;
-
-  justify-content: center;
-
-  min-height: 130px;
-
-  max-height: 330px;
+  min-height: 160px;
 
   overflow: hidden;
 
@@ -497,19 +579,47 @@ body {
 
   height: auto;
 
-  max-height: 330px;
+  max-height: none;
 
   object-fit: contain;
+}
+
+
+/*
+ * クロップ画像を使う場合。
+ */
+
+.answer-image.crop {
+  width: 100%;
+
+  height: auto;
+
+  object-fit: contain;
+}
+
+
+/*
+ * 元答案をCSSクロップ表示する場合。
+ */
+
+.answer-image-source {
+  position: absolute;
+
+  max-width: none;
+
+  max-height: none;
+
+  margin: 0;
 }
 
 
 .answer-canvas {
   position: absolute;
 
-  top: 0;
-  left: 0;
+  inset: 0;
 
   width: 100%;
+
   height: 100%;
 
   pointer-events: none;
@@ -518,16 +628,41 @@ body {
 }
 
 
+/*
+ * 採点記号用レイヤー。
+ */
+
+.answer-mark-layer {
+  position: absolute;
+
+  inset: 0;
+
+  z-index: 10;
+
+  pointer-events: none;
+}
+
+
+.answer-mark-layer
+.mark-object {
+  pointer-events: auto;
+}
+
+
 /* =========================================================
-   答案点数
+   答案カード下部
 ========================================================= */
 
 .answer-score-bar {
+  min-height: 38px;
+
   display: flex;
+
+  align-items: center;
 
   gap: 4px;
 
-  padding: 5px;
+  padding: 4px;
 
   background: #f2f4f6;
 
@@ -537,9 +672,111 @@ body {
 
 
 .answer-score {
-  min-width: 32px;
+  min-width: 34px;
 
-  height: 29px;
+  height: 30px;
+
+  padding:
+    2px 7px;
+
+  border:
+    1px solid #adb6be;
+
+  border-radius: 3px;
+
+  background: #fff;
+
+  cursor: pointer;
+
+  font-size: 12px;
+}
+
+
+.answer-score:hover {
+  background:
+    #e8f1f8;
+}
+
+
+.answer-score.active {
+  background:
+    #d9ebf8;
+
+  border-color:
+    #1769aa;
+}
+
+
+.answer-card.done
+.answer-score {
+  border-color:
+    #16834b;
+}
+
+
+/* =========================================================
+   L / K 高速採点
+========================================================= */
+
+.quick-score {
+  min-width: 42px;
+
+  height: 30px;
+
+  padding:
+    2px 8px;
+
+  border:
+    1px solid #adb6be;
+
+  border-radius: 3px;
+
+  background: #fff;
+
+  cursor: pointer;
+
+  font-weight: 700;
+}
+
+
+.quick-score:hover {
+  background:
+    #e8f1f8;
+}
+
+
+.quick-score.full {
+  border-color:
+    #16834b;
+}
+
+
+.quick-score.zero {
+  border-color:
+    #b42318;
+}
+
+
+/* =========================================================
+   数字キー
+========================================================= */
+
+.number-toolbar {
+  display: flex;
+
+  gap: 3px;
+
+  flex-wrap: wrap;
+}
+
+
+.number-button {
+  min-width: 31px;
+
+  height: 30px;
+
+  padding:
+    2px 5px;
 
   border:
     1px solid #adb6be;
@@ -552,15 +789,66 @@ body {
 }
 
 
-.answer-score:hover {
-  background: #e8f1f8;
+.number-button:hover {
+  background:
+    #e8f1f8;
 }
 
 
-.answer-card.done
-.answer-score {
-  border-color:
+/* =========================================================
+   状態
+========================================================= */
+
+.answer-state {
+  padding:
+    3px 6px;
+
+  color: #777;
+
+  font-size: 11px;
+
+  white-space: nowrap;
+}
+
+
+.answer-state.marked {
+  color:
     #16834b;
+
+  font-weight: 700;
+}
+
+
+.answer-state.unmarked {
+  color:
+    #b42318;
+}
+
+
+/* =========================================================
+   エラー
+========================================================= */
+
+.answer-error {
+  min-height: 160px;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  padding: 20px;
+
+  color:
+    #b42318;
+
+  background:
+    #fff4f2;
+
+  text-align: center;
+
+  font-size: 12px;
 }
 
 
@@ -569,7 +857,7 @@ body {
 ========================================================= */
 
 .marking-footer {
-  height: 50px;
+  min-height: 48px;
 
   flex-shrink: 0;
 
@@ -593,6 +881,8 @@ body {
   display: flex;
 
   gap: 4px;
+
+  flex-wrap: wrap;
 }
 
 
@@ -613,12 +903,59 @@ body {
 
 
 .footer-score:hover {
-  background: #e8f1f8;
+  background:
+    #e8f1f8;
 }
 
 
 #nextUnmarked {
   margin-left: auto;
+}
+
+
+/* =========================================================
+   完了
+========================================================= */
+
+.marking-complete {
+  position: fixed;
+
+  right: 15px;
+
+  bottom: 60px;
+
+  z-index: 50;
+
+  display: none;
+
+  padding:
+    10px 14px;
+
+  background: #fff;
+
+  border:
+    1px solid #16834b;
+
+  color:
+    #16834b;
+
+  box-shadow:
+    0 2px 8px
+    rgba(
+      0,
+      0,
+      0,
+      .15
+    );
+
+  font-size: 13px;
+
+  font-weight: 700;
+}
+
+
+.marking-complete.show {
+  display: block;
 }
 
 
@@ -629,34 +966,63 @@ body {
 .answer-area::-webkit-scrollbar,
 .model-pane::-webkit-scrollbar {
   width: 10px;
+
   height: 10px;
 }
 
 
 .answer-area::-webkit-scrollbar-thumb,
 .model-pane::-webkit-scrollbar-thumb {
-  background: #aab5bf;
+  background:
+    #aab5bf;
 
   border-radius: 4px;
 }
 
 
+.answer-area::-webkit-scrollbar-track,
+.model-pane::-webkit-scrollbar-track {
+  background:
+    #d9e1e8;
+}
+
+
 /* =========================================================
-   小さい画面
+   レスポンシブ
 ========================================================= */
 
-@media (max-width: 900px) {
+@media (max-width: 1200px) {
 
-  .marking-content {
+  .answer-grid {
     grid-template-columns:
-      110px minmax(0, 1fr);
+      repeat(
+        auto-fit,
+        minmax(
+          250px,
+          1fr
+        )
+      );
+  }
+
+}
+
+
+@media (max-width: 800px) {
+
+  .marking-toolbar-row {
+    gap: 3px;
+  }
+
+
+  .model-pane {
+    display: none;
   }
 
 
   .answer-grid {
     grid-template-columns:
       repeat(
-        2,
+        auto-fit,
         minmax(
           220px,
           1fr

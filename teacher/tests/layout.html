@@ -17,85 +17,87 @@
 
 <link
   rel="stylesheet"
-  href="/css/style.css"
+  href="/css/common.css"
 >
 
 <style>
 
 .layout-main {
-  max-width: 1400px;
-  margin: 0 auto;
+  max-width:1400px;
+  margin:0 auto;
 }
 
 .toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 15px;
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-bottom:15px;
 }
 
 .status {
-  padding: 10px 12px;
-  margin-bottom: 15px;
+  padding:10px 12px;
+  margin-bottom:15px;
 
-  background: #f5f6f7;
+  background:#f5f6f7;
 
-  border: 1px solid #d5dbe0;
+  border:1px solid #d5dbe0;
 
-  font-size: 13px;
+  font-size:13px;
+
+  white-space:pre-wrap;
 }
 
 .status.error {
-  color: #b42318;
+  color:#b42318;
 }
 
 .layout-canvas {
-  position: relative;
+  position:relative;
 
-  overflow: auto;
+  overflow:auto;
 
-  min-height: 500px;
+  min-height:500px;
 
-  background: #e7ebef;
+  background:#e7ebef;
 
-  border: 1px solid #cbd2d8;
+  border:1px solid #cbd2d8;
 }
 
 .layout-image {
-  display: block;
+  display:block;
 
-  max-width: none;
+  max-width:none;
 
-  user-select: none;
+  user-select:none;
 }
 
 .draw-layer {
-  position: absolute;
+  position:absolute;
 
-  inset: 0;
+  inset:0;
 
-  cursor: crosshair;
+  cursor:crosshair;
 }
 
 .rect {
-  position: absolute;
+  position:absolute;
 
-  border: 2px solid #1769aa;
+  border:2px solid #1769aa;
 
-  background: rgba(
+  background:rgba(
     23,
     105,
     170,
     .12
   );
 
-  pointer-events: none;
+  pointer-events:none;
 }
 
 .rect.qr {
-  border-color: #333;
+  border-color:#333;
 
-  background: rgba(
+  background:rgba(
     0,
     0,
     0,
@@ -103,35 +105,57 @@
   );
 }
 
+.rect.name {
+  border-color:#777;
+
+  background:rgba(
+    100,
+    100,
+    100,
+    .08
+  );
+}
+
+.rect.aggregate {
+  border-color:#8b5e00;
+
+  background:rgba(
+    139,
+    94,
+    0,
+    .08
+  );
+}
+
 .rect-label {
-  position: absolute;
+  position:absolute;
 
-  left: 2px;
-  top: 2px;
+  left:2px;
+  top:2px;
 
-  padding: 2px 5px;
+  padding:2px 5px;
 
-  background: #fff;
+  background:#fff;
 
-  font-size: 11px;
+  font-size:11px;
 
-  font-weight: 700;
+  font-weight:700;
 }
 
 .question-card {
-  margin-top: 12px;
+  margin-top:12px;
 
-  padding: 15px;
+  padding:15px;
 
-  background: #fff;
+  background:#fff;
 
-  border: 1px solid #d0d6dc;
+  border:1px solid #d0d6dc;
 
-  border-radius: 5px;
+  border-radius:5px;
 }
 
 .question-grid {
-  display: grid;
+  display:grid;
 
   grid-template-columns:
     120px
@@ -139,103 +163,102 @@
     2fr
     1fr;
 
-  gap: 10px;
+  gap:10px;
 
-  align-items: end;
+  align-items:end;
 }
 
 .question-grid label {
-  display: block;
+  display:block;
 
-  margin-bottom: 5px;
+  margin-bottom:5px;
 
-  font-size: 12px;
+  font-size:12px;
 
-  font-weight: 700;
+  font-weight:700;
 }
 
 .question-grid input {
-  width: 100%;
+  width:100%;
 
-  height: 38px;
+  height:38px;
 
-  padding: 7px 9px;
+  padding:7px 9px;
 
-  border: 1px solid #b8c1c9;
+  border:1px solid #b8c1c9;
 
-  border-radius: 4px;
+  border-radius:4px;
 
-  background: #fff;
+  background:#fff;
 }
 
 .question-actions {
-  margin-top: 10px;
+  margin-top:10px;
 
-  display: flex;
+  display:flex;
 
-  justify-content: flex-end;
+  justify-content:flex-end;
 
-  gap: 7px;
+  gap:7px;
 }
 
 .box-list {
-  margin-top: 15px;
+  margin-top:15px;
 }
 
 .box-row {
-  display: flex;
+  display:flex;
 
-  justify-content: space-between;
+  justify-content:space-between;
 
-  align-items: center;
+  align-items:center;
 
-  gap: 10px;
+  gap:10px;
 
-  padding: 10px;
+  padding:10px;
 
-  border-bottom: 1px solid #e1e5e8;
+  border-bottom:1px solid #e1e5e8;
 }
 
 .box-info {
-  min-width: 0;
+  min-width:0;
 }
 
 .box-title {
-  font-weight: 700;
+  font-weight:700;
 
-  font-size: 13px;
+  font-size:13px;
 }
 
 .box-meta {
-  margin-top: 4px;
+  margin-top:4px;
 
-  color: #666;
+  color:#666;
 
-  font-size: 12px;
+  font-size:12px;
 }
 
 .total {
-  margin-top: 15px;
+  margin-top:15px;
 
-  padding: 12px;
+  padding:12px;
 
-  background: #f5f6f7;
+  background:#f5f6f7;
 
-  border: 1px solid #d5dbe0;
+  border:1px solid #d5dbe0;
 
-  font-weight: 700;
+  font-weight:700;
 }
 
 .empty {
-  padding: 40px;
+  padding:40px;
 
-  text-align: center;
+  text-align:center;
 
-  color: #777;
+  color:#777;
 }
 
-
-@media (max-width: 900px) {
+@media(max-width:900px) {
 
   .question-grid {
     grid-template-columns:
@@ -244,11 +267,11 @@
 
 }
 
-
-@media (max-width: 600px) {
+@media(max-width:600px) {
 
   .question-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns:
+      1fr;
   }
 
 }
@@ -335,12 +358,14 @@ class="status"
 
 <div class="card">
 
+
 <p>
 解答用紙画像を読み込み、解答欄とQRコードシール欄を設定します。
 </p>
 
 
 <div class="toolbar">
+
 
 <label
 class="btn"
@@ -378,6 +403,15 @@ QRコードシール欄
 
 <button
 class="btn"
+id="nameMode"
+type="button"
+>
+氏名欄
+</button>
+
+
+<button
+class="btn"
 id="saveButton"
 type="button"
 >
@@ -392,6 +426,7 @@ href="#"
 >
 枠設定・配点設定へ
 </a>
+
 
 </div>
 
@@ -424,7 +459,7 @@ class="layout-canvas"
 
 
 <p class="small">
-解答欄を作成した後、設問番号・配点・模範解答・観点を設定します。
+解答欄を作成した後、設問番号と配点を設定します。
 </p>
 
 
@@ -490,9 +525,14 @@ src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
 ></script>
 
 
-<script src="/js/config.js"></script>
+<script
+src="/js/config.js?v=20261116"
+></script>
 
-<script src="/js/auth.js"></script>
+
+<script
+src="/js/auth.js?v=20261116"
+></script>
 
 
 <script>
@@ -500,10 +540,27 @@ src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
 "use strict";
 
 
-const DB =
-  window.SB ||
-  window.supabaseClient;
+/* =====================================================
+   CLIENT
+===================================================== */
 
+const DB =
+  window.supabaseClient ||
+  window.SB;
+
+
+if (!DB) {
+
+  throw new Error(
+    "Supabase Clientが初期化されていません。"
+  );
+
+}
+
+
+/* =====================================================
+   URL
+===================================================== */
 
 const params =
   new URLSearchParams(
@@ -516,6 +573,10 @@ const testId =
     "test"
   );
 
+
+/* =====================================================
+   STATE
+===================================================== */
 
 let mode =
   "question";
@@ -544,6 +605,10 @@ let drawing =
 let startPoint =
   null;
 
+
+/* =====================================================
+   DOM
+===================================================== */
 
 const statusElement =
   document.getElementById(
@@ -586,7 +651,7 @@ async function initialize() {
     if (!DB) {
 
       throw new Error(
-        "Supabase接続がありません。"
+        "Supabase Clientが初期化されていません。"
       );
 
     }
@@ -610,16 +675,20 @@ async function initialize() {
       "function"
     ) {
 
-      await window.requireRole(
-        "teacher"
-      );
+      const result =
+        await window.requireRole(
+          "teacher"
+        );
+
+
+      if (!result) {
+
+        return;
+
+      }
 
     }
 
-
-    /*
-     * 次の画面
-     */
 
     const encoded =
       encodeURIComponent(
@@ -647,6 +716,12 @@ async function initialize() {
 
   } catch (error) {
 
+    console.error(
+      "layout initialize:",
+      error
+    );
+
+
     showError(
       error.message ||
       "枠設定を読み込めませんでした。"
@@ -664,100 +739,103 @@ async function initialize() {
 function setupEvents() {
 
 
-  document.getElementById(
-    "questionMode"
-  ).addEventListener(
-    "click",
-    () => {
+  document
+    .getElementById(
+      "questionMode"
+    )
+    .addEventListener(
+      "click",
+      () => {
 
-      mode =
-        "question";
+        mode =
+          "question";
 
-
-      document
-        .getElementById(
+        setModeButton(
           "questionMode"
-        )
-        .classList.add(
-          "btn-primary"
         );
 
+        setStatus(
+          "解答欄モードです。画像上をドラッグしてください。"
+        );
 
-      document
-        .getElementById(
+      }
+    );
+
+
+  document
+    .getElementById(
+      "qrMode"
+    )
+    .addEventListener(
+      "click",
+      () => {
+
+        mode =
+          "qr";
+
+        setModeButton(
           "qrMode"
-        )
-        .classList.remove(
-          "btn-primary"
         );
 
-
-      setStatus(
-        "解答欄モードです。画像上をドラッグしてください。"
-      );
-
-    }
-  );
-
-
-  document.getElementById(
-    "qrMode"
-  ).addEventListener(
-    "click",
-    () => {
-
-      mode =
-        "qr";
-
-
-      document
-        .getElementById(
-          "qrMode"
-        )
-        .classList.add(
-          "btn-primary"
+        setStatus(
+          "QRコードシール欄モードです。"
         );
 
+      }
+    );
 
-      document
-        .getElementById(
-          "questionMode"
-        )
-        .classList.remove(
-          "btn-primary"
+
+  document
+    .getElementById(
+      "nameMode"
+    )
+    .addEventListener(
+      "click",
+      () => {
+
+        mode =
+          "name";
+
+        setModeButton(
+          "nameMode"
         );
 
+        setStatus(
+          "氏名欄モードです。"
+        );
 
-      setStatus(
-        "QRコードシール欄モードです。画像上をドラッグしてください。"
-      );
-
-    }
-  );
-
-
-  document.getElementById(
-    "file"
-  ).addEventListener(
-    "change",
-    handleFile
-  );
+      }
+    );
 
 
-  document.getElementById(
-    "addQuestion"
-  ).addEventListener(
-    "click",
-    addQuestion
-  );
+  document
+    .getElementById(
+      "file"
+    )
+    .addEventListener(
+      "change",
+      handleFile
+    );
 
 
-  document.getElementById(
-    "saveButton"
-  ).addEventListener(
-    "click",
-    saveAll
-  );
+  document
+    .getElementById(
+      "addQuestion"
+    )
+    .addEventListener(
+      "click",
+      addQuestion
+    );
+
+
+  document
+    .getElementById(
+      "saveButton"
+    )
+    .addEventListener(
+      "click",
+      saveAll
+    );
 
 
   document
@@ -769,11 +847,11 @@ function setupEvents() {
       async () => {
 
         if (
-          typeof logout ===
+          typeof window.logout ===
           "function"
         ) {
 
-          await logout();
+          await window.logout();
 
         }
 
@@ -784,7 +862,38 @@ function setupEvents() {
 
 
 /* =====================================================
-   LOAD EXISTING BOXES
+   MODE BUTTON
+===================================================== */
+
+function setModeButton(
+  activeId
+) {
+
+  [
+    "questionMode",
+    "qrMode",
+    "nameMode"
+  ]
+    .forEach(
+      id => {
+
+        document
+          .getElementById(
+            id
+          )
+          ?.classList.toggle(
+            "btn-primary",
+            id === activeId
+          );
+
+      }
+    );
+
+}
+
+
+/* =====================================================
+   LOAD EXISTING
 ===================================================== */
 
 async function loadExistingBoxes() {
@@ -825,15 +934,13 @@ async function loadExistingBoxes() {
       .order(
         "page_no",
         {
-          ascending:
-            true
+          ascending:true
         }
       )
       .order(
         "sort_order",
         {
-          ascending:
-            true
+          ascending:true
         }
       );
 
@@ -850,7 +957,18 @@ async function loadExistingBoxes() {
     [];
 
 
+  /*
+   * 重要:
+   *
+   * 既存枠を取得したら
+   * 問題設定も必ず描画する。
+   */
+
   renderBoxList();
+
+  renderQuestionList();
+
+  updateTotal();
 
 
   setStatus(
@@ -886,7 +1004,7 @@ function handleFile(
   ) {
 
     showError(
-      "現在の枠設定では画像ファイルを選択してください。"
+      "画像ファイルを選択してください。"
     );
 
     return;
@@ -962,7 +1080,7 @@ function handleFile(
 
 
       setStatus(
-        "画像を読み込みました。画像上をドラッグして枠を設定できます。"
+        "画像を読み込みました。枠をドラッグして設定できます。"
       );
 
     };
@@ -978,7 +1096,8 @@ function setupDrawing(
   layer
 ) {
 
-  layer.onmousedown =
+  layer.addEventListener(
+    "mousedown",
     event => {
 
       if (!image) {
@@ -1008,10 +1127,12 @@ function setupDrawing(
 
       };
 
-    };
+    }
+  );
 
 
-  layer.onmouseup =
+  layer.addEventListener(
+    "mouseup",
     event => {
 
       if (
@@ -1049,17 +1170,23 @@ function setupDrawing(
 
 
       const x =
-        Math.min(
-          startPoint.x,
-          endX
+        Math.max(
+          0,
+          Math.min(
+            startPoint.x,
+            endX
+          )
         ) *
         scaleX;
 
 
       const y =
-        Math.min(
-          startPoint.y,
-          endY
+        Math.max(
+          0,
+          Math.min(
+            startPoint.y,
+            endY
+          )
         ) *
         scaleY;
 
@@ -1098,82 +1225,19 @@ function setupDrawing(
       }
 
 
-      const qr =
-        mode ===
-        "qr";
-
-
-      const questionCount =
-        boxes.filter(
-          box =>
-            box.box_type !==
-            "qr"
-        ).length;
-
-
-      boxes.push({
-
-        id:
-          null,
-
-        test_id:
-          testId,
-
-        page_no:
-          1,
-
-        box_type:
-          qr
-            ? "qr"
-            : "answer",
-
-        label:
-          qr
-            ? "QR"
-            : `問${
-                questionCount +
-                1
-              }`,
-
+      addBox(
         x,
-
         y,
-
         width,
-
-        height,
-
-        question_id:
-          qr
-            ? null
-            : crypto.randomUUID(),
-
-        points:
-          0,
-
-        sort_order:
-          boxes.length +
-          1
-
-      });
-
-
-      renderBoxes();
-
-
-      renderQuestionList();
-
-
-      setStatus(
-        qr
-          ? "QR欄を追加しました。"
-          : "解答欄を追加しました。"
+        height
       );
 
-    };
+    }
+  );
 
 
-  layer.onmouseleave =
+  layer.addEventListener(
+    "mouseleave",
     () => {
 
       drawing =
@@ -1182,7 +1246,185 @@ function setupDrawing(
       startPoint =
         null;
 
+    }
+  );
+
+}
+
+
+/* =====================================================
+   ADD BOX
+===================================================== */
+
+function addBox(
+  x,
+  y,
+  width,
+  height
+) {
+
+  const questionCount =
+    boxes.filter(
+      box =>
+        box.box_type ===
+        "answer"
+    ).length;
+
+
+  let box;
+
+
+  if (
+    mode ===
+    "qr"
+  ) {
+
+    box = {
+
+      id:
+        null,
+
+      test_id:
+        testId,
+
+      page_no:
+        1,
+
+      box_type:
+        "qr",
+
+      label:
+        "QR",
+
+      x,
+      y,
+      width,
+      height,
+
+      /*
+       * QRはquestion_idなし。
+       */
+
+      question_id:
+        null,
+
+      points:
+        0,
+
+      sort_order:
+        boxes.length + 1
+
     };
+
+  }
+
+
+  else if (
+    mode ===
+    "name"
+  ) {
+
+    box = {
+
+      id:
+        null,
+
+      test_id:
+        testId,
+
+      page_no:
+        1,
+
+      box_type:
+        "name",
+
+      label:
+        "氏名",
+
+      x,
+      y,
+      width,
+      height,
+
+      question_id:
+        null,
+
+      points:
+        0,
+
+      sort_order:
+        boxes.length + 1
+
+    };
+
+  }
+
+
+  else {
+
+    box = {
+
+      id:
+        null,
+
+      test_id:
+        testId,
+
+      page_no:
+        1,
+
+      box_type:
+        "answer",
+
+      label:
+        `問${
+          questionCount + 1
+        }`,
+
+      x,
+      y,
+      width,
+      height,
+
+      /*
+       * question_idを
+       * UUIDとして勝手に作らない。
+       *
+       * 現在のDBではNULLでも
+       * 採点対象として扱う。
+       */
+
+      question_id:
+        null,
+
+      points:
+        0,
+
+      sort_order:
+        boxes.length + 1
+
+    };
+
+  }
+
+
+  boxes.push(
+    box
+  );
+
+
+  renderBoxes();
+
+  renderQuestionList();
+
+  renderBoxList();
+
+  updateTotal();
+
+
+  setStatus(
+    `${box.label} の枠を追加しました。`
+  );
 
 }
 
@@ -1193,100 +1435,126 @@ function setupDrawing(
 
 function renderBoxes() {
 
-  if (image) {
+  if (!image) {
 
-    canvasWrap
-      .querySelectorAll(
-        ".rect"
-      )
-      .forEach(
-        element =>
-          element.remove()
-      );
-
-
-    const scaleX =
-      image.clientWidth /
-      imageNaturalWidth;
-
-
-    const scaleY =
-      image.clientHeight /
-      imageNaturalHeight;
-
-
-    boxes.forEach(
-      box => {
-
-        const rect =
-          document.createElement(
-            "div"
-          );
-
-
-        rect.className =
-          "rect";
-
-
-        if (
-          box.box_type ===
-          "qr"
-        ) {
-
-          rect.classList.add(
-            "qr"
-          );
-
-        }
-
-
-        rect.style.left =
-          `${box.x * scaleX}px`;
-
-
-        rect.style.top =
-          `${box.y * scaleY}px`;
-
-
-        rect.style.width =
-          `${box.width * scaleX}px`;
-
-
-        rect.style.height =
-          `${box.height * scaleY}px`;
-
-
-        const label =
-          document.createElement(
-            "span"
-          );
-
-
-        label.className =
-          "rect-label";
-
-
-        label.textContent =
-          box.label ||
-          "枠";
-
-
-        rect.appendChild(
-          label
-        );
-
-
-        canvasWrap.appendChild(
-          rect
-        );
-
-      }
-    );
+    return;
 
   }
 
 
-  renderBoxList();
+  canvasWrap
+    .querySelectorAll(
+      ".rect"
+    )
+    .forEach(
+      element =>
+        element.remove()
+    );
+
+
+  const scaleX =
+    image.clientWidth /
+    imageNaturalWidth;
+
+
+  const scaleY =
+    image.clientHeight /
+    imageNaturalHeight;
+
+
+  boxes.forEach(
+    box => {
+
+      const rect =
+        document.createElement(
+          "div"
+        );
+
+
+      rect.className =
+        "rect";
+
+
+      if (
+        box.box_type ===
+        "qr"
+      ) {
+
+        rect.classList.add(
+          "qr"
+        );
+
+      }
+
+
+      if (
+        box.box_type ===
+        "name"
+      ) {
+
+        rect.classList.add(
+          "name"
+        );
+
+      }
+
+
+      if (
+        box.label ===
+          "合計" ||
+        box.label ===
+          "小計"
+      ) {
+
+        rect.classList.add(
+          "aggregate"
+        );
+
+      }
+
+
+      rect.style.left =
+        `${box.x * scaleX}px`;
+
+
+      rect.style.top =
+        `${box.y * scaleY}px`;
+
+
+      rect.style.width =
+        `${box.width * scaleX}px`;
+
+
+      rect.style.height =
+        `${box.height * scaleY}px`;
+
+
+      const label =
+        document.createElement(
+          "span"
+        );
+
+
+      label.className =
+        "rect-label";
+
+
+      label.textContent =
+        box.label ||
+        "枠";
+
+
+      rect.appendChild(
+        label
+      );
+
+
+      canvasWrap.appendChild(
+        rect
+      );
+
+    }
+  );
 
 }
 
@@ -1304,8 +1572,12 @@ function renderQuestionList() {
   const questions =
     boxes.filter(
       box =>
-        box.box_type !==
-        "qr"
+        box.box_type ===
+        "answer" &&
+        box.label !==
+          "合計" &&
+        box.label !==
+          "小計"
     );
 
 
@@ -1392,6 +1664,8 @@ function renderQuestionList() {
 
           renderBoxes();
 
+          renderBoxList();
+
         }
       );
 
@@ -1455,6 +1729,7 @@ function renderQuestionList() {
               pointsInput.value
             ) || 0;
 
+
           updateTotal();
 
           renderBoxList();
@@ -1471,7 +1746,14 @@ function renderQuestionList() {
 
       /*
        * 模範解答
+       *
+       * 現在のlayout_boxesテーブルに
+       * answer/viewpoint列があるとは
+       * 限らないため、DBには保存しない。
+       *
+       * 画面上の入力としては残さない。
        */
+
 
       const answerGroup =
         document.createElement(
@@ -1486,90 +1768,91 @@ function renderQuestionList() {
 
 
       answerLabel.textContent =
-        "模範解答";
+        "採点対象";
 
 
-      const answerInput =
-        document.createElement(
-          "input"
-        );
-
-
-      answerInput.value =
-        box.answer ||
-        "";
-
-
-      answerInput.placeholder =
-        "正解";
-
-
-      answerInput.addEventListener(
-        "input",
-        () => {
-
-          box.answer =
-            answerInput.value;
-
-        }
-      );
-
-
-      answerGroup.append(
-        answerLabel,
-        answerInput
-      );
-
-
-      /*
-       * 観点
-       */
-
-      const viewpointGroup =
+      const answerText =
         document.createElement(
           "div"
         );
 
 
-      const viewpointLabel =
+      answerText.style.height =
+        "38px";
+
+
+      answerText.style.display =
+        "flex";
+
+
+      answerText.style.alignItems =
+        "center";
+
+
+      answerText.textContent =
+        "答案";
+
+
+      answerGroup.append(
+        answerLabel,
+        answerText
+      );
+
+
+      /*
+       * 枠ID
+       */
+
+      const idGroup =
+        document.createElement(
+          "div"
+        );
+
+
+      const idLabel =
         document.createElement(
           "label"
         );
 
 
-      viewpointLabel.textContent =
-        "観点";
+      idLabel.textContent =
+        "枠ID";
 
 
-      const viewpointInput =
+      const idText =
         document.createElement(
-          "input"
+          "div"
         );
 
 
-      viewpointInput.value =
-        box.viewpoint ||
-        "";
+      idText.style.height =
+        "38px";
 
 
-      viewpointInput.placeholder =
-        "知識・技能など";
+      idText.style.display =
+        "flex";
 
 
-      viewpointInput.addEventListener(
-        "input",
-        () => {
-
-          box.viewpoint =
-            viewpointInput.value;
-
-        }
-      );
+      idText.style.alignItems =
+        "center";
 
 
-      viewpointGroup.append(
-        viewpointLabel,
-        viewpointInput
+      idText.style.fontSize =
+        "11px";
+
+
+      idText.style.color =
+        "#666";
+
+
+      idText.textContent =
+        box.id ||
+        "未保存";
+
+
+      idGroup.append(
+        idLabel,
+        idText
       );
 
 
@@ -1577,9 +1860,13 @@ function renderQuestionList() {
         labelGroup,
         pointsGroup,
         answerGroup,
-        viewpointGroup
+        idGroup
       );
 
+
+      /*
+       * 削除
+       */
 
       const actions =
         document.createElement(
@@ -1636,6 +1923,10 @@ function renderQuestionList() {
 
           renderQuestionList();
 
+          renderBoxList();
+
+          updateTotal();
+
         }
       );
 
@@ -1673,8 +1964,12 @@ function addQuestion() {
   const questionCount =
     boxes.filter(
       box =>
-        box.box_type !==
-        "qr"
+        box.box_type ===
+        "answer" &&
+        box.label !==
+          "合計" &&
+        box.label !==
+          "小計"
     ).length;
 
 
@@ -1694,8 +1989,7 @@ function addQuestion() {
 
     label:
       `問${
-        questionCount +
-        1
+        questionCount + 1
       }`,
 
     x:
@@ -1710,21 +2004,18 @@ function addQuestion() {
     height:
       100,
 
+    /*
+     * NULLで保存。
+     */
+
     question_id:
-      crypto.randomUUID(),
+      null,
 
     points:
       0,
 
-    answer:
-      "",
-
-    viewpoint:
-      "",
-
     sort_order:
-      boxes.length +
-      1
+      boxes.length + 1
 
   });
 
@@ -1733,11 +2024,169 @@ function addQuestion() {
 
   renderQuestionList();
 
+  renderBoxList();
+
+  updateTotal();
+
+
+  setStatus(
+    "問題を追加しました。"
+  );
+
 }
 
 
 /* =====================================================
-   SAVE ALL
+   BOX LIST
+===================================================== */
+
+function renderBoxList() {
+
+  boxList.innerHTML =
+    "";
+
+
+  if (!boxes.length) {
+
+    boxList.innerHTML = `
+
+      <div class="empty">
+        まだ枠がありません。
+      </div>
+
+    `;
+
+    return;
+
+  }
+
+
+  boxes.forEach(
+    (
+      box,
+      index
+    ) => {
+
+      const row =
+        document.createElement(
+          "div"
+        );
+
+
+      row.className =
+        "box-row";
+
+
+      const info =
+        document.createElement(
+          "div"
+        );
+
+
+      info.className =
+        "box-info";
+
+
+      const title =
+        document.createElement(
+          "div"
+        );
+
+
+      title.className =
+        "box-title";
+
+
+      title.textContent =
+        box.label ||
+        `枠${index + 1}`;
+
+
+      const meta =
+        document.createElement(
+          "div"
+        );
+
+
+      meta.className =
+        "box-meta";
+
+
+      meta.textContent =
+        [
+          `種類: ${box.box_type || "-"}`,
+          `ページ: ${box.page_no || 1}`,
+          `配点: ${formatNumber(box.points)}点`,
+          `question_id: ${box.question_id || "NULL"}`
+        ].join(
+          " / "
+        );
+
+
+      info.append(
+        title,
+        meta
+      );
+
+
+      const remove =
+        document.createElement(
+          "button"
+        );
+
+
+      remove.type =
+        "button";
+
+
+      remove.className =
+        "btn";
+
+
+      remove.textContent =
+        "削除";
+
+
+      remove.addEventListener(
+        "click",
+        () => {
+
+          boxes.splice(
+            index,
+            1
+          );
+
+
+          renderBoxes();
+
+          renderQuestionList();
+
+          renderBoxList();
+
+          updateTotal();
+
+        }
+      );
+
+
+      row.append(
+        info,
+        remove
+      );
+
+
+      boxList.appendChild(
+        row
+      );
+
+    }
+  );
+
+}
+
+
+/* =====================================================
+   SAVE
 ===================================================== */
 
 async function saveAll() {
@@ -1746,6 +2195,17 @@ async function saveAll() {
     document.getElementById(
       "saveButton"
     );
+
+
+  if (!boxes.length) {
+
+    showError(
+      "保存する枠がありません。"
+    );
+
+    return;
+
+  }
 
 
   saveButton.disabled =
@@ -1759,7 +2219,7 @@ async function saveAll() {
   try {
 
     /*
-     * 既存設定を削除。
+     * 既存枠を削除。
      */
 
     const {
@@ -1784,6 +2244,14 @@ async function saveAll() {
     }
 
 
+    /*
+     * 現在のlayout_boxesに存在する
+     * カラムだけを保存する。
+     *
+     * answer / viewpointなど
+     * 存在確認できないカラムは送らない。
+     */
+
     const rows =
       boxes.map(
         (
@@ -1795,32 +2263,45 @@ async function saveAll() {
             testId,
 
           page_no:
-            box.page_no ||
-            1,
+            Number(
+              box.page_no
+            ) || 1,
 
           box_type:
             box.box_type,
 
           label:
-            box.label,
+            box.label ||
+            null,
 
           x:
-            box.x,
+            Number(
+              box.x
+            ) || 0,
 
           y:
-            box.y,
+            Number(
+              box.y
+            ) || 0,
 
           width:
-            box.width,
+            Number(
+              box.width
+            ) || 0,
 
           height:
-            box.height,
+            Number(
+              box.height
+            ) || 0,
+
+          /*
+           * question_idはNULLでも
+           * 採点可能。
+           */
 
           question_id:
-            box.box_type ===
-              "qr"
-              ? null
-              : box.question_id,
+            box.question_id ||
+            null,
 
           points:
             Number(
@@ -1845,7 +2326,22 @@ async function saveAll() {
         .insert(
           rows
         )
-        .select();
+        .select(
+          `
+          id,
+          test_id,
+          page_no,
+          box_type,
+          label,
+          x,
+          y,
+          width,
+          height,
+          question_id,
+          points,
+          sort_order
+          `
+        );
 
 
     if (error) {
@@ -1864,6 +2360,10 @@ async function saveAll() {
 
     renderQuestionList();
 
+    renderBoxList();
+
+    updateTotal();
+
 
     setStatus(
       "枠設定と配点を保存しました。"
@@ -1871,7 +2371,7 @@ async function saveAll() {
 
 
     /*
-     * 配点設定専用画面へ。
+     * 次は実在する points.html。
      */
 
     location.href =
@@ -1883,6 +2383,7 @@ async function saveAll() {
   } catch (error) {
 
     console.error(
+      "save layout:",
       error
     );
 
@@ -1915,8 +2416,12 @@ function updateTotal() {
   const questions =
     boxes.filter(
       box =>
-        box.box_type !==
-        "qr"
+        box.box_type ===
+        "answer" &&
+        box.label !==
+          "合計" &&
+        box.label !==
+          "小計"
     );
 
 
@@ -1930,8 +2435,7 @@ function updateTotal() {
         (
           Number(
             box.points
-          ) ||
-          0
+          ) || 0
         ),
       0
     );
@@ -1941,6 +2445,13 @@ function updateTotal() {
     document.getElementById(
       "total"
     );
+
+
+  if (!totalElement) {
+
+    return;
+
+  }
 
 
   totalElement.textContent =
@@ -1987,6 +2498,44 @@ function showError(
   statusElement.classList.add(
     "error"
   );
+
+}
+
+
+/* =====================================================
+   FORMAT
+===================================================== */
+
+function formatNumber(
+  value
+) {
+
+  const number =
+    Number(
+      value
+    );
+
+
+  if (
+    !Number.isFinite(
+      number
+    )
+  ) {
+
+    return "0";
+
+  }
+
+
+  return Number.isInteger(
+    number
+  )
+    ? String(
+        number
+      )
+    : number.toFixed(
+        1
+      );
 
 }
 

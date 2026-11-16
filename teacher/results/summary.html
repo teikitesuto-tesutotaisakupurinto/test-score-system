@@ -8,7 +8,7 @@
 
 <meta
   name="viewport"
-  content="width=device-width,initial-scale=1.0"
+  content="width=device-width, initial-scale=1.0"
 >
 
 <title>
@@ -20,92 +20,51 @@
   href="/css/common.css"
 >
 
-<link
-  rel="stylesheet"
-  href="/css/results.css"
->
-
 <style>
 
-.result-status {
-  margin-bottom:15px;
-
-  padding:12px;
-
-  background:#fff;
-
-  border:1px solid #d0d6dc;
-
-  font-size:13px;
+.results-main {
+  max-width:1600px;
+  margin:0 auto;
+  padding:20px;
 }
 
 
-.result-status.processing {
-  color:#7a4b00;
+.results-toolbar {
+  display:flex;
 
-  background:#fff8e8;
+  align-items:center;
 
-  border-color:#e6c979;
+  justify-content:space-between;
+
+  gap:10px;
+
+  margin-bottom:12px;
+
+  flex-wrap:wrap;
 }
 
 
-.result-status.completed {
-  color:#16834b;
+.results-actions {
+  display:flex;
 
-  background:#f1faf5;
+  gap:7px;
 
-  border-color:#a9d8bd;
-}
-
-
-.summary-cards {
-  display:grid;
-
-  grid-template-columns:
-    repeat(
-      4,
-      minmax(
-        0,
-        1fr
-      )
-    );
-
-  gap:12px;
-}
-
-
-.summary-card {
-  padding:15px;
-
-  background:#fff;
-
-  border:1px solid #d0d6dc;
-}
-
-
-.summary-card-label {
-  color:#666;
-
-  font-size:12px;
-}
-
-
-.summary-card-value {
-  margin-top:5px;
-
-  font-size:22px;
-
-  font-weight:700;
+  flex-wrap:wrap;
 }
 
 
 .results-table-wrap {
   overflow:auto;
+
+  border:
+    1px solid #d0d6dc;
 }
 
 
 .results-table {
   width:100%;
+
+  min-width:900px;
 
   border-collapse:collapse;
 }
@@ -113,40 +72,154 @@
 
 .results-table th,
 .results-table td {
-  padding:8px;
+  padding:8px 10px;
 
-  border:1px solid #d0d6dc;
+  border-bottom:
+    1px solid #e1e5e8;
 
   white-space:nowrap;
+
+  text-align:right;
 }
 
 
 .results-table th {
   background:#f3f5f7;
+
+  font-weight:700;
 }
 
 
-.unpublished {
-  color:#777;
+.results-table th:first-child,
+.results-table td:first-child,
+.results-table th:nth-child(2),
+.results-table td:nth-child(2) {
+  text-align:left;
+}
+
+
+.summary-grid {
+  display:grid;
+
+  grid-template-columns:
+    repeat(
+      4,
+      minmax(0,1fr)
+    );
+
+  gap:10px;
+}
+
+
+.summary-card {
+  padding:14px;
+
+  background:#f5f6f7;
+
+  border:
+    1px solid #d5dbe0;
+}
+
+
+.summary-label {
+  color:#666;
+
+  font-size:12px;
+}
+
+
+.summary-value {
+  margin-top:4px;
+
+  font-size:22px;
+
+  font-weight:700;
+}
+
+
+.test-information {
+  line-height:1.8;
+}
+
+
+.status {
+  margin-top:10px;
+
+  padding:10px;
+
+  background:#f5f6f7;
+
+  border:
+    1px solid #d5dbe0;
+
+  color:#666;
+}
+
+
+.status.error {
+  color:#b42318;
+
+  background:#fff8f7;
+
+  border-color:#efc2bc;
+}
+
+
+.empty {
+  padding:40px;
 
   text-align:center;
 
-  padding:35px;
+  color:#777;
 }
 
 
-@media(max-width:800px) {
+@media(max-width:900px) {
 
-  .summary-cards {
+  .summary-grid {
     grid-template-columns:
       repeat(
         2,
-        minmax(
-          0,
-          1fr
-        )
+        minmax(0,1fr)
       );
+  }
 
+}
+
+
+@media(max-width:600px) {
+
+  .results-main {
+    padding:10px;
+  }
+
+
+  .summary-grid {
+    grid-template-columns:1fr;
+  }
+
+}
+
+
+@media print {
+
+  .topbar,
+  .sidebar,
+  .results-actions,
+  .page-header,
+  .test-select-card {
+    display:none !important;
+  }
+
+
+  .teacher-layout {
+    display:block;
+  }
+
+
+  .main-content {
+    margin:0;
+    padding:0;
   }
 
 }
@@ -204,32 +277,24 @@ class="menu-link active"
 
 
 <a
-href="/teacher/results/students"
-class="menu-link"
->
-  生徒別成績
-</a>
-
-
-<a
-href="/teacher/results/questions"
-class="menu-link"
->
-  設問別分析
-</a>
-
-
-<a
 href="/teacher/results/return"
 class="menu-link"
 >
   答案返却
 </a>
 
+
+<a
+href="/teacher/tests/publish"
+class="menu-link"
+>
+  公開状態
+</a>
+
 </aside>
 
 
-<main class="main-content">
+<main class="main-content results-main">
 
 
 <div class="page-header">
@@ -241,15 +306,10 @@ class="menu-link"
 </div>
 
 
-<div
-id="resultStatus"
-class="result-status"
+<section
+class="card test-select-card"
 >
-テストを選択してください。
-</div>
 
-
-<div class="card">
 
 <div class="form-group">
 
@@ -270,94 +330,42 @@ id="testSelect"
 
 </div>
 
+
+<div
+id="status"
+class="status"
+>
+テストを選択してください。
 </div>
 
 
-<div
+</section>
+
+
+<section
 id="testInformation"
-class="card"
+class="card test-information"
 style="display:none;"
 >
-</div>
+</section>
 
 
-<div
+<section
 id="summaryCards"
 class="card"
 style="display:none;"
 >
 
-<div class="summary-cards">
-
-<div class="summary-card">
-
-<div class="summary-card-label">
-  受験者数
-</div>
-
 <div
-id="candidateCount"
-class="summary-card-value"
+id="summaryCardGrid"
+class="summary-grid"
 >
-0
 </div>
 
-</div>
+</section>
 
 
-<div class="summary-card">
-
-<div class="summary-card-label">
-  平均点
-</div>
-
-<div
-id="averageScore"
-class="summary-card-value"
->
-0
-</div>
-
-</div>
-
-
-<div class="summary-card">
-
-<div class="summary-card-label">
-  最高点
-</div>
-
-<div
-id="maxScore"
-class="summary-card-value"
->
-0
-</div>
-
-</div>
-
-
-<div class="summary-card">
-
-<div class="summary-card-label">
-  最低点
-</div>
-
-<div
-id="minScore"
-class="summary-card-value"
->
-0
-</div>
-
-</div>
-
-</div>
-
-</div>
-
-
-<div
+<section
 id="summaryTableCard"
 class="card"
 style="display:none;"
@@ -372,6 +380,7 @@ style="display:none;"
 
 
 <div class="results-actions">
+
 
 <button
 id="exportCsvButton"
@@ -390,6 +399,7 @@ type="button"
 印刷
 </button>
 
+
 </div>
 
 </div>
@@ -402,19 +412,26 @@ id="summaryTable"
 class="results-table"
 >
 
-<thead></thead>
+<thead>
+</thead>
 
-<tbody></tbody>
+
+<tbody
+id="resultBody"
+>
+</tbody>
+
 
 </table>
 
 </div>
 
 
-</div>
+</section>
 
 
 </main>
+
 
 </div>
 

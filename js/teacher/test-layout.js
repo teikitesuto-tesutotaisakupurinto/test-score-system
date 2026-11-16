@@ -1,13 +1,34 @@
+
 /* =========================================================
+   テスト成績システム
+   js/teacher/test-layout.js
+
    解答用紙 枠設定
 
    枠の種類
-   - answer       解答欄
-   - qr            QRコードシール欄
-   - student_no    生徒番号欄
-   - name          氏名欄
+   ---------------------------------------------------------
+   answer       解答欄
+   qr           QRコードシール欄
+   student_no   生徒番号欄
+   name         氏名欄
+
+   重要
+   ---------------------------------------------------------
+   question_id は必須ではない。
+
+   現在のDBでは、
+   layout_boxes.question_id が NULL の
+   answer枠も採点対象として扱う。
+
+   配点
+   ---------------------------------------------------------
+   layout_boxes.points を使用する。
 ========================================================= */
 
+
+/* =========================================================
+   URL
+========================================================= */
 
 const layoutParams =
   new URLSearchParams(
@@ -15,106 +36,231 @@ const layoutParams =
   );
 
 
+/*
+ * 現在のページ構成では ?id=UUID。
+ *
+ * 念のため ?test=UUID も許可。
+ */
+
 const layoutTestId =
-  layoutParams.get("id");
+  layoutParams.get("id") ||
+  layoutParams.get("test");
 
 
-let pages = [];
+/* =========================================================
+   STATE
+========================================================= */
 
-let activePage = null;
+let pages =
+  [];
+
+let activePage =
+  null;
 
 let activeBoxType =
   "answer";
 
-let boxElements = [];
+let boxElements =
+  [];
 
+
+/* =========================================================
+   INIT
+========================================================= */
 
 async function initializeLayout() {
 
-  const profile =
-    await getProfile();
+  try {
+
+    /*
+     * 認証
+     */
+
+    const profile =
+      await getProfile();
 
 
-  if (!profile) {
+    if (!profile) {
 
-    window.location.href =
-      "/login";
+      window.location.href =
+        "/login";
 
-    return;
+      return;
 
-  }
-
-
-  if (
-    profile.role !== "teacher" &&
-    profile.role !== "admin"
-  ) {
-
-    window.location.href =
-      "/student/dashboard";
-
-    return;
-
-  }
+    }
 
 
-  document.getElementById(
-    "teacherName"
-  ).textContent =
-    profile.name || "先生";
+    if (
+      profile.role !== "teacher" &&
+      profile.role !== "admin"
+    ) {
+
+      window.location.href =
+        "/student/index.html";
+
+      return;
+
+    }
 
 
-  if (!layoutTestId) {
+    const teacherName =
+      document.getElementById(
+        "teacherName"
+      );
 
-    alert(
-      "テストが指定されていません。"
+
+    if (teacherName) {
+
+      teacherName.textContent =
+        profile.name ||
+        "先生";
+
+    }
+
+
+    /*
+     * テストID
+     */
+
+    if (!layoutTestId) {
+
+      alert(
+        "テストが指定されていません。"
+      );
+
+
+      window.location.href =
+        "/teacher/tests";
+
+      return;
+
+    }
+
+
+    setNavigation();
+
+
+    await loadTest();
+
+
+    await loadPages();
+
+
+  } catch (error) {
+
+    console.error(
+      "test-layout initialize:",
+      error
     );
 
-    window.location.href =
-      "/teacher/tests";
 
-    return;
+    alert(
+      error.message ||
+      "枠設定を読み込めませんでした。"
+    );
 
   }
-
-
-  setNavigation();
-
-
-  await loadTest();
-
-  await loadPages();
 
 }
 
+
+/* =========================================================
+   NAVIGATION
+========================================================= */
 
 function setNavigation() {
 
-  document.getElementById(
-    "pagesLink"
-  ).href =
-    `/teacher/tests/pages?id=${encodeURIComponent(layoutTestId)}`;
+  const encoded =
+    encodeURIComponent(
+      layoutTestId
+    );
 
 
-  document.getElementById(
-    "layoutLink"
-  ).href =
-    `/teacher/tests/layout?id=${encodeURIComponent(layoutTestId)}`;
+  /*
+   * 今回のZIPに実在するページだけを使用。
+   */
+
+  const pagesLink =
+    document.getElementById(
+      "pagesLink"
+    );
 
 
-  document.getElementById(
-    "questionsLink"
-  ).href =
-    `/teacher/tests/questions?id=${encodeURIComponent(layoutTestId)}`;
+  if (pagesLink) {
+
+    pagesLink.href =
+      `/teacher/tests/pages?id=${encoded}`;
+
+  }
 
 
-  document.getElementById(
-    "modelAnswerLink"
-  ).href =
-    `/teacher/tests/model-answer?id=${encodeURIComponent(layoutTestId)}`;
+  const layoutLink =
+    document.getElementById(
+      "layoutLink"
+    );
+
+
+  if (layoutLink) {
+
+    layoutLink.href =
+      `/teacher/tests/layout?id=${encoded}`;
+
+  }
+
+
+  /*
+   * questions.html は今回のZIPには存在しない。
+   *
+   * 配点設定へ移動する。
+   */
+
+  const questionsLink =
+    document.getElementById(
+      "questionsLink"
+    );
+
+
+  if (questionsLink) {
+
+    questionsLink.href =
+      `/teacher/tests/points?id=${encoded}`;
+
+  }
+
+
+  const pointsLink =
+    document.getElementById(
+      "pointsLink"
+    );
+
+
+  if (pointsLink) {
+
+    pointsLink.href =
+      `/teacher/tests/points?id=${encoded}`;
+
+  }
+
+
+  const modelAnswerLink =
+    document.getElementById(
+      "modelAnswerLink"
+    );
+
+
+  if (modelAnswerLink) {
+
+    modelAnswerLink.href =
+      `/teacher/tests/model-answer?id=${encoded}`;
+
+  }
 
 }
 
+
+/* =========================================================
+   LOAD TEST
+========================================================= */
 
 async function loadTest() {
 
@@ -123,15 +269,19 @@ async function loadTest() {
     error
   } =
     await supabaseClient
-      .from("tests")
-      .select(`
+      .from(
+        "tests"
+      )
+      .select(
+        `
         id,
         name,
         subject,
         grade,
         class_name,
         max_score
-      `)
+        `
+      )
       .eq(
         "id",
         layoutTestId
@@ -141,55 +291,84 @@ async function loadTest() {
 
   if (error) {
 
-    console.error(error);
+    console.error(
+      "loadTest:",
+      error
+    );
 
-    return;
+    throw error;
 
   }
 
 
   if (!data) {
 
-    alert(
+    throw new Error(
       "テストが見つかりません。"
     );
-
-    return;
 
   }
 
 
-  document.getElementById(
-    "testInformation"
-  ).innerHTML = `
+  const information =
+    document.getElementById(
+      "testInformation"
+    );
 
-    <strong>
+
+  if (information) {
+
+    information.innerHTML = `
+
+      <strong>
+        ${escapeHtml(
+          data.name
+        )}
+      </strong>
+
+      ／
+
       ${escapeHtml(
-        data.name
+        data.subject ||
+        ""
       )}
-    </strong>
 
-    ／
+      ／
 
-    ${escapeHtml(
-      data.subject || ""
-    )}
+      ${escapeHtml(
+        data.grade ||
+        ""
+      )}
 
-    ／
+      ${
+        data.class_name
+          ? `
+            ／
+            ${escapeHtml(
+              data.class_name
+            )}
+          `
+          : ""
+      }
 
-    ${escapeHtml(
-      data.grade || ""
-    )}
+      ／
 
-    ／
+      満点：
+      ${escapeHtml(
+        data.max_score ??
+        ""
+      )}
 
-    満点：
-    ${data.max_score}
+    `;
 
-  `;
+  }
 
 }
 
+
+/* =========================================================
+   LOAD PAGES
+========================================================= */
 
 async function loadPages() {
 
@@ -198,46 +377,74 @@ async function loadPages() {
     error
   } =
     await supabaseClient
-      .from("test_pages")
-      .select(`
+      .from(
+        "test_pages"
+      )
+      .select(
+        `
         id,
         page_no,
         image_path,
         width_px,
         height_px
-      `)
+        `
+      )
       .eq(
         "test_id",
         layoutTestId
       )
       .order(
-        "page_no"
+        "page_no",
+        {
+          ascending:
+            true
+        }
       );
 
 
   if (error) {
 
-    console.error(error);
+    console.error(
+      "loadPages:",
+      error
+    );
 
-    return;
+    throw error;
 
   }
 
 
   pages =
-    data || [];
+    data ||
+    [];
 
 
   if (!pages.length) {
 
-    document.getElementById(
-      "sheetMessage"
-    ).textContent =
-      "先に解答用紙を登録してください。";
+    const message =
+      document.getElementById(
+        "sheetMessage"
+      );
+
+
+    if (message) {
+
+      message.textContent =
+        "先に解答用紙を登録してください。";
+
+    }
+
 
     return;
 
   }
+
+
+  /*
+   * ページ一覧が別UIにある場合
+   */
+
+  renderPageSelector();
 
 
   await showPage(
@@ -246,6 +453,84 @@ async function loadPages() {
 
 }
 
+
+/* =========================================================
+   PAGE SELECTOR
+========================================================= */
+
+function renderPageSelector() {
+
+  const selector =
+    document.getElementById(
+      "pageSelect"
+    );
+
+
+  if (!selector) {
+
+    return;
+
+  }
+
+
+  selector.innerHTML =
+    "";
+
+
+  pages.forEach(
+    page => {
+
+      const option =
+        document.createElement(
+          "option"
+        );
+
+
+      option.value =
+        page.id;
+
+
+      option.textContent =
+        `${page.page_no}ページ`;
+
+
+      selector.appendChild(
+        option
+      );
+
+    }
+  );
+
+
+  selector.addEventListener(
+    "change",
+    async () => {
+
+      const page =
+        pages.find(
+          item =>
+            item.id ===
+            selector.value
+        );
+
+
+      if (page) {
+
+        await showPage(
+          page
+        );
+
+      }
+
+    }
+  );
+
+}
+
+
+/* =========================================================
+   SHOW PAGE
+========================================================= */
 
 async function showPage(
   page
@@ -261,15 +546,36 @@ async function showPage(
     );
 
 
-  canvas.innerHTML = "";
+  if (!canvas) {
+
+    throw new Error(
+      "sheetCanvasがありません。"
+    );
+
+  }
+
+
+  canvas.innerHTML =
+    "";
 
 
   /*
-    Storageのprivate画像なので
-    signed URLを発行する
-  */
+   * 前ページの枠参照をクリア。
+   */
 
-  let imageUrl = "";
+  boxElements =
+    [];
+
+
+  /*
+   * Storage
+   *
+   * 現在の構成では
+   * model-answers bucketを使用。
+   */
+
+  let imageUrl =
+    "";
 
 
   if (
@@ -282,17 +588,27 @@ async function showPage(
     } =
       await supabaseClient
         .storage
-        .from("model-answers")
+        .from(
+          "model-answers"
+        )
         .createSignedUrl(
           page.image_path,
           3600
         );
 
 
-    if (!error) {
+    if (error) {
+
+      console.error(
+        "signed url:",
+        error
+      );
+
+    } else {
 
       imageUrl =
-        data?.signedUrl || "";
+        data?.signedUrl ||
+        "";
 
     }
 
@@ -307,6 +623,10 @@ async function showPage(
 
   image.className =
     "sheet-background";
+
+
+  image.draggable =
+    false;
 
 
   if (imageUrl) {
@@ -334,8 +654,35 @@ async function showPage(
 
 
   /*
-    ページ番号
-  */
+   * 画像が取得できない場合
+   */
+
+  if (!imageUrl) {
+
+    const message =
+      document.createElement(
+        "div"
+      );
+
+
+    message.className =
+      "sheet-message";
+
+
+    message.textContent =
+      "解答用紙画像を表示できません。";
+
+
+    canvas.appendChild(
+      message
+    );
+
+  }
+
+
+  /*
+   * ページ番号
+   */
 
   const pageLabel =
     document.createElement(
@@ -357,8 +704,8 @@ async function showPage(
 
 
   /*
-    既存枠
-  */
+   * 既存枠
+   */
 
   await loadExistingBoxes(
     page.page_no
@@ -366,6 +713,10 @@ async function showPage(
 
 }
 
+
+/* =========================================================
+   RESIZE
+========================================================= */
 
 function resizeSheet(
   width,
@@ -378,10 +729,21 @@ function resizeSheet(
     );
 
 
+  if (!sheet) {
+
+    return;
+
+  }
+
+
   const maxWidth =
     Math.min(
       900,
-      window.innerWidth - 300
+      Math.max(
+        400,
+        window.innerWidth -
+          300
+      )
     );
 
 
@@ -413,6 +775,10 @@ function resizeSheet(
 }
 
 
+/* =========================================================
+   LOAD EXISTING BOXES
+========================================================= */
+
 async function loadExistingBoxes(
   pageNo
 ) {
@@ -422,8 +788,11 @@ async function loadExistingBoxes(
     error
   } =
     await supabaseClient
-      .from("layout_boxes")
-      .select(`
+      .from(
+        "layout_boxes"
+      )
+      .select(
+        `
         id,
         box_type,
         label,
@@ -431,8 +800,11 @@ async function loadExistingBoxes(
         y,
         width,
         height,
-        question_id
-      `)
+        question_id,
+        points,
+        sort_order
+        `
+      )
       .eq(
         "test_id",
         layoutTestId
@@ -442,30 +814,44 @@ async function loadExistingBoxes(
         pageNo
       )
       .order(
-        "created_at"
+        "sort_order",
+        {
+          ascending:
+            true
+        }
       );
 
 
   if (error) {
 
-    console.error(error);
+    console.error(
+      "loadExistingBoxes:",
+      error
+    );
 
-    return;
+    throw error;
 
   }
 
 
   (data || [])
     .forEach(
-      box =>
+      box => {
+
         createBoxElement(
           box,
           false
-        )
+        );
+
+      }
     );
 
 }
 
+
+/* =========================================================
+   CREATE BOX
+========================================================= */
 
 function createBoxElement(
   box,
@@ -476,6 +862,13 @@ function createBoxElement(
     document.getElementById(
       "sheetCanvas"
     );
+
+
+  if (!sheet) {
+
+    return null;
+
+  }
 
 
   const element =
@@ -525,31 +918,61 @@ function createBoxElement(
 
 
   element.dataset.id =
-    box.id || "";
+    box.id ||
+    "";
 
 
   element.dataset.type =
-    box.box_type;
+    box.box_type ||
+    "answer";
 
+
+  /*
+   * question_idはNULLを許可。
+   */
 
   element.dataset.questionId =
-    box.question_id || "";
+    box.question_id ||
+    "";
 
+
+  element.dataset.points =
+    Number(
+      box.points
+    ) || 0;
+
+
+  element.dataset.pageNo =
+    activePage?.page_no ||
+    1;
+
+
+  /*
+   * 座標
+   */
 
   element.style.left =
-    `${box.x}px`;
+    `${Number(
+      box.x
+    ) || 0}px`;
 
 
   element.style.top =
-    `${box.y}px`;
+    `${Number(
+      box.y
+    ) || 0}px`;
 
 
   element.style.width =
-    `${box.width}px`;
+    `${Number(
+      box.width
+    ) || 100}px`;
 
 
   element.style.height =
-    `${box.height}px`;
+    `${Number(
+      box.height
+    ) || 60}px`;
 
 
   const label =
@@ -563,6 +986,7 @@ function createBoxElement(
 
 
   label.textContent =
+    box.label ||
     getBoxLabel(
       box.box_type
     );
@@ -574,8 +998,40 @@ function createBoxElement(
 
 
   /*
-    ドラッグ移動
-  */
+   * 配点表示
+   */
+
+  if (
+    box.box_type ===
+    "answer"
+  ) {
+
+    const points =
+      document.createElement(
+        "span"
+      );
+
+
+    points.className =
+      "layout-points";
+
+
+    points.textContent =
+      `${formatNumber(
+        box.points
+      )}点`;
+
+
+    element.appendChild(
+      points
+    );
+
+  }
+
+
+  /*
+   * ドラッグ
+   */
 
   let dragging =
     false;
@@ -593,35 +1049,26 @@ function createBoxElement(
     "pointerdown",
     event => {
 
-      if (
-        event.target ===
-        label
-      ) {
-
-        dragging =
-          true;
-
-      } else {
-
-        dragging =
-          true;
-
-      }
+      dragging =
+        true;
 
 
       offsetX =
         event.clientX -
-        element.offsetLeft;
+        element.getBoundingClientRect().left;
 
 
       offsetY =
         event.clientY -
-        element.offsetTop;
+        element.getBoundingClientRect().top;
 
 
       element.setPointerCapture(
         event.pointerId
       );
+
+
+      event.preventDefault();
 
     }
   );
@@ -632,16 +1079,40 @@ function createBoxElement(
     event => {
 
       if (!dragging) {
+
         return;
+
       }
 
 
+      const sheetRect =
+        sheet.getBoundingClientRect();
+
+
+      const x =
+        event.clientX -
+        sheetRect.left -
+        offsetX;
+
+
+      const y =
+        event.clientY -
+        sheetRect.top -
+        offsetY;
+
+
       element.style.left =
-        `${event.clientX - offsetX}px`;
+        `${Math.max(
+          0,
+          x
+        )}px`;
 
 
       element.style.top =
-        `${event.clientY - offsetY}px`;
+        `${Math.max(
+          0,
+          y
+        )}px`;
 
     }
   );
@@ -649,25 +1120,37 @@ function createBoxElement(
 
   element.addEventListener(
     "pointerup",
-    () => {
+    event => {
 
       dragging =
         false;
+
+
+      try {
+
+        element.releasePointerCapture(
+          event.pointerId
+        );
+
+      } catch (_) {}
 
     }
   );
 
 
   /*
-    ダブルクリックで削除
-  */
+   * ダブルクリック削除
+   */
 
   element.addEventListener(
     "dblclick",
-    async () => {
+    async event => {
+
+      event.stopPropagation();
+
 
       if (
-        !confirm(
+        !window.confirm(
           "この枠を削除しますか？"
         )
       ) {
@@ -681,20 +1164,42 @@ function createBoxElement(
         element.dataset.id
       ) {
 
-        await supabaseClient
-          .from(
-            "layout_boxes"
-          )
-          .delete()
-          .eq(
-            "id",
-            element.dataset.id
+        const {
+          error
+        } =
+          await supabaseClient
+            .from(
+              "layout_boxes"
+            )
+            .delete()
+            .eq(
+              "id",
+              element.dataset.id
+            );
+
+
+        if (error) {
+
+          alert(
+            error.message
           );
+
+          return;
+
+        }
 
       }
 
 
       element.remove();
+
+
+      boxElements =
+        boxElements.filter(
+          item =>
+            item !==
+            element
+        );
 
     }
   );
@@ -709,8 +1214,15 @@ function createBoxElement(
     element
   );
 
+
+  return element;
+
 }
 
+
+/* =========================================================
+   BOX LABEL
+========================================================= */
 
 function getBoxLabel(
   type
@@ -728,99 +1240,86 @@ function getBoxLabel(
       "生徒番号欄",
 
     name:
-      "氏名欄",
-
-    other:
-      "その他"
+      "氏名欄"
 
   };
 
 
-  return labels[type]
-    || "枠";
+  return (
+    labels[type] ||
+    "枠"
+  );
 
 }
 
 
-/*
-  ツール選択
-*/
+/* =========================================================
+   BUTTONS
+========================================================= */
 
-document
-  .getElementById(
-    "answerBoxButton"
-  )
-  .addEventListener(
+function bindButton(
+  id,
+  type
+) {
+
+  const button =
+    document.getElementById(
+      id
+    );
+
+
+  if (!button) {
+
+    return;
+
+  }
+
+
+  button.addEventListener(
     "click",
     () => {
 
       activeBoxType =
-        "answer";
+        type;
+
 
       activateButton(
-        "answerBoxButton"
+        id
       );
 
     }
   );
 
-
-document
-  .getElementById(
-    "qrBoxButton"
-  )
-  .addEventListener(
-    "click",
-    () => {
-
-      activeBoxType =
-        "qr";
-
-      activateButton(
-        "qrBoxButton"
-      );
-
-    }
-  );
+}
 
 
-document
-  .getElementById(
-    "studentNoBoxButton"
-  )
-  .addEventListener(
-    "click",
-    () => {
-
-      activeBoxType =
-        "student_no";
-
-      activateButton(
-        "studentNoBoxButton"
-      );
-
-    }
-  );
+bindButton(
+  "answerBoxButton",
+  "answer"
+);
 
 
-document
-  .getElementById(
-    "nameBoxButton"
-  )
-  .addEventListener(
-    "click",
-    () => {
+bindButton(
+  "qrBoxButton",
+  "qr"
+);
 
-      activeBoxType =
-        "name";
 
-      activateButton(
-        "nameBoxButton"
-      );
+bindButton(
+  "studentNoBoxButton",
+  "student_no"
+);
 
-    }
-  );
 
+bindButton(
+  "nameBoxButton",
+  "name"
+);
+
+
+/* =========================================================
+   ACTIVE BUTTON
+========================================================= */
 
 function activateButton(
   id
@@ -841,9 +1340,13 @@ function activateButton(
           );
 
 
-        button.classList.remove(
-          "btn-primary"
-        );
+        if (button) {
+
+          button.classList.remove(
+            "btn-primary"
+          );
+
+        }
 
       }
     );
@@ -853,271 +1356,404 @@ function activateButton(
     .getElementById(
       id
     )
-    .classList.add(
+    ?.classList.add(
       "btn-primary"
     );
 
 }
 
 
-/*
-  枠を追加
-*/
+/* =========================================================
+   ADD BOX
+========================================================= */
 
-document
-  .getElementById(
+const sheetCanvas =
+  document.getElementById(
     "sheetCanvas"
-  )
-  .addEventListener(
-    "dblclick",
-    event => {
-
-      /*
-        既存の枠をダブルクリックした場合は
-        そちらの削除処理に任せる
-      */
-
-      if (
-        event.target.closest(
-          ".layout-box"
-        )
-      ) {
-
-        return;
-
-      }
-
-
-      const rect =
-        event.currentTarget
-          .getBoundingClientRect();
-
-
-      const x =
-        event.clientX -
-        rect.left;
-
-
-      const y =
-        event.clientY -
-        rect.top;
-
-
-      createBoxElement({
-
-        box_type:
-          activeBoxType,
-
-        label:
-          getBoxLabel(
-            activeBoxType
-          ),
-
-        x:
-          Math.max(
-            0,
-            x - 50
-          ),
-
-        y:
-          Math.max(
-            0,
-            y - 30
-          ),
-
-        width:
-          activeBoxType === "qr"
-            ? 100
-            : 160,
-
-        height:
-          activeBoxType === "qr"
-            ? 65
-            : 80
-
-      });
-
-    }
   );
 
 
-/*
-  保存
-*/
+sheetCanvas?.addEventListener(
+  "dblclick",
+  event => {
+
+    if (
+      event.target.closest(
+        ".layout-box"
+      )
+    ) {
+
+      return;
+
+    }
+
+
+    if (!activePage) {
+
+      return;
+
+    }
+
+
+    const rect =
+      sheetCanvas.getBoundingClientRect();
+
+
+    const x =
+      event.clientX -
+      rect.left;
+
+
+    const y =
+      event.clientY -
+      rect.top;
+
+
+    const scale =
+      Number(
+        sheetCanvas.dataset.scale
+      ) || 1;
+
+
+    const originalX =
+      x /
+      scale;
+
+
+    const originalY =
+      y /
+      scale;
+
+
+    const defaultWidth =
+      activeBoxType ===
+        "qr"
+        ? 100
+        : 160;
+
+
+    const defaultHeight =
+      activeBoxType ===
+        "qr"
+        ? 65
+        : 80;
+
+
+    createBoxElement({
+
+      id:
+        null,
+
+      box_type:
+        activeBoxType,
+
+      label:
+        getBoxLabel(
+          activeBoxType
+        ),
+
+      x:
+        Math.max(
+          0,
+          originalX -
+            defaultWidth /
+            2
+        ),
+
+      y:
+        Math.max(
+          0,
+          originalY -
+            defaultHeight /
+            2
+        ),
+
+      width:
+        defaultWidth,
+
+      height:
+        defaultHeight,
+
+      question_id:
+        null,
+
+      points:
+        0
+
+    });
+
+
+  }
+);
+
+
+/* =========================================================
+   SAVE
+========================================================= */
 
 document
   .getElementById(
     "saveButton"
   )
-  .addEventListener(
+  ?.addEventListener(
     "click",
-    async () => {
-
-      if (!activePage) {
-
-        alert(
-          "ページがありません。"
-        );
-
-        return;
-
-      }
+    saveLayout
+  );
 
 
-      const scale =
+async function saveLayout() {
+
+  if (!activePage) {
+
+    alert(
+      "ページがありません。"
+    );
+
+    return;
+
+  }
+
+
+  const sheet =
+    document.getElementById(
+      "sheetCanvas"
+    );
+
+
+  const scale =
+    Number(
+      sheet.dataset.scale
+    ) || 1;
+
+
+  const elements =
+    [
+      ...
+      document.querySelectorAll(
+        "#sheetCanvas .layout-box"
+      )
+    ];
+
+
+  if (!elements.length) {
+
+    alert(
+      "保存する枠がありません。"
+    );
+
+    return;
+
+  }
+
+
+  try {
+
+    /*
+     * 既存ページの枠を一度同期。
+     *
+     * ただし全削除して再作成はしない。
+     */
+
+    for (
+      const element
+      of elements
+    ) {
+
+      const x =
+        parseFloat(
+          element.style.left
+        ) ||
+        0;
+
+
+      const y =
+        parseFloat(
+          element.style.top
+        ) ||
+        0;
+
+
+      const width =
+        parseFloat(
+          element.style.width
+        ) ||
+        0;
+
+
+      const height =
+        parseFloat(
+          element.style.height
+        ) ||
+        0;
+
+
+      const type =
+        element.dataset.type ||
+        "answer";
+
+
+      const points =
         Number(
-          document.getElementById(
-            "sheetCanvas"
-          ).dataset.scale
-        ) || 1;
+          element.dataset.points
+        ) || 0;
 
 
-      const boxes =
-        [
-          ...
-          document.querySelectorAll(
-            "#sheetCanvas .layout-box"
-          )
-        ];
+      const values = {
+
+        test_id:
+          layoutTestId,
+
+        page_no:
+          activePage.page_no,
+
+        box_type:
+          type,
+
+        label:
+          getBoxLabel(
+            type
+          ),
+
+        x:
+          x /
+          scale,
+
+        y:
+          y /
+          scale,
+
+        width:
+          width /
+          scale,
+
+        height:
+          height /
+          scale,
+
+        /*
+         * NULL許可。
+         */
+
+        question_id:
+          element.dataset.questionId ||
+          null,
+
+        points:
+          points
+
+      };
 
 
-      try {
+      if (
+        element.dataset.id
+      ) {
 
-        for (
-          const element
-          of boxes
-        ) {
-
-          const x =
-            parseFloat(
-              element.style.left
+        const {
+          error
+        } =
+          await supabaseClient
+            .from(
+              "layout_boxes"
+            )
+            .update(
+              values
+            )
+            .eq(
+              "id",
+              element.dataset.id
             );
 
 
-          const y =
-            parseFloat(
-              element.style.top
-            );
+        if (error) {
+
+          throw error;
+
+        }
+
+      } else {
+
+        const {
+          data,
+          error
+        } =
+          await supabaseClient
+            .from(
+              "layout_boxes"
+            )
+            .insert(
+              values
+            )
+            .select(
+              `
+              id,
+              points
+              `
+            )
+            .single();
 
 
-          const width =
-            parseFloat(
-              element.style.width
-            );
+        if (error) {
 
-
-          const height =
-            parseFloat(
-              element.style.height
-            );
-
-
-          const values = {
-
-            test_id:
-              layoutTestId,
-
-            page_no:
-              activePage.page_no,
-
-            box_type:
-              element.dataset.type,
-
-            label:
-              getBoxLabel(
-                element.dataset.type
-              ),
-
-            x:
-              x / scale,
-
-            y:
-              y / scale,
-
-            width:
-              width / scale,
-
-            height:
-              height / scale,
-
-            question_id:
-              element.dataset.questionId
-                || null
-
-          };
-
-
-          if (
-            element.dataset.id
-          ) {
-
-            const {
-              error
-            } =
-              await supabaseClient
-                .from(
-                  "layout_boxes"
-                )
-                .update(
-                  values
-                )
-                .eq(
-                  "id",
-                  element.dataset.id
-                );
-
-
-            if (error) {
-
-              throw error;
-
-            }
-
-          } else {
-
-            const {
-              data,
-              error
-            } =
-              await supabaseClient
-                .from(
-                  "layout_boxes"
-                )
-                .insert(
-                  values
-                )
-                .select()
-                .single();
-
-
-            if (error) {
-
-              throw error;
-
-            }
-
-
-            element.dataset.id =
-              data.id;
-
-          }
+          throw error;
 
         }
 
 
-        alert(
-          "枠設定を保存しました。"
-        );
+        element.dataset.id =
+          data.id;
 
 
-      } catch (error) {
+        element.dataset.points =
+          Number(
+            data.points
+          ) || 0;
 
-        console.error(error);
+      }
 
-        alert(
-          error.message ||
-          "枠設定の保存に失敗しました。"
-        );
+    }
+
+
+    alert(
+      "枠設定を保存しました。"
+    );
+
+
+  } catch (error) {
+
+    console.error(
+      "saveLayout:",
+      error
+    );
+
+
+    alert(
+      error.message ||
+      "枠設定の保存に失敗しました。"
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   LOGOUT
+========================================================= */
+
+document
+  .getElementById(
+    "logoutButton"
+  )
+  ?.addEventListener(
+    "click",
+    async () => {
+
+      if (
+        typeof window.logout ===
+        "function"
+      ) {
+
+        await window.logout();
 
       }
 
@@ -1125,38 +1761,82 @@ document
   );
 
 
-document
-  .getElementById(
-    "logoutButton"
-  )
-  .addEventListener(
-    "click",
-    logout
-  );
+/* =========================================================
+   FORMAT
+========================================================= */
 
+function formatNumber(
+  value
+) {
+
+  const number =
+    Number(
+      value
+    );
+
+
+  if (
+    !Number.isFinite(
+      number
+    )
+  ) {
+
+    return "0";
+
+  }
+
+
+  return Number.isInteger(
+    number
+  )
+    ? String(
+        number
+      )
+    : number.toFixed(
+        1
+      );
+
+}
+
+
+/* =========================================================
+   ESCAPE
+========================================================= */
 
 function escapeHtml(
   value
 ) {
 
-  if (
-    value === null ||
-    value === undefined
-  ) {
-
-    return "";
-
-  }
-
-
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
+  return String(
+    value ??
+    ""
+  )
+    .replaceAll(
+      "&",
+      "&amp;"
+    )
+    .replaceAll(
+      "<",
+      "&lt;"
+    )
+    .replaceAll(
+      ">",
+      "&gt;"
+    )
+    .replaceAll(
+      '"',
+      "&quot;"
+    )
+    .replaceAll(
+      "'",
+      "&#039;"
+    );
 
 }
 
+
+/* =========================================================
+   START
+========================================================= */
 
 initializeLayout();

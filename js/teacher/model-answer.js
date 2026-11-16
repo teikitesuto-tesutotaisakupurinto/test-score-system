@@ -1,244 +1,106 @@
 
-(function () {
+"use strict";
 
-  "use strict";
+/* =========================================================
+   模範解答
 
+   ・テスト単位で管理
+   ・PDF / 画像を登録
+   ・複数ページ対応
+   ・既存ファイルをクリア可能
+   ・生徒答案とは完全に分離
+========================================================= */
 
-  /* =====================================================
-     URL
-  ===================================================== */
+let DB = null;
 
-  const params =
-    new URLSearchParams(
-      window.location.search
-    );
+let testId = null;
 
+let currentTest = null;
 
-  const testId =
-    params.get("test") ||
-    params.get("id");
-
-
-  let currentTest =
-    null;
+let modelPages = [];
 
 
-  let modelPages =
-    [];
+/* =========================================================
+   DOM
+========================================================= */
+
+const messageElement =
+  document.getElementById(
+    "message"
+  );
+
+const pageList =
+  document.getElementById(
+    "pageList"
+  );
+
+const pageCount =
+  document.getElementById(
+    "pageCount"
+  );
+
+const fileInput =
+  document.getElementById(
+    "modelAnswerFiles"
+  );
+
+const uploadButton =
+  document.getElementById(
+    "uploadButton"
+  );
+
+const clearButton =
+  document.getElementById(
+    "clearButton"
+  );
 
 
-  /* =====================================================
-     INIT
-  ===================================================== */
+/* =========================================================
+   INIT
+========================================================= */
 
-  async function initialize() {
-
-    try {
-
-      const profile =
-        await getProfile();
+document.addEventListener(
+  "DOMContentLoaded",
+  initialize
+);
 
 
-      if (!profile) {
+async function initialize() {
 
-        location.replace(
-          "/login"
-        );
+  try {
 
-        return;
-
-      }
+    DB =
+      window.supabaseClient ||
+      window.SB;
 
 
-      if (
-        profile.role !== "teacher" &&
-        profile.role !== "admin"
-      ) {
+    if (!DB) {
 
-        location.replace(
-          "/student/dashboard"
-        );
-
-        return;
-
-      }
-
-
-      document.getElementById(
-        "teacherName"
-      ).textContent =
-        profile.name ||
-        "先生";
-
-
-      if (!testId) {
-
-        throw new Error(
-          "テストが指定されていません。"
-        );
-
-      }
-
-
-      setupNavigation();
-
-
-      setupEvents();
-
-
-      await loadTest();
-
-
-      await loadPages();
-
-
-    } catch (error) {
-
-      console.error(
-        "model-answer:",
-        error
-      );
-
-
-      showMessage(
-        error.message ||
-        "模範解答画面を読み込めませんでした。",
-        true
+      throw new Error(
+        "Supabase Clientが初期化されていません。"
       );
 
     }
 
-  }
 
-
-  /* =====================================================
-     NAVIGATION
-  ===================================================== */
-
-  function setupNavigation() {
-
-    const id =
-      encodeURIComponent(
-        testId
+    const auth =
+      await requireRole(
+        "teacher"
       );
 
 
-    const pagesLink =
-      document.getElementById(
-        "pagesLink"
-      );
+    if (!auth) {
 
-
-    const layoutLink =
-      document.getElementById(
-        "layoutLink"
-      );
-
-
-    const pointsLink =
-      document.getElementById(
-        "pointsLink"
-      );
-
-
-    const modelLink =
-      document.getElementById(
-        "modelAnswerLink"
-      );
-
-
-    const previewLink =
-      document.getElementById(
-        "previewLink"
-      );
-
-
-    if (pagesLink) {
-
-      pagesLink.href =
-        `/teacher/tests/pages?test=${id}`;
+      return;
 
     }
 
 
-    if (layoutLink) {
-
-      layoutLink.href =
-        `/teacher/tests/layout?test=${id}`;
-
-    }
-
-
-    if (pointsLink) {
-
-      pointsLink.href =
-        `/teacher/tests/points?test=${id}`;
-
-    }
-
-
-    if (modelLink) {
-
-      modelLink.href =
-        `/teacher/tests/model-answer?test=${id}`;
-
-    }
-
-
-    if (previewLink) {
-
-      previewLink.href =
-        `/teacher/tests/preview?test=${id}`;
-
-    }
-
-  }
-
-
-  /* =====================================================
-     EVENTS
-  ===================================================== */
-
-  function setupEvents() {
-
-    document
-      .getElementById(
-        "uploadButton"
-      )
-      ?.addEventListener(
-        "click",
-        uploadFiles
-      );
-
-
-    document
-      .getElementById(
-        "clearButton"
-      )
-      ?.addEventListener(
-        "click",
-        () => {
-
-          const input =
-            document.getElementById(
-              "modelAnswerFiles"
-            );
-
-
-          if (input) {
-
-            input.value =
-              "";
-
-          }
-
-
-          showMessage(
-            ""
-          );
-
-        }
-      );
+    document.getElementById(
+      "teacherName"
+    ).textContent =
+      auth.profile?.name ||
+      "先生";
 
 
     document
@@ -249,165 +111,560 @@
         "click",
         async () => {
 
-          if (
-            typeof window.logout ===
-            "function"
-          ) {
-
-            await window.logout();
-
-            return;
-
-          }
-
-
-          await supabaseClient.auth
-            .signOut();
-
-
-          location.replace(
-            "/login"
-          );
+          await logout();
 
         }
       );
 
-  }
+
+    const params =
+      new URLSearchParams(
+        location.search
+      );
 
 
-  /* =====================================================
-     TEST
-  ===================================================== */
-
-  async function loadTest() {
-
-    const {
-      data,
-      error
-    } =
-      await supabaseClient
-        .from("tests")
-        .select(`
-          id,
-          name,
-          subject,
-          grade,
-          class_name,
-          max_score
-        `)
-        .eq(
-          "id",
-          testId
-        )
-        .maybeSingle();
+    testId =
+      params.get("test") ||
+      params.get("id");
 
 
-    if (error) {
-
-      throw error;
-
-    }
-
-
-    if (!data) {
+    if (!testId) {
 
       throw new Error(
-        "テストが見つかりません。"
+        "テストIDがありません。"
       );
 
     }
 
 
-    currentTest =
-      data;
+    setLinks();
+
+    await loadTest();
+
+    await loadModelPages();
+
+    renderPages();
 
 
-    const element =
-      document.getElementById(
-        "testInformation"
-      );
+  } catch (error) {
+
+    console.error(
+      "model-answer:",
+      error
+    );
 
 
-    if (element) {
+    showMessage(
+      error.message ||
+      "模範解答を読み込めませんでした。",
+      true
+    );
 
-      element.innerHTML = `
+  }
 
-        <strong>
-          ${escapeHtml(
-            data.name
-          )}
-        </strong>
+}
 
-        <br>
 
-        教科：
-        ${escapeHtml(
-          data.subject ||
-          "-"
-        )}
+/* =========================================================
+   LINKS
+========================================================= */
 
-        ／
+function setLinks() {
 
-        学年：
-        ${escapeHtml(
-          data.grade ||
-          "-"
-        )}
+  const id =
+    encodeURIComponent(
+      testId
+    );
 
-        ／
 
-        クラス：
-        ${escapeHtml(
-          data.class_name ||
-          "-"
-        )}
+  const links = {
 
-        ／
+    pagesLink:
+      `/teacher/tests/pages?test=${id}`,
 
-        満点：
-        ${escapeHtml(
-          data.max_score ??
-          "-"
-        )}
+    layoutLink:
+      `/teacher/tests/pages?test=${id}`,
 
-      `;
+    modelAnswerLink:
+      `/teacher/tests/model-answer?test=${id}`,
+
+    previewLink:
+      `/teacher/tests/preview?test=${id}`
+
+  };
+
+
+  Object.entries(
+    links
+  ).forEach(
+    (
+      [
+        elementId,
+        href
+      ]
+    ) => {
+
+      const element =
+        document.getElementById(
+          elementId
+        );
+
+
+      if (element) {
+
+        element.href =
+          href;
+
+      }
 
     }
+  );
+
+}
+
+
+/* =========================================================
+   TEST
+========================================================= */
+
+async function loadTest() {
+
+  const {
+    data,
+    error
+  } =
+    await DB
+      .from(
+        "tests"
+      )
+      .select(
+        `
+        id,
+        name,
+        subject,
+        grade,
+        class_name
+        `
+      )
+      .eq(
+        "id",
+        testId
+      )
+      .maybeSingle();
+
+
+  if (error) {
+
+    throw error;
 
   }
 
 
-  /* =====================================================
-     LOAD PAGES
-  ===================================================== */
+  if (!data) {
 
-  async function loadPages() {
+    throw new Error(
+      "テストが見つかりません。"
+    );
+
+  }
+
+
+  currentTest =
+    data;
+
+
+  const element =
+    document.getElementById(
+      "testInformation"
+    );
+
+
+  if (element) {
+
+    element.innerHTML = `
+
+      <strong>
+        ${escapeHtml(
+          data.name
+        )}
+      </strong>
+
+      <br>
+
+      ${escapeHtml(
+        [
+          data.subject,
+          data.grade,
+          data.class_name
+        ]
+          .filter(Boolean)
+          .join(" / ")
+      )}
+
+    `;
+
+  }
+
+}
+
+
+/* =========================================================
+   LOAD
+========================================================= */
+
+async function loadModelPages() {
+
+  const {
+    data,
+    error
+  } =
+    await DB
+      .from(
+        "test_model_pages"
+      )
+      .select(
+        `
+        id,
+        test_id,
+        page_no,
+        file_path,
+        original_name,
+        width_px,
+        height_px
+        `
+      )
+      .eq(
+        "test_id",
+        testId
+      )
+      .order(
+        "page_no",
+        {
+          ascending:true
+        }
+      );
+
+
+  if (error) {
+
+    /*
+     * 既存DBでテーブルが無い場合にも
+     * 画面自体は開けるようにする。
+     */
+
+    console.warn(
+      "test_model_pages:",
+      error
+    );
+
+
+    modelPages =
+      [];
+
+    return;
+
+  }
+
+
+  modelPages =
+    data || [];
+
+}
+
+
+/* =========================================================
+   UPLOAD
+========================================================= */
+
+uploadButton?.addEventListener(
+  "click",
+  uploadModelAnswer
+);
+
+
+async function uploadModelAnswer() {
+
+  const files =
+    [
+      ...(fileInput?.files || [])
+    ];
+
+
+  if (!files.length) {
+
+    showMessage(
+      "模範解答ファイルを選択してください。",
+      true
+    );
+
+    return;
+
+  }
+
+
+  uploadButton.disabled =
+    true;
+
+
+  try {
+
+    let nextPage =
+      modelPages.length
+        ? Math.max(
+            ...modelPages.map(
+              page =>
+                Number(
+                  page.page_no
+                ) || 0
+            )
+          ) + 1
+        : 1;
+
+
+    for (
+      const file
+      of files
+    ) {
+
+      const parsed =
+        await parseFile(
+          file
+        );
+
+
+      for (
+        const page
+        of parsed
+      ) {
+
+        const path =
+          [
+            testId,
+            "model",
+            crypto.randomUUID(),
+            `${String(
+              nextPage
+            ).padStart(
+              3,
+              "0"
+            )}.png`
+          ].join(
+            "/"
+          );
+
+
+        const {
+          error:
+            uploadError
+        } =
+          await DB
+            .storage
+            .from(
+              "test-files"
+            )
+            .upload(
+              path,
+              page.blob,
+              {
+                contentType:
+                  "image/png",
+                upsert:
+                  false
+              }
+            );
+
+
+        if (uploadError) {
+
+          throw uploadError;
+
+        }
+
+
+        const {
+          data,
+          error
+        } =
+          await DB
+            .from(
+              "test_model_pages"
+            )
+            .insert({
+
+              test_id:
+                testId,
+
+              page_no:
+                nextPage,
+
+              file_path:
+                path,
+
+              original_name:
+                file.name,
+
+              width_px:
+                page.width ||
+                null,
+
+              height_px:
+                page.height ||
+                null
+
+            })
+            .select()
+            .single();
+
+
+        if (error) {
+
+          await DB
+            .storage
+            .from(
+              "test-files"
+            )
+            .remove([
+              path
+            ]);
+
+
+          throw error;
+
+        }
+
+
+        modelPages.push(
+          data
+        );
+
+
+        nextPage++;
+
+      }
+
+    }
+
+
+    modelPages.sort(
+      (
+        a,
+        b
+      ) =>
+        Number(
+          a.page_no
+        ) -
+        Number(
+          b.page_no
+        )
+    );
+
+
+    fileInput.value =
+      "";
+
+
+    renderPages();
+
+
+    showMessage(
+      "模範解答を登録しました。"
+    );
+
+
+  } catch (error) {
+
+    console.error(
+      "model upload:",
+      error
+    );
+
+
+    showMessage(
+      error.message ||
+      "模範解答の登録に失敗しました。",
+      true
+    );
+
+  } finally {
+
+    uploadButton.disabled =
+      false;
+
+  }
+
+}
+
+
+/* =========================================================
+   CLEAR
+========================================================= */
+
+clearButton?.addEventListener(
+  "click",
+  clearModelAnswer
+);
+
+
+async function clearModelAnswer() {
+
+  if (!modelPages.length) {
+
+    return;
+
+  }
+
+
+  if (
+    !window.confirm(
+      "登録済みの模範解答をすべて削除しますか？"
+    )
+  ) {
+
+    return;
+
+  }
+
+
+  clearButton.disabled =
+    true;
+
+
+  try {
+
+    for (
+      const page
+      of modelPages
+    ) {
+
+      if (
+        page.file_path
+      ) {
+
+        await DB
+          .storage
+          .from(
+            "test-files"
+          )
+          .remove([
+            page.file_path
+          ]);
+
+      }
+
+    }
+
 
     const {
-      data,
       error
     } =
-      await supabaseClient
+      await DB
         .from(
-          "model_answer_pages"
+          "test_model_pages"
         )
-        .select(`
-          id,
-          page_no,
-          image_path,
-          width_px,
-          height_px,
-          original_name
-        `)
+        .delete()
         .eq(
           "test_id",
           testId
-        )
-        .order(
-          "page_no",
-          {
-            ascending:true
-          }
         );
 
 
@@ -419,781 +676,210 @@
 
 
     modelPages =
-      data || [];
+      [];
 
 
     renderPages();
 
+
+    showMessage(
+      "模範解答を削除しました。"
+    );
+
+
+  } catch (error) {
+
+    console.error(
+      "model clear:",
+      error
+    );
+
+
+    showMessage(
+      error.message ||
+      "模範解答を削除できませんでした。",
+      true
+    );
+
+  } finally {
+
+    clearButton.disabled =
+      false;
+
+  }
+
+}
+
+
+/* =========================================================
+   RENDER
+========================================================= */
+
+function renderPages() {
+
+  if (pageCount) {
+
+    pageCount.textContent =
+      `${modelPages.length}ページ`;
+
   }
 
 
-  /* =====================================================
-     RENDER
-  ===================================================== */
+  if (!pageList) {
 
-  async function renderPages() {
+    return;
 
-    const container =
-      document.getElementById(
-        "pageList"
-      );
+  }
 
 
-    const count =
-      document.getElementById(
-        "pageCount"
-      );
+  if (!modelPages.length) {
+
+    pageList.innerHTML = `
+
+      <div class="empty">
+        模範解答は登録されていません。
+      </div>
+
+    `;
+
+    return;
+
+  }
 
 
-    if (count) {
-
-      count.textContent =
-        `${modelPages.length}ページ`;
-
-    }
+  pageList.innerHTML =
+    "";
 
 
-    if (!container) {
+  modelPages.forEach(
+    page => {
 
-      return;
+      const item =
+        document.createElement(
+          "div"
+        );
 
-    }
+
+      item.className =
+        "model-page";
 
 
-    if (!modelPages.length) {
-
-      container.innerHTML = `
+      item.innerHTML = `
 
         <div
-          style="
-            grid-column:1/-1;
-            text-align:center;
-            color:#777;
-            padding:35px;
-          "
+          class="model-page-title"
         >
-          模範解答が登録されていません。
+          模範解答 ${page.page_no}ページ
+        </div>
+
+        <div
+          class="model-page-name"
+        >
+          ${escapeHtml(
+            page.original_name ||
+            ""
+          )}
         </div>
 
       `;
 
-      return;
 
-    }
-
-
-    container.innerHTML =
-      "";
-
-
-    for (
-      const page
-      of modelPages
-    ) {
-
-      const card =
-        document.createElement(
-          "div"
-        );
-
-
-      card.className =
-        "model-page";
-
-
-      const header =
-        document.createElement(
-          "div"
-        );
-
-
-      header.className =
-        "model-page-header";
-
-
-      const title =
-        document.createElement(
-          "strong"
-        );
-
-
-      title.textContent =
-        `${page.page_no}ページ`;
-
-
-      const deleteButton =
-        document.createElement(
-          "button"
-        );
-
-
-      deleteButton.type =
-        "button";
-
-
-      deleteButton.className =
-        "btn";
-
-
-      deleteButton.textContent =
-        "削除";
-
-
-      deleteButton.addEventListener(
-        "click",
-        async () => {
-
-          await deletePage(
-            page
-          );
-
-        }
-      );
-
-
-      header.append(
-        title,
-        deleteButton
-      );
-
-
-      const preview =
-        document.createElement(
-          "div"
-        );
-
-
-      preview.className =
-        "model-preview";
-
-
-      preview.textContent =
-        "読み込み中...";
-
-
-      const meta =
-        document.createElement(
-          "div"
-        );
-
-
-      meta.className =
-        "model-page-meta";
-
-
-      meta.textContent =
-        [
-          page.width_px &&
-          page.height_px
-            ? `${page.width_px} × ${page.height_px}px`
-            : "",
-
-          page.original_name ||
-          ""
-
-        ]
-          .filter(Boolean)
-          .join(
-            " / "
-          );
-
-
-      card.append(
-        header,
-        preview,
-        meta
-      );
-
-
-      container.appendChild(
-        card
-      );
-
-
-      await renderPage(
-        page,
-        preview
+      pageList.appendChild(
+        item
       );
 
     }
+  );
 
-  }
+}
 
 
-  /* =====================================================
-     PAGE IMAGE
-  ===================================================== */
+/* =========================================================
+   PARSE
+========================================================= */
 
-  async function renderPage(
-    page,
-    target
+async function parseFile(
+  file
+) {
+
+  if (
+    window.TEST_SCORE_FILES?.parseFile
   ) {
 
-    try {
-
-      const {
-        data,
-        error
-      } =
-        await supabaseClient
-          .storage
-          .from(
-            "model-answers"
-          )
-          .createSignedUrl(
-            page.image_path,
-            3600
-          );
-
-
-      if (
-        error ||
-        !data?.signedUrl
-      ) {
-
-        throw new Error(
-          "画像URLを取得できませんでした。"
-        );
-
-      }
-
-
-      const image =
-        document.createElement(
-          "img"
-        );
-
-
-      image.src =
-        data.signedUrl;
-
-
-      image.alt =
-        "模範解答";
-
-
-      image.draggable =
-        false;
-
-
-      target.innerHTML =
-        "";
-
-
-      target.appendChild(
-        image
+    return await window.TEST_SCORE_FILES
+      .parseFile(
+        file
       );
-
-
-    } catch (error) {
-
-      target.textContent =
-        error.message ||
-        "画像を取得できませんでした。";
-
-    }
 
   }
 
 
-  /* =====================================================
-     UPLOAD
-  ===================================================== */
+  throw new Error(
+    "ファイル解析ライブラリが読み込まれていません。"
+  );
 
-  async function uploadFiles() {
-
-    const input =
-      document.getElementById(
-        "modelAnswerFiles"
-      );
+}
 
 
-    const files =
-      [
-        ...(input?.files || [])
-      ];
+/* =========================================================
+   MESSAGE
+========================================================= */
 
+function showMessage(
+  text,
+  error = false
+) {
 
-    if (!files.length) {
+  if (!messageElement) {
 
-      showMessage(
-        "模範解答ファイルを選択してください。",
-        true
-      );
-
-      return;
-
-    }
-
-
-    const button =
-      document.getElementById(
-        "uploadButton"
-      );
-
-
-    button.disabled =
-      true;
-
-
-    button.textContent =
-      "登録中...";
-
-
-    try {
-
-      let count =
-        0;
-
-
-      for (
-        const file
-        of files
-      ) {
-
-        const pages =
-          await parseFile(
-            file
-          );
-
-
-        for (
-          const page
-          of pages
-        ) {
-
-          await uploadPage(
-            page,
-            file.name
-          );
-
-
-          count++;
-
-        }
-
-      }
-
-
-      input.value =
-        "";
-
-
-      await loadPages();
-
-
-      showMessage(
-        `${count}ページの模範解答を登録しました。`
-      );
-
-
-    } catch (error) {
-
-      console.error(
-        "model answer upload:",
-        error
-      );
-
-
-      showMessage(
-        error.message ||
-        "模範解答の登録に失敗しました。",
-        true
-      );
-
-    } finally {
-
-      button.disabled =
-        false;
-
-
-      button.textContent =
-        "模範解答を登録";
-
-    }
+    return;
 
   }
 
 
-  /* =====================================================
-     FILE PARSER
-  ===================================================== */
-
-  async function parseFile(
-    file
-  ) {
-
-    /*
-     * 既存の共通ファイル処理エンジンを優先。
-     */
-
-    if (
-      window.TEST_SCORE_FILES?.parseFile
-    ) {
-
-      const result =
-        await window.TEST_SCORE_FILES
-          .parseFile(
-            file
-          );
+  messageElement.textContent =
+    text;
 
 
-      return (
-        result ||
-        []
-      );
+  messageElement.style.color =
+    error
+      ? "#b42318"
+      : "#16834b";
 
-    }
+}
 
 
-    throw new Error(
-      "ファイル処理エンジンが読み込まれていません。"
+/* =========================================================
+   ESCAPE
+========================================================= */
+
+function escapeHtml(
+  value
+) {
+
+  return String(
+    value ??
+    ""
+  )
+    .replaceAll(
+      "&",
+      "&amp;"
+    )
+    .replaceAll(
+      "<",
+      "&lt;"
+    )
+    .replaceAll(
+      ">",
+      "&gt;"
+    )
+    .replaceAll(
+      '"',
+      "&quot;"
+    )
+    .replaceAll(
+      "'",
+      "&#039;"
     );
 
-  }
-
-
-  /* =====================================================
-     UPLOAD PAGE
-  ===================================================== */
-
-  async function uploadPage(
-    page,
-    originalName
-  ) {
-
-    const pageNo =
-      await getNextPageNo();
-
-
-    const storagePath =
-      [
-        testId,
-        `page-${String(
-          pageNo
-        ).padStart(
-          3,
-          "0"
-        )}`,
-        crypto.randomUUID(),
-        "answer.png"
-      ].join(
-        "/"
-      );
-
-
-    const {
-      error:
-        uploadError
-    } =
-      await supabaseClient
-        .storage
-        .from(
-          "model-answers"
-        )
-        .upload(
-          storagePath,
-          page.blob,
-          {
-
-            contentType:
-              "image/png",
-
-            upsert:
-              false
-
-          }
-        );
-
-
-    if (uploadError) {
-
-      throw uploadError;
-
-    }
-
-
-    const {
-      error
-    } =
-      await supabaseClient
-        .from(
-          "model_answer_pages"
-        )
-        .insert({
-
-          test_id:
-            testId,
-
-          page_no:
-            pageNo,
-
-          image_path:
-            storagePath,
-
-          width_px:
-            page.width,
-
-          height_px:
-            page.height,
-
-          original_name:
-            page.name ||
-            originalName
-
-        });
-
-
-    if (error) {
-
-      /*
-       * DB保存失敗時は
-       * Storageファイルも削除。
-       */
-
-      await supabaseClient
-        .storage
-        .from(
-          "model-answers"
-        )
-        .remove([
-          storagePath
-        ]);
-
-
-      throw error;
-
-    }
-
-  }
-
-
-  /* =====================================================
-     NEXT PAGE
-  ===================================================== */
-
-  async function getNextPageNo() {
-
-    const {
-      data,
-      error
-    } =
-      await supabaseClient
-        .from(
-          "model_answer_pages"
-        )
-        .select(
-          "page_no"
-        )
-        .eq(
-          "test_id",
-          testId
-        )
-        .order(
-          "page_no",
-          {
-            ascending:false
-          }
-        )
-        .limit(
-          1
-        );
-
-
-    if (error) {
-
-      throw error;
-
-    }
-
-
-    if (!data?.length) {
-
-      return 1;
-
-    }
-
-
-    return (
-      Number(
-        data[0].page_no
-      ) || 0
-    ) + 1;
-
-  }
-
-
-  /* =====================================================
-     DELETE
-  ===================================================== */
-
-  async function deletePage(
-    page
-  ) {
-
-    if (
-      !window.confirm(
-        `${page.page_no}ページの模範解答を削除しますか？`
-      )
-    ) {
-
-      return;
-
-    }
-
-
-    try {
-
-      const {
-        error
-      } =
-        await supabaseClient
-          .from(
-            "model_answer_pages"
-          )
-          .delete()
-          .eq(
-            "id",
-            page.id
-          );
-
-
-      if (error) {
-
-        throw error;
-
-      }
-
-
-      if (
-        page.image_path
-      ) {
-
-        const {
-          error:
-            storageError
-        } =
-          await supabaseClient
-            .storage
-            .from(
-              "model-answers"
-            )
-            .remove([
-              page.image_path
-            ]);
-
-
-        if (storageError) {
-
-          console.warn(
-            "Storage削除:",
-            storageError
-          );
-
-        }
-
-      }
-
-
-      await loadPages();
-
-
-      showMessage(
-        "模範解答ページを削除しました。"
-      );
-
-
-    } catch (error) {
-
-      console.error(
-        "delete model answer:",
-        error
-      );
-
-
-      showMessage(
-        error.message ||
-        "模範解答を削除できませんでした。",
-        true
-      );
-
-    }
-
-  }
-
-
-  /* =====================================================
-     MESSAGE
-  ===================================================== */
-
-  function showMessage(
-    message,
-    error = false
-  ) {
-
-    const element =
-      document.getElementById(
-        "message"
-      );
-
-
-    if (!element) {
-
-      return;
-
-    }
-
-
-    element.textContent =
-      message;
-
-
-    element.className =
-      `model-message ${
-        error
-          ? "error"
-          : "success"
-      }`;
-
-  }
-
-
-  /* =====================================================
-     ESCAPE
-  ===================================================== */
-
-  function escapeHtml(
-    value
-  ) {
-
-    return String(
-      value ??
-      ""
-    )
-      .replaceAll(
-        "&",
-        "&amp;"
-      )
-      .replaceAll(
-        "<",
-        "&lt;"
-      )
-      .replaceAll(
-        ">",
-        "&gt;"
-      )
-      .replaceAll(
-        '"',
-        "&quot;"
-      )
-      .replaceAll(
-        "'",
-        "&#039;"
-      );
-
-  }
-
-
-  initialize();
-
-})();
+}

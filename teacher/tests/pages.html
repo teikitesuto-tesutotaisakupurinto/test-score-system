@@ -18,436 +18,11 @@
   href="/css/common.css"
 >
 
-<style>
-
-/* =========================================================
-   基本
-========================================================= */
-
-* {
-  box-sizing: border-box;
-}
-
-html,
-body {
-  margin: 0;
-  padding: 0;
-}
-
-body {
-  background: #f3f5f7;
-  color: #222;
-}
-
-
-/* =========================================================
-   メイン
-========================================================= */
-
-.main {
-  max-width: 1500px;
-  margin: 0 auto;
-  padding: 20px;
-}
-
-
-/* =========================================================
-   見出し
-========================================================= */
-
-.page-header {
-  margin-bottom: 14px;
-}
-
-.page-header h1 {
-  margin: 0;
-  font-size: 24px;
-}
-
-.page-description {
-  margin: 5px 0 0;
-  color: #666;
-  font-size: 13px;
-}
-
-
-/* =========================================================
-   ツールバー
-========================================================= */
-
-.toolbar {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-
-  padding: 12px;
-
-  margin-bottom: 12px;
-
-  background: #fff;
-
-  border: 1px solid #d5dbe0;
-}
-
-.toolbar input[type="file"] {
-  max-width: 300px;
-}
-
-.toolbar-status {
-  width: 100%;
-
-  padding: 8px 10px;
-
-  background: #f5f6f7;
-
-  border: 1px solid #e1e5e8;
-
-  color: #555;
-
-  font-size: 12px;
-}
-
-
-/* =========================================================
-   ビューア
-========================================================= */
-
-.viewer {
-  min-height: 650px;
-
-  padding: 25px;
-
-  background: #dfe3e8;
-
-  border: 1px solid #ccd2d7;
-
-  overflow: auto;
-}
-
-.page {
-  position: relative;
-
-  width: min(100%, 1000px);
-
-  margin: 0 auto 30px;
-
-  background: #fff;
-
-  box-shadow:
-    0 2px 12px rgba(0,0,0,.15);
-}
-
-.page canvas {
-  display: block;
-
-  width: 100%;
-
-  height: auto;
-}
-
-.page-layer {
-  position: absolute;
-
-  inset: 0;
-
-  user-select: none;
-
-  touch-action: none;
-}
-
-
-/* =========================================================
-   枠
-========================================================= */
-
-.layout-box {
-  position: absolute;
-
-  min-width: 8px;
-  min-height: 8px;
-
-  cursor: move;
-
-  z-index: 20;
-}
-
-.layout-box.selected {
-  outline: 3px solid #111;
-
-  outline-offset: 1px;
-}
-
-
-/* =========================================================
-   枠ラベル
-========================================================= */
-
-.layout-box-label {
-  position: absolute;
-
-  top: -25px;
-
-  left: 0;
-
-  padding: 3px 7px;
-
-  background: #222;
-
-  color: #fff;
-
-  font-size: 11px;
-
-  line-height: 1.3;
-
-  white-space: nowrap;
-
-  pointer-events: none;
-}
-
-
-/* =========================================================
-   リサイズハンドル
-========================================================= */
-
-.resize-handle {
-  position: absolute;
-
-  right: -6px;
-
-  bottom: -6px;
-
-  width: 12px;
-
-  height: 12px;
-
-  background: #222;
-
-  border: 1px solid #fff;
-
-  cursor: nwse-resize;
-}
-
-
-/* =========================================================
-   ドラッグ中の仮枠
-========================================================= */
-
-.drag-preview {
-  position: absolute;
-
-  border: 2px dashed #d00000;
-
-  background: rgba(208,0,0,.10);
-
-  pointer-events: none;
-
-  z-index: 9999;
-}
-
-
-/* =========================================================
-   枠設定バー
-========================================================= */
-
-.box-panel {
-  position: fixed;
-
-  top: 64px;
-
-  left: 0;
-
-  right: 0;
-
-  z-index: 1000;
-
-  display: none;
-
-  background: #fff;
-
-  border-bottom: 1px solid #cbd1d6;
-
-  box-shadow:
-    0 3px 14px rgba(0,0,0,.14);
-}
-
-.box-panel.open {
-  display: block;
-}
-
-.box-panel-header {
-  display: flex;
-
-  align-items: center;
-
-  gap: 12px;
-
-  min-height: 42px;
-
-  padding: 7px 15px;
-
-  background: #f4f6f8;
-
-  border-bottom: 1px solid #e0e4e7;
-}
-
-.box-panel-title {
-  margin: 0;
-
-  font-size: 15px;
-
-  font-weight: 700;
-}
-
-.box-panel-close {
-  margin-left: auto;
-
-  border: 0;
-
-  background: transparent;
-
-  cursor: pointer;
-
-  padding: 5px 9px;
-}
-
-.box-panel-body {
-  display: flex;
-
-  align-items: center;
-
-  flex-wrap: wrap;
-
-  gap: 10px;
-
-  padding: 9px 15px;
-}
-
-.role-label {
-  font-size: 12px;
-
-  font-weight: 700;
-}
-
-#boxRole {
-  width: 150px;
-
-  height: 36px;
-
-  padding: 0 8px;
-
-  border: 1px solid #c8ced4;
-
-  background: #fff;
-}
-
-#parentInfo {
-  min-width: 260px;
-
-  padding: 7px 10px;
-
-  background: #f5f6f7;
-
-  border: 1px solid #e0e4e7;
-
-  color: #666;
-
-  font-size: 11px;
-}
-
-.box-panel-actions {
-  display: flex;
-
-  gap: 7px;
-}
-
-.box-panel-actions button {
-  min-height: 36px;
-}
-
-.delete-box {
-  border: 1px solid #c94b43;
-
-  background: #fff;
-
-  color: #b42318;
-}
-
-
-/* =========================================================
-   空表示
-========================================================= */
-
-.empty-view {
-  padding: 80px 20px;
-
-  text-align: center;
-
-  color: #666;
-}
-
-.empty-view strong {
-  display: block;
-
-  margin-bottom: 8px;
-
-  color: #333;
-}
-
-
-/* =========================================================
-   スマホ
-========================================================= */
-
-@media (max-width: 700px) {
-
-  .main {
-    padding: 10px;
-  }
-
-  .viewer {
-    padding: 8px;
-  }
-
-  .box-panel {
-    top: 56px;
-  }
-
-  .box-panel-body {
-    align-items: stretch;
-
-    flex-direction: column;
-  }
-
-  #boxRole {
-    width: 100%;
-  }
-
-  #parentInfo {
-    width: 100%;
-  }
-
-  .box-panel-actions {
-    width: 100%;
-  }
-
-  .box-panel-actions button {
-    flex: 1;
-  }
-
-}
-
-</style>
-
 </head>
 
 
 <body>
 
-
-<!-- =======================================================
-     TOPBAR
-======================================================= -->
 
 <header class="topbar">
 
@@ -472,127 +47,20 @@ body {
 </header>
 
 
-<!-- =======================================================
-     枠設定
-======================================================= -->
-
-<section
-  id="boxPanel"
-  class="box-panel"
->
-
-  <div class="box-panel-header">
-
-    <h2 class="box-panel-title">
-      枠設定
-    </h2>
-
-    <button
-      id="closePanelButton"
-      class="box-panel-close"
-      type="button"
-    >
-      閉じる
-    </button>
-
-  </div>
-
-
-  <div class="box-panel-body">
-
-    <span class="role-label">
-      枠種類
-    </span>
-
-
-    <select id="boxRole">
-
-      <option value="major">
-        大問
-      </option>
-
-      <option value="minor">
-        小問
-      </option>
-
-      <option value="qr">
-        QR
-      </option>
-
-      <option value="subtotal">
-        小計
-      </option>
-
-      <option value="total">
-        合計
-      </option>
-
-      <option value="name">
-        氏名
-      </option>
-
-      <option value="student_no">
-        生徒番号
-      </option>
-
-      <option value="instruction">
-        説明
-      </option>
-
-      <option value="other">
-        その他
-      </option>
-
-    </select>
-
-
-    <div id="parentInfo">
-      枠種類を選択して、解答用紙上をドラッグしてください。
-    </div>
-
-
-    <div class="box-panel-actions">
-
-      <button
-        id="applyButton"
-        type="button"
-        class="btn btn-primary"
-      >
-        反映
-      </button>
-
-      <button
-        id="deleteSelectedButton"
-        type="button"
-        class="delete-box"
-      >
-        選択枠を削除
-      </button>
-
-    </div>
-
-  </div>
-
-</section>
-
-
-<!-- =======================================================
-     MAIN
-======================================================= -->
-
 <main class="main">
 
-  <header class="page-header">
+
+  <div class="page-header">
 
     <h1>
       解答用紙・枠設定
     </h1>
 
     <p class="page-description">
-      解答用紙を登録して、ドラッグで各枠を設定します。
+      解答用紙を登録し、採点対象となる解答欄を設定します。
     </p>
 
-  </header>
+  </div>
 
 
   <section class="toolbar">
@@ -658,22 +126,537 @@ body {
 
   </section>
 
+
 </main>
 
 
-<!-- =======================================================
-     SCRIPT
-======================================================= -->
+<!-- =====================================================
+     枠設定パネル
+===================================================== -->
+
+<section
+  id="boxPanel"
+  class="box-panel"
+>
+
+  <div class="box-panel-header">
+
+    <h2 class="box-panel-title">
+      枠設定
+    </h2>
+
+
+    <button
+      id="closePanelButton"
+      class="box-panel-close"
+      type="button"
+    >
+      閉じる
+    </button>
+
+  </div>
+
+
+  <div class="box-panel-body">
+
+    <span class="role-label">
+      枠種類
+    </span>
+
+
+    <select id="boxRole">
+
+      <option value="answer">
+        解答欄
+      </option>
+
+      <option value="major">
+        大問
+      </option>
+
+      <option value="minor">
+        小問
+      </option>
+
+      <option value="qr">
+        QR
+      </option>
+
+      <option value="subtotal">
+        小計
+      </option>
+
+      <option value="total">
+        合計
+      </option>
+
+      <option value="name">
+        氏名
+      </option>
+
+      <option value="student_no">
+        生徒番号
+      </option>
+
+      <option value="instruction">
+        説明
+      </option>
+
+      <option value="other">
+        その他
+      </option>
+
+    </select>
+
+
+    <div id="parentInfo">
+
+      解答欄を選択して、解答用紙上をドラッグしてください。
+
+    </div>
+
+
+    <div class="box-panel-actions">
+
+      <button
+        id="applyButton"
+        type="button"
+        class="btn btn-primary"
+      >
+        反映
+      </button>
+
+
+      <button
+        id="deleteSelectedButton"
+        type="button"
+        class="delete-box"
+      >
+        選択枠を削除
+      </button>
+
+    </div>
+
+  </div>
+
+</section>
+
+
+<style>
+
+* {
+  box-sizing:border-box;
+}
+
+
+html,
+body {
+  margin:0;
+  padding:0;
+}
+
+
+body {
+  background:#f3f5f7;
+  color:#222;
+}
+
+
+.main {
+  max-width:1500px;
+
+  margin:0 auto;
+
+  padding:20px;
+}
+
+
+.page-header {
+  margin-bottom:14px;
+}
+
+
+.page-header h1 {
+  margin:0;
+
+  font-size:24px;
+}
+
+
+.page-description {
+  margin:5px 0 0;
+
+  color:#666;
+
+  font-size:13px;
+}
+
+
+.toolbar {
+  display:flex;
+
+  align-items:center;
+
+  flex-wrap:wrap;
+
+  gap:8px;
+
+  padding:12px;
+
+  margin-bottom:12px;
+
+  background:#fff;
+
+  border:1px solid #d5dbe0;
+}
+
+
+.toolbar input[type="file"] {
+  max-width:300px;
+}
+
+
+.toolbar-status {
+  width:100%;
+
+  padding:8px 10px;
+
+  background:#f5f6f7;
+
+  border:1px solid #e1e5e8;
+
+  color:#555;
+
+  font-size:12px;
+
+  white-space:pre-wrap;
+}
+
+
+.viewer {
+  min-height:650px;
+
+  padding:25px;
+
+  background:#dfe3e8;
+
+  border:1px solid #ccd2d7;
+
+  overflow:auto;
+}
+
+
+.page {
+  position:relative;
+
+  width:min(100%,1000px);
+
+  margin:0 auto 30px;
+
+  background:#fff;
+
+  box-shadow:
+    0 2px 12px rgba(0,0,0,.15);
+}
+
+
+.page canvas {
+  display:block;
+
+  width:100%;
+
+  height:auto;
+}
+
+
+.page-layer {
+  position:absolute;
+
+  inset:0;
+
+  user-select:none;
+
+  touch-action:none;
+}
+
+
+.layout-box {
+  position:absolute;
+
+  min-width:8px;
+  min-height:8px;
+
+  cursor:move;
+
+  z-index:20;
+}
+
+
+.layout-box.selected {
+  outline:3px solid #111;
+
+  outline-offset:1px;
+}
+
+
+.layout-box-label {
+  position:absolute;
+
+  top:-25px;
+
+  left:0;
+
+  padding:3px 7px;
+
+  background:#222;
+
+  color:#fff;
+
+  font-size:11px;
+
+  line-height:1.3;
+
+  white-space:nowrap;
+
+  pointer-events:none;
+}
+
+
+.resize-handle {
+  position:absolute;
+
+  right:-6px;
+
+  bottom:-6px;
+
+  width:12px;
+
+  height:12px;
+
+  background:#222;
+
+  border:1px solid #fff;
+
+  cursor:nwse-resize;
+}
+
+
+.drag-preview {
+  position:absolute;
+
+  border:2px dashed #d00000;
+
+  background:rgba(208,0,0,.10);
+
+  pointer-events:none;
+
+  z-index:9999;
+}
+
+
+.box-panel {
+  position:fixed;
+
+  top:64px;
+
+  left:0;
+
+  right:0;
+
+  z-index:1000;
+
+  display:none;
+
+  background:#fff;
+
+  border-bottom:1px solid #cbd1d6;
+
+  box-shadow:
+    0 3px 14px rgba(0,0,0,.14);
+}
+
+
+.box-panel.open {
+  display:block;
+}
+
+
+.box-panel-header {
+  display:flex;
+
+  align-items:center;
+
+  gap:12px;
+
+  min-height:42px;
+
+  padding:7px 15px;
+
+  background:#f4f6f8;
+
+  border-bottom:1px solid #e0e4e7;
+}
+
+
+.box-panel-title {
+  margin:0;
+
+  font-size:15px;
+
+  font-weight:700;
+}
+
+
+.box-panel-close {
+  margin-left:auto;
+
+  border:0;
+
+  background:transparent;
+
+  cursor:pointer;
+
+  padding:5px 9px;
+}
+
+
+.box-panel-body {
+  display:flex;
+
+  align-items:center;
+
+  flex-wrap:wrap;
+
+  gap:10px;
+
+  padding:9px 15px;
+}
+
+
+.role-label {
+  font-size:12px;
+
+  font-weight:700;
+}
+
+
+#boxRole {
+  width:150px;
+
+  height:36px;
+
+  padding:0 8px;
+
+  border:1px solid #c8ced4;
+
+  background:#fff;
+}
+
+
+#parentInfo {
+  min-width:260px;
+
+  padding:7px 10px;
+
+  background:#f5f6f7;
+
+  border:1px solid #e0e4e7;
+
+  color:#666;
+
+  font-size:11px;
+}
+
+
+.box-panel-actions {
+  display:flex;
+
+  gap:7px;
+}
+
+
+.box-panel-actions button {
+  min-height:36px;
+}
+
+
+.delete-box {
+  border:1px solid #c94b43;
+
+  background:#fff;
+
+  color:#b42318;
+}
+
+
+.empty-view {
+  padding:80px 20px;
+
+  text-align:center;
+
+  color:#666;
+}
+
+
+.empty-view strong {
+  display:block;
+
+  margin-bottom:8px;
+
+  color:#333;
+}
+
+
+@media(max-width:700px) {
+
+  .main {
+    padding:10px;
+  }
+
+  .viewer {
+    padding:8px;
+  }
+
+  .box-panel {
+    top:56px;
+  }
+
+  .box-panel-body {
+    align-items:stretch;
+
+    flex-direction:column;
+  }
+
+  #boxRole {
+    width:100%;
+  }
+
+  #parentInfo {
+    width:100%;
+  }
+
+  .box-panel-actions {
+    width:100%;
+  }
+
+  .box-panel-actions button {
+    flex:1;
+  }
+
+}
+
+</style>
+
 
 <script
   src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
 ></script>
 
-<script src="/js/config.js"></script>
+<script src="/js/config.js?v=20261116"></script>
 
-<script src="/js/auth.js"></script>
+<script src="/js/auth.js?v=20261116"></script>
 
-<script src="/js/teacher/test-pages.js"></script>
+<script src="/js/teacher/test-pages.js?v=20261116"></script>
 
 
 </body>

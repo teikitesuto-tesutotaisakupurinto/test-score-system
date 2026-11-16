@@ -1,6 +1,13 @@
+
+/* =========================================================
+   答案返却
+========================================================= */
+
 .return-actions {
 
   display:flex;
+
+  flex-wrap:wrap;
 
   gap:8px;
 
@@ -11,14 +18,18 @@
 
 .return-preview {
 
-  background:#dfe5ea;
-
   min-height:500px;
+
+  padding:15px;
+
+  background:#dfe5ea;
 
 }
 
 
 .return-page {
+
+  position:relative;
 
   width:210mm;
 
@@ -50,12 +61,12 @@
 
   align-items:flex-start;
 
-  border-bottom:
-    1px solid #333;
-
   padding-bottom:6px;
 
   margin-bottom:10px;
+
+  border-bottom:
+    1px solid #333;
 
 }
 
@@ -71,9 +82,12 @@
 
 .return-student {
 
-  text-align:right;
+  /*
+   * 現在の仕様では
+   * 生徒情報を返却画面に表示しない。
+   */
 
-  font-size:13px;
+  display:none;
 
 }
 
@@ -120,6 +134,61 @@
 
 }
 
+
+.return-page canvas {
+
+  display:block;
+
+  width:100%;
+
+  height:auto;
+
+}
+
+
+.return-status {
+
+  margin-bottom:12px;
+
+  padding:9px 11px;
+
+  background:#fff;
+
+  border:
+    1px solid #d0d6dc;
+
+  color:#555;
+
+  font-size:13px;
+
+}
+
+
+.return-status.error {
+
+  color:#b42318;
+
+  background:#fff8f7;
+
+  border-color:#efc2bc;
+
+}
+
+
+.return-empty {
+
+  padding:50px 20px;
+
+  color:#777;
+
+  text-align:center;
+
+}
+
+
+/* =========================================================
+   印刷
+========================================================= */
 
 @media print {
 
@@ -196,6 +265,39 @@
     box-shadow:none;
 
     page-break-after:always;
+
+  }
+
+
+  .return-page:last-child {
+
+    page-break-after:auto;
+
+  }
+
+}
+
+
+/* =========================================================
+   画面幅が小さい場合
+========================================================= */
+
+@media(max-width:900px) {
+
+  .return-preview {
+
+    padding:5px;
+
+  }
+
+
+  .return-page {
+
+    width:100%;
+
+    min-height:auto;
+
+    padding:5mm;
 
   }
 

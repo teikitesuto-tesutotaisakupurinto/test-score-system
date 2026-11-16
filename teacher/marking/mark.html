@@ -20,633 +20,10 @@
   href="/css/common.css"
 >
 
-<style>
-
-* {
-  box-sizing:border-box;
-}
-
-body {
-  margin:0;
-  background:#eef2f5;
-  color:#222;
-}
-
-.topbar {
-  position:sticky;
-  top:0;
-  z-index:100;
-
-  display:flex;
-  align-items:center;
-
-  min-height:52px;
-
-  padding:8px 16px;
-
-  background:#fff;
-
-  border-bottom:1px solid #d0d6dc;
-}
-
-.system-name {
-  font-weight:700;
-}
-
-.topbar-space {
-  flex:1;
-}
-
-#teacherName {
-  margin-right:12px;
-
-  color:#555;
-
-  font-size:13px;
-}
-
-.marking-main {
-  max-width:1700px;
-
-  margin:0 auto;
-
-  padding:18px;
-}
-
-
-/* =====================================================
-   TOOLBAR
-===================================================== */
-
-.toolbar {
-  display:flex;
-
-  flex-wrap:wrap;
-
-  align-items:center;
-
-  gap:7px;
-
-  margin-bottom:12px;
-}
-
-.toolbar-title {
-  font-size:18px;
-
-  font-weight:700;
-
-  margin-right:8px;
-}
-
-
-/* =====================================================
-   STATUS
-===================================================== */
-
-.status {
-  min-height:40px;
-
-  margin-bottom:12px;
-
-  padding:10px 12px;
-
-  background:#fff;
-
-  border:1px solid #d0d6dc;
-
-  font-size:13px;
-
-  white-space:pre-wrap;
-}
-
-.status.error {
-  color:#b42318;
-
-  border-color:#efc2bc;
-
-  background:#fff8f7;
-}
-
-
-/* =====================================================
-   PROGRESS
-===================================================== */
-
-.progress {
-  display:none;
-
-  margin-bottom:12px;
-
-  padding:12px;
-
-  background:#fff;
-
-  border:1px solid #d0d6dc;
-}
-
-.progress.show {
-  display:block;
-}
-
-.progress-text {
-  margin-bottom:7px;
-
-  color:#555;
-
-  font-size:12px;
-}
-
-.progress-track {
-  height:8px;
-
-  overflow:hidden;
-
-  background:#e1e5e8;
-
-  border-radius:4px;
-}
-
-.progress-bar {
-  width:0;
-
-  height:100%;
-
-  background:#1769aa;
-
-  transition:width .15s;
-}
-
-
-/* =====================================================
-   MARK TOOLBAR
-===================================================== */
-
-.mark-toolbar {
-  display:flex;
-
-  flex-wrap:wrap;
-
-  align-items:center;
-
-  gap:6px;
-
-  margin-bottom:12px;
-
-  padding:10px;
-
-  background:#fff;
-
-  border:1px solid #d0d6dc;
-}
-
-.mark-toolbar-title {
-  margin-right:5px;
-
-  font-weight:700;
-
-  font-size:13px;
-}
-
-.mark-tool {
-  min-width:52px;
-
-  height:38px;
-
-  padding:0 10px;
-
-  background:#fff;
-
-  border:1px solid #b8c1c9;
-
-  border-radius:4px;
-
-  cursor:pointer;
-
-  font-weight:700;
-}
-
-.mark-tool:hover {
-  background:#f1f4f6;
-}
-
-.mark-tool.active {
-  background:#e9ecef;
-
-  border-color:#333;
-}
-
-.keyboard-help {
-  margin-left:8px;
-
-  color:#666;
-
-  font-size:12px;
-}
-
-
-/* =====================================================
-   QUESTION HEADER
-===================================================== */
-
-.question-header {
-  display:flex;
-
-  flex-wrap:wrap;
-
-  align-items:center;
-
-  gap:12px;
-
-  margin-bottom:12px;
-
-  padding:13px 15px;
-
-  background:#fff;
-
-  border:1px solid #d0d6dc;
-}
-
-.question-info {
-  min-width:250px;
-}
-
-.question-title {
-  font-size:20px;
-
-  font-weight:700;
-}
-
-.question-meta {
-  margin-top:4px;
-
-  color:#666;
-
-  font-size:13px;
-}
-
-.question-space {
-  flex:1;
-}
-
-.navigation {
-  display:flex;
-
-  gap:7px;
-}
-
-
-/* =====================================================
-   ANSWER TABLE
-===================================================== */
-
-.answer-table-wrap {
-  overflow:auto;
-
-  background:#fff;
-
-  border:1px solid #d0d6dc;
-}
-
-.answer-table {
-  width:100%;
-
-  min-width:1150px;
-
-  border-collapse:collapse;
-}
-
-.answer-table th,
-.answer-table td {
-  padding:9px;
-
-  border:1px solid #d0d6dc;
-
-  vertical-align:top;
-
-  font-size:13px;
-}
-
-.answer-table th {
-  position:sticky;
-
-  top:0;
-
-  z-index:5;
-
-  background:#f3f5f7;
-
-  font-weight:700;
-}
-
-.student-cell {
-  width:150px;
-
-  min-width:150px;
-}
-
-.student-no {
-  font-weight:700;
-}
-
-.student-name {
-  margin-top:4px;
-
-  color:#555;
-}
-
-.answer-cell {
-  width:620px;
-
-  min-width:620px;
-}
-
-.score-cell {
-  width:190px;
-
-  min-width:190px;
-
-  text-align:center;
-}
-
-.answer-status-cell {
-  width:100px;
-
-  min-width:100px;
-}
-
-
-/* =====================================================
-   ANSWER VIEWER
-===================================================== */
-
-.answer-viewer {
-  position:relative;
-
-  width:100%;
-
-  min-height:180px;
-
-  overflow:hidden;
-
-  background:#f7f8f9;
-
-  border:1px solid #dfe3e6;
-
-  cursor:pointer;
-
-  user-select:none;
-}
-
-.answer-viewer:hover {
-  outline:2px solid #b8c1c9;
-}
-
-.answer-viewer img {
-  position:absolute;
-
-  max-width:none;
-  max-height:none;
-
-  margin:0;
-
-  user-select:none;
-
-  pointer-events:none;
-}
-
-.answer-error {
-  display:flex;
-
-  align-items:center;
-
-  justify-content:center;
-
-  min-height:180px;
-
-  padding:30px;
-
-  color:#b42318;
-
-  text-align:center;
-
-  font-size:13px;
-}
-
-
-/* =====================================================
-   MARK OBJECT
-===================================================== */
-
-.mark-object {
-  position:absolute;
-
-  z-index:20;
-
-  color:#d00000;
-
-  font-weight:700;
-
-  line-height:1;
-
-  user-select:none;
-
-  pointer-events:auto;
-
-  cursor:pointer;
-
-  text-shadow:
-    0 0 1px #fff,
-    0 0 1px #fff;
-}
-
-.mark-object:hover {
-  outline:1px dashed #d00000;
-}
-
-
-/* =====================================================
-   SCORE
-===================================================== */
-
-.score-controls {
-  display:flex;
-
-  flex-wrap:wrap;
-
-  align-items:center;
-
-  justify-content:center;
-
-  gap:5px;
-}
-
-.score-input {
-  width:82px;
-
-  height:40px;
-
-  padding:0 7px;
-
-  border:1px solid #b8c1c9;
-
-  border-radius:4px;
-
-  font-size:17px;
-
-  text-align:center;
-}
-
-.score-input:focus {
-  outline:none;
-
-  border-color:#1769aa;
-
-  box-shadow:
-    0 0 0 2px
-    rgba(
-      23,
-      105,
-      170,
-      .12
-    );
-}
-
-.score-action {
-  min-width:42px;
-
-  height:38px;
-
-  padding:0 8px;
-
-  border:1px solid #b8c1c9;
-
-  border-radius:4px;
-
-  background:#fff;
-
-  cursor:pointer;
-}
-
-.score-action:hover {
-  background:#f1f4f6;
-}
-
-.score-action.primary {
-  border-color:#1769aa;
-
-  background:#1769aa;
-
-  color:#fff;
-}
-
-.score-state {
-  margin-top:7px;
-
-  font-size:12px;
-
-  color:#777;
-}
-
-.score-state.marked {
-  color:#1769aa;
-
-  font-weight:700;
-}
-
-.score-state.error {
-  color:#b42318;
-
-  font-weight:700;
-}
-
-.warning {
-  display:none;
-
-  margin-top:7px;
-
-  padding:7px;
-
-  background:#fff4f2;
-
-  border:1px solid #efc2bc;
-
-  color:#b42318;
-
-  font-size:12px;
-
-  text-align:left;
-}
-
-.warning.show {
-  display:block;
-}
-
-
-/* =====================================================
-   COMPLETE
-===================================================== */
-
-.complete {
-  display:none;
-
-  margin-top:12px;
-
-  padding:17px;
-
-  background:#fff;
-
-  border:1px solid #d0d6dc;
-}
-
-.complete.show {
-  display:block;
-}
-
-.complete-title {
-  margin-bottom:5px;
-
-  font-size:18px;
-
-  font-weight:700;
-}
-
-
-/* =====================================================
-   EMPTY
-===================================================== */
-
-.empty {
-  padding:60px 20px;
-
-  color:#777;
-
-  text-align:center;
-}
-
-
-/* =====================================================
-   MOBILE
-===================================================== */
-
-@media(max-width:800px) {
-
-  .marking-main {
-    padding:10px;
-  }
-
-  .keyboard-help {
-    width:100%;
-
-    margin-left:0;
-  }
-
-  .question-info {
-    width:100%;
-  }
-
-}
-
-</style>
+<link
+  rel="stylesheet"
+  href="/css/marking.css?v=20261116"
+>
 
 </head>
 
@@ -654,290 +31,348 @@ body {
 <body>
 
 
-<header class="topbar">
+<div class="marking-page">
 
-  <div class="system-name">
-    テスト成績システム
+
+<header class="marking-toolbar">
+
+
+  <div class="marking-toolbar-row">
+
+
+    <strong>
+      デジタル採点
+    </strong>
+
+
+    <span
+      id="questionTitle"
+      class="question-info"
+    >
+      -
+    </span>
+
+
+    <span
+      id="questionMeta"
+      class="point-info"
+    >
+      -
+    </span>
+
+
+    <span
+      id="progressText"
+      class="marking-progress"
+    >
+      0 / 0
+    </span>
+
+
+    <a
+      href="/teacher/marking"
+      class="btn"
+    >
+      戻る
+    </a>
+
+
+    <a
+      id="pointsButton"
+      href="#"
+      class="btn"
+    >
+      配点
+    </a>
+
+
+    <button
+      id="refreshButton"
+      type="button"
+      class="btn"
+    >
+      更新
+    </button>
+
+
+    <button
+      id="logoutButton"
+      type="button"
+      class="btn"
+    >
+      ログアウト
+    </button>
+
+
   </div>
 
 
-  <div class="topbar-space"></div>
+  <div class="marking-toolbar-row">
 
 
-  <span id="teacherName">
-    -
-  </span>
+    <div class="toolbar-group">
 
 
-  <button
-    id="logoutButton"
-    class="logout-button"
-    type="button"
+      <span class="toolbar-label">
+        記号
+      </span>
+
+
+      <button
+        type="button"
+        class="mark-tool symbol"
+        data-mark="circle"
+      >
+        ○
+      </button>
+
+
+      <button
+        type="button"
+        class="mark-tool symbol"
+        data-mark="x"
+      >
+        ×
+      </button>
+
+
+      <button
+        type="button"
+        class="mark-tool symbol"
+        data-mark="triangle"
+      >
+        △
+      </button>
+
+
+      <button
+        type="button"
+        class="mark-tool symbol"
+        data-mark="double_circle"
+      >
+        ◎
+      </button>
+
+
+      <button
+        type="button"
+        class="mark-tool"
+        data-mark="text"
+      >
+        文字
+      </button>
+
+
+      <button
+        type="button"
+        class="mark-tool"
+        data-mark="pen"
+      >
+        ペン
+      </button>
+
+
+      <button
+        type="button"
+        class="mark-tool"
+        data-mark="eraser"
+      >
+        消しゴム
+      </button>
+
+
+    </div>
+
+
+    <div class="toolbar-group">
+
+
+      <span class="toolbar-label">
+        点数
+      </span>
+
+
+      <button
+        type="button"
+        class="quick-score full"
+        data-quick-score="full"
+      >
+        L 満点
+      </button>
+
+
+      <button
+        type="button"
+        class="quick-score zero"
+        data-quick-score="zero"
+      >
+        K 0点
+      </button>
+
+
+      <div
+        id="numberToolbar"
+        class="number-toolbar"
+      ></div>
+
+
+    </div>
+
+
+    <div class="toolbar-group">
+
+
+      <input
+        id="markText"
+        type="text"
+        placeholder="文字"
+        autocomplete="off"
+      >
+
+
+      <input
+        id="markSize"
+        type="number"
+        min="10"
+        max="120"
+        value="42"
+        title="文字サイズ"
+      >
+
+
+      <input
+        id="markColor"
+        type="color"
+        value="#d00000"
+        title="色"
+      >
+
+
+    </div>
+
+
+    <span class="shortcut-help">
+
+      L：満点　K：0点　数字：部分点　
+      Backspace：削除　Enter：保存　Escape：解除
+
+    </span>
+
+
+  </div>
+
+
+  <div
+    id="status"
+    class="status"
   >
-    ログアウト
-  </button>
+    採点画面を起動しています...
+  </div>
+
+
+  <div
+    id="progress"
+    class="progress"
+  >
+
+    <div
+      id="progressTextBar"
+      class="progress-text"
+    >
+      0 / 0
+    </div>
+
+
+    <div class="progress-track">
+
+      <div
+        id="progressBar"
+        class="progress-bar"
+      ></div>
+
+    </div>
+
+  </div>
+
 
 </header>
 
 
-<main class="marking-main">
+<main class="marking-content">
 
 
-<!-- =====================================================
-     上部操作
-====================================================== -->
-
-<div class="toolbar">
-
-  <div class="toolbar-title">
-    デジタル採点
-  </div>
-
-
-  <a
-    href="/teacher/marking"
-    class="btn"
+  <section
+    id="answerArea"
+    class="answer-area"
   >
-    採点一覧へ戻る
-  </a>
-
-
-  <a
-    id="pointsButton"
-    href="#"
-    class="btn"
-  >
-    配点設定
-  </a>
-
-
-  <button
-    id="refreshButton"
-    class="btn"
-    type="button"
-  >
-    更新
-  </button>
-
-</div>
-
-
-<!-- =====================================================
-     STATUS
-====================================================== -->
-
-<div
-  id="status"
-  class="status"
->
-  採点画面を起動しています...
-</div>
-
-
-<!-- =====================================================
-     PROGRESS
-====================================================== -->
-
-<div
-  id="progress"
-  class="progress"
->
-
-  <div
-    id="progressText"
-    class="progress-text"
-  >
-    0 / 0
-  </div>
-
-
-  <div class="progress-track">
 
     <div
-      id="progressBar"
-      class="progress-bar"
-    ></div>
-
-  </div>
-
-</div>
-
-
-<!-- =====================================================
-     MARK TOOLBAR
-====================================================== -->
-
-<div
-  id="markToolbar"
-  class="mark-toolbar"
->
-
-  <span class="mark-toolbar-title">
-    採点記号
-  </span>
-
-
-  <button
-    type="button"
-    class="mark-tool"
-    data-mark="circle"
-  >
-    ○
-  </button>
-
-
-  <button
-    type="button"
-    class="mark-tool"
-    data-mark="x"
-  >
-    ×
-  </button>
-
-
-  <button
-    type="button"
-    class="mark-tool"
-    data-mark="triangle"
-  >
-    △
-  </button>
-
-
-  <button
-    type="button"
-    class="mark-tool"
-    data-mark="double_circle"
-  >
-    ◎
-  </button>
-
-
-  <button
-    type="button"
-    class="mark-tool"
-    data-mark="text"
-  >
-    文字
-  </button>
-
-
-  <button
-    type="button"
-    class="mark-tool"
-    data-mark="pen"
-  >
-    ペン
-  </button>
-
-
-  <span class="keyboard-help">
-    L：○＋満点 ／ K：×＋0点 ／ 数字：部分点 ／
-    Backspace：削除 ／ Enter：保存 ／ Escape：解除
-  </span>
-
-</div>
-
-
-<!-- =====================================================
-     QUESTION
-====================================================== -->
-
-<section
-  class="question-header"
->
-
-  <div class="question-info">
-
-    <div
-      id="questionTitle"
-      class="question-title"
+      id="answerTableWrap"
+      class="answer-grid"
     >
-      -
+
+      <div class="no-answer">
+        答案を読み込んでいます...
+      </div>
+
     </div>
 
-
-    <div
-      id="questionMeta"
-      class="question-meta"
-    >
-      -
-    </div>
-
-  </div>
-
-
-  <div class="question-space"></div>
-
-
-  <div class="navigation">
-
-    <button
-      id="previousButton"
-      class="btn"
-      type="button"
-      disabled
-    >
-      前の問題
-    </button>
-
-
-    <button
-      id="nextButton"
-      class="btn btn-primary"
-      type="button"
-    >
-      次の問題
-    </button>
-
-  </div>
-
-</section>
-
-
-<!-- =====================================================
-     ANSWERS
-====================================================== -->
-
-<section
-  id="answerTableWrap"
-  class="answer-table-wrap"
->
-
-  <div class="empty">
-    答案を読み込んでいます...
-  </div>
-
-</section>
-
-
-<!-- =====================================================
-     COMPLETE
-====================================================== -->
-
-<section
-  id="complete"
-  class="complete"
->
-
-  <div class="complete-title">
-    全答案・全設問の採点が完了しました。
-  </div>
-
-
-  <div>
-    成績・偏差値・順位の処理が完了するまで公開しません。
-  </div>
-
-</section>
+  </section>
 
 
 </main>
 
 
-<!-- =====================================================
-     SUPABASE
-====================================================== -->
+<footer class="marking-footer">
+
+
+  <button
+    id="previousButton"
+    type="button"
+    class="btn"
+  >
+    前の問題
+  </button>
+
+
+  <button
+    id="nextButton"
+    type="button"
+    class="btn btn-primary"
+  >
+    次の問題
+  </button>
+
+
+  <button
+    id="nextUnmarked"
+    type="button"
+    class="btn"
+  >
+    未採点へ
+  </button>
+
+
+  <span
+    id="teacherName"
+    class="toolbar-label"
+  >
+    -
+  </span>
+
+
+</footer>
+
+
+<div
+  id="complete"
+  class="marking-complete"
+>
+
+  採点が完了しました。成績処理を開始します。
+
+</div>
+
 
 <script
   src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
@@ -964,56 +399,105 @@ body {
 "use strict";
 
 
-/* =====================================================
+/* =========================================================
    URL
-===================================================== */
+========================================================= */
 
-(function () {
+const markingParams =
+  new URLSearchParams(
+    location.search
+  );
 
-  const params =
-    new URLSearchParams(
-      window.location.search
+
+const markingTestId =
+  markingParams.get(
+    "test"
+  );
+
+
+/* =========================================================
+   POINTS
+========================================================= */
+
+const pointsButton =
+  document.getElementById(
+    "pointsButton"
+  );
+
+
+if (
+  pointsButton &&
+  markingTestId
+) {
+
+  pointsButton.href =
+    `/teacher/tests/points?test=${encodeURIComponent(
+      markingTestId
+    )}`;
+
+}
+
+
+/* =========================================================
+   NUMBER BUTTONS
+========================================================= */
+
+const numberToolbar =
+  document.getElementById(
+    "numberToolbar"
+  );
+
+
+const maxNumbers =
+  100;
+
+
+for (
+  let number = 0;
+  number <= maxNumbers;
+  number++
+) {
+
+  const button =
+    document.createElement(
+      "button"
     );
 
 
-  const testId =
-    params.get(
-      "test"
+  button.type =
+    "button";
+
+
+  button.className =
+    "number-button";
+
+
+  button.dataset.score =
+    String(
+      number
     );
 
 
-  const pointsButton =
-    document.getElementById(
-      "pointsButton"
+  button.textContent =
+    String(
+      number
     );
 
 
-  if (
-    pointsButton &&
-    testId
-  ) {
+  numberToolbar.appendChild(
+    button
+  );
 
-    pointsButton.href =
-      `/teacher/tests/points?test=${encodeURIComponent(
-        testId
-      )}`;
-
-  }
+}
 
 
-})();
-
-
-/* =====================================================
-   MARK TOOLBAR
-   -----------------------------------------------------
-   marking.js側でも利用するが、
-   HTML側で確実にUIを用意する。
-===================================================== */
+/* =========================================================
+   TOOLBAR STATE
+========================================================= */
 
 document
   .querySelectorAll(
-    "#markToolbar [data-mark]"
+    ".mark-tool"
   )
   .forEach(
     button => {
@@ -1024,16 +508,13 @@ document
 
           document
             .querySelectorAll(
-              "#markToolbar [data-mark]"
+              ".mark-tool"
             )
             .forEach(
-              item => {
-
+              item =>
                 item.classList.remove(
                   "active"
-                );
-
-              }
+                )
             );
 
 
@@ -1041,13 +522,75 @@ document
             "active"
           );
 
+
+          window.selectedMarkType =
+            button.dataset.mark;
+
         }
       );
 
     }
   );
 
+
+/* =========================================================
+   QUICK SCORE
+========================================================= */
+
+document
+  .querySelectorAll(
+    "[data-quick-score]"
+  )
+  .forEach(
+    button => {
+
+      button.addEventListener(
+        "click",
+        () => {
+
+          window.quickScoreAction =
+            button.dataset.quickScore;
+
+        }
+      );
+
+    }
+  );
+
+
+/* =========================================================
+   NUMBER
+========================================================= */
+
+numberToolbar.addEventListener(
+  "click",
+  event => {
+
+    const button =
+      event.target.closest(
+        "[data-score]"
+      );
+
+
+    if (!button) {
+
+      return;
+
+    }
+
+
+    window.quickScoreValue =
+      Number(
+        button.dataset.score
+      );
+
+  }
+);
+
 </script>
+
+
+</div>
 
 
 </body>

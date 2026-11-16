@@ -5,23 +5,27 @@
 
    成績・答案 公開 / 非公開
 
-   URL
+   公開条件
    ---------------------------------------------------------
-   /teacher/tests/publish?test=UUID
+   1. テストが存在する
+   2. 採点対象のanswer枠が存在する
+   3. 生徒紐付け済み答案が存在する
+   4. 全答案 × 全採点対象枠の採点が完了している
 
-   公開
+   question_id
    ---------------------------------------------------------
-   results_published = true
-   results_published_at = 現在日時
+   NULLでも問題ない。
 
-   非公開
+   注意
    ---------------------------------------------------------
-   results_published = false
-   results_published_at = null
+   採点完了だけで成績処理が完了したとはみなさない。
 
-   重要
-   ---------------------------------------------------------
-   公開・非公開はWeb上から操作可能。
+   このファイルでは
+   「成績処理完了フラグ」がDBに存在しないため、
+   採点完了後に勝手に公開はしない。
+
+   公開処理は成績処理側から
+   results_published=true に更新する。
 
    Teacher / Adminのみ操作可能。
 ========================================================= */
@@ -35,13 +39,17 @@
      STATE
   ======================================================= */
 
-  let profile = null;
+  let profile =
+    null;
 
-  let tests = [];
+  let tests =
+    [];
 
-  let selectedTest = null;
+  let selectedTest =
+    null;
 
-  let initialTestId = null;
+  let initialTestId =
+    null;
 
 
   /* =======================================================
@@ -53,15 +61,18 @@
       "testSelect"
     );
 
+
   const statusElement =
     document.getElementById(
       "status"
     );
 
+
   const publishButton =
     document.getElementById(
       "publishButton"
     );
+
 
   const unpublishButton =
     document.getElementById(
@@ -77,13 +88,25 @@
 
     try {
 
-      profile =
-        await requireTeacher();
+      /*
+       * 旧 requireTeacher() は使用しない。
+       */
+
+      const result =
+        await requireRole(
+          "teacher"
+        );
 
 
-      if (!profile) {
+      if (!result) {
+
         return;
+
       }
+
+
+      profile =
+        result.profile;
 
 
       const teacherName =
@@ -101,53 +124,45 @@
       }
 
 
-      /*
-        /teacher/tests/publish?test=UUID
-      */
-
       initialTestId =
         window.__INITIAL_TEST_ID__ ||
         new URLSearchParams(
           window.location.search
-        ).get("test") ||
+        ).get(
+          "test"
+        ) ||
         null;
 
 
       setupEvents();
 
+
       await loadTests();
 
 
-      /*
-        URLのtestを初期選択
-      */
+      if (
+        initialTestId
+      ) {
 
-      if (initialTestId) {
-
-        const exists =
-          tests.some(
+        const found =
+          tests.find(
             test =>
               test.id ===
               initialTestId
           );
 
 
-        if (exists) {
+        if (found) {
 
           testSelect.value =
             initialTestId;
 
 
           selectedTest =
-            tests.find(
-              test =>
-                test.id ===
-                initialTestId
-            ) ||
-            null;
+            found;
 
 
-          renderStatus();
+          await renderStatus();
 
         } else {
 
@@ -197,7 +212,8 @@
         .from(
           "tests"
         )
-        .select(`
+        .select(
+          `
           id,
           name,
           subject,
@@ -206,7 +222,8 @@
           results_published,
           results_published_at,
           created_at
-        `)
+          `
+        )
         .order(
           "created_at",
           {
@@ -217,12 +234,15 @@
 
 
     if (error) {
+
       throw error;
+
     }
 
 
     tests =
-      data || [];
+      data ||
+      [];
 
 
     testSelect.innerHTML = `
@@ -274,7 +294,7 @@
 
     testSelect?.addEventListener(
       "change",
-      () => {
+      async () => {
 
         selectedTest =
           tests.find(
@@ -285,11 +305,16 @@
           null;
 
 
-        renderStatus();
+        await renderStatus();
 
       }
     );
 
+
+    /*
+     * 手動公開ボタンは、
+     * 成績処理完了確認後のみ使用可能。
+     */
 
     publishButton?.addEventListener(
       "click",
@@ -309,7 +334,18 @@
       )
       ?.addEventListener(
         "click",
-        logout
+        async () => {
+
+          if (
+            typeof window.logout ===
+            "function"
+          ) {
+
+            await window.logout();
+
+          }
+
+        }
       );
 
   }
@@ -319,7 +355,7 @@
      STATUS
   ======================================================= */
 
-  function renderStatus() {
+  async function renderStatus() {
 
     if (!selectedTest) {
 
@@ -343,6 +379,10 @@
 
     }
 
+
+    /*
+     * 既に公開中
+     */
 
     if (
       selectedTest.results_published ===
@@ -384,6 +424,55 @@
     }
 
 
+    /*
+     * 公開可能条件を確認。
+     */
+
+    const completion =
+      await checkMarkingCompletion(
+        selectedTest.id
+      );
+
+
+    if (!completion.ok) {
+
+      statusElement.className =
+        "status private";
+
+
+      statusElement.innerHTML = `
+
+        <strong>
+          非公開
+        </strong>
+
+        <br>
+
+        ${escapeHtml(
+          completion.message
+        )}
+
+      `;
+
+
+      publishButton.disabled =
+        true;
+
+
+      unpublishButton.disabled =
+        true;
+
+
+      return;
+
+    }
+
+
+    /*
+     * 採点完了しているが、
+     * 成績処理完了は別管理。
+     */
+
     statusElement.className =
       "status private";
 
@@ -396,13 +485,22 @@
 
       <br>
 
-      現在、生徒には公開されていません。
+      全答案の採点は完了しています。
+
+      <br>
+
+      成績・偏差値・順位の処理が完了するまで
+      公開できません。
 
     `;
 
 
+    /*
+     * 成績処理側から公開する仕様。
+     */
+
     publishButton.disabled =
-      false;
+      true;
 
 
     unpublishButton.disabled =
@@ -412,7 +510,269 @@
 
 
   /* =======================================================
+     MARKING COMPLETION
+  ======================================================= */
+
+  async function checkMarkingCompletion(
+    testId
+  ) {
+
+    /*
+     * 採点対象枠
+     */
+
+    const {
+      data: boxData,
+      error: boxError
+    } =
+      await supabaseClient
+        .from(
+          "layout_boxes"
+        )
+        .select(
+          `
+          id,
+          box_type,
+          label
+          `
+        )
+        .eq(
+          "test_id",
+          testId
+        );
+
+
+    if (boxError) {
+
+      throw boxError;
+
+    }
+
+
+    const excludedLabels =
+      new Set([
+        "QR",
+        "氏名",
+        "合計",
+        "小計"
+      ]);
+
+
+    const questionBoxes =
+      (boxData || [])
+        .filter(
+          box => {
+
+            const type =
+              String(
+                box.box_type ||
+                ""
+              )
+              .trim()
+              .toLowerCase();
+
+
+            if (
+              type !==
+              "answer"
+            ) {
+
+              return false;
+
+            }
+
+
+            const label =
+              String(
+                box.label ||
+                ""
+              ).trim();
+
+
+            return !excludedLabels.has(
+              label
+            );
+
+          }
+        );
+
+
+    if (!questionBoxes.length) {
+
+      return {
+
+        ok:false,
+
+        message:
+          "採点対象の解答欄がありません。"
+
+      };
+
+    }
+
+
+    /*
+     * 生徒紐付け済み答案
+     */
+
+    const {
+      data: answerData,
+      error: answerError
+    } =
+      await supabaseClient
+        .from(
+          "answer_sheets"
+        )
+        .select(
+          `
+          id,
+          student_id
+          `
+        )
+        .eq(
+          "test_id",
+          testId
+        )
+        .not(
+          "student_id",
+          "is",
+          null
+        );
+
+
+    if (answerError) {
+
+      throw answerError;
+
+    }
+
+
+    const answers =
+      answerData ||
+      [];
+
+
+    if (!answers.length) {
+
+      return {
+
+        ok:false,
+
+        message:
+          "生徒に紐付いた答案がありません。"
+
+      };
+
+    }
+
+
+    /*
+     * 採点結果
+     */
+
+    const answerIds =
+      answers.map(
+        answer =>
+          answer.id
+      );
+
+
+    const {
+      data: scoreData,
+      error: scoreError
+    } =
+      await supabaseClient
+        .from(
+          "scores"
+        )
+        .select(
+          `
+          answer_sheet_id,
+          layout_box_id,
+          score,
+          status
+          `
+        )
+        .in(
+          "answer_sheet_id",
+          answerIds
+        );
+
+
+    if (scoreError) {
+
+      throw scoreError;
+
+    }
+
+
+    const scoreSet =
+      new Set();
+
+
+    (scoreData || [])
+      .forEach(
+        score => {
+
+          if (
+            score.status ===
+            "marked"
+          ) {
+
+            scoreSet.add(
+              `${score.answer_sheet_id}:${score.layout_box_id}`
+            );
+
+          }
+
+        }
+      );
+
+
+    const totalRequired =
+      answers.length *
+      questionBoxes.length;
+
+
+    const totalMarked =
+      scoreSet.size;
+
+
+    if (
+      totalMarked <
+      totalRequired
+    ) {
+
+      return {
+
+        ok:false,
+
+        message:
+          `採点未完了です。${totalMarked} / ${totalRequired} 件`
+
+      };
+
+    }
+
+
+    return {
+
+      ok:true,
+
+      totalRequired,
+
+      totalMarked
+
+    };
+
+  }
+
+
+  /* =======================================================
      PUBLISH
+     -------------------------------------------------------
+     現在は成績処理完了フラグがDBにないため、
+     この画面から自動公開しない。
   ======================================================= */
 
   async function publishTest() {
@@ -425,123 +785,16 @@
 
 
     /*
-      最終確認
-    */
+     * 安全のため公開禁止。
+     *
+     * 成績処理完了後に
+     * 成績処理側からUPDATEする。
+     */
 
-    const confirmed =
-      window.confirm(
-        `「${selectedTest.name}」の成績・答案を公開しますか？`
-      );
-
-
-    if (!confirmed) {
-      return;
-    }
-
-
-    setButtonsDisabled(
-      true
+    showStatus(
+      "成績・偏差値・順位の処理が完了するまで公開できません。",
+      "error"
     );
-
-
-    try {
-
-      const publishedAt =
-        new Date()
-          .toISOString();
-
-
-      const {
-        data,
-        error
-      } =
-        await supabaseClient
-          .from(
-            "tests"
-          )
-          .update({
-
-            results_published:
-              true,
-
-            results_published_at:
-              publishedAt
-
-          })
-          .eq(
-            "id",
-            selectedTest.id
-          )
-          .select(`
-            id,
-            name,
-            subject,
-            grade,
-            class_name,
-            results_published,
-            results_published_at,
-            created_at
-          `)
-          .single();
-
-
-      if (error) {
-        throw error;
-      }
-
-
-      selectedTest =
-        data;
-
-
-      tests =
-        tests.map(
-          test =>
-            test.id ===
-            data.id
-              ? data
-              : test
-        );
-
-
-      /*
-        URLにもテストIDを残す。
-
-        /teacher/tests/publish?test=UUID
-      */
-
-      history.replaceState(
-        null,
-        "",
-        `/teacher/tests/publish?test=${encodeURIComponent(
-          data.id
-        )}`
-      );
-
-
-      renderStatus();
-
-
-    } catch (error) {
-
-      console.error(
-        "publish:",
-        error
-      );
-
-
-      showStatus(
-        error.message ||
-        "公開に失敗しました。",
-        "error"
-      );
-
-
-    } finally {
-
-      renderStatus();
-
-    }
 
   }
 
@@ -566,7 +819,9 @@
 
 
     if (!confirmed) {
+
       return;
+
     }
 
 
@@ -598,7 +853,8 @@
             "id",
             selectedTest.id
           )
-          .select(`
+          .select(
+            `
             id,
             name,
             subject,
@@ -607,12 +863,15 @@
             results_published,
             results_published_at,
             created_at
-          `)
+            `
+          )
           .single();
 
 
       if (error) {
+
         throw error;
+
       }
 
 
@@ -630,7 +889,7 @@
         );
 
 
-      renderStatus();
+      await renderStatus();
 
 
     } catch (error) {
@@ -650,7 +909,7 @@
 
     } finally {
 
-      renderStatus();
+      await renderStatus();
 
     }
 
@@ -732,7 +991,9 @@
   ) {
 
     if (!value) {
+
       return "-";
+
     }
 
 
@@ -786,7 +1047,8 @@
   ) {
 
     return String(
-      value ?? ""
+      value ??
+      ""
     )
       .replaceAll(
         "&",

@@ -1,23 +1,114 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 
 <head>
 
-  <meta charset="UTF-8">
+<meta charset="UTF-8">
 
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
-  >
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1.0"
+>
 
-  <title>
-    模範解答登録 - テスト成績システム
-  </title>
+<title>
+  模範解答登録 - テスト成績システム
+</title>
 
-  <link
-    rel="stylesheet"
-    href="/css/common.css"
-  >
+<link
+  rel="stylesheet"
+  href="/css/common.css"
+>
+
+<style>
+
+.model-main {
+  max-width:1400px;
+  margin:0 auto;
+  padding:20px;
+}
+
+.model-grid {
+  display:grid;
+  grid-template-columns:
+    repeat(3,minmax(0,1fr));
+  gap:15px;
+}
+
+.model-page {
+  background:#fff;
+  border:1px solid #d0d6dc;
+  border-radius:4px;
+  padding:10px;
+}
+
+.model-preview {
+  height:320px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+  background:#f5f6f7;
+  border:1px solid #d0d6dc;
+}
+
+.model-preview img {
+  max-width:100%;
+  max-height:100%;
+  object-fit:contain;
+}
+
+.model-page-header {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  margin-bottom:8px;
+}
+
+.model-page-meta {
+  margin-top:7px;
+  color:#777;
+  font-size:12px;
+}
+
+.model-message {
+  min-height:24px;
+  margin-top:12px;
+  white-space:pre-wrap;
+}
+
+.model-message.error {
+  color:#b42318;
+}
+
+.model-message.success {
+  color:#16834b;
+}
+
+.model-upload-info {
+  padding:12px;
+  margin-bottom:14px;
+  background:#f5f6f7;
+  border:1px solid #d0d6dc;
+  font-size:13px;
+  line-height:1.8;
+}
+
+@media(max-width:1000px) {
+  .model-grid {
+    grid-template-columns:
+      repeat(2,minmax(0,1fr));
+  }
+}
+
+@media(max-width:650px) {
+  .model-grid {
+    grid-template-columns:1fr;
+  }
+}
+
+</style>
 
 </head>
 
@@ -31,14 +122,11 @@
     テスト成績システム
   </div>
 
-
   <div class="topbar-space"></div>
-
 
   <span id="teacherName">
     -
   </span>
-
 
   <button
     id="logoutButton"
@@ -51,307 +139,284 @@
 </header>
 
 
-
 <div class="teacher-layout">
 
 
-  <aside class="sidebar">
+<aside class="sidebar">
 
+  <div class="sidebar-title">
+    テスト設定
+  </div>
 
-    <div class="sidebar-title">
-      テスト設定
-    </div>
 
+  <a
+    href="/teacher/tests"
+    class="menu-link"
+  >
+    テスト一覧
+  </a>
 
-    <a
-      href="/teacher/tests"
-      class="menu-link"
-    >
-      テスト一覧
-    </a>
 
+  <a
+    id="pagesLink"
+    href="#"
+    class="menu-link"
+  >
+    解答用紙登録
+  </a>
 
-    <a
-      id="pagesLink"
-      href="#"
-      class="menu-link"
-    >
-      解答用紙登録
-    </a>
 
+  <a
+    id="layoutLink"
+    href="#"
+    class="menu-link"
+  >
+    枠設定
+  </a>
 
-    <a
-      id="layoutLink"
-      href="#"
-      class="menu-link"
-    >
-      枠設定
-    </a>
 
+  <a
+    id="pointsLink"
+    href="#"
+    class="menu-link"
+  >
+    配点設定
+  </a>
 
-    <a
-      id="modelAnswerLink"
-      href="#"
-      class="menu-link active"
-    >
-      模範解答
-    </a>
 
+  <a
+    id="modelAnswerLink"
+    href="#"
+    class="menu-link active"
+  >
+    模範解答
+  </a>
 
-    <a
-      id="previewLink"
-      href="#"
-      class="menu-link"
-    >
-      テスト確認
-    </a>
 
+  <a
+    id="previewLink"
+    href="#"
+    class="menu-link"
+  >
+    テスト確認
+  </a>
 
-  </aside>
+</aside>
 
 
+<main class="main-content">
 
-  <main class="main-content">
 
+<div class="page-header">
 
-    <div class="page-header">
-
-      <h1>
-        模範解答登録
-      </h1>
-
-    </div>
-
-
-
-    <div
-      id="testInformation"
-      class="card"
-    >
-      読み込み中...
-    </div>
-
-
-
-    <!-- =================================================
-         アップロード
-    ================================================== -->
-
-    <div class="card">
-
-
-      <h3>
-        模範解答ファイル
-      </h3>
-
-
-      <p>
-        模範解答を登録してください。
-      </p>
-
-
-      <div
-        style="
-          background:#f3f5f7;
-          border:1px solid #d0d6dc;
-          padding:14px;
-          margin-bottom:16px;
-          line-height:1.8;
-        "
-      >
-
-        <strong>
-          対応形式
-        </strong>
-
-        <br>
-
-        JPG / JPEG / PNG / WEBP / GIF / BMP
-
-        <br>
-
-        PDF
-
-        <br>
-
-        ZIP
-
-        <br><br>
-
-        PDFは自動的にページ分割されます。
-
-        <br>
-
-        ZIPには複数の画像・PDFをまとめて入れられます。
-
-      </div>
-
-
-
-      <div class="form-group">
-
-        <label for="modelAnswerFiles">
-          ファイル
-        </label>
-
-
-        <input
-          id="modelAnswerFiles"
-          type="file"
-          multiple
-          accept="
-            .jpg,
-            .jpeg,
-            .png,
-            .webp,
-            .gif,
-            .bmp,
-            .pdf,
-            .zip,
-            image/jpeg,
-            image/png,
-            image/webp,
-            image/gif,
-            image/bmp,
-            application/pdf,
-            application/zip
-          "
-        >
-
-      </div>
-
-
-
-      <div
-        style="
-          display:flex;
-          gap:8px;
-        "
-      >
-
-        <button
-          id="uploadButton"
-          class="btn btn-primary"
-          type="button"
-        >
-          模範解答を登録
-        </button>
-
-
-        <button
-          id="clearButton"
-          class="btn"
-          type="button"
-        >
-          選択解除
-        </button>
-
-      </div>
-
-
-
-      <div
-        id="message"
-        style="
-          margin-top:14px;
-          min-height:24px;
-        "
-      >
-      </div>
-
-
-    </div>
-
-
-
-    <!-- =================================================
-         登録ページ
-    ================================================== -->
-
-    <div class="card">
-
-
-      <div
-        style="
-          display:flex;
-          align-items:center;
-          justify-content:space-between;
-          margin-bottom:15px;
-        "
-      >
-
-        <h3 style="margin:0;">
-          登録済み模範解答
-        </h3>
-
-
-        <span
-          id="pageCount"
-          style="
-            color:#666;
-            font-size:13px;
-          "
-        >
-          0ページ
-        </span>
-
-      </div>
-
-
-
-      <div
-        id="pageList"
-        style="
-          display:grid;
-          grid-template-columns:
-            repeat(3,minmax(0,1fr));
-          gap:15px;
-        "
-      >
-
-        <div
-          style="
-            grid-column:1/-1;
-            text-align:center;
-            color:#777;
-            padding:35px;
-          "
-        >
-          読み込み中...
-        </div>
-
-      </div>
-
-
-    </div>
-
-
-  </main>
-
+  <h1>
+    模範解答登録
+  </h1>
 
 </div>
 
+
+<div
+  id="testInformation"
+  class="card"
+>
+  読み込み中...
+</div>
+
+
+<section class="card">
+
+
+<h3>
+  模範解答ファイル
+</h3>
+
+
+<div class="model-upload-info">
+
+<strong>
+対応形式
+</strong>
+
+<br>
+
+JPG / JPEG / PNG / WEBP / GIF / BMP
+
+<br>
+
+PDF
+
+<br>
+
+ZIP
+
+<br><br>
+
+PDFはページごとに分割して登録します。
+
+<br>
+
+ZIP内の画像・PDFも順番に処理します。
+
+</div>
+
+
+<div class="form-group">
+
+<label for="modelAnswerFiles">
+  ファイル
+</label>
+
+
+<input
+  id="modelAnswerFiles"
+  type="file"
+  multiple
+  accept="
+    .jpg,
+    .jpeg,
+    .png,
+    .webp,
+    .gif,
+    .bmp,
+    .pdf,
+    .zip,
+    image/jpeg,
+    image/png,
+    image/webp,
+    image/gif,
+    image/bmp,
+    application/pdf,
+    application/zip
+  "
+>
+
+</div>
+
+
+<div
+  style="
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+  "
+>
+
+<button
+  id="uploadButton"
+  class="btn btn-primary"
+  type="button"
+>
+  模範解答を登録
+</button>
+
+
+<button
+  id="clearButton"
+  class="btn"
+  type="button"
+>
+  選択解除
+</button>
+
+</div>
+
+
+<div
+  id="message"
+  class="model-message"
+>
+</div>
+
+
+</section>
+
+
+<section class="card">
+
+
+<div
+  style="
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:15px;
+  "
+>
+
+<h3 style="margin:0;">
+  登録済み模範解答
+</h3>
+
+
+<span
+  id="pageCount"
+  style="
+    color:#666;
+    font-size:13px;
+  "
+>
+  0ページ
+</span>
+
+</div>
+
+
+<div
+  id="pageList"
+  class="model-grid"
+>
+
+<div
+  style="
+    grid-column:1/-1;
+    text-align:center;
+    color:#777;
+    padding:35px;
+  "
+>
+読み込み中...
+</div>
+
+</div>
+
+
+</section>
+
+
+</main>
+
+
+</div>
 
 
 <script
   src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"
 ></script>
 
-
 <script
   src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
 ></script>
 
+<script
+  src="/js/config.js?v=20261116"
+></script>
 
-<script src="/js/config.js"></script>
+<script
+  src="/js/auth.js?v=20261116"
+></script>
 
-<script src="/js/auth.js"></script>
+<script
+  src="/js/lib/pdf-loader.js?v=20261116"
+></script>
 
-<script src="/js/lib/pdf-loader.js"></script>
+<script
+  src="/js/lib/file-parser.js?v=20261116"
+></script>
 
-<script src="/js/lib/file-parser.js"></script>
-
-<script src="/js/teacher/model-answer.js"></script>
+<script
+  src="/js/teacher/model-answer.js?v=20261116"
+></script>
 
 
 </body>

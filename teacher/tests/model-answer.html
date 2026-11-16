@@ -23,89 +23,101 @@
 <style>
 
 .model-main {
-  max-width:1400px;
+  max-width:1100px;
+
   margin:0 auto;
-  padding:20px;
+
+  padding:22px;
 }
 
-.model-grid {
-  display:grid;
-  grid-template-columns:
-    repeat(3,minmax(0,1fr));
-  gap:15px;
+
+.model-information {
+  margin-bottom:15px;
+
+  padding:14px;
+
+  background:#fff;
+
+  border:
+    1px solid #d0d6dc;
 }
+
+
+.model-toolbar {
+  display:flex;
+
+  flex-wrap:wrap;
+
+  gap:8px;
+
+  margin-bottom:15px;
+}
+
+
+.upload-card {
+  margin-bottom:15px;
+
+  padding:18px;
+
+  background:#fff;
+
+  border:
+    1px solid #d0d6dc;
+}
+
+
+.model-page-list {
+  display:grid;
+
+  grid-template-columns:
+    repeat(
+      auto-fill,
+      minmax(
+        220px,
+        1fr
+      )
+    );
+
+  gap:12px;
+}
+
 
 .model-page {
-  background:#fff;
-  border:1px solid #d0d6dc;
-  border-radius:4px;
-  padding:10px;
-}
-
-.model-preview {
-  height:320px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  overflow:hidden;
-  background:#f5f6f7;
-  border:1px solid #d0d6dc;
-}
-
-.model-preview img {
-  max-width:100%;
-  max-height:100%;
-  object-fit:contain;
-}
-
-.model-page-header {
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:8px;
-  margin-bottom:8px;
-}
-
-.model-page-meta {
-  margin-top:7px;
-  color:#777;
-  font-size:12px;
-}
-
-.model-message {
-  min-height:24px;
-  margin-top:12px;
-  white-space:pre-wrap;
-}
-
-.model-message.error {
-  color:#b42318;
-}
-
-.model-message.success {
-  color:#16834b;
-}
-
-.model-upload-info {
   padding:12px;
-  margin-bottom:14px;
-  background:#f5f6f7;
-  border:1px solid #d0d6dc;
-  font-size:13px;
-  line-height:1.8;
+
+  background:#fff;
+
+  border:
+    1px solid #d0d6dc;
+
+  border-radius:4px;
 }
 
-@media(max-width:1000px) {
-  .model-grid {
-    grid-template-columns:
-      repeat(2,minmax(0,1fr));
-  }
+
+.model-page-title {
+  font-weight:700;
+
+  font-size:14px;
 }
 
-@media(max-width:650px) {
-  .model-grid {
-    grid-template-columns:1fr;
-  }
+
+.model-page-name {
+  margin-top:5px;
+
+  color:#666;
+
+  font-size:11px;
+
+  word-break:break-all;
+}
+
+
+.empty {
+  padding:50px;
+
+  color:#777;
+
+  text-align:center;
 }
 
 </style>
@@ -118,23 +130,26 @@
 
 <header class="topbar">
 
-  <div class="system-name">
-    テスト成績システム
-  </div>
+<div class="system-name">
+  テスト成績システム
+</div>
 
-  <div class="topbar-space"></div>
 
-  <span id="teacherName">
-    -
-  </span>
+<div class="topbar-space"></div>
 
-  <button
-    id="logoutButton"
-    class="logout-button"
-    type="button"
-  >
-    ログアウト
-  </button>
+
+<span id="teacherName">
+  -
+</span>
+
+
+<button
+id="logoutButton"
+class="logout-button"
+type="button"
+>
+  ログアウト
+</button>
 
 </header>
 
@@ -144,87 +159,89 @@
 
 <aside class="sidebar">
 
-  <div class="sidebar-title">
-    テスト設定
-  </div>
+
+<div class="sidebar-title">
+  テスト設定
+</div>
 
 
-  <a
-    href="/teacher/tests"
-    class="menu-link"
-  >
-    テスト一覧
-  </a>
+<a
+href="/teacher/tests"
+class="menu-link"
+>
+  テスト一覧
+</a>
 
 
-  <a
-    id="pagesLink"
-    href="#"
-    class="menu-link"
-  >
-    解答用紙登録
-  </a>
+<a
+id="pagesLink"
+href="#"
+class="menu-link"
+>
+  解答用紙登録
+</a>
 
 
-  <a
-    id="layoutLink"
-    href="#"
-    class="menu-link"
-  >
-    枠設定
-  </a>
+<a
+id="layoutLink"
+href="#"
+class="menu-link"
+>
+  枠設定
+</a>
 
 
-  <a
-    id="pointsLink"
-    href="#"
-    class="menu-link"
-  >
-    配点設定
-  </a>
+<a
+href="#"
+id="modelAnswerLink"
+class="menu-link active"
+>
+  模範解答
+</a>
 
 
-  <a
-    id="modelAnswerLink"
-    href="#"
-    class="menu-link active"
-  >
-    模範解答
-  </a>
+<a
+id="previewLink"
+href="#"
+class="menu-link"
+>
+  テスト確認
+</a>
 
 
-  <a
-    id="previewLink"
-    href="#"
-    class="menu-link"
-  >
-    テスト確認
-  </a>
+<a
+id="pointsLink"
+href="#"
+class="menu-link"
+>
+  配点設定
+</a>
+
 
 </aside>
 
 
-<main class="main-content">
+<main class="main-content model-main">
 
 
 <div class="page-header">
 
-  <h1>
-    模範解答登録
-  </h1>
+<h1>
+  模範解答登録
+</h1>
 
 </div>
 
 
-<div
-  id="testInformation"
-  class="card"
+<section
+id="testInformation"
+class="model-information"
 >
-  読み込み中...
-</div>
+読み込み中...
+</section>
 
 
-<section class="card">
+<section class="upload-card">
 
 
 <h3>
@@ -232,99 +249,67 @@
 </h3>
 
 
-<div class="model-upload-info">
+<p
+style="
+  color:#666;
+  font-size:12px;
+  line-height:1.8;
+"
+>
 
-<strong>
-対応形式
-</strong>
-
-<br>
-
-JPG / JPEG / PNG / WEBP / GIF / BMP
-
-<br>
-
-PDF
+PDFまたは画像を登録できます。
 
 <br>
 
-ZIP
+複数ページの場合は選択した順にページとして登録します。
 
-<br><br>
-
-PDFはページごとに分割して登録します。
-
-<br>
-
-ZIP内の画像・PDFも順番に処理します。
-
-</div>
-
-
-<div class="form-group">
-
-<label for="modelAnswerFiles">
-  ファイル
-</label>
+</p>
 
 
 <input
-  id="modelAnswerFiles"
-  type="file"
-  multiple
-  accept="
-    .jpg,
-    .jpeg,
-    .png,
-    .webp,
-    .gif,
-    .bmp,
-    .pdf,
-    .zip,
-    image/jpeg,
-    image/png,
-    image/webp,
-    image/gif,
-    image/bmp,
-    application/pdf,
-    application/zip
-  "
+id="modelAnswerFiles"
+type="file"
+multiple
+accept=".pdf,.jpg,.jpeg,.png,.webp"
 >
-
-</div>
 
 
 <div
-  style="
-    display:flex;
-    gap:8px;
-    flex-wrap:wrap;
-  "
+style="
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:12px;
+"
 >
 
 <button
-  id="uploadButton"
-  class="btn btn-primary"
-  type="button"
+id="uploadButton"
+type="button"
+class="btn btn-primary"
 >
-  模範解答を登録
+登録
 </button>
 
 
 <button
-  id="clearButton"
-  class="btn"
-  type="button"
+id="clearButton"
+type="button"
+class="btn"
 >
-  選択解除
+登録済みをすべて削除
 </button>
 
 </div>
 
 
 <div
-  id="message"
-  class="model-message"
+id="message"
+style="
+  min-height:22px;
+  margin-top:10px;
+"
+aria-live="polite"
 >
 </div>
 
@@ -332,49 +317,32 @@ ZIP内の画像・PDFも順番に処理します。
 </section>
 
 
-<section class="card">
+<section class="upload-card">
 
 
-<div
-  style="
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    margin-bottom:15px;
-  "
+<h3>
+
+登録済み模範解答
+
+<span
+id="pageCount"
+style="
+  color:#777;
+  font-size:12px;
+  font-weight:400;
+"
 >
+</span>
 
-<h3 style="margin:0;">
-  登録済み模範解答
 </h3>
 
 
-<span
-  id="pageCount"
-  style="
-    color:#666;
-    font-size:13px;
-  "
->
-  0ページ
-</span>
-
-</div>
-
-
 <div
-  id="pageList"
-  class="model-grid"
+id="pageList"
+class="model-page-list"
 >
 
-<div
-  style="
-    grid-column:1/-1;
-    text-align:center;
-    color:#777;
-    padding:35px;
-  "
->
+<div class="empty">
 読み込み中...
 </div>
 
@@ -391,31 +359,32 @@ ZIP内の画像・PDFも順番に処理します。
 
 
 <script
-  src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"
+src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
 ></script>
 
-<script
-  src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
-></script>
 
 <script
-  src="/js/config.js?v=20261116"
+src="/js/config.js?v=20261116"
 ></script>
 
-<script
-  src="/js/auth.js?v=20261116"
-></script>
 
 <script
-  src="/js/lib/pdf-loader.js?v=20261116"
+src="/js/auth.js?v=20261116"
 ></script>
 
-<script
-  src="/js/lib/file-parser.js?v=20261116"
-></script>
 
 <script
-  src="/js/teacher/model-answer.js?v=20261116"
+src="/js/lib/pdf-loader.js?v=20261116"
+></script>
+
+
+<script
+src="/js/lib/file-parser.js?v=20261116"
+></script>
+
+
+<script
+src="/js/teacher/model-answer.js?v=20261116"
 ></script>
 
 

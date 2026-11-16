@@ -22,142 +22,93 @@
 
 <style>
 
-.tests-main {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 22px;
+.teacher-home {
+  max-width:1200px;
+
+  margin:0 auto;
+
+  padding:22px;
 }
 
-.create-card {
-  margin-bottom: 18px;
-}
 
-.form-grid {
-  display: grid;
+.teacher-actions {
+  display:grid;
 
   grid-template-columns:
-    2fr
-    1fr
-    1fr;
+    repeat(
+      3,
+      minmax(0,1fr)
+    );
 
-  gap: 10px;
-}
+  gap:12px;
 
-.form-group label {
-  display: block;
-
-  margin-bottom: 6px;
-
-  font-size: 13px;
-
-  font-weight: 700;
-}
-
-.form-group input {
-  width: 100%;
-
-  padding: 9px 10px;
-
-  border: 1px solid #b8c1c9;
-
-  border-radius: 4px;
-
-  background: #fff;
-
-  outline: none;
-}
-
-.form-group input:focus {
-  border-color: #1769aa;
-}
-
-.create-actions {
-  margin-top: 14px;
-}
-
-.status {
-  padding: 10px 12px;
-
-  margin-bottom: 15px;
-
-  background: #f5f6f7;
-
-  border: 1px solid #d5dbe0;
-
-  font-size: 13px;
-}
-
-.status.error {
-  color: #b42318;
-}
-
-.table-wrap {
-  overflow-x: auto;
-
-  background: #fff;
-
-  border: 1px solid #d0d6dc;
-}
-
-.tests-table {
-  width: 100%;
-
-  border-collapse: collapse;
-}
-
-.tests-table th,
-.tests-table td {
-  border: 1px solid #d0d6dc;
-
-  padding: 9px 10px;
-
-  font-size: 13px;
-
-  text-align: left;
-
-  vertical-align: middle;
-}
-
-.tests-table th {
-  background: #f3f5f7;
-
-  font-weight: 700;
-}
-
-.actions {
-  display: flex;
-
-  flex-wrap: wrap;
-
-  gap: 6px;
-}
-
-.actions .btn {
-  white-space: nowrap;
-}
-
-.empty {
-  padding: 50px;
-
-  text-align: center;
-
-  color: #777;
+  margin-top:15px;
 }
 
 
-@media (max-width: 800px) {
+.teacher-action {
+  display:block;
 
-  .form-grid {
-    grid-template-columns: 1fr;
+  padding:18px;
+
+  background:#fff;
+
+  border:
+    1px solid #d0d6dc;
+
+  text-decoration:none;
+
+  color:#222;
+
+  border-radius:4px;
+}
+
+
+.teacher-action:hover {
+  background:#f5f7f8;
+}
+
+
+.teacher-action-title {
+  font-weight:700;
+
+  font-size:16px;
+}
+
+
+.teacher-action-description {
+  margin-top:5px;
+
+  color:#666;
+
+  font-size:12px;
+
+  line-height:1.7;
+}
+
+
+@media(max-width:850px) {
+
+  .teacher-actions {
+    grid-template-columns:
+      repeat(
+        2,
+        minmax(0,1fr)
+      );
   }
 
 }
 
 
-@media (max-width: 600px) {
+@media(max-width:550px) {
 
-  .tests-main {
-    padding: 14px;
+  .teacher-home {
+    padding:12px;
+  }
+
+
+  .teacher-actions {
+    grid-template-columns:1fr;
   }
 
 }
@@ -172,196 +123,208 @@
 
 <header class="topbar">
 
-  <div class="system-name">
-    テスト成績システム
-  </div>
+<div class="system-name">
+  テスト成績システム
+</div>
 
 
-  <div class="topbar-space"></div>
+<div class="topbar-space"></div>
 
 
-  <span id="teacherName">
-    -
-  </span>
+<span id="teacherName">
+  -
+</span>
 
 
-  <button
-    id="logoutButton"
-    class="logout-button"
-    type="button"
-  >
-    ログアウト
-  </button>
+<button
+id="logoutButton"
+class="logout-button"
+type="button"
+>
+  ログアウト
+</button>
 
 </header>
 
 
-<main class="tests-main">
+<main class="teacher-home">
 
 
-  <div class="page-header">
+<div class="page-header">
 
-    <h1>
-      テスト管理
-    </h1>
+<h1>
+  教師ダッシュボード
+</h1>
 
-  </div>
-
-
-  <!-- =================================================
-       新規テスト
-  ================================================== -->
-
-  <section class="card create-card">
-
-    <h2>
-      新しいテスト
-    </h2>
+</div>
 
 
-    <div class="form-grid">
+<section class="teacher-actions">
 
 
-      <div class="form-group">
+<a
+href="/teacher/students"
+class="teacher-action"
+>
 
-        <label for="testName">
-          テスト名
-        </label>
+<div class="teacher-action-title">
+  生徒管理
+</div>
 
-        <input
-          id="testName"
-          type="text"
-          autocomplete="off"
-        >
+<div class="teacher-action-description">
+  生徒の登録・編集・一覧確認
+</div>
 
-      </div>
-
-
-      <div class="form-group">
-
-        <label for="subject">
-          教科
-        </label>
-
-        <input
-          id="subject"
-          type="text"
-          autocomplete="off"
-        >
-
-      </div>
+</a>
 
 
-      <div class="form-group">
+<a
+href="/teacher/classes"
+class="teacher-action"
+>
 
-        <label for="grade">
-          学年
-        </label>
+<div class="teacher-action-title">
+  クラス管理
+</div>
 
-        <input
-          id="grade"
-          type="text"
-          autocomplete="off"
-        >
+<div class="teacher-action-description">
+  クラス作成と所属生徒の管理
+</div>
 
-      </div>
-
-
-    </div>
+</a>
 
 
-    <div class="create-actions">
+<a
+href="/teacher/tests"
+class="teacher-action"
+>
 
-      <button
-        id="createButton"
-        class="btn btn-primary"
-        type="button"
-      >
-        新しいテストを作成
-      </button>
+<div class="teacher-action-title">
+  テスト管理
+</div>
 
-    </div>
+<div class="teacher-action-description">
+  テスト作成・枠設定・配点設定
+</div>
 
-  </section>
-
-
-  <!-- =================================================
-       状態
-  ================================================== -->
-
-  <div
-    id="status"
-    class="status"
-  >
-    テスト一覧を読み込んでいます...
-  </div>
+</a>
 
 
-  <!-- =================================================
-       テスト一覧
-  ================================================== -->
+<a
+href="/teacher/answers/upload"
+class="teacher-action"
+>
 
-  <section class="table-wrap">
+<div class="teacher-action-title">
+  答案アップロード
+</div>
 
-    <table class="tests-table">
+<div class="teacher-action-description">
+  生徒答案を登録しQRから自動紐付け
+</div>
 
-      <thead>
-
-        <tr>
-
-          <th>
-            テスト名
-          </th>
-
-          <th>
-            教科
-          </th>
-
-          <th>
-            学年
-          </th>
-
-          <th>
-            操作
-          </th>
-
-        </tr>
-
-      </thead>
+</a>
 
 
-      <tbody
-        id="testRows"
-      >
+<a
+href="/teacher/answers/processing"
+class="teacher-action"
+>
 
-        <tr>
+<div class="teacher-action-title">
+  答案処理状況
+</div>
 
-          <td
-            colspan="4"
-            class="empty"
-          >
-            読み込み中...
-          </td>
+<div class="teacher-action-description">
+  未紐付け・採点待ち・採点済みを確認
+</div>
 
-        </tr>
+</a>
 
-      </tbody>
 
-    </table>
+<a
+href="/teacher/marking"
+class="teacher-action"
+>
 
-  </section>
+<div class="teacher-action-title">
+  デジタル採点
+</div>
+
+<div class="teacher-action-description">
+  同じ設問の答案をまとめて高速採点
+</div>
+
+</a>
+
+
+<a
+href="/teacher/results/summary"
+class="teacher-action"
+>
+
+<div class="teacher-action-title">
+  結果総括表
+</div>
+
+<div class="teacher-action-description">
+  点数・平均・得点率・順位を確認
+</div>
+
+</a>
+
+
+<a
+href="/teacher/results/return"
+class="teacher-action"
+>
+
+<div class="teacher-action-title">
+  答案返却
+</div>
+
+<div class="teacher-action-description">
+  採点済み答案を印刷・PDF・PNGで返却
+</div>
+
+</a>
+
+
+<a
+href="/teacher/tests/publish"
+class="teacher-action"
+>
+
+<div class="teacher-action-title">
+  公開状態
+</div>
+
+<div class="teacher-action-description">
+  成績確定と生徒への自動公開状態を確認
+</div>
+
+</a>
+
+
+</section>
 
 
 </main>
 
 
 <script
-  src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
 ></script>
 
-<script src="/js/config.js"></script>
 
-<script src="/js/auth.js"></script>
+<script
+src="/js/config.js"
+></script>
+
+
+<script
+src="/js/auth.js"
+></script>
 
 
 <script>
@@ -369,518 +332,56 @@
 "use strict";
 
 
-let DB =
-  window.SB ||
-  window.supabaseClient;
+document.addEventListener(
+  "DOMContentLoaded",
+  async () => {
+
+    try {
+
+      const auth =
+        await requireRole(
+          "teacher"
+        );
 
 
-let currentProfile =
-  null;
+      if (!auth) {
 
-
-const teacherName =
-  document.getElementById(
-    "teacherName"
-  );
-
-const statusElement =
-  document.getElementById(
-    "status"
-  );
-
-const rowsElement =
-  document.getElementById(
-    "testRows"
-  );
-
-const createButton =
-  document.getElementById(
-    "createButton"
-  );
-
-
-/* =====================================================
-   INIT
-===================================================== */
-
-(async function () {
-
-  try {
-
-    if (!DB) {
-
-      throw new Error(
-        "Supabase接続がありません。"
-      );
-
-    }
-
-
-    const result =
-      await requireRole(
-        "teacher"
-      );
-
-
-    currentProfile =
-      result?.profile ||
-      result ||
-      {};
-
-
-    teacherName.textContent =
-      currentProfile.name ||
-      "先生";
-
-
-    setupEvents();
-
-    await loadTests();
-
-
-  } catch (error) {
-
-    showError(
-      error.message ||
-      "テスト管理を読み込めませんでした。"
-    );
-
-  }
-
-})();
-
-
-/* =====================================================
-   EVENTS
-===================================================== */
-
-function setupEvents() {
-
-  createButton.addEventListener(
-    "click",
-    createTest
-  );
-
-
-  document
-    .getElementById(
-      "logoutButton"
-    )
-    ?.addEventListener(
-      "click",
-      async () => {
-
-        if (
-          typeof logout ===
-          "function"
-        ) {
-
-          await logout();
-
-          return;
-
-        }
-
-
-        if (
-          typeof signOut ===
-          "function"
-        ) {
-
-          await signOut();
-
-        }
+        return;
 
       }
-    );
-
-}
 
 
-/* =====================================================
-   LOAD TESTS
-===================================================== */
-
-async function loadTests() {
-
-  statusElement.textContent =
-    "テスト一覧を読み込んでいます...";
+      document.getElementById(
+        "teacherName"
+      ).textContent =
+        auth.profile?.name ||
+        "先生";
 
 
-  const {
-    data,
-    error
-  } =
-    await DB
-      .from(
-        "tests"
-      )
-      .select(
-        `
-        id,
-        name,
-        subject,
-        grade,
-        class_name,
-        created_at
-        `
-      )
-      .order(
-        "created_at",
-        {
-          ascending:
-            false
-        }
+    } catch (error) {
+
+      console.error(
+        error
       );
-
-
-  if (error) {
-
-    throw error;
-
-  }
-
-
-  renderTests(
-    data ||
-    []
-  );
-
-
-  statusElement.textContent =
-    `${(
-      data ||
-      []
-    ).length}件のテストがあります。`;
-
-}
-
-
-/* =====================================================
-   RENDER
-===================================================== */
-
-function renderTests(
-  tests
-) {
-
-  rowsElement.innerHTML =
-    "";
-
-
-  if (!tests.length) {
-
-    rowsElement.innerHTML = `
-
-      <tr>
-
-        <td
-          colspan="4"
-          class="empty"
-        >
-          テストがありません。
-        </td>
-
-      </tr>
-
-    `;
-
-    return;
-
-  }
-
-
-  for (
-    const test
-    of tests
-  ) {
-
-    const row =
-      document.createElement(
-        "tr"
-      );
-
-
-    row.innerHTML = `
-
-      <td>
-        ${escapeHtml(
-          test.name
-        )}
-      </td>
-
-
-      <td>
-        ${escapeHtml(
-          test.subject ||
-          ""
-        )}
-      </td>
-
-
-      <td>
-        ${escapeHtml(
-          test.grade ||
-          ""
-        )}
-      </td>
-
-
-      <td>
-
-        <div class="actions">
-
-
-          <a
-            class="btn"
-            href="/teacher/tests/layout?test=${encodeURIComponent(
-              test.id
-            )}"
-          >
-            枠設定
-          </a>
-
-
-          <a
-            class="btn"
-            href="/teacher/tests/points?test=${encodeURIComponent(
-              test.id
-            )}"
-          >
-            配点設定
-          </a>
-
-
-          <a
-            class="btn"
-            href="/teacher/marking?test=${encodeURIComponent(
-              test.id
-            )}"
-          >
-            採点
-          </a>
-
-
-        </div>
-
-      </td>
-
-    `;
-
-
-    rowsElement.appendChild(
-      row
-    );
-
-  }
-
-}
-
-
-/* =====================================================
-   CREATE TEST
-===================================================== */
-
-async function createTest() {
-
-  const name =
-    document
-      .getElementById(
-        "testName"
-      )
-      .value
-      .trim();
-
-
-  const subject =
-    document
-      .getElementById(
-        "subject"
-      )
-      .value
-      .trim();
-
-
-  const grade =
-    document
-      .getElementById(
-        "grade"
-      )
-      .value
-      .trim();
-
-
-  if (!name) {
-
-    showError(
-      "テスト名を入力してください。"
-    );
-
-    return;
-
-  }
-
-
-  createButton.disabled =
-    true;
-
-
-  createButton.textContent =
-    "作成中...";
-
-
-  try {
-
-    /*
-     * created_by がDBに存在する構成なら使用。
-     * RLS等で問題になる場合は
-     * nullで作成できる既存構成に合わせる。
-     */
-
-    const userId =
-      currentProfile?.user?.id ||
-      currentProfile?.id ||
-      null;
-
-
-    const insertData = {
-
-      name,
-
-      subject:
-        subject ||
-        null,
-
-      grade:
-        grade ||
-        null
-
-    };
-
-
-    /*
-     * created_by が分かっている場合だけ追加。
-     */
-
-    if (userId) {
-
-      insertData.created_by =
-        userId;
 
     }
 
-
-    const {
-      data,
-      error
-    } =
-      await DB
-        .from(
-          "tests"
-        )
-        .insert(
-          insertData
-        )
-        .select(
-          "id"
-        )
-        .single();
-
-
-    if (error) {
-
-      throw error;
-
-    }
-
-
-    /*
-     * 作成後はすぐ枠設定へ。
-     */
-
-    location.href =
-      `/teacher/tests/layout?test=${encodeURIComponent(
-        data.id
-      )}`;
-
-
-  } catch (error) {
-
-    console.error(
-      error
-    );
-
-
-    showError(
-      error.message ||
-      "テストを作成できませんでした。"
-    );
-
-
-    createButton.disabled =
-      false;
-
-
-    createButton.textContent =
-      "新しいテストを作成";
-
   }
-
-}
-
-
-/* =====================================================
-   ERROR
-===================================================== */
-
-function showError(
-  message
-) {
-
-  statusElement.textContent =
-    message;
-
-  statusElement.classList.add(
-    "error"
-  );
-
-}
+);
 
 
-/* =====================================================
-   ESCAPE
-===================================================== */
-
-function escapeHtml(
-  value
-) {
-
-  return String(
-    value ??
-    ""
+document
+  .getElementById(
+    "logoutButton"
   )
-    .replaceAll(
-      "&",
-      "&amp;"
-    )
-    .replaceAll(
-      "<",
-      "&lt;"
-    )
-    .replaceAll(
-      ">",
-      "&gt;"
-    )
-    .replaceAll(
-      '"',
-      "&quot;"
-    )
-    .replaceAll(
-      "'",
-      "&#039;"
-    );
+  ?.addEventListener(
+    "click",
+    async () => {
 
-}
+      await logout();
+
+    }
+  );
 
 </script>
 

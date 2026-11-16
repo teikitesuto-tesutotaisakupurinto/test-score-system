@@ -1,10 +1,9 @@
+
 /* =========================================================
    テスト成績システム
    PDF Loader
 
-   PDF.jsを固定バージョンでロードする。
-
-   実際のPDF.js本体はCDNから読み込む。
+   PDF.jsを固定バージョンでロード。
 ========================================================= */
 
 (function () {
@@ -12,48 +11,27 @@
   "use strict";
 
 
-  /*
-    使用するPDF.jsバージョンを固定
-  */
-
   const PDFJS_VERSION =
     "4.10.38";
 
-
-  /*
-    PDF.js本体
-  */
 
   const PDFJS_URL =
     `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/build/pdf.mjs`;
 
 
-  /*
-    PDF.js Worker
-  */
-
   const PDFJS_WORKER_URL =
     `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/build/pdf.worker.mjs`;
 
-
-  /*
-    ロード済みPromise
-  */
 
   let loadingPromise =
     null;
 
 
-  /*
-    PDF.jsロード
-  */
+  /* =======================================================
+     PDF.jsロード
+  ======================================================= */
 
   async function loadPdfJs() {
-
-
-    /*
-      すでにロード済み
-    */
 
     if (
       window.TEST_SCORE_PDFJS
@@ -63,10 +41,6 @@
 
     }
 
-
-    /*
-      読み込み中
-    */
 
     if (
       loadingPromise
@@ -83,11 +57,6 @@
       )
       .then(
         pdfjsLib => {
-
-
-          /*
-            Worker設定
-          */
 
           pdfjsLib
             .GlobalWorkerOptions
@@ -129,13 +98,22 @@
   }
 
 
-  /*
-    PDFを読み込む
-  */
+  /* =======================================================
+     PDFロード
+  ======================================================= */
 
   async function loadPdf(
     blob
   ) {
+
+    if (!blob) {
+
+      throw new Error(
+        "PDFファイルがありません。"
+      );
+
+    }
+
 
     const pdfjsLib =
       await loadPdfJs();
@@ -154,15 +132,14 @@
       });
 
 
-    return await loadingTask
-      .promise;
+    return loadingTask.promise;
 
   }
 
 
-  /*
-    PDFの1ページを画像化
-  */
+  /* =======================================================
+     1ページ描画
+  ======================================================= */
 
   async function renderPdfPage(
     pdf,
@@ -207,8 +184,8 @@
 
 
     /*
-      白背景
-    */
+     * PDF背景を白にする。
+     */
 
     context.fillStyle =
       "#ffffff";
@@ -253,9 +230,9 @@
   }
 
 
-  /*
-    PDF全部をページ配列にする
-  */
+  /* =======================================================
+     PDF → ページ画像
+  ======================================================= */
 
   async function pdfToPages(
     blob,
@@ -273,7 +250,8 @@
 
     for (
       let pageNumber = 1;
-      pageNumber <= pdf.numPages;
+      pageNumber <=
+        pdf.numPages;
       pageNumber++
     ) {
 
@@ -309,9 +287,9 @@
   }
 
 
-  /*
-    Canvas → PNG
-  */
+  /* =======================================================
+     Canvas → PNG
+  ======================================================= */
 
   function canvasToPng(
     canvas
@@ -353,9 +331,9 @@
   }
 
 
-  /*
-    グローバル公開
-  */
+  /* =======================================================
+     公開
+  ======================================================= */
 
   window.TEST_SCORE_PDF = {
 

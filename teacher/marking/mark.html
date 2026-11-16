@@ -12,7 +12,7 @@
 >
 
 <title>
-  テスト採点 - テスト成績システム
+  デジタル採点 - テスト成績システム
 </title>
 
 <link
@@ -22,74 +22,149 @@
 
 <style>
 
+* {
+  box-sizing:border-box;
+}
+
+body {
+  margin:0;
+  background:#eef2f5;
+  color:#222;
+}
+
+.topbar {
+  position:sticky;
+  top:0;
+  z-index:100;
+
+  display:flex;
+  align-items:center;
+
+  min-height:52px;
+
+  padding:8px 16px;
+
+  background:#fff;
+
+  border-bottom:1px solid #d0d6dc;
+}
+
+.system-name {
+  font-weight:700;
+}
+
+.topbar-space {
+  flex:1;
+}
+
+#teacherName {
+  margin-right:12px;
+
+  color:#555;
+
+  font-size:13px;
+}
+
 .marking-main {
-  max-width:1500px;
+  max-width:1700px;
 
   margin:0 auto;
 
-  padding:22px;
+  padding:18px;
 }
 
+
+/* =====================================================
+   TOOLBAR
+===================================================== */
 
 .toolbar {
   display:flex;
 
   flex-wrap:wrap;
 
-  gap:8px;
+  align-items:center;
 
-  margin-bottom:15px;
+  gap:7px;
+
+  margin-bottom:12px;
+}
+
+.toolbar-title {
+  font-size:18px;
+
+  font-weight:700;
+
+  margin-right:8px;
 }
 
 
+/* =====================================================
+   STATUS
+===================================================== */
+
 .status {
+  min-height:40px;
+
+  margin-bottom:12px;
+
   padding:10px 12px;
 
-  margin-bottom:15px;
+  background:#fff;
 
-  background:#f5f6f7;
-
-  border:1px solid #d5dbe0;
+  border:1px solid #d0d6dc;
 
   font-size:13px;
 
   white-space:pre-wrap;
 }
 
-
 .status.error {
   color:#b42318;
+
+  border-color:#efc2bc;
+
+  background:#fff8f7;
 }
 
+
+/* =====================================================
+   PROGRESS
+===================================================== */
 
 .progress {
   display:none;
 
-  margin-bottom:15px;
+  margin-bottom:12px;
 
-  padding:14px;
+  padding:12px;
 
   background:#fff;
 
   border:1px solid #d0d6dc;
 }
 
-
 .progress.show {
   display:block;
 }
 
+.progress-text {
+  margin-bottom:7px;
+
+  color:#555;
+
+  font-size:12px;
+}
 
 .progress-track {
   height:8px;
 
+  overflow:hidden;
+
   background:#e1e5e8;
 
   border-radius:4px;
-
-  overflow:hidden;
 }
-
 
 .progress-bar {
   width:0;
@@ -98,12 +173,70 @@
 
   background:#1769aa;
 
-  transition:width .2s;
+  transition:width .15s;
 }
 
 
-.progress-text {
-  margin-top:7px;
+/* =====================================================
+   MARK TOOLBAR
+===================================================== */
+
+.mark-toolbar {
+  display:flex;
+
+  flex-wrap:wrap;
+
+  align-items:center;
+
+  gap:6px;
+
+  margin-bottom:12px;
+
+  padding:10px;
+
+  background:#fff;
+
+  border:1px solid #d0d6dc;
+}
+
+.mark-toolbar-title {
+  margin-right:5px;
+
+  font-weight:700;
+
+  font-size:13px;
+}
+
+.mark-tool {
+  min-width:52px;
+
+  height:38px;
+
+  padding:0 10px;
+
+  background:#fff;
+
+  border:1px solid #b8c1c9;
+
+  border-radius:4px;
+
+  cursor:pointer;
+
+  font-weight:700;
+}
+
+.mark-tool:hover {
+  background:#f1f4f6;
+}
+
+.mark-tool.active {
+  background:#e9ecef;
+
+  border-color:#333;
+}
+
+.keyboard-help {
+  margin-left:8px;
 
   color:#666;
 
@@ -111,26 +244,31 @@
 }
 
 
+/* =====================================================
+   QUESTION HEADER
+===================================================== */
+
 .question-header {
   display:flex;
 
   flex-wrap:wrap;
 
-  justify-content:space-between;
-
   align-items:center;
 
   gap:12px;
 
-  padding:15px;
+  margin-bottom:12px;
 
-  margin-bottom:15px;
+  padding:13px 15px;
 
   background:#fff;
 
   border:1px solid #d0d6dc;
 }
 
+.question-info {
+  min-width:250px;
+}
 
 .question-title {
   font-size:20px;
@@ -138,59 +276,67 @@
   font-weight:700;
 }
 
-
 .question-meta {
-  margin-top:5px;
+  margin-top:4px;
 
   color:#666;
 
   font-size:13px;
 }
 
+.question-space {
+  flex:1;
+}
 
 .navigation {
   display:flex;
 
-  gap:8px;
+  gap:7px;
 }
 
 
+/* =====================================================
+   ANSWER TABLE
+===================================================== */
+
 .answer-table-wrap {
-  overflow-x:auto;
+  overflow:auto;
 
   background:#fff;
 
   border:1px solid #d0d6dc;
 }
 
-
 .answer-table {
   width:100%;
 
-  min-width:1050px;
+  min-width:1150px;
 
   border-collapse:collapse;
 }
 
-
 .answer-table th,
 .answer-table td {
-  border:1px solid #d0d6dc;
-
   padding:9px;
+
+  border:1px solid #d0d6dc;
 
   vertical-align:top;
 
   font-size:13px;
 }
 
-
 .answer-table th {
+  position:sticky;
+
+  top:0;
+
+  z-index:5;
+
   background:#f3f5f7;
 
   font-weight:700;
 }
-
 
 .student-cell {
   width:150px;
@@ -198,11 +344,9 @@
   min-width:150px;
 }
 
-
 .student-no {
   font-weight:700;
 }
-
 
 .student-name {
   margin-top:4px;
@@ -210,86 +354,198 @@
   color:#555;
 }
 
-
 .answer-cell {
-  width:520px;
+  width:620px;
 
-  min-width:520px;
+  min-width:620px;
 }
 
+.score-cell {
+  width:190px;
+
+  min-width:190px;
+
+  text-align:center;
+}
+
+.answer-status-cell {
+  width:100px;
+
+  min-width:100px;
+}
+
+
+/* =====================================================
+   ANSWER VIEWER
+===================================================== */
 
 .answer-viewer {
   position:relative;
 
-  overflow:hidden;
-
   width:100%;
 
-  min-height:160px;
+  min-height:180px;
+
+  overflow:hidden;
 
   background:#f7f8f9;
 
-  border:1px solid #e0e3e6;
+  border:1px solid #dfe3e6;
+
+  cursor:pointer;
+
+  user-select:none;
 }
 
+.answer-viewer:hover {
+  outline:2px solid #b8c1c9;
+}
 
 .answer-viewer img {
   position:absolute;
 
   max-width:none;
-
   max-height:none;
 
   margin:0;
 
   user-select:none;
-}
 
+  pointer-events:none;
+}
 
 .answer-error {
-  padding:40px 10px;
+  display:flex;
 
-  text-align:center;
+  align-items:center;
+
+  justify-content:center;
+
+  min-height:180px;
+
+  padding:30px;
 
   color:#b42318;
-}
-
-
-.score-cell {
-  width:180px;
-
-  min-width:180px;
 
   text-align:center;
+
+  font-size:13px;
 }
 
 
+/* =====================================================
+   MARK OBJECT
+===================================================== */
+
+.mark-object {
+  position:absolute;
+
+  z-index:20;
+
+  color:#d00000;
+
+  font-weight:700;
+
+  line-height:1;
+
+  user-select:none;
+
+  pointer-events:auto;
+
+  cursor:pointer;
+
+  text-shadow:
+    0 0 1px #fff,
+    0 0 1px #fff;
+}
+
+.mark-object:hover {
+  outline:1px dashed #d00000;
+}
+
+
+/* =====================================================
+   SCORE
+===================================================== */
+
+.score-controls {
+  display:flex;
+
+  flex-wrap:wrap;
+
+  align-items:center;
+
+  justify-content:center;
+
+  gap:5px;
+}
+
 .score-input {
-  width:90px;
+  width:82px;
 
   height:40px;
 
-  padding:0 8px;
+  padding:0 7px;
+
+  border:1px solid #b8c1c9;
+
+  border-radius:4px;
 
   font-size:17px;
 
   text-align:center;
 }
 
+.score-input:focus {
+  outline:none;
 
-.score-save {
-  margin-top:7px;
+  border-color:#1769aa;
+
+  box-shadow:
+    0 0 0 2px
+    rgba(
+      23,
+      105,
+      170,
+      .12
+    );
 }
 
+.score-action {
+  min-width:42px;
+
+  height:38px;
+
+  padding:0 8px;
+
+  border:1px solid #b8c1c9;
+
+  border-radius:4px;
+
+  background:#fff;
+
+  cursor:pointer;
+}
+
+.score-action:hover {
+  background:#f1f4f6;
+}
+
+.score-action.primary {
+  border-color:#1769aa;
+
+  background:#1769aa;
+
+  color:#fff;
+}
 
 .score-state {
   margin-top:7px;
 
-  color:#666;
-
   font-size:12px;
-}
 
+  color:#777;
+}
 
 .score-state.marked {
   color:#1769aa;
@@ -297,13 +553,11 @@
   font-weight:700;
 }
 
-
 .score-state.error {
   color:#b42318;
 
   font-weight:700;
 }
-
 
 .warning {
   display:none;
@@ -312,41 +566,44 @@
 
   padding:7px;
 
-  color:#b42318;
-
   background:#fff4f2;
 
   border:1px solid #efc2bc;
 
-  font-size:12px;
-}
+  color:#b42318;
 
+  font-size:12px;
+
+  text-align:left;
+}
 
 .warning.show {
   display:block;
 }
 
 
+/* =====================================================
+   COMPLETE
+===================================================== */
+
 .complete {
   display:none;
 
-  margin-top:15px;
+  margin-top:12px;
 
-  padding:18px;
+  padding:17px;
 
   background:#fff;
 
   border:1px solid #d0d6dc;
 }
 
-
 .complete.show {
   display:block;
 }
 
-
 .complete-title {
-  margin-bottom:8px;
+  margin-bottom:5px;
 
   font-size:18px;
 
@@ -354,12 +611,39 @@
 }
 
 
-.empty {
-  padding:50px;
+/* =====================================================
+   EMPTY
+===================================================== */
 
-  text-align:center;
+.empty {
+  padding:60px 20px;
 
   color:#777;
+
+  text-align:center;
+}
+
+
+/* =====================================================
+   MOBILE
+===================================================== */
+
+@media(max-width:800px) {
+
+  .marking-main {
+    padding:10px;
+  }
+
+  .keyboard-help {
+    width:100%;
+
+    margin-left:0;
+  }
+
+  .question-info {
+    width:100%;
+  }
+
 }
 
 </style>
@@ -372,26 +656,26 @@
 
 <header class="topbar">
 
-<div class="system-name">
-  テスト成績システム
-</div>
+  <div class="system-name">
+    テスト成績システム
+  </div>
 
 
-<div class="topbar-space"></div>
+  <div class="topbar-space"></div>
 
 
-<span id="teacherName">
-  -
-</span>
+  <span id="teacherName">
+    -
+  </span>
 
 
-<button
-  id="logoutButton"
-  class="logout-button"
-  type="button"
->
-  ログアウト
-</button>
+  <button
+    id="logoutButton"
+    class="logout-button"
+    type="button"
+  >
+    ログアウト
+  </button>
 
 </header>
 
@@ -399,145 +683,251 @@
 <main class="marking-main">
 
 
+<!-- =====================================================
+     上部操作
+====================================================== -->
+
 <div class="toolbar">
 
-
-<a
-  href="/teacher/marking"
-  class="btn"
->
-  採点一覧へ戻る
-</a>
+  <div class="toolbar-title">
+    デジタル採点
+  </div>
 
 
-<a
-  id="pointsButton"
-  href="#"
-  class="btn"
->
-  配点設定
-</a>
+  <a
+    href="/teacher/marking"
+    class="btn"
+  >
+    採点一覧へ戻る
+  </a>
 
 
-<button
-  id="refreshButton"
-  class="btn"
-  type="button"
->
-  更新
-</button>
+  <a
+    id="pointsButton"
+    href="#"
+    class="btn"
+  >
+    配点設定
+  </a>
 
+
+  <button
+    id="refreshButton"
+    class="btn"
+    type="button"
+  >
+    更新
+  </button>
 
 </div>
 
+
+<!-- =====================================================
+     STATUS
+====================================================== -->
 
 <div
   id="status"
   class="status"
 >
-  JavaScriptを起動しています...
+  採点画面を起動しています...
 </div>
 
+
+<!-- =====================================================
+     PROGRESS
+====================================================== -->
 
 <div
   id="progress"
   class="progress"
 >
 
+  <div
+    id="progressText"
+    class="progress-text"
+  >
+    0 / 0
+  </div>
+
+
+  <div class="progress-track">
+
+    <div
+      id="progressBar"
+      class="progress-bar"
+    ></div>
+
+  </div>
+
+</div>
+
+
+<!-- =====================================================
+     MARK TOOLBAR
+====================================================== -->
+
 <div
-  id="progressText"
-  class="progress-text"
+  id="markToolbar"
+  class="mark-toolbar"
 >
-  -
+
+  <span class="mark-toolbar-title">
+    採点記号
+  </span>
+
+
+  <button
+    type="button"
+    class="mark-tool"
+    data-mark="circle"
+  >
+    ○
+  </button>
+
+
+  <button
+    type="button"
+    class="mark-tool"
+    data-mark="x"
+  >
+    ×
+  </button>
+
+
+  <button
+    type="button"
+    class="mark-tool"
+    data-mark="triangle"
+  >
+    △
+  </button>
+
+
+  <button
+    type="button"
+    class="mark-tool"
+    data-mark="double_circle"
+  >
+    ◎
+  </button>
+
+
+  <button
+    type="button"
+    class="mark-tool"
+    data-mark="text"
+  >
+    文字
+  </button>
+
+
+  <button
+    type="button"
+    class="mark-tool"
+    data-mark="pen"
+  >
+    ペン
+  </button>
+
+
+  <span class="keyboard-help">
+    L：○＋満点 ／ K：×＋0点 ／ 数字：部分点 ／
+    Backspace：削除 ／ Enter：保存 ／ Escape：解除
+  </span>
+
 </div>
 
 
-<div class="progress-track">
-
-<div
-  id="progressBar"
-  class="progress-bar"
-></div>
-
-</div>
-
-</div>
-
+<!-- =====================================================
+     QUESTION
+====================================================== -->
 
 <section
   class="question-header"
 >
 
-<div>
+  <div class="question-info">
 
-<div
-  id="questionTitle"
-  class="question-title"
->
-  -
-</div>
-
-
-<div
-  id="questionMeta"
-  class="question-meta"
->
-  -
-</div>
-
-</div>
+    <div
+      id="questionTitle"
+      class="question-title"
+    >
+      -
+    </div>
 
 
-<div class="navigation">
+    <div
+      id="questionMeta"
+      class="question-meta"
+    >
+      -
+    </div>
 
-<button
-  id="previousButton"
-  class="btn"
-  type="button"
-  disabled
->
-  前の問題
-</button>
+  </div>
 
 
-<button
-  id="nextButton"
-  class="btn btn-primary"
-  type="button"
->
-  次の問題
-</button>
+  <div class="question-space"></div>
 
-</div>
+
+  <div class="navigation">
+
+    <button
+      id="previousButton"
+      class="btn"
+      type="button"
+      disabled
+    >
+      前の問題
+    </button>
+
+
+    <button
+      id="nextButton"
+      class="btn btn-primary"
+      type="button"
+    >
+      次の問題
+    </button>
+
+  </div>
 
 </section>
 
+
+<!-- =====================================================
+     ANSWERS
+====================================================== -->
 
 <section
   id="answerTableWrap"
   class="answer-table-wrap"
 >
 
-<div class="empty">
-  答案を読み込んでいます...
-</div>
+  <div class="empty">
+    答案を読み込んでいます...
+  </div>
 
 </section>
 
+
+<!-- =====================================================
+     COMPLETE
+====================================================== -->
 
 <section
   id="complete"
   class="complete"
 >
 
-<div class="complete-title">
-  全答案・全設問の採点が完了しました。
-</div>
+  <div class="complete-title">
+    全答案・全設問の採点が完了しました。
+  </div>
 
 
-<div>
-  成績・偏差値・順位の処理が完了するまで公開しません。
-</div>
+  <div>
+    成績・偏差値・順位の処理が完了するまで公開しません。
+  </div>
 
 </section>
 
@@ -546,35 +936,23 @@
 
 
 <!-- =====================================================
-     Supabase
-===================================================== -->
+     SUPABASE
+====================================================== -->
 
 <script
   src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
 ></script>
 
 
-<!-- =====================================================
-     Config
-===================================================== -->
-
 <script
   src="/js/config.js?v=20261116"
 ></script>
 
 
-<!-- =====================================================
-     Auth
-===================================================== -->
-
 <script
   src="/js/auth.js?v=20261116"
 ></script>
 
-
-<!-- =====================================================
-     Marking
-===================================================== -->
 
 <script
   src="/js/teacher/marking.js?v=20261116"
@@ -586,81 +964,85 @@
 "use strict";
 
 
-/* =========================================================
+/* =====================================================
    URL
-========================================================= */
+===================================================== */
 
-const params =
-  new URLSearchParams(
-    window.location.search
-  );
+(function () {
 
-
-const testId =
-  params.get(
-    "test"
-  );
+  const params =
+    new URLSearchParams(
+      window.location.search
+    );
 
 
-const answerId =
-  params.get(
-    "answer"
-  );
+  const testId =
+    params.get(
+      "test"
+    );
 
 
-/* =========================================================
-   POINTS LINK
-========================================================= */
-
-const pointsButton =
-  document.getElementById(
-    "pointsButton"
-  );
+  const pointsButton =
+    document.getElementById(
+      "pointsButton"
+    );
 
 
-if (
-  pointsButton &&
-  testId
-) {
+  if (
+    pointsButton &&
+    testId
+  ) {
 
-  pointsButton.href =
-    `/teacher/tests/points?test=${encodeURIComponent(
-      testId
-    )}`;
+    pointsButton.href =
+      `/teacher/tests/points?test=${encodeURIComponent(
+        testId
+      )}`;
 
-}
-
-
-/* =========================================================
-   INITIAL ANSWER
-   ---------------------------------------------------------
-   marking.jsがURLのanswerを利用できるように
-   グローバルへ渡す。
-========================================================= */
-
-window.__INITIAL_ANSWER_ID__ =
-  answerId ||
-  null;
+  }
 
 
-window.__INITIAL_TEST_ID__ =
-  testId ||
-  null;
+})();
 
 
-/* =========================================================
-   REFRESH
-========================================================= */
+/* =====================================================
+   MARK TOOLBAR
+   -----------------------------------------------------
+   marking.js側でも利用するが、
+   HTML側で確実にUIを用意する。
+===================================================== */
 
 document
-  .getElementById(
-    "refreshButton"
+  .querySelectorAll(
+    "#markToolbar [data-mark]"
   )
-  ?.addEventListener(
-    "click",
-    () => {
+  .forEach(
+    button => {
 
-      window.location.reload();
+      button.addEventListener(
+        "click",
+        () => {
+
+          document
+            .querySelectorAll(
+              "#markToolbar [data-mark]"
+            )
+            .forEach(
+              item => {
+
+                item.classList.remove(
+                  "active"
+                );
+
+              }
+            );
+
+
+          button.classList.add(
+            "active"
+          );
+
+        }
+      );
 
     }
   );

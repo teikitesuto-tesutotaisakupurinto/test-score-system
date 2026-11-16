@@ -1,34 +1,29 @@
 
-/* =========================================================
+"use strict";
+
+/* =====================================================
    テスト成績システム
    js/teacher/test-layout.js
 
    解答用紙 枠設定
 
    枠の種類
-   ---------------------------------------------------------
+   -----------------------------------------------------
    answer       解答欄
-   qr           QRコードシール欄
-   student_no   生徒番号欄
-   name         氏名欄
+   qr           QRコード
+   student_no   生徒番号
+   name         氏名
 
-   重要
-   ---------------------------------------------------------
-   question_id は必須ではない。
-
-   現在のDBでは、
-   layout_boxes.question_id が NULL の
-   answer枠も採点対象として扱う。
+   question_id
+   -----------------------------------------------------
+   NULLでも採点対象。
+   採点側ではbox_type=answerを使用する。
 
    配点
-   ---------------------------------------------------------
-   layout_boxes.points を使用する。
-========================================================= */
+   -----------------------------------------------------
+   layout_boxes.points
+===================================================== */
 
-
-/* =========================================================
-   URL
-========================================================= */
 
 const layoutParams =
   new URLSearchParams(
@@ -36,127 +31,159 @@ const layoutParams =
   );
 
 
-/*
- * 現在のページ構成では ?id=UUID。
- *
- * 念のため ?test=UUID も許可。
- */
-
 const layoutTestId =
-  layoutParams.get("id") ||
-  layoutParams.get("test");
+  layoutParams.get(
+    "test"
+  ) ||
+  layoutParams.get(
+    "id"
+  );
 
 
-/* =========================================================
-   STATE
-========================================================= */
+const DB =
+  window.supabaseClient ||
+  window.SB;
+
+
+if (!DB) {
+
+  throw new Error(
+    "Supabase Clientが初期化されていません。"
+  );
+
+}
+
+
+let layoutTest =
+  null;
 
 let pages =
   [];
 
-let activePage =
-  null;
-
-let activeBoxType =
-  "answer";
-
-let boxElements =
+let boxes =
   [];
 
+let selectedBox =
+  null;
 
-/* =========================================================
+let currentPage =
+  1;
+
+let currentMode =
+  "answer";
+
+let dragState =
+  null;
+
+let imageScale =
+  1;
+
+
+/* =====================================================
+   DOM
+===================================================== */
+
+const statusElement =
+  document.getElementById(
+    "status"
+  );
+
+const canvasWrap =
+  document.getElementById(
+    "canvasWrap"
+  );
+
+const questionList =
+  document.getElementById(
+    "questionList"
+  );
+
+const boxList =
+  document.getElementById(
+    "boxList"
+  );
+
+const totalElement =
+  document.getElementById(
+    "total"
+  );
+
+
+/* =====================================================
    INIT
-========================================================= */
+===================================================== */
+
+document.addEventListener(
+  "DOMContentLoaded",
+  initializeLayout
+);
+
 
 async function initializeLayout() {
 
   try {
 
-    /*
-     * 認証
-     */
+    if (!layoutTestId) {
 
-    const profile =
-      await getProfile();
-
-
-    if (!profile) {
-
-      window.location.href =
-        "/login";
-
-      return;
+      throw new Error(
+        "テストIDがありません。"
+      );
 
     }
 
 
     if (
-      profile.role !== "teacher" &&
-      profile.role !== "admin"
+      typeof window.requireRole ===
+      "function"
     ) {
 
-      window.location.href =
-        "/student/index.html";
-
-      return;
-
-    }
+      const auth =
+        await window.requireRole(
+          "teacher"
+        );
 
 
-    const teacherName =
-      document.getElementById(
-        "teacherName"
-      );
+      if (!auth) {
 
+        return;
 
-    if (teacherName) {
-
-      teacherName.textContent =
-        profile.name ||
-        "先生";
+      }
 
     }
 
 
-    /*
-     * テストID
-     */
-
-    if (!layoutTestId) {
-
-      alert(
-        "テストが指定されていません。"
-      );
+    setupLayoutEvents();
 
 
-      window.location.href =
-        "/teacher/tests";
-
-      return;
-
-    }
-
-
-    setNavigation();
-
-
-    await loadTest();
+    await loadLayoutTest();
 
 
     await loadPages();
 
 
+    await loadBoxes();
+
+
+    renderEverything();
+
+
+    setStatus(
+      "解答欄を設定できます。"
+    );
+
+
   } catch (error) {
 
     console.error(
-      "test-layout initialize:",
+      "test-layout:",
       error
     );
 
 
-    alert(
+    setStatus(
       error.message ||
-      "枠設定を読み込めませんでした。"
+      "枠設定を読み込めませんでした。",
+      true
     );
 
   }
@@ -164,111 +191,151 @@ async function initializeLayout() {
 }
 
 
-/* =========================================================
-   NAVIGATION
-========================================================= */
+/* =====================================================
+   EVENTS
+===================================================== */
 
-function setNavigation() {
+function setupLayoutEvents() {
 
-  const encoded =
-    encodeURIComponent(
-      layoutTestId
+  document
+    .getElementById(
+      "questionMode"
+    )
+    ?.addEventListener(
+      "click",
+      () => {
+
+        setMode(
+          "answer"
+        );
+
+      }
     );
 
 
-  /*
-   * 今回のZIPに実在するページだけを使用。
-   */
+  document
+    .getElementById(
+      "qrMode"
+    )
+    ?.addEventListener(
+      "click",
+      () => {
 
-  const pagesLink =
-    document.getElementById(
-      "pagesLink"
+        setMode(
+          "qr"
+        );
+
+      }
     );
 
 
-  if (pagesLink) {
+  document
+    .getElementById(
+      "nameMode"
+    )
+    ?.addEventListener(
+      "click",
+      () => {
 
-    pagesLink.href =
-      `/teacher/tests/pages?id=${encoded}`;
+        setMode(
+          "name"
+        );
 
-  }
-
-
-  const layoutLink =
-    document.getElementById(
-      "layoutLink"
+      }
     );
 
 
-  if (layoutLink) {
-
-    layoutLink.href =
-      `/teacher/tests/layout?id=${encoded}`;
-
-  }
-
-
-  /*
-   * questions.html は今回のZIPには存在しない。
-   *
-   * 配点設定へ移動する。
-   */
-
-  const questionsLink =
-    document.getElementById(
-      "questionsLink"
+  document
+    .getElementById(
+      "saveButton"
+    )
+    ?.addEventListener(
+      "click",
+      saveBoxes
     );
 
 
-  if (questionsLink) {
+  document
+    .getElementById(
+      "nextPoints"
+    )
+    ?.addEventListener(
+      "click",
+      () => {
 
-    questionsLink.href =
-      `/teacher/tests/points?id=${encoded}`;
+        location.href =
+          `/teacher/tests/points?test=${encodeURIComponent(
+            layoutTestId
+          )}`;
 
-  }
-
-
-  const pointsLink =
-    document.getElementById(
-      "pointsLink"
+      }
     );
 
 
-  if (pointsLink) {
-
-    pointsLink.href =
-      `/teacher/tests/points?id=${encoded}`;
-
-  }
-
-
-  const modelAnswerLink =
-    document.getElementById(
-      "modelAnswerLink"
+  document
+    .getElementById(
+      "addQuestion"
+    )
+    ?.addEventListener(
+      "click",
+      addQuestion
     );
 
 
-  if (modelAnswerLink) {
+  document
+    .getElementById(
+      "file"
+    )
+    ?.addEventListener(
+      "change",
+      handleFile
+    );
 
-    modelAnswerLink.href =
-      `/teacher/tests/model-answer?id=${encoded}`;
 
-  }
+  document
+    .getElementById(
+      "logoutButton"
+    )
+    ?.addEventListener(
+      "click",
+      async () => {
+
+        if (
+          typeof window.logout ===
+          "function"
+        ) {
+
+          await window.logout();
+
+          return;
+
+        }
+
+
+        await DB.auth.signOut();
+
+
+        location.replace(
+          "/login"
+        );
+
+      }
+    );
 
 }
 
 
-/* =========================================================
-   LOAD TEST
-========================================================= */
+/* =====================================================
+   TEST
+===================================================== */
 
-async function loadTest() {
+async function loadLayoutTest() {
 
   const {
     data,
     error
   } =
-    await supabaseClient
+    await DB
       .from(
         "tests"
       )
@@ -278,8 +345,7 @@ async function loadTest() {
         name,
         subject,
         grade,
-        class_name,
-        max_score
+        class_name
         `
       )
       .eq(
@@ -290,11 +356,6 @@ async function loadTest() {
 
 
   if (error) {
-
-    console.error(
-      "loadTest:",
-      error
-    );
 
     throw error;
 
@@ -310,65 +371,31 @@ async function loadTest() {
   }
 
 
-  const information =
+  layoutTest =
+    data;
+
+
+  const pointsLink =
     document.getElementById(
-      "testInformation"
+      "pointsLink"
     );
 
 
-  if (information) {
+  if (pointsLink) {
 
-    information.innerHTML = `
-
-      <strong>
-        ${escapeHtml(
-          data.name
-        )}
-      </strong>
-
-      ／
-
-      ${escapeHtml(
-        data.subject ||
-        ""
-      )}
-
-      ／
-
-      ${escapeHtml(
-        data.grade ||
-        ""
-      )}
-
-      ${
-        data.class_name
-          ? `
-            ／
-            ${escapeHtml(
-              data.class_name
-            )}
-          `
-          : ""
-      }
-
-      ／
-
-      満点：
-      ${escapeHtml(
-        data.max_score ??
-        ""
-      )}
-
-    `;
+    pointsLink.href =
+      `/teacher/tests/points?test=${encodeURIComponent(
+        layoutTestId
+      )}`;
 
   }
 
 }
 
 
-/* =========================================================
-   LOAD PAGES
-========================================================= */
+/* =====================================================
+   PAGES
+===================================================== */
 
 async function loadPages() {
 
@@ -376,15 +403,16 @@ async function loadPages() {
     data,
     error
   } =
-    await supabaseClient
+    await DB
       .from(
         "test_pages"
       )
       .select(
         `
         id,
+        test_id,
         page_no,
-        image_path,
+        file_path,
         width_px,
         height_px
         `
@@ -396,18 +424,12 @@ async function loadPages() {
       .order(
         "page_no",
         {
-          ascending:
-            true
+          ascending:true
         }
       );
 
 
   if (error) {
-
-    console.error(
-      "loadPages:",
-      error
-    );
 
     throw error;
 
@@ -415,385 +437,43 @@ async function loadPages() {
 
 
   pages =
-    data ||
-    [];
+    data || [];
 
 
   if (!pages.length) {
 
-    const message =
-      document.getElementById(
-        "sheetMessage"
-      );
-
-
-    if (message) {
-
-      message.textContent =
-        "先に解答用紙を登録してください。";
-
-    }
-
-
     return;
 
   }
 
 
-  /*
-   * ページ一覧が別UIにある場合
-   */
-
-  renderPageSelector();
-
-
-  await showPage(
-    pages[0]
-  );
+  currentPage =
+    Number(
+      pages[0].page_no
+    ) || 1;
 
 }
 
 
-/* =========================================================
-   PAGE SELECTOR
-========================================================= */
-
-function renderPageSelector() {
-
-  const selector =
-    document.getElementById(
-      "pageSelect"
-    );
-
-
-  if (!selector) {
-
-    return;
-
-  }
-
-
-  selector.innerHTML =
-    "";
-
-
-  pages.forEach(
-    page => {
-
-      const option =
-        document.createElement(
-          "option"
-        );
-
-
-      option.value =
-        page.id;
-
-
-      option.textContent =
-        `${page.page_no}ページ`;
-
-
-      selector.appendChild(
-        option
-      );
-
-    }
-  );
-
-
-  selector.addEventListener(
-    "change",
-    async () => {
-
-      const page =
-        pages.find(
-          item =>
-            item.id ===
-            selector.value
-        );
-
-
-      if (page) {
-
-        await showPage(
-          page
-        );
-
-      }
-
-    }
-  );
-
-}
-
-
-/* =========================================================
-   SHOW PAGE
-========================================================= */
-
-async function showPage(
-  page
-) {
-
-  activePage =
-    page;
-
-
-  const canvas =
-    document.getElementById(
-      "sheetCanvas"
-    );
-
-
-  if (!canvas) {
-
-    throw new Error(
-      "sheetCanvasがありません。"
-    );
-
-  }
-
-
-  canvas.innerHTML =
-    "";
-
-
-  /*
-   * 前ページの枠参照をクリア。
-   */
-
-  boxElements =
-    [];
-
-
-  /*
-   * Storage
-   *
-   * 現在の構成では
-   * model-answers bucketを使用。
-   */
-
-  let imageUrl =
-    "";
-
-
-  if (
-    page.image_path
-  ) {
-
-    const {
-      data,
-      error
-    } =
-      await supabaseClient
-        .storage
-        .from(
-          "model-answers"
-        )
-        .createSignedUrl(
-          page.image_path,
-          3600
-        );
-
-
-    if (error) {
-
-      console.error(
-        "signed url:",
-        error
-      );
-
-    } else {
-
-      imageUrl =
-        data?.signedUrl ||
-        "";
-
-    }
-
-  }
-
-
-  const image =
-    document.createElement(
-      "img"
-    );
-
-
-  image.className =
-    "sheet-background";
-
-
-  image.draggable =
-    false;
-
-
-  if (imageUrl) {
-
-    image.src =
-      imageUrl;
-
-  }
-
-
-  image.onload =
-    () => {
-
-      resizeSheet(
-        image.naturalWidth,
-        image.naturalHeight
-      );
-
-    };
-
-
-  canvas.appendChild(
-    image
-  );
-
-
-  /*
-   * 画像が取得できない場合
-   */
-
-  if (!imageUrl) {
-
-    const message =
-      document.createElement(
-        "div"
-      );
-
-
-    message.className =
-      "sheet-message";
-
-
-    message.textContent =
-      "解答用紙画像を表示できません。";
-
-
-    canvas.appendChild(
-      message
-    );
-
-  }
-
-
-  /*
-   * ページ番号
-   */
-
-  const pageLabel =
-    document.createElement(
-      "div"
-    );
-
-
-  pageLabel.className =
-    "sheet-page-label";
-
-
-  pageLabel.textContent =
-    `${page.page_no}ページ`;
-
-
-  canvas.appendChild(
-    pageLabel
-  );
-
-
-  /*
-   * 既存枠
-   */
-
-  await loadExistingBoxes(
-    page.page_no
-  );
-
-}
-
-
-/* =========================================================
-   RESIZE
-========================================================= */
-
-function resizeSheet(
-  width,
-  height
-) {
-
-  const sheet =
-    document.getElementById(
-      "sheetCanvas"
-    );
-
-
-  if (!sheet) {
-
-    return;
-
-  }
-
-
-  const maxWidth =
-    Math.min(
-      900,
-      Math.max(
-        400,
-        window.innerWidth -
-          300
-      )
-    );
-
-
-  const scale =
-    width > maxWidth
-      ? maxWidth / width
-      : 1;
-
-
-  sheet.style.width =
-    `${width * scale}px`;
-
-
-  sheet.style.height =
-    `${height * scale}px`;
-
-
-  sheet.dataset.originalWidth =
-    width;
-
-
-  sheet.dataset.originalHeight =
-    height;
-
-
-  sheet.dataset.scale =
-    scale;
-
-}
-
-
-/* =========================================================
-   LOAD EXISTING BOXES
-========================================================= */
-
-async function loadExistingBoxes(
-  pageNo
-) {
+/* =====================================================
+   BOXES
+===================================================== */
+
+async function loadBoxes() {
 
   const {
     data,
     error
   } =
-    await supabaseClient
+    await DB
       .from(
         "layout_boxes"
       )
       .select(
         `
         id,
+        test_id,
+        page_no,
         box_type,
         label,
         x,
@@ -809,67 +489,354 @@ async function loadExistingBoxes(
         "test_id",
         layoutTestId
       )
-      .eq(
+      .order(
         "page_no",
-        pageNo
+        {
+          ascending:true
+        }
       )
       .order(
         "sort_order",
         {
-          ascending:
-            true
+          ascending:true
         }
       );
 
 
   if (error) {
 
-    console.error(
-      "loadExistingBoxes:",
-      error
+    throw error;
+
+  }
+
+
+  boxes =
+    data || [];
+
+}
+
+
+/* =====================================================
+   MODE
+===================================================== */
+
+function setMode(
+  mode
+) {
+
+  currentMode =
+    mode;
+
+
+  document
+    .getElementById(
+      "questionMode"
+    )
+    ?.classList.toggle(
+      "btn-primary",
+      mode ===
+        "answer"
     );
+
+
+  document
+    .getElementById(
+      "qrMode"
+    )
+    ?.classList.toggle(
+      "btn-primary",
+      mode ===
+        "qr"
+    );
+
+
+  document
+    .getElementById(
+      "nameMode"
+    )
+    ?.classList.toggle(
+      "btn-primary",
+      mode ===
+        "name"
+    );
+
+
+  setStatus(
+    `${modeLabel(
+      mode
+    )}枠を設定します。`
+  );
+
+}
+
+
+/* =====================================================
+   FILE
+===================================================== */
+
+async function handleFile(
+  event
+) {
+
+  const file =
+    event.target.files?.[0];
+
+
+  if (!file) {
+
+    return;
+
+  }
+
+
+  /*
+   * 新しい解答用紙をアップロードする処理は
+   * 現在のtest-pages.js側で管理する。
+   *
+   * ここでは既存ページ表示を優先。
+   */
+
+  setStatus(
+    "解答用紙を登録する場合は、解答用紙ページ設定を使用してください。"
+  );
+
+}
+
+
+/* =====================================================
+   RENDER
+===================================================== */
+
+async function renderEverything() {
+
+  renderQuestionList();
+
+  renderBoxList();
+
+  renderTotal();
+
+  await renderPages();
+
+}
+
+
+/* =====================================================
+   PAGES RENDER
+===================================================== */
+
+async function renderPages() {
+
+  canvasWrap.innerHTML =
+    "";
+
+
+  if (!pages.length) {
+
+    canvasWrap.innerHTML = `
+
+      <div class="empty">
+
+        解答用紙ページがありません。
+
+        <br><br>
+
+        先に解答用紙を登録してください。
+
+      </div>
+
+    `;
+
+    return;
+
+  }
+
+
+  for (
+    const page
+    of pages
+  ) {
+
+    const pageElement =
+      document.createElement(
+        "div"
+      );
+
+
+    pageElement.className =
+      "layout-page";
+
+
+    pageElement.dataset.pageNo =
+      String(
+        page.page_no
+      );
+
+
+    const image =
+      await createPageImage(
+        page
+      );
+
+
+    pageElement.appendChild(
+      image
+    );
+
+
+    const layer =
+      document.createElement(
+        "div"
+      );
+
+
+    layer.className =
+      "layout-layer";
+
+
+    layer.dataset.pageNo =
+      String(
+        page.page_no
+      );
+
+
+    pageElement.appendChild(
+      layer
+    );
+
+
+    canvasWrap.appendChild(
+      pageElement
+    );
+
+
+    renderPageBoxes(
+      layer,
+      page
+    );
+
+
+    setupPagePointer(
+      layer,
+      page
+    );
+
+  }
+
+}
+
+
+/* =====================================================
+   PAGE IMAGE
+===================================================== */
+
+async function createPageImage(
+  page
+) {
+
+  const {
+    data,
+    error
+  } =
+    await DB
+      .storage
+      .from(
+        "test-files"
+      )
+      .createSignedUrl(
+        page.file_path,
+        900
+      );
+
+
+  if (error) {
 
     throw error;
 
   }
 
 
-  (data || [])
-    .forEach(
-      box => {
+  if (!data?.signedUrl) {
 
-        createBoxElement(
-          box,
-          false
-        );
-
-      }
+    throw new Error(
+      "解答用紙画像URLを取得できませんでした。"
     );
+
+  }
+
+
+  const image =
+    document.createElement(
+      "img"
+    );
+
+
+  image.src =
+    data.signedUrl;
+
+
+  image.alt =
+    `解答用紙 ${page.page_no}ページ`;
+
+
+  await waitImage(
+    image
+  );
+
+
+  return image;
 
 }
 
 
-/* =========================================================
-   CREATE BOX
-========================================================= */
+/* =====================================================
+   BOX RENDER
+===================================================== */
 
-function createBoxElement(
-  box,
-  allowSave = true
+function renderPageBoxes(
+  layer,
+  page
 ) {
 
-  const sheet =
-    document.getElementById(
-      "sheetCanvas"
+  const pageBoxes =
+    boxes.filter(
+      box =>
+        Number(
+          box.page_no
+        ) ===
+        Number(
+          page.page_no
+        )
     );
 
 
-  if (!sheet) {
+  pageBoxes.forEach(
+    box => {
 
-    return null;
+      const element =
+        createBoxElement(
+          box,
+          page
+        );
 
-  }
 
+      layer.appendChild(
+        element
+      );
+
+    }
+  );
+
+}
+
+
+/* =====================================================
+   BOX ELEMENT
+===================================================== */
+
+function createBoxElement(
+  box,
+  page
+) {
 
   const element =
     document.createElement(
@@ -881,98 +848,55 @@ function createBoxElement(
     "layout-box";
 
 
-  if (
-    box.box_type ===
-    "qr"
-  ) {
-
-    element.classList.add(
-      "qr-box"
-    );
-
-  }
+  element.dataset.boxId =
+    box.id;
 
 
   if (
-    box.box_type ===
-    "student_no"
+    selectedBox?.id ===
+    box.id
   ) {
 
     element.classList.add(
-      "student-no-box"
+      "selected"
     );
 
   }
-
-
-  if (
-    box.box_type ===
-    "name"
-  ) {
-
-    element.classList.add(
-      "name-box"
-    );
-
-  }
-
-
-  element.dataset.id =
-    box.id ||
-    "";
-
-
-  element.dataset.type =
-    box.box_type ||
-    "answer";
 
 
   /*
-   * question_idはNULLを許可。
+   * DB座標を画面座標へ。
    */
 
-  element.dataset.questionId =
-    box.question_id ||
-    "";
+  const scale =
+    getPageScale(
+      page,
+      element
+    );
 
-
-  element.dataset.points =
-    Number(
-      box.points
-    ) || 0;
-
-
-  element.dataset.pageNo =
-    activePage?.page_no ||
-    1;
-
-
-  /*
-   * 座標
-   */
 
   element.style.left =
     `${Number(
       box.x
-    ) || 0}px`;
+    ) * scale}px`;
 
 
   element.style.top =
     `${Number(
       box.y
-    ) || 0}px`;
+    ) * scale}px`;
 
 
   element.style.width =
     `${Number(
       box.width
-    ) || 100}px`;
+    ) * scale}px`;
 
 
   element.style.height =
     `${Number(
       box.height
-    ) || 60}px`;
+    ) * scale}px`;
 
 
   const label =
@@ -982,14 +906,26 @@ function createBoxElement(
 
 
   label.className =
-    "layout-label";
+    "layout-box-label";
 
 
   label.textContent =
-    box.label ||
-    getBoxLabel(
-      box.box_type
-    );
+    [
+      box.label ||
+      modeLabel(
+        box.box_type
+      ),
+
+      box.points !== null &&
+      box.points !== undefined
+        ? `${box.points}点`
+        : ""
+
+    ]
+      .filter(Boolean)
+      .join(
+        " / "
+      );
 
 
   element.appendChild(
@@ -997,221 +933,57 @@ function createBoxElement(
   );
 
 
-  /*
-   * 配点表示
-   */
-
-  if (
-    box.box_type ===
-    "answer"
-  ) {
-
-    const points =
-      document.createElement(
-        "span"
-      );
-
-
-    points.className =
-      "layout-points";
-
-
-    points.textContent =
-      `${formatNumber(
-        box.points
-      )}点`;
-
-
-    element.appendChild(
-      points
+  const handle =
+    document.createElement(
+      "div"
     );
 
-  }
+
+  handle.className =
+    "resize-handle";
 
 
-  /*
-   * ドラッグ
-   */
-
-  let dragging =
-    false;
-
-
-  let offsetX =
-    0;
-
-
-  let offsetY =
-    0;
+  element.appendChild(
+    handle
+  );
 
 
   element.addEventListener(
     "pointerdown",
     event => {
 
-      dragging =
-        true;
-
-
-      offsetX =
-        event.clientX -
-        element.getBoundingClientRect().left;
-
-
-      offsetY =
-        event.clientY -
-        element.getBoundingClientRect().top;
-
-
-      element.setPointerCapture(
-        event.pointerId
-      );
-
-
-      event.preventDefault();
-
-    }
-  );
-
-
-  element.addEventListener(
-    "pointermove",
-    event => {
-
-      if (!dragging) {
-
-        return;
-
-      }
-
-
-      const sheetRect =
-        sheet.getBoundingClientRect();
-
-
-      const x =
-        event.clientX -
-        sheetRect.left -
-        offsetX;
-
-
-      const y =
-        event.clientY -
-        sheetRect.top -
-        offsetY;
-
-
-      element.style.left =
-        `${Math.max(
-          0,
-          x
-        )}px`;
-
-
-      element.style.top =
-        `${Math.max(
-          0,
-          y
-        )}px`;
-
-    }
-  );
-
-
-  element.addEventListener(
-    "pointerup",
-    event => {
-
-      dragging =
-        false;
-
-
-      try {
-
-        element.releasePointerCapture(
-          event.pointerId
-        );
-
-      } catch (_) {}
-
-    }
-  );
-
-
-  /*
-   * ダブルクリック削除
-   */
-
-  element.addEventListener(
-    "dblclick",
-    async event => {
-
       event.stopPropagation();
 
 
-      if (
-        !window.confirm(
-          "この枠を削除しますか？"
-        )
-      ) {
-
-        return;
-
-      }
+      selectBox(
+        box
+      );
 
 
       if (
-        element.dataset.id
+        event.target ===
+        handle
       ) {
 
-        const {
-          error
-        } =
-          await supabaseClient
-            .from(
-              "layout_boxes"
-            )
-            .delete()
-            .eq(
-              "id",
-              element.dataset.id
-            );
-
-
-        if (error) {
-
-          alert(
-            error.message
-          );
-
-          return;
-
-        }
-
-      }
-
-
-      element.remove();
-
-
-      boxElements =
-        boxElements.filter(
-          item =>
-            item !==
-            element
+        beginResize(
+          event,
+          box,
+          element,
+          page
         );
 
+      } else {
+
+        beginMove(
+          event,
+          box,
+          element,
+          page
+        );
+
+      }
+
     }
-  );
-
-
-  sheet.appendChild(
-    element
-  );
-
-
-  boxElements.push(
-    element
   );
 
 
@@ -1220,71 +992,98 @@ function createBoxElement(
 }
 
 
-/* =========================================================
-   BOX LABEL
-========================================================= */
+/* =====================================================
+   PAGE SCALE
+===================================================== */
 
-function getBoxLabel(
-  type
+function getPageScale(
+  page,
+  element
 ) {
 
-  const labels = {
-
-    answer:
-      "解答欄",
-
-    qr:
-      "QRコードシール欄",
-
-    student_no:
-      "生徒番号欄",
-
-    name:
-      "氏名欄"
-
-  };
-
-
-  return (
-    labels[type] ||
-    "枠"
-  );
-
-}
-
-
-/* =========================================================
-   BUTTONS
-========================================================= */
-
-function bindButton(
-  id,
-  type
-) {
-
-  const button =
-    document.getElementById(
-      id
+  const pageElement =
+    element.closest(
+      ".layout-page"
     );
 
 
-  if (!button) {
+  if (!pageElement) {
 
-    return;
+    return 1;
 
   }
 
 
-  button.addEventListener(
-    "click",
-    () => {
-
-      activeBoxType =
-        type;
+  const width =
+    pageElement.clientWidth;
 
 
-      activateButton(
-        id
+  const sourceWidth =
+    Number(
+      page.width_px
+    ) || 0;
+
+
+  if (
+    !sourceWidth ||
+    !width
+  ) {
+
+    return 1;
+
+  }
+
+
+  return width /
+    sourceWidth;
+
+}
+
+
+/* =====================================================
+   SELECT
+===================================================== */
+
+function selectBox(
+  box
+) {
+
+  selectedBox =
+    box;
+
+
+  renderEverything();
+
+}
+
+
+/* =====================================================
+   POINTER
+===================================================== */
+
+function setupPagePointer(
+  layer,
+  page
+) {
+
+  layer.addEventListener(
+    "pointerdown",
+    event => {
+
+      if (
+        event.target !==
+        layer
+      ) {
+
+        return;
+
+      }
+
+
+      beginCreate(
+        event,
+        layer,
+        page
       );
 
     }
@@ -1293,333 +1092,207 @@ function bindButton(
 }
 
 
-bindButton(
-  "answerBoxButton",
-  "answer"
-);
+/* =====================================================
+   CREATE
+===================================================== */
 
-
-bindButton(
-  "qrBoxButton",
-  "qr"
-);
-
-
-bindButton(
-  "studentNoBoxButton",
-  "student_no"
-);
-
-
-bindButton(
-  "nameBoxButton",
-  "name"
-);
-
-
-/* =========================================================
-   ACTIVE BUTTON
-========================================================= */
-
-function activateButton(
-  id
+function beginCreate(
+  event,
+  layer,
+  page
 ) {
 
-  [
-    "answerBoxButton",
-    "qrBoxButton",
-    "studentNoBoxButton",
-    "nameBoxButton"
-  ]
-    .forEach(
-      buttonId => {
-
-        const button =
-          document.getElementById(
-            buttonId
-          );
+  const rect =
+    layer.getBoundingClientRect();
 
 
-        if (button) {
+  const startX =
+    event.clientX -
+    rect.left;
 
-          button.classList.remove(
-            "btn-primary"
-          );
 
-        }
+  const startY =
+    event.clientY -
+    rect.top;
 
-      }
+
+  const preview =
+    document.createElement(
+      "div"
     );
 
 
-  document
-    .getElementById(
-      id
-    )
-    ?.classList.add(
-      "btn-primary"
-    );
-
-}
+  preview.className =
+    "drag-preview";
 
 
-/* =========================================================
-   ADD BOX
-========================================================= */
-
-const sheetCanvas =
-  document.getElementById(
-    "sheetCanvas"
+  layer.appendChild(
+    preview
   );
 
 
-sheetCanvas?.addEventListener(
-  "dblclick",
-  event => {
-
-    if (
-      event.target.closest(
-        ".layout-box"
-      )
-    ) {
-
-      return;
-
-    }
-
-
-    if (!activePage) {
-
-      return;
-
-    }
-
-
-    const rect =
-      sheetCanvas.getBoundingClientRect();
-
-
-    const x =
-      event.clientX -
-      rect.left;
-
-
-    const y =
-      event.clientY -
-      rect.top;
-
-
-    const scale =
-      Number(
-        sheetCanvas.dataset.scale
-      ) || 1;
-
-
-    const originalX =
-      x /
-      scale;
-
-
-    const originalY =
-      y /
-      scale;
-
-
-    const defaultWidth =
-      activeBoxType ===
-        "qr"
-        ? 100
-        : 160;
-
-
-    const defaultHeight =
-      activeBoxType ===
-        "qr"
-        ? 65
-        : 80;
-
-
-    createBoxElement({
-
-      id:
-        null,
-
-      box_type:
-        activeBoxType,
-
-      label:
-        getBoxLabel(
-          activeBoxType
-        ),
-
-      x:
-        Math.max(
-          0,
-          originalX -
-            defaultWidth /
-            2
-        ),
-
-      y:
-        Math.max(
-          0,
-          originalY -
-            defaultHeight /
-            2
-        ),
-
-      width:
-        defaultWidth,
-
-      height:
-        defaultHeight,
-
-      question_id:
-        null,
-
-      points:
-        0
-
-    });
-
-
-  }
-);
-
-
-/* =========================================================
-   SAVE
-========================================================= */
-
-document
-  .getElementById(
-    "saveButton"
-  )
-  ?.addEventListener(
-    "click",
-    saveLayout
-  );
-
-
-async function saveLayout() {
-
-  if (!activePage) {
-
-    alert(
-      "ページがありません。"
-    );
-
-    return;
-
-  }
-
-
-  const sheet =
-    document.getElementById(
-      "sheetCanvas"
-    );
-
-
-  const scale =
-    Number(
-      sheet.dataset.scale
-    ) || 1;
-
-
-  const elements =
-    [
-      ...
-      document.querySelectorAll(
-        "#sheetCanvas .layout-box"
-      )
-    ];
-
-
-  if (!elements.length) {
-
-    alert(
-      "保存する枠がありません。"
-    );
-
-    return;
-
-  }
-
-
-  try {
-
-    /*
-     * 既存ページの枠を一度同期。
-     *
-     * ただし全削除して再作成はしない。
-     */
-
-    for (
-      const element
-      of elements
-    ) {
+  const move =
+    moveEvent => {
 
       const x =
-        parseFloat(
-          element.style.left
-        ) ||
-        0;
+        moveEvent.clientX -
+        rect.left;
 
 
       const y =
-        parseFloat(
-          element.style.top
-        ) ||
-        0;
+        moveEvent.clientY -
+        rect.top;
+
+
+      const left =
+        Math.min(
+          startX,
+          x
+        );
+
+
+      const top =
+        Math.min(
+          startY,
+          y
+        );
 
 
       const width =
-        parseFloat(
-          element.style.width
-        ) ||
-        0;
+        Math.abs(
+          x -
+          startX
+        );
 
 
       const height =
-        parseFloat(
-          element.style.height
-        ) ||
-        0;
+        Math.abs(
+          y -
+          startY
+        );
 
 
-      const type =
-        element.dataset.type ||
-        "answer";
+      preview.style.left =
+        `${left}px`;
 
 
-      const points =
-        Number(
-          element.dataset.points
-        ) || 0;
+      preview.style.top =
+        `${top}px`;
 
 
-      const values = {
+      preview.style.width =
+        `${width}px`;
+
+
+      preview.style.height =
+        `${height}px`;
+
+    };
+
+
+  const up =
+    upEvent => {
+
+      document.removeEventListener(
+        "pointermove",
+        move
+      );
+
+
+      document.removeEventListener(
+        "pointerup",
+        up
+      );
+
+
+      const x =
+        upEvent.clientX -
+        rect.left;
+
+
+      const y =
+        upEvent.clientY -
+        rect.top;
+
+
+      const left =
+        Math.min(
+          startX,
+          x
+        );
+
+
+      const top =
+        Math.min(
+          startY,
+          y
+        );
+
+
+      const width =
+        Math.abs(
+          x -
+          startX
+        );
+
+
+      const height =
+        Math.abs(
+          y -
+          startY
+        );
+
+
+      preview.remove();
+
+
+      if (
+        width <
+        10 ||
+        height <
+        10
+      ) {
+
+        return;
+
+      }
+
+
+      const scale =
+        getPageScale(
+          page,
+          layer
+        );
+
+
+      const box = {
+
+        id:
+          crypto.randomUUID(),
 
         test_id:
           layoutTestId,
 
         page_no:
-          activePage.page_no,
+          Number(
+            page.page_no
+          ) || 1,
 
         box_type:
-          type,
+          currentMode,
 
         label:
-          getBoxLabel(
-            type
+          defaultLabel(
+            currentMode,
+            boxes
           ),
 
         x:
-          x /
+          left /
           scale,
 
         y:
-          y /
+          top /
           scale,
 
         width:
@@ -1630,140 +1303,1273 @@ async function saveLayout() {
           height /
           scale,
 
-        /*
-         * NULL許可。
-         */
-
         question_id:
-          element.dataset.questionId ||
           null,
 
         points:
-          points
+          currentMode ===
+            "answer"
+            ? 0
+            : null,
+
+        sort_order:
+          boxes.length
 
       };
 
 
-      if (
-        element.dataset.id
-      ) {
-
-        const {
-          error
-        } =
-          await supabaseClient
-            .from(
-              "layout_boxes"
-            )
-            .update(
-              values
-            )
-            .eq(
-              "id",
-              element.dataset.id
-            );
+      boxes.push(
+        box
+      );
 
 
-        if (error) {
-
-          throw error;
-
-        }
-
-      } else {
-
-        const {
-          data,
-          error
-        } =
-          await supabaseClient
-            .from(
-              "layout_boxes"
-            )
-            .insert(
-              values
-            )
-            .select(
-              `
-              id,
-              points
-              `
-            )
-            .single();
+      selectedBox =
+        box;
 
 
-        if (error) {
+      renderEverything();
 
-          throw error;
-
-        }
+    };
 
 
-        element.dataset.id =
-          data.id;
+  document.addEventListener(
+    "pointermove",
+    move
+  );
 
 
-        element.dataset.points =
-          Number(
-            data.points
-          ) || 0;
-
-      }
-
+  document.addEventListener(
+    "pointerup",
+    up,
+    {
+      once:true
     }
-
-
-    alert(
-      "枠設定を保存しました。"
-    );
-
-
-  } catch (error) {
-
-    console.error(
-      "saveLayout:",
-      error
-    );
-
-
-    alert(
-      error.message ||
-      "枠設定の保存に失敗しました。"
-    );
-
-  }
+  );
 
 }
 
 
-/* =========================================================
-   LOGOUT
-========================================================= */
+/* =====================================================
+   MOVE
+===================================================== */
 
-document
-  .getElementById(
-    "logoutButton"
-  )
-  ?.addEventListener(
-    "click",
-    async () => {
+function beginMove(
+  event,
+  box,
+  element,
+  page
+) {
 
-      if (
-        typeof window.logout ===
-        "function"
-      ) {
+  const startClientX =
+    event.clientX;
 
-        await window.logout();
+
+  const startClientY =
+    event.clientY;
+
+
+  const startX =
+    Number(
+      box.x
+    ) || 0;
+
+
+  const startY =
+    Number(
+      box.y
+    ) || 0;
+
+
+  const scale =
+    getPageScale(
+      page,
+      element
+    );
+
+
+  const move =
+    moveEvent => {
+
+      const dx =
+        (
+          moveEvent.clientX -
+          startClientX
+        ) /
+        scale;
+
+
+      const dy =
+        (
+          moveEvent.clientY -
+          startClientY
+        ) /
+        scale;
+
+
+      box.x =
+        Math.max(
+          0,
+          startX +
+          dx
+        );
+
+
+      box.y =
+        Math.max(
+          0,
+          startY +
+          dy
+        );
+
+
+      renderEverything();
+
+    };
+
+
+  const up =
+    () => {
+
+      document.removeEventListener(
+        "pointermove",
+        move
+      );
+
+
+      document.removeEventListener(
+        "pointerup",
+        up
+      );
+
+    };
+
+
+  document.addEventListener(
+    "pointermove",
+    move
+  );
+
+
+  document.addEventListener(
+    "pointerup",
+    up
+  );
+
+}
+
+
+/* =====================================================
+   RESIZE
+===================================================== */
+
+function beginResize(
+  event,
+  box,
+  element,
+  page
+) {
+
+  const startClientX =
+    event.clientX;
+
+
+  const startClientY =
+    event.clientY;
+
+
+  const startWidth =
+    Number(
+      box.width
+    ) || 1;
+
+
+  const startHeight =
+    Number(
+      box.height
+    ) || 1;
+
+
+  const scale =
+    getPageScale(
+      page,
+      element
+    );
+
+
+  const move =
+    moveEvent => {
+
+      const dx =
+        (
+          moveEvent.clientX -
+          startClientX
+        ) /
+        scale;
+
+
+      const dy =
+        (
+          moveEvent.clientY -
+          startClientY
+        ) /
+        scale;
+
+
+      box.width =
+        Math.max(
+          5,
+          startWidth +
+          dx
+        );
+
+
+      box.height =
+        Math.max(
+          5,
+          startHeight +
+          dy
+        );
+
+
+      renderEverything();
+
+    };
+
+
+  const up =
+    () => {
+
+      document.removeEventListener(
+        "pointermove",
+        move
+      );
+
+
+      document.removeEventListener(
+        "pointerup",
+        up
+      );
+
+    };
+
+
+  document.addEventListener(
+    "pointermove",
+    move
+  );
+
+
+  document.addEventListener(
+    "pointerup",
+    up
+  );
+
+}
+
+
+/* =====================================================
+   ADD QUESTION
+===================================================== */
+
+function addQuestion() {
+
+  const page =
+    pages.find(
+      item =>
+        Number(
+          item.page_no
+        ) ===
+        Number(
+          currentPage
+        )
+    ) ||
+    pages[0];
+
+
+  if (!page) {
+
+    setStatus(
+      "解答用紙ページがありません。",
+      true
+    );
+
+    return;
+
+  }
+
+
+  const box = {
+
+    id:
+      crypto.randomUUID(),
+
+    test_id:
+      layoutTestId,
+
+    page_no:
+      Number(
+        page.page_no
+      ) || 1,
+
+    box_type:
+      "answer",
+
+    label:
+      defaultLabel(
+        "answer",
+        boxes
+      ),
+
+    x:
+      100,
+
+    y:
+      100,
+
+    width:
+      180,
+
+    height:
+      80,
+
+    question_id:
+      null,
+
+    points:
+      0,
+
+    sort_order:
+      boxes.length
+
+  };
+
+
+  boxes.push(
+    box
+  );
+
+
+  selectedBox =
+    box;
+
+
+  renderEverything();
+
+
+  setStatus(
+    `${box.label}を追加しました。位置とサイズを調整してください。`
+  );
+
+}
+
+
+/* =====================================================
+   SAVE
+===================================================== */
+
+async function saveBoxes() {
+
+  const answerBoxes =
+    boxes.filter(
+      box =>
+        box.box_type ===
+        "answer"
+    );
+
+
+  if (!answerBoxes.length) {
+
+    setStatus(
+      "解答欄がありません。",
+      true
+    );
+
+    return;
+
+  }
+
+
+  setStatus(
+    "枠設定を保存しています..."
+  );
+
+
+  /*
+   * 現在のDBにある枠を取得。
+   */
+
+  const {
+    data:
+      existing,
+    error:
+      existingError
+  } =
+    await DB
+      .from(
+        "layout_boxes"
+      )
+      .select(
+        "id"
+      )
+      .eq(
+        "test_id",
+        layoutTestId
+      );
+
+
+  if (existingError) {
+
+    throw existingError;
+
+  }
+
+
+  const currentIds =
+    new Set(
+      boxes
+        .filter(
+          box =>
+            isRealId(
+              box.id
+            )
+        )
+        .map(
+          box =>
+            box.id
+        )
+    );
+
+
+  /*
+   * 画面から削除された枠を削除。
+   */
+
+  for (
+    const oldBox
+    of (
+      existing ||
+      []
+    )
+  ) {
+
+    if (
+      !currentIds.has(
+        oldBox.id
+      )
+    ) {
+
+      const {
+        error
+      } =
+        await DB
+          .from(
+            "layout_boxes"
+          )
+          .delete()
+          .eq(
+            "id",
+            oldBox.id
+          );
+
+
+      if (error) {
+
+        throw error;
 
       }
 
     }
+
+  }
+
+
+  /*
+   * 枠を保存。
+   */
+
+  for (
+    let index = 0;
+    index <
+    boxes.length;
+    index++
+  ) {
+
+    const box =
+      boxes[index];
+
+
+    const payload = {
+
+      test_id:
+        layoutTestId,
+
+      page_no:
+        Number(
+          box.page_no
+        ) || 1,
+
+      box_type:
+        box.box_type,
+
+      label:
+        box.label ||
+        null,
+
+      x:
+        Number(
+          box.x
+        ) || 0,
+
+      y:
+        Number(
+          box.y
+        ) || 0,
+
+      width:
+        Number(
+          box.width
+        ) || 0,
+
+      height:
+        Number(
+          box.height
+        ) || 0,
+
+      question_id:
+        box.question_id ||
+        null,
+
+      points:
+        box.points === null ||
+        box.points === undefined
+          ? null
+          : Number(
+              box.points
+            ) || 0,
+
+      sort_order:
+        index
+
+    };
+
+
+    if (
+      isRealId(
+        box.id
+      )
+    ) {
+
+      const {
+        error
+      } =
+        await DB
+          .from(
+            "layout_boxes"
+          )
+          .update(
+            payload
+          )
+          .eq(
+            "id",
+            box.id
+          );
+
+
+      if (error) {
+
+        throw error;
+
+      }
+
+    } else {
+
+      const {
+        data,
+        error
+      } =
+        await DB
+          .from(
+            "layout_boxes"
+          )
+          .insert(
+            payload
+          )
+          .select()
+          .single();
+
+
+      if (error) {
+
+        throw error;
+
+      }
+
+
+      box.id =
+        data.id;
+
+    }
+
+  }
+
+
+  /*
+   * question_idは現在NULLでもOK。
+   *
+   * 保存後にquestion_idを
+   * 自動生成しない。
+   */
+
+  await loadBoxes();
+
+
+  renderEverything();
+
+
+  setStatus(
+    "枠設定を保存しました。"
   );
 
+}
 
-/* =========================================================
-   FORMAT
-========================================================= */
+
+/* =====================================================
+   QUESTION LIST
+===================================================== */
+
+function renderQuestionList() {
+
+  if (!questionList) {
+
+    return;
+
+  }
+
+
+  const answerBoxes =
+    boxes.filter(
+      box =>
+        box.box_type ===
+        "answer"
+    );
+
+
+  if (!answerBoxes.length) {
+
+    questionList.innerHTML = `
+
+      <div class="empty">
+        解答欄がありません。
+      </div>
+
+    `;
+
+    return;
+
+  }
+
+
+  questionList.innerHTML =
+    "";
+
+
+  answerBoxes.forEach(
+    (
+      box,
+      index
+    ) => {
+
+      const row =
+        document.createElement(
+          "div"
+        );
+
+
+      row.className =
+        "question-row";
+
+
+      const label =
+        document.createElement(
+          "input"
+        );
+
+
+      label.type =
+        "text";
+
+
+      label.value =
+        box.label ||
+        `問${index + 1}`;
+
+
+      label.addEventListener(
+        "change",
+        () => {
+
+          box.label =
+            label.value.trim() ||
+            `問${index + 1}`;
+
+
+          renderBoxList();
+
+        }
+      );
+
+
+      const points =
+        document.createElement(
+          "input"
+        );
+
+
+      points.type =
+        "number";
+
+
+      points.min =
+        "0";
+
+
+      points.step =
+        "0.1";
+
+
+      points.value =
+        Number(
+          box.points
+        ) || 0;
+
+
+      points.addEventListener(
+        "input",
+        () => {
+
+          box.points =
+            Number(
+              points.value
+            ) || 0;
+
+
+          renderTotal();
+
+        }
+      );
+
+
+      const page =
+        document.createElement(
+          "input"
+        );
+
+
+      page.type =
+        "number";
+
+
+      page.min =
+        "1";
+
+
+      page.value =
+        Number(
+          box.page_no
+        ) || 1;
+
+
+      page.addEventListener(
+        "change",
+        () => {
+
+          box.page_no =
+            Number(
+              page.value
+            ) || 1;
+
+
+          renderEverything();
+
+        }
+      );
+
+
+      row.append(
+        label,
+        points,
+        page
+      );
+
+
+      questionList.appendChild(
+        row
+      );
+
+    }
+  );
+
+}
+
+
+/* =====================================================
+   BOX LIST
+===================================================== */
+
+function renderBoxList() {
+
+  if (!boxList) {
+
+    return;
+
+  }
+
+
+  if (!boxes.length) {
+
+    boxList.innerHTML = `
+
+      <div class="empty">
+        枠がありません。
+      </div>
+
+    `;
+
+    return;
+
+  }
+
+
+  boxList.innerHTML =
+    "";
+
+
+  boxes.forEach(
+    box => {
+
+      const row =
+        document.createElement(
+          "div"
+        );
+
+
+      row.className =
+        "box-row";
+
+
+      if (
+        selectedBox?.id ===
+        box.id
+      ) {
+
+        row.classList.add(
+          "selected"
+        );
+
+      }
+
+
+      const label =
+        document.createElement(
+          "div"
+        );
+
+
+      label.textContent =
+        [
+          box.label ||
+          modeLabel(
+            box.box_type
+          ),
+
+          `P${box.page_no}`,
+
+          `${formatNumber(
+            box.width
+          )}×${formatNumber(
+            box.height
+          )}`
+
+        ].join(
+          " / "
+        );
+
+
+      const type =
+        document.createElement(
+          "div"
+        );
+
+
+      type.textContent =
+        modeLabel(
+          box.box_type
+        );
+
+
+      const deleteButton =
+        document.createElement(
+          "button"
+        );
+
+
+      deleteButton.type =
+        "button";
+
+
+      deleteButton.className =
+        "btn";
+
+
+      deleteButton.textContent =
+        "削除";
+
+
+      deleteButton.addEventListener(
+        "click",
+        event => {
+
+          event.stopPropagation();
+
+
+          deleteBox(
+            box
+          );
+
+        }
+      );
+
+
+      row.append(
+        label,
+        type,
+        deleteButton
+      );
+
+
+      row.addEventListener(
+        "click",
+        () => {
+
+          selectedBox =
+            box;
+
+
+          renderEverything();
+
+        }
+      );
+
+
+      boxList.appendChild(
+        row
+      );
+
+    }
+  );
+
+}
+
+
+/* =====================================================
+   DELETE
+===================================================== */
+
+function deleteBox(
+  box
+) {
+
+  boxes =
+    boxes.filter(
+      item =>
+        item !==
+        box
+    );
+
+
+  if (
+    selectedBox ===
+    box
+  ) {
+
+    selectedBox =
+      null;
+
+  }
+
+
+  renderEverything();
+
+
+  setStatus(
+    "枠を削除しました。保存するとDBにも反映されます。"
+  );
+
+}
+
+
+/* =====================================================
+   TOTAL
+===================================================== */
+
+function renderTotal() {
+
+  if (!totalElement) {
+
+    return;
+
+  }
+
+
+  const total =
+    boxes
+      .filter(
+        box =>
+          box.box_type ===
+          "answer"
+      )
+      .reduce(
+        (
+          sum,
+          box
+        ) =>
+          sum +
+          (
+            Number(
+              box.points
+            ) || 0
+          ),
+        0
+      );
+
+
+  totalElement.textContent =
+    `合計配点：${formatNumber(
+      total
+    )}点`;
+
+}
+
+
+/* =====================================================
+   DEFAULT LABEL
+===================================================== */
+
+function defaultLabel(
+  mode,
+  current
+) {
+
+  if (
+    mode ===
+    "qr"
+  ) {
+
+    return "QR";
+
+  }
+
+
+  if (
+    mode ===
+    "name"
+  ) {
+
+    return "氏名";
+
+  }
+
+
+  if (
+    mode ===
+    "student_no"
+  ) {
+
+    return "生徒番号";
+
+  }
+
+
+  if (
+    mode ===
+    "major"
+  ) {
+
+    return "大問";
+
+  }
+
+
+  if (
+    mode ===
+    "minor"
+  ) {
+
+    return "小問";
+
+  }
+
+
+  const count =
+    current.filter(
+      box =>
+        box.box_type ===
+        "answer"
+    ).length;
+
+
+  return `問${count + 1}`;
+
+}
+
+
+/* =====================================================
+   MODE LABEL
+===================================================== */
+
+function modeLabel(
+  mode
+) {
+
+  const labels = {
+
+    answer:
+      "解答欄",
+
+    qr:
+      "QR",
+
+    name:
+      "氏名",
+
+    student_no:
+      "生徒番号",
+
+    major:
+      "大問",
+
+    minor:
+      "小問",
+
+    subtotal:
+      "小計",
+
+    total:
+      "合計",
+
+    instruction:
+      "説明",
+
+    other:
+      "その他"
+
+  };
+
+
+  return labels[
+    mode
+  ] ||
+  mode ||
+  "その他";
+
+}
+
+
+/* =====================================================
+   ID
+===================================================== */
+
+function isRealId(
+  value
+) {
+
+  return (
+    typeof value ===
+      "string" &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+      .test(
+        value
+      )
+  );
+
+}
+
+
+/* =====================================================
+   IMAGE
+===================================================== */
+
+function waitImage(
+  image
+) {
+
+  return new Promise(
+    (
+      resolve,
+      reject
+    ) => {
+
+      if (
+        image.complete &&
+        image.naturalWidth
+      ) {
+
+        resolve();
+
+        return;
+
+      }
+
+
+      image.onload =
+        resolve;
+
+
+      image.onerror =
+        () =>
+          reject(
+            new Error(
+              "解答用紙画像を読み込めませんでした。"
+            )
+          );
+
+    }
+  );
+
+}
+
+
+/* =====================================================
+   STATUS
+===================================================== */
+
+function setStatus(
+  message,
+  error = false
+) {
+
+  if (!statusElement) {
+
+    return;
+
+  }
+
+
+  statusElement.textContent =
+    message;
+
+
+  statusElement.className =
+    error
+      ? "status error"
+      : "status";
+
+}
+
+
+/* =====================================================
+   NUMBER
+===================================================== */
 
 function formatNumber(
   value
@@ -1797,46 +2603,3 @@ function formatNumber(
       );
 
 }
-
-
-/* =========================================================
-   ESCAPE
-========================================================= */
-
-function escapeHtml(
-  value
-) {
-
-  return String(
-    value ??
-    ""
-  )
-    .replaceAll(
-      "&",
-      "&amp;"
-    )
-    .replaceAll(
-      "<",
-      "&lt;"
-    )
-    .replaceAll(
-      ">",
-      "&gt;"
-    )
-    .replaceAll(
-      '"',
-      "&quot;"
-    )
-    .replaceAll(
-      "'",
-      "&#039;"
-    );
-
-}
-
-
-/* =========================================================
-   START
-========================================================= */
-
-initializeLayout();

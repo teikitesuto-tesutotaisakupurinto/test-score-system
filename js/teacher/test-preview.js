@@ -3,53 +3,61 @@
 
 /* =========================================================
    テスト確認
+
+   ・解答用紙ページ
+   ・設定済み解答枠
+   ・配点
+   を確認するだけ。
+
+   採点処理は実行しない。
 ========================================================= */
 
-const previewParams =
-  new URLSearchParams(
-    location.search
-  );
+let DB = null;
 
-const previewTestId =
-  previewParams.get("test") ||
-  previewParams.get("id");
+let testId = null;
 
+let test = null;
 
-let previewTest =
-  null;
+let pages = [];
+
+let boxes = [];
 
 
 /* =========================================================
    INIT
 ========================================================= */
 
+document.addEventListener(
+  "DOMContentLoaded",
+  initializePreview
+);
+
+
 async function initializePreview() {
 
   try {
 
-    const profile =
-      await getProfile();
+    DB =
+      window.supabaseClient ||
+      window.SB;
 
 
-    if (!profile) {
+    if (!DB) {
 
-      location.replace(
-        "/login"
+      throw new Error(
+        "Supabase Clientが初期化されていません。"
       );
-
-      return;
 
     }
 
 
-    if (
-      profile.role !== "teacher" &&
-      profile.role !== "admin"
-    ) {
-
-      location.replace(
-        "/student/dashboard"
+    const auth =
+      await requireRole(
+        "teacher"
       );
+
+
+    if (!auth) {
 
       return;
 
@@ -59,14 +67,25 @@ async function initializePreview() {
     document.getElementById(
       "teacherName"
     ).textContent =
-      profile.name ||
+      auth.profile?.name ||
       "先生";
 
 
-    if (!previewTestId) {
+    const params =
+      new URLSearchParams(
+        location.search
+      );
+
+
+    testId =
+      params.get("test") ||
+      params.get("id");
+
+
+    if (!testId) {
 
       throw new Error(
-        "テストが指定されていません。"
+        "テストIDがありません。"
       );
 
     }
@@ -74,14 +93,9 @@ async function initializePreview() {
 
     setLinks();
 
+    await loadData();
 
-    await loadTest();
-
-
-    await loadPages();
-
-
-    await loadBoxes();
+    await renderPreview();
 
 
   } catch (error) {
@@ -103,6 +117,24 @@ async function initializePreview() {
 
 
 /* =========================================================
+   EVENTS
+========================================================= */
+
+document
+  .getElementById(
+    "logoutButton"
+  )
+  ?.addEventListener(
+    "click",
+    async () => {
+
+      await logout();
+
+    }
+  );
+
+
+/* =========================================================
    LINKS
 ========================================================= */
 
@@ -110,108 +142,173 @@ function setLinks() {
 
   const id =
     encodeURIComponent(
-      previewTestId
+      testId
     );
 
 
-  setHref(
-    "pagesLink",
-    `/teacher/tests/pages?test=${id}`
+  const links = {
+
+    pagesLink:
+      `/teacher/tests/pages?test=${id}`,
+
+    layoutLink:
+      `/teacher/tests/pages?test=${id}`,
+
+    modelAnswerLink:
+      `/teacher/tests/model-answer?test=${id}`,
+
+    previewLink:
+      `/teacher/tests/preview?test=${id}`
+
+  };
+
+
+  Object.entries(
+    links
+  ).forEach(
+    (
+      [
+        key,
+        href
+      ]
+    ) => {
+
+      const element =
+        document.getElementById(
+          key
+        );
+
+
+      if (element) {
+
+        element.href =
+          href;
+
+      }
+
+    }
   );
-
-
-  setHref(
-    "layoutLink",
-    `/teacher/tests/layout?test=${id}`
-  );
-
-
-  setHref(
-    "pointsLink",
-    `/teacher/tests/points?test=${id}`
-  );
-
-
-  setHref(
-    "modelAnswerLink",
-    `/teacher/tests/model-answer?test=${id}`
-  );
-
-
-  setHref(
-    "previewLink",
-    `/teacher/tests/preview?test=${id}`
-  );
-
-
-  setHref(
-    "markingLink",
-    `/teacher/marking?test=${id}`
-  );
-
-}
-
-
-function setHref(
-  id,
-  href
-) {
-
-  const element =
-    document.getElementById(
-      id
-    );
-
-
-  if (element) {
-
-    element.href =
-      href;
-
-  }
 
 }
 
 
 /* =========================================================
-   TEST
+   LOAD
 ========================================================= */
 
-async function loadTest() {
+async function loadData() {
 
-  const {
-    data,
-    error
-  } =
-    await supabaseClient
-      .from("tests")
-      .select(`
-        id,
-        name,
-        subject,
-        grade,
-        class_name,
-        test_date,
-        max_score,
-        status,
-        results_published,
-        results_published_at
-      `)
-      .eq(
-        "id",
-        previewTestId
-      )
-      .maybeSingle();
+  const [
+    testResult,
+    pageResult,
+    boxResult
+  ] =
+    await Promise.all([
+
+      DB
+        .from(
+          "tests"
+        )
+        .select(
+          `
+          id,
+          name,
+          subject,
+          grade,
+          class_name,
+          max_score
+          `
+        )
+        .eq(
+          "id",
+          testId
+        )
+        .maybeSingle(),
+
+      DB
+        .from(
+          "test_pages"
+        )
+        .select(
+          `
+          id,
+          page_no,
+          image_path,
+          width_px,
+          height_px
+          `
+        )
+        .eq(
+          "test_id",
+          testId
+        )
+        .order(
+          "page_no",
+          {
+            ascending:true
+          }
+        ),
+
+      DB
+        .from(
+          "layout_boxes"
+        )
+        .select(
+          `
+          id,
+          page_no,
+          box_type,
+          label,
+          x,
+          y,
+          width,
+          height,
+          points,
+          sort_order
+          `
+        )
+        .eq(
+          "test_id",
+          testId
+        )
+        .order(
+          "page_no",
+          {
+            ascending:true
+          }
+        )
+        .order(
+          "sort_order",
+          {
+            ascending:true
+          }
+        )
+
+    ]);
 
 
-  if (error) {
+  if (testResult.error) {
 
-    throw error;
+    throw testResult.error;
 
   }
 
 
-  if (!data) {
+  if (pageResult.error) {
+
+    throw pageResult.error;
+
+  }
+
+
+  if (boxResult.error) {
+
+    throw boxResult.error;
+
+  }
+
+
+  if (!testResult.data) {
 
     throw new Error(
       "テストが見つかりません。"
@@ -220,78 +317,70 @@ async function loadTest() {
   }
 
 
-  previewTest =
-    data;
+  test =
+    testResult.data;
 
 
-  const information =
+  pages =
+    pageResult.data ||
+    [];
+
+
+  boxes =
+    boxResult.data ||
+    [];
+
+
+  renderInformation();
+
+}
+
+
+/* =========================================================
+   INFORMATION
+========================================================= */
+
+function renderInformation() {
+
+  const element =
     document.getElementById(
       "testInformation"
     );
 
 
-  if (!information) {
+  if (!element) {
 
     return;
 
   }
 
 
-  information.innerHTML = `
+  element.innerHTML = `
 
     <strong>
       ${escapeHtml(
-        data.name
+        test.name
       )}
     </strong>
 
     <br>
 
-    教科：
     ${escapeHtml(
-      data.subject ||
-      "-"
+      [
+        test.subject,
+        test.grade,
+        test.class_name
+      ]
+        .filter(Boolean)
+        .join(" / ")
     )}
 
-    ／
-
-    学年：
-    ${escapeHtml(
-      data.grade ||
-      "-"
-    )}
-
-    ／
-
-    クラス：
-    ${escapeHtml(
-      data.class_name ||
-      "-"
-    )}
-
-    ／
+    <br>
 
     満点：
     ${formatNumber(
-      data.max_score
-    )}
-
-    ／
-
-    状態：
-    ${escapeHtml(
-      data.status ||
-      "-"
-    )}
-
-    ／
-
-    結果：
-    ${
-      data.results_published
-        ? "公開済み"
-        : "未確定"
-    }
+      test.max_score
+    )}点
 
   `;
 
@@ -299,69 +388,45 @@ async function loadTest() {
 
 
 /* =========================================================
-   PAGES
+   RENDER
 ========================================================= */
 
-async function loadPages() {
+async function renderPreview() {
 
-  const {
-    data,
-    error
-  } =
-    await supabaseClient
-      .from("test_pages")
-      .select(`
-        id,
-        page_no,
-        image_path,
-        width_px,
-        height_px
-      `)
-      .eq(
-        "test_id",
-        previewTestId
-      )
-      .order(
-        "page_no",
-        {
-          ascending:true
-        }
-      );
-
-
-  if (error) {
-
-    throw error;
-
-  }
-
-
-  const container =
+  const pagePreview =
     document.getElementById(
       "pagePreview"
     );
 
 
-  if (!container) {
+  const boxPreview =
+    document.getElementById(
+      "boxPreview"
+    );
 
-    return;
+
+  if (pagePreview) {
+
+    pagePreview.innerHTML =
+      "";
 
   }
 
 
-  if (!data?.length) {
+  if (boxPreview) {
 
-    container.innerHTML = `
+    boxPreview.innerHTML =
+      "";
 
-      <div
-        style="
-          grid-column:1/-1;
-          text-align:center;
-          color:#777;
-          padding:30px;
-        "
-      >
-        解答用紙が登録されていません。
+  }
+
+
+  if (!pages.length) {
+
+    pagePreview.innerHTML = `
+
+      <div class="empty">
+        解答用紙ページが登録されていません。
       </div>
 
     `;
@@ -371,21 +436,22 @@ async function loadPages() {
   }
 
 
-  container.innerHTML =
-    "";
-
-
   for (
     const page
-    of data
+    of pages
   ) {
 
     await renderPage(
-      container,
-      page
+      page,
+      pagePreview
     );
 
   }
+
+
+  renderBoxSummary(
+    boxPreview
+  );
 
 }
 
@@ -395,224 +461,259 @@ async function loadPages() {
 ========================================================= */
 
 async function renderPage(
-  container,
-  page
+  page,
+  container
 ) {
 
-  const card =
+  const wrapper =
     document.createElement(
       "div"
     );
 
 
-  card.className =
-    "page-card";
+  wrapper.style.cssText = `
+    position:relative;
+    width:100%;
+    max-width:1000px;
+    margin:0 auto 25px;
+    background:#fff;
+    border:1px solid #d0d6dc;
+  `;
 
 
-  const title =
-    document.createElement(
-      "div"
+  const {
+    data,
+    error
+  } =
+    await DB
+      .storage
+      .from(
+        "test-files"
+      )
+      .createSignedUrl(
+        page.image_path,
+        1800
+      );
+
+
+  if (
+    error ||
+    !data?.signedUrl
+  ) {
+
+    wrapper.innerHTML = `
+      <div class="empty">
+        P${page.page_no}の画像を取得できません。
+      </div>
+    `;
+
+
+    container.appendChild(
+      wrapper
     );
 
-
-  title.className =
-    "page-title";
-
-
-  title.textContent =
-    `${page.page_no}ページ`;
-
-
-  const imageArea =
-    document.createElement(
-      "div"
-    );
-
-
-  imageArea.className =
-    "page-image";
-
-
-  imageArea.textContent =
-    "読み込み中...";
-
-
-  card.append(
-    title,
-    imageArea
-  );
-
-
-  container.appendChild(
-    card
-  );
-
-
-  if (!page.image_path) {
-
-    imageArea.textContent =
-      "画像なし";
 
     return;
 
   }
 
 
-  try {
+  const image =
+    document.createElement(
+      "img"
+    );
 
-    const {
-      data,
-      error
-    } =
-      await supabaseClient
-        .storage
-        .from(
-          "test-files"
+
+  image.src =
+    data.signedUrl;
+
+
+  image.alt =
+    `解答用紙 ${page.page_no}ページ`;
+
+
+  image.style.cssText = `
+    display:block;
+    width:100%;
+    height:auto;
+  `;
+
+
+  await waitImage(
+    image
+  );
+
+
+  wrapper.appendChild(
+    image
+  );
+
+
+  const layer =
+    document.createElement(
+      "div"
+    );
+
+
+  layer.style.cssText = `
+    position:absolute;
+    inset:0;
+    pointer-events:none;
+  `;
+
+
+  const sourceWidth =
+    Number(
+      page.width_px
+    ) ||
+    image.naturalWidth;
+
+
+  const sourceHeight =
+    Number(
+      page.height_px
+    ) ||
+    image.naturalHeight;
+
+
+  boxes
+    .filter(
+      box =>
+        Number(
+          box.page_no
+        ) ===
+        Number(
+          page.page_no
         )
-        .createSignedUrl(
-          page.image_path,
-          3600
-        );
+    )
+    .forEach(
+      box => {
 
-
-    if (
-      error ||
-      !data?.signedUrl
-    ) {
-
-      /*
-       * 旧データでmodel-answersに
-       * 入っている場合にも対応。
-       */
-
-      const fallback =
-        await supabaseClient
-          .storage
-          .from(
-            "model-answers"
-          )
-          .createSignedUrl(
-            page.image_path,
-            3600
+        const element =
+          document.createElement(
+            "div"
           );
 
 
-      if (
-        fallback.error ||
-        !fallback.data?.signedUrl
-      ) {
+        const isAnswer =
+          box.box_type ===
+          "answer";
 
-        throw new Error(
-          "画像URLを取得できませんでした。"
+
+        element.style.cssText = `
+
+          position:absolute;
+
+          left:${
+            Number(
+              box.x
+            ) /
+            sourceWidth *
+            100
+          }%;
+
+          top:${
+            Number(
+              box.y
+            ) /
+            sourceHeight *
+            100
+          }%;
+
+          width:${
+            Number(
+              box.width
+            ) /
+            sourceWidth *
+            100
+          }%;
+
+          height:${
+            Number(
+              box.height
+            ) /
+            sourceHeight *
+            100
+          }%;
+
+          border:
+            2px solid
+            ${isAnswer
+              ? "#1769aa"
+              : "#888"};
+
+          background:
+            ${isAnswer
+              ? "rgba(23,105,170,.08)"
+              : "rgba(100,100,100,.04)"};
+
+        `;
+
+
+        const label =
+          document.createElement(
+            "span"
+          );
+
+
+        label.textContent =
+          box.label ||
+          box.box_type;
+
+
+        label.style.cssText = `
+
+          position:absolute;
+
+          top:-22px;
+
+          left:0;
+
+          padding:2px 5px;
+
+          background:#222;
+
+          color:#fff;
+
+          font-size:10px;
+
+          white-space:nowrap;
+
+        `;
+
+
+        element.appendChild(
+          label
+        );
+
+
+        layer.appendChild(
+          element
         );
 
       }
-
-
-      renderImage(
-        imageArea,
-        fallback.data.signedUrl
-      );
-
-
-      return;
-
-    }
-
-
-    renderImage(
-      imageArea,
-      data.signedUrl
     );
 
 
-  } catch (error) {
+  wrapper.appendChild(
+    layer
+  );
 
-    imageArea.textContent =
-      error.message ||
-      "画像を表示できません。";
 
-  }
+  container.appendChild(
+    wrapper
+  );
 
 }
 
 
 /* =========================================================
-   IMAGE
+   BOX SUMMARY
 ========================================================= */
 
-function renderImage(
-  target,
-  url
+function renderBoxSummary(
+  container
 ) {
-
-  target.innerHTML = `
-
-    <img
-      src="${escapeHtml(
-        url
-      )}"
-      alt="解答用紙"
-    >
-
-  `;
-
-}
-
-
-/* =========================================================
-   BOXES
-========================================================= */
-
-async function loadBoxes() {
-
-  const {
-    data,
-    error
-  } =
-    await supabaseClient
-      .from("layout_boxes")
-      .select(`
-        page_no,
-        box_type,
-        label,
-        x,
-        y,
-        width,
-        height,
-        points,
-        sort_order
-      `)
-      .eq(
-        "test_id",
-        previewTestId
-      )
-      .order(
-        "page_no",
-        {
-          ascending:true
-        }
-      )
-      .order(
-        "sort_order",
-        {
-          ascending:true
-        }
-      );
-
-
-  if (error) {
-
-    throw error;
-
-  }
-
-
-  const container =
-    document.getElementById(
-      "boxPreview"
-    );
-
 
   if (!container) {
 
@@ -621,12 +722,20 @@ async function loadBoxes() {
   }
 
 
-  if (!data?.length) {
+  const answerBoxes =
+    boxes.filter(
+      box =>
+        box.box_type ===
+        "answer"
+    );
+
+
+  if (!answerBoxes.length) {
 
     container.innerHTML = `
 
       <div class="empty">
-        枠が設定されていません。
+        採点対象の解答欄がありません。
       </div>
 
     `;
@@ -636,74 +745,26 @@ async function loadBoxes() {
   }
 
 
-  const labels = {
-
-    answer:
-      "解答欄",
-
-    qr:
-      "QRコード",
-
-    student_no:
-      "生徒番号",
-
-    name:
-      "氏名",
-
-    major:
-      "大問",
-
-    minor:
-      "小問",
-
-    subtotal:
-      "小計",
-
-    total:
-      "合計",
-
-    other:
-      "その他"
-
-  };
-
-
-  const counts =
-    {};
-
-
-  data.forEach(
-    box => {
-
-      const type =
-        box.box_type ||
-        "other";
-
-
-      counts[type] =
-        (
-          counts[type] ||
-          0
-        ) + 1;
-
-    }
-  );
-
-
   container.innerHTML = `
 
-    <table class="box-table">
+    <table
+      class="table"
+    >
 
       <thead>
 
         <tr>
 
           <th>
-            枠種類
+            設問
           </th>
 
           <th>
-            件数
+            ページ
+          </th>
+
+          <th>
+            配点
           </th>
 
         </tr>
@@ -713,28 +774,32 @@ async function loadBoxes() {
       <tbody>
 
         ${
-          Object.entries(
-            counts
-          )
+          answerBoxes
             .map(
               (
-                [
-                  type,
-                  count
-                ]
+                box,
+                index
               ) => `
 
                 <tr>
 
                   <td>
                     ${escapeHtml(
-                      labels[type] ||
-                      type
+                      box.label ||
+                      `問${index + 1}`
                     )}
                   </td>
 
                   <td>
-                    ${count}
+                    ${Number(
+                      box.page_no
+                    ) || 1}
+                  </td>
+
+                  <td>
+                    ${formatNumber(
+                      box.points
+                    )}点
                   </td>
 
                 </tr>
@@ -754,45 +819,48 @@ async function loadBoxes() {
 
 
 /* =========================================================
-   ERROR
+   HELPERS
 ========================================================= */
 
-function showError(
-  message
+function waitImage(
+  image
 ) {
 
-  const information =
-    document.getElementById(
-      "testInformation"
-    );
+  return new Promise(
+    (
+      resolve,
+      reject
+    ) => {
+
+      if (
+        image.complete &&
+        image.naturalWidth
+      ) {
+
+        resolve();
+
+        return;
+
+      }
 
 
-  if (information) {
+      image.onload =
+        resolve;
 
-    information.innerHTML = `
 
-      <div
-        style="
-          color:#b42318;
-        "
-      >
+      image.onerror =
+        () =>
+          reject(
+            new Error(
+              "画像を読み込めませんでした。"
+            )
+          );
 
-        ${escapeHtml(
-          message
-        )}
-
-      </div>
-
-    `;
-
-  }
+    }
+  );
 
 }
 
-
-/* =========================================================
-   NUMBER
-========================================================= */
 
 function formatNumber(
   value
@@ -810,7 +878,7 @@ function formatNumber(
     )
   ) {
 
-    return "-";
+    return "0";
 
   }
 
@@ -819,14 +887,45 @@ function formatNumber(
     n
   )
     ? String(n)
-    : n.toFixed(1);
+    : n.toFixed(
+        1
+      );
 
 }
 
 
-/* =========================================================
-   ESCAPE
-========================================================= */
+function showError(
+  text
+) {
+
+  const element =
+    document.getElementById(
+      "testInformation"
+    );
+
+
+  if (element) {
+
+    element.innerHTML = `
+
+      <div
+        style="
+          color:#b42318;
+        "
+      >
+
+        ${escapeHtml(
+          text
+        )}
+
+      </div>
+
+    `;
+
+  }
+
+}
+
 
 function escapeHtml(
   value
@@ -858,24 +957,3 @@ function escapeHtml(
     );
 
 }
-
-
-/* =========================================================
-   LOGOUT
-========================================================= */
-
-document
-  .getElementById(
-    "logoutButton"
-  )
-  ?.addEventListener(
-    "click",
-    async () => {
-
-      await logout();
-
-    }
-  );
-
-
-initializePreview();

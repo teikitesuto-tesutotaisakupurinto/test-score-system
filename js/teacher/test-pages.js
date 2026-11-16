@@ -4487,3 +4487,19 @@
   initialize();
 
 })();
+function getSelectedBox() {
+
+  if (!selectedBoxId) {
+
+    return null;
+
+  }
+
+
+  return boxes.find(
+    box =>
+      box.id ===
+      selectedBoxId
+  ) || null;
+
+}

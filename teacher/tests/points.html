@@ -23,148 +23,144 @@
 <style>
 
 .points-main {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 22px;
+  max-width:1200px;
+  margin:0 auto;
+  padding:22px;
 }
 
 .toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 15px;
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-bottom:15px;
 }
 
 .status {
-  padding: 10px 12px;
-  margin-bottom: 15px;
+  padding:10px 12px;
+  margin-bottom:15px;
 
-  background: #f5f6f7;
+  background:#f5f6f7;
 
-  border: 1px solid #d5dbe0;
+  border:1px solid #d5dbe0;
 
-  font-size: 13px;
+  font-size:13px;
+
+  white-space:pre-wrap;
 }
 
 .status.error {
-  color: #b42318;
+  color:#b42318;
 }
 
 .test-info {
-  margin-bottom: 15px;
-  padding: 15px;
+  margin-bottom:15px;
+  padding:15px;
 
-  background: #fff;
+  background:#fff;
 
-  border: 1px solid #d0d6dc;
+  border:1px solid #d0d6dc;
 
-  border-radius: 6px;
+  border-radius:6px;
 }
 
 .test-name {
-  font-size: 18px;
-  font-weight: 700;
+  font-size:18px;
+  font-weight:700;
 }
 
 .test-meta {
-  margin-top: 5px;
-  color: #666;
-  font-size: 13px;
+  margin-top:5px;
+
+  color:#666;
+
+  font-size:13px;
 }
 
 .table-wrap {
-  overflow-x: auto;
+  overflow-x:auto;
 
-  background: #fff;
+  background:#fff;
 
-  border: 1px solid #d0d6dc;
+  border:1px solid #d0d6dc;
 }
 
 .points-table {
-  width: 100%;
+  width:100%;
 
-  border-collapse: collapse;
+  border-collapse:collapse;
 }
 
 .points-table th,
 .points-table td {
-  border: 1px solid #d0d6dc;
+  border:1px solid #d0d6dc;
 
-  padding: 9px 10px;
+  padding:9px 10px;
 
-  font-size: 13px;
+  font-size:13px;
 
-  vertical-align: middle;
+  vertical-align:middle;
 }
 
 .points-table th {
-  background: #f3f5f7;
+  background:#f3f5f7;
 
-  font-weight: 700;
+  font-weight:700;
 
-  text-align: left;
+  text-align:left;
 }
 
 .points-input {
-  width: 110px;
+  width:110px;
 
-  height: 38px;
+  height:38px;
 
-  padding: 0 8px;
+  padding:0 8px;
 
-  border: 1px solid #b8c1c9;
+  border:1px solid #b8c1c9;
 
-  border-radius: 4px;
+  border-radius:4px;
 
-  text-align: right;
+  text-align:right;
 
-  background: #fff;
+  background:#fff;
 }
 
 .points-input:focus {
-  outline: none;
+  outline:none;
 
-  border-color: #1769aa;
+  border-color:#1769aa;
 }
 
 .total-row td {
-  background: #f8fafb;
+  background:#f8fafb;
 
-  font-weight: 700;
+  font-weight:700;
 }
 
 .total-points {
-  font-size: 18px;
+  font-size:18px;
 }
 
 .empty {
-  padding: 50px;
+  padding:50px;
 
-  text-align: center;
+  text-align:center;
 
-  color: #777;
+  color:#777;
 }
 
 .next-area {
-  display: flex;
+  display:flex;
 
-  flex-wrap: wrap;
+  flex-wrap:wrap;
 
-  gap: 8px;
+  gap:8px;
 
-  margin-top: 15px;
+  margin-top:15px;
 
-  padding-top: 15px;
+  padding-top:15px;
 
-  border-top: 1px solid #d0d6dc;
-}
-
-@media (max-width: 600px) {
-
-  .points-main {
-    padding: 14px;
-  }
-
+  border-top:1px solid #d0d6dc;
 }
 
 </style>
@@ -217,7 +213,7 @@
 id="status"
 class="status"
 >
-  読み込み中...
+読み込み中...
 </div>
 
 
@@ -230,14 +226,15 @@ class="test-info"
 id="testName"
 class="test-name"
 >
-  -
+-
 </div>
+
 
 <div
 id="testMeta"
 class="test-meta"
 >
-  -
+-
 </div>
 
 </section>
@@ -281,7 +278,7 @@ class="table-wrap"
 >
 
 <div class="empty">
-  設問を読み込んでいます...
+設問を読み込んでいます...
 </div>
 
 </div>
@@ -316,9 +313,15 @@ class="btn btn-primary"
 src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
 ></script>
 
-<script src="/js/config.js"></script>
 
-<script src="/js/auth.js"></script>
+<script
+src="/js/config.js?v=20261116"
+></script>
+
+
+<script
+src="/js/auth.js?v=20261116"
+></script>
 
 
 <script>
@@ -326,15 +329,38 @@ src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
 "use strict";
 
 
-let DB =
-  window.SB ||
-  window.supabaseClient;
+/* =========================================================
+   DB
+========================================================= */
+
+const DB =
+  window.supabaseClient ||
+  window.SB;
 
 
-let testId = null;
+if (!DB) {
 
-let boxes = [];
+  throw new Error(
+    "Supabase Clientが初期化されていません。"
+  );
 
+}
+
+
+/* =========================================================
+   STATE
+========================================================= */
+
+let testId =
+  null;
+
+let boxes =
+  [];
+
+
+/* =========================================================
+   DOM
+========================================================= */
 
 const statusElement =
   document.getElementById(
@@ -348,22 +374,29 @@ const tableWrap =
   );
 
 
-/* =====================================================
-   INIT
-===================================================== */
+const teacherName =
+  document.getElementById(
+    "teacherName"
+  );
 
-(async function () {
+
+/* =========================================================
+   INIT
+========================================================= */
+
+document.addEventListener(
+  "DOMContentLoaded",
+  initialize
+);
+
+
+async function initialize() {
 
   try {
 
-    if (!DB) {
-
-      throw new Error(
-        "Supabase接続がありません。"
-      );
-
-    }
-
+    /*
+     * 認証
+     */
 
     const result =
       await requireRole(
@@ -371,18 +404,21 @@ const tableWrap =
       );
 
 
-    const profile =
-      result?.profile ||
-      result ||
-      {};
+    if (!result) {
+
+      return;
+
+    }
 
 
-    document.getElementById(
-      "teacherName"
-    ).textContent =
-      profile.name ||
+    teacherName.textContent =
+      result.profile?.name ||
       "先生";
 
+
+    /*
+     * URL
+     */
 
     const params =
       new URLSearchParams(
@@ -407,10 +443,17 @@ const tableWrap =
 
     setLinks();
 
+
     await load();
 
 
   } catch (error) {
+
+    console.error(
+      "points initialize:",
+      error
+    );
+
 
     showError(
       error.message ||
@@ -419,12 +462,12 @@ const tableWrap =
 
   }
 
-})();
+}
 
 
-/* =====================================================
+/* =========================================================
    LINKS
-===================================================== */
+========================================================= */
 
 function setLinks() {
 
@@ -448,11 +491,17 @@ function setLinks() {
 }
 
 
-/* =====================================================
+/* =========================================================
    LOAD
-===================================================== */
+========================================================= */
 
 async function load() {
+
+  /*
+   * -------------------------------------------------------
+   * TEST
+   * -------------------------------------------------------
+   */
 
   setStatus(
     "テスト情報を取得しています..."
@@ -502,7 +551,8 @@ async function load() {
   document.getElementById(
     "testName"
   ).textContent =
-    test.name;
+    test.name ||
+    "";
 
 
   document.getElementById(
@@ -525,6 +575,12 @@ async function load() {
         " / "
       );
 
+
+  /*
+   * -------------------------------------------------------
+   * LAYOUT BOXES
+   * -------------------------------------------------------
+   */
 
   setStatus(
     "設問枠を取得しています..."
@@ -558,15 +614,13 @@ async function load() {
       .order(
         "page_no",
         {
-          ascending:
-            true
+          ascending:true
         }
       )
       .order(
         "sort_order",
         {
-          ascending:
-            true
+          ascending:true
         }
       );
 
@@ -579,23 +633,83 @@ async function load() {
 
 
   /*
-   * question_idを持つ枠だけを
-   * 配点設定対象にする。
+   * =====================================================
+   * 現在のDB構造に合わせる
    *
-   * QR枠・大問枠・合計枠などは除外。
+   * question_id はNULLでもOK。
+   *
+   * answer枠を配点対象にする。
+   *
+   * 除外:
+   *   QR
+   *   氏名
+   *   合計
+   *   小計
+   * =====================================================
    */
+
+  const excludedLabels =
+    new Set([
+      "QR",
+      "氏名",
+      "合計",
+      "小計"
+    ]);
+
 
   boxes =
     (data || [])
       .filter(
-        box =>
-          box.question_id !==
-            null &&
-          box.question_id !==
-            undefined &&
-          String(
-            box.question_id
-          ).trim() !== ""
+        box => {
+
+          const type =
+            String(
+              box.box_type ||
+              ""
+            )
+            .trim()
+            .toLowerCase();
+
+
+          /*
+           * answer以外は対象外。
+           */
+
+          if (
+            type !==
+            "answer"
+          ) {
+
+            return false;
+
+          }
+
+
+          const label =
+            String(
+              box.label ||
+              ""
+            ).trim();
+
+
+          /*
+           * 集計・識別枠は除外。
+           */
+
+          if (
+            excludedLabels.has(
+              label
+            )
+          ) {
+
+            return false;
+
+          }
+
+
+          return true;
+
+        }
       );
 
 
@@ -609,9 +723,9 @@ async function load() {
 }
 
 
-/* =====================================================
+/* =========================================================
    RENDER
-===================================================== */
+========================================================= */
 
 function render() {
 
@@ -622,6 +736,10 @@ function render() {
       <div class="empty">
 
         採点対象の設問枠がありません。
+
+        <br><br>
+
+        枠設定で「解答欄」を作成してください。
 
         <br><br>
 
@@ -638,10 +756,12 @@ function render() {
 
     `;
 
+
     setStatus(
-      "先に枠設定を行ってください。",
+      "採点対象の解答欄がありません。",
       true
     );
+
 
     return;
 
@@ -696,9 +816,7 @@ function render() {
 
       <tr class="total-row">
 
-        <td
-          colspan="3"
-        >
+        <td colspan="3">
           合計配点
         </td>
 
@@ -742,6 +860,10 @@ function render() {
         );
 
 
+      /*
+       * No.
+       */
+
       const numberCell =
         document.createElement(
           "td"
@@ -752,6 +874,10 @@ function render() {
         index + 1;
 
 
+      /*
+       * 設問
+       */
+
       const labelCell =
         document.createElement(
           "td"
@@ -760,8 +886,12 @@ function render() {
 
       labelCell.textContent =
         box.label ||
-        `設問${index + 1}`;
+        `問${index + 1}`;
 
+
+      /*
+       * ページ
+       */
 
       const pageCell =
         document.createElement(
@@ -770,8 +900,14 @@ function render() {
 
 
       pageCell.textContent =
-        `${box.page_no || 1}ページ`;
+        `${Number(
+          box.page_no
+        ) || 1}ページ`;
 
+
+      /*
+       * 配点
+       */
 
       const pointsCell =
         document.createElement(
@@ -807,9 +943,20 @@ function render() {
         ) || 0;
 
 
-      input.dataset.id =
-        box.id;
+      input.addEventListener(
+        "input",
+        updateTotal
+      );
 
+
+      pointsCell.appendChild(
+        input
+      );
+
+
+      /*
+       * 保存
+       */
 
       const actionCell =
         document.createElement(
@@ -849,17 +996,6 @@ function render() {
       );
 
 
-      input.addEventListener(
-        "input",
-        updateTotal
-      );
-
-
-      pointsCell.appendChild(
-        input
-      );
-
-
       actionCell.appendChild(
         saveButton
       );
@@ -896,9 +1032,9 @@ function render() {
 }
 
 
-/* =====================================================
+/* =========================================================
    SAVE POINT
-===================================================== */
+========================================================= */
 
 async function savePoint(
   box,
@@ -915,12 +1051,24 @@ async function savePoint(
   if (
     !Number.isFinite(
       value
-    ) ||
+    )
+  ) {
+
+    showError(
+      "配点を入力してください。"
+    );
+
+    return;
+
+  }
+
+
+  if (
     value < 0
   ) {
 
     showError(
-      "配点は0以上の数値で入力してください。"
+      "配点は0以上にしてください。"
     );
 
     return;
@@ -972,17 +1120,20 @@ async function savePoint(
       "保存済み";
 
 
-    setStatus(
-      `${box.label || "設問"} の配点を保存しました。`
-    );
-
-
     updateTotal();
+
+
+    setStatus(
+      `${box.label || "設問"} の配点を ${formatNumber(
+        value
+      )}点で保存しました。`
+    );
 
 
   } catch (error) {
 
     console.error(
+      "save point:",
       error
     );
 
@@ -1006,9 +1157,9 @@ async function savePoint(
 }
 
 
-/* =====================================================
+/* =========================================================
    TOTAL
-===================================================== */
+========================================================= */
 
 function updateTotal() {
 
@@ -1020,20 +1171,32 @@ function updateTotal() {
     );
 
 
-  const total =
-    inputs.reduce(
-      (
-        sum,
-        input
-      ) =>
-        sum +
-        (
-          Number(
-            input.value
-          ) || 0
-        ),
-      0
-    );
+  let total =
+    0;
+
+
+  inputs.forEach(
+    input => {
+
+      const value =
+        Number(
+          input.value
+        );
+
+
+      if (
+        Number.isFinite(
+          value
+        )
+      ) {
+
+        total +=
+          value;
+
+      }
+
+    }
+  );
 
 
   const totalElement =
@@ -1050,22 +1213,16 @@ function updateTotal() {
 
 
   totalElement.textContent =
-    Number.isInteger(
+    formatNumber(
       total
-    )
-      ? String(
-          total
-        )
-      : total.toFixed(
-          1
-        );
+    );
 
 }
 
 
-/* =====================================================
+/* =========================================================
    STATUS
-===================================================== */
+========================================================= */
 
 function setStatus(
   message,
@@ -1096,9 +1253,54 @@ function showError(
 }
 
 
-/* =====================================================
+/* =========================================================
+   FORMAT
+========================================================= */
+
+function formatNumber(
+  value
+) {
+
+  const number =
+    Number(
+      value
+    );
+
+
+  if (
+    !Number.isFinite(
+      number
+    )
+  ) {
+
+    return "0";
+
+  }
+
+
+  if (
+    Number.isInteger(
+      number
+    )
+  ) {
+
+    return String(
+      number
+    );
+
+  }
+
+
+  return number.toFixed(
+    1
+  );
+
+}
+
+
+/* =========================================================
    LOGOUT
-===================================================== */
+========================================================= */
 
 document
   .getElementById(
@@ -1109,11 +1311,11 @@ document
     async () => {
 
       if (
-        typeof logout ===
+        typeof window.logout ===
         "function"
       ) {
 
-        await logout();
+        await window.logout();
 
         return;
 
@@ -1121,11 +1323,11 @@ document
 
 
       if (
-        typeof signOut ===
+        typeof window.signOut ===
         "function"
       ) {
 
-        await signOut();
+        await window.signOut();
 
       }
 

@@ -1,7 +1,12 @@
+
 (function () {
 
   "use strict";
 
+
+  /* =====================================================
+     STATE
+  ===================================================== */
 
   let tests = [];
 
@@ -11,51 +16,80 @@
 
 
   /* =====================================================
-     初期化
+     INIT
   ===================================================== */
 
   async function initialize() {
 
-    const profile =
-      await getProfile();
+    try {
+
+      const profile =
+        await getProfile();
 
 
-    if (!profile) {
+      if (!profile) {
 
-      location.replace("/login");
+        location.replace(
+          "/login"
+        );
 
-      return;
+        return;
 
-    }
+      }
 
 
-    if (
-      profile.role !== "teacher" &&
-      profile.role !== "admin"
-    ) {
+      if (
+        profile.role !== "teacher" &&
+        profile.role !== "admin"
+      ) {
 
-      location.replace(
-        "/student/dashboard"
+        location.replace(
+          "/student/index.html"
+        );
+
+        return;
+
+      }
+
+
+      const teacherName =
+        document.getElementById(
+          "teacherName"
+        );
+
+
+      if (teacherName) {
+
+        teacherName.textContent =
+          profile.name ||
+          "先生";
+
+      }
+
+
+      await loadTests();
+
+    } catch (error) {
+
+      console.error(
+        "answer-regions initialize:",
+        error
       );
 
-      return;
+
+      showMessage(
+        error.message ||
+        "答案領域画面を読み込めませんでした。",
+        true
+      );
 
     }
-
-
-    document.getElementById(
-      "teacherName"
-    ).textContent =
-      profile.name || "先生";
-
-
-    await loadTests();
 
   }
 
 
   /* =====================================================
-     テスト一覧
+     TEST LIST
   ===================================================== */
 
   async function loadTests() {
@@ -65,7 +99,9 @@
       error
     } =
       await supabaseClient
-        .from("tests")
+        .from(
+          "tests"
+        )
         .select(`
           id,
           name,
@@ -76,19 +112,24 @@
         .order(
           "created_at",
           {
-            ascending: false
+            ascending:
+              false
           }
         );
 
 
     if (error) {
 
-      console.error(error);
+      console.error(
+        error
+      );
+
 
       showMessage(
         "テスト一覧を取得できませんでした。",
         true
       );
+
 
       return;
 
@@ -96,13 +137,21 @@
 
 
     tests =
-      data || [];
+      data ||
+      [];
 
 
     const select =
       document.getElementById(
         "testSelect"
       );
+
+
+    if (!select) {
+
+      return;
+
+    }
 
 
     select.innerHTML = `
@@ -112,25 +161,41 @@
       </option>
 
       ${
-        tests.map(
-          test => `
+        tests
+          .map(
+            test => `
 
-            <option
-              value="${escapeHtml(test.id)}"
-            >
+              <option
+                value="${escapeHtml(
+                  test.id
+                )}"
+              >
 
-              ${escapeHtml(test.name)}
+                ${escapeHtml(
+                  test.name
+                )}
 
-              ${
-                test.subject
-                  ? ` / ${escapeHtml(test.subject)}`
-                  : ""
-              }
+                ${
+                  test.subject
+                    ? ` / ${escapeHtml(
+                        test.subject
+                      )}`
+                    : ""
+                }
 
-            </option>
+                ${
+                  test.grade
+                    ? ` / ${escapeHtml(
+                        test.grade
+                      )}`
+                    : ""
+                }
 
-          `
-        ).join("")
+              </option>
+
+            `
+          )
+          .join("")
       }
 
     `;
@@ -139,12 +204,14 @@
 
 
   /* =====================================================
-     テスト選択
+     TEST SELECT
   ===================================================== */
 
   document
-    .getElementById("testSelect")
-    .addEventListener(
+    .getElementById(
+      "testSelect"
+    )
+    ?.addEventListener(
       "change",
       async event => {
 
@@ -161,14 +228,26 @@
 
         if (!selectedTestId) {
 
-          button.disabled =
-            true;
+          if (button) {
+
+            button.disabled =
+              true;
+
+          }
 
 
-          document.getElementById(
-            "summary"
-          ).style.display =
-            "none";
+          const summary =
+            document.getElementById(
+              "summary"
+            );
+
+
+          if (summary) {
+
+            summary.style.display =
+              "none";
+
+          }
 
 
           return;
@@ -176,20 +255,41 @@
         }
 
 
-        button.disabled =
-          false;
+        if (button) {
+
+          button.disabled =
+            false;
+
+        }
 
 
-        await loadTestInformation();
+        try {
 
-        await loadSummary();
+          await loadTestInformation();
+
+          await loadSummary();
+
+        } catch (error) {
+
+          console.error(
+            error
+          );
+
+
+          showMessage(
+            error.message ||
+            "テスト情報を取得できませんでした。",
+            true
+          );
+
+        }
 
       }
     );
 
 
   /* =====================================================
-     テスト情報
+     TEST INFORMATION
   ===================================================== */
 
   async function loadTestInformation() {
@@ -209,33 +309,49 @@
     }
 
 
-    document.getElementById(
-      "testInformation"
-    ).innerHTML = `
+    const element =
+      document.getElementById(
+        "testInformation"
+      );
+
+
+    if (!element) {
+
+      return;
+
+    }
+
+
+    element.innerHTML = `
 
       <strong>
-        ${escapeHtml(test.name)}
+        ${escapeHtml(
+          test.name
+        )}
       </strong>
 
       <br>
 
       教科：
       ${escapeHtml(
-        test.subject || "-"
+        test.subject ||
+        "-"
       )}
 
       ／
 
       学年：
       ${escapeHtml(
-        test.grade || "-"
+        test.grade ||
+        "-"
       )}
 
       ／
 
       クラス：
       ${escapeHtml(
-        test.class_name || "-"
+        test.class_name ||
+        "-"
       )}
 
     `;
@@ -244,10 +360,14 @@
 
 
   /* =====================================================
-     概要
+     SUMMARY
   ===================================================== */
 
   async function loadSummary() {
+
+    const answerIds =
+      await getMatchedAnswerIds();
+
 
     const [
       boxesResult,
@@ -258,7 +378,9 @@
       await Promise.all([
 
         supabaseClient
-          .from("layout_boxes")
+          .from(
+            "layout_boxes"
+          )
           .select(
             "id",
             {
@@ -278,7 +400,9 @@
           ),
 
         supabaseClient
-          .from("answer_sheets")
+          .from(
+            "answer_sheets"
+          )
           .select(
             "id",
             {
@@ -297,24 +421,33 @@
             "unmatched"
           ),
 
-        supabaseClient
-          .from("answer_sheet_pages")
-          .select(
-            "id",
-            {
-              count:
-                "exact",
-              head:
-                true
-            }
-          )
-          .in(
-            "answer_sheet_id",
-            await getMatchedAnswerIds()
-          ),
+        answerIds.length
+          ? supabaseClient
+              .from(
+                "answer_sheet_pages"
+              )
+              .select(
+                "id",
+                {
+                  count:
+                    "exact",
+                  head:
+                    true
+                }
+              )
+              .in(
+                "answer_sheet_id",
+                answerIds
+              )
+          : Promise.resolve({
+              count:0,
+              error:null
+            }),
 
         supabaseClient
-          .from("answer_regions")
+          .from(
+            "answer_regions"
+          )
           .select(
             "id",
             {
@@ -328,79 +461,170 @@
       ]);
 
 
+    if (
+      boxesResult.error
+    ) {
+
+      throw boxesResult.error;
+
+    }
+
+
+    if (
+      answersResult.error
+    ) {
+
+      throw answersResult.error;
+
+    }
+
+
+    if (
+      pagesResult.error
+    ) {
+
+      throw pagesResult.error;
+
+    }
+
+
+    if (
+      regionsResult.error
+    ) {
+
+      throw regionsResult.error;
+
+    }
+
+
     const boxCount =
-      boxesResult.count || 0;
+      boxesResult.count ||
+      0;
 
 
     const answerCount =
-      answersResult.count || 0;
+      answersResult.count ||
+      0;
 
 
     const pageCount =
-      pagesResult.count || 0;
+      pagesResult.count ||
+      0;
 
 
     const regionCount =
-      regionsResult.count || 0;
+      regionsResult.count ||
+      0;
 
 
-    document.getElementById(
-      "summary"
-    ).style.display =
+    const summary =
+      document.getElementById(
+        "summary"
+      );
+
+
+    if (!summary) {
+
+      return;
+
+    }
+
+
+    summary.style.display =
       "block";
 
 
-    document.getElementById(
-      "summary"
-    ).innerHTML = `
+    summary.innerHTML = `
 
       <div
         style="
           display:grid;
           grid-template-columns:
-            repeat(4,minmax(0,1fr));
+            repeat(
+              4,
+              minmax(0,1fr)
+            );
           gap:12px;
         "
       >
 
         <div>
-          <div style="color:#777;font-size:12px;">
+
+          <div
+            style="
+              color:#777;
+              font-size:12px;
+            "
+          >
             解答欄
           </div>
+
           <strong>
             ${boxCount}
           </strong>
+
           個
+
         </div>
 
+
         <div>
-          <div style="color:#777;font-size:12px;">
+
+          <div
+            style="
+              color:#777;
+              font-size:12px;
+            "
+          >
             答案
           </div>
+
           <strong>
             ${answerCount}
           </strong>
+
           枚
+
         </div>
 
+
         <div>
-          <div style="color:#777;font-size:12px;">
+
+          <div
+            style="
+              color:#777;
+              font-size:12px;
+            "
+          >
             答案ページ
           </div>
+
           <strong>
             ${pageCount}
           </strong>
+
           ページ
+
         </div>
 
+
         <div>
-          <div style="color:#777;font-size:12px;">
+
+          <div
+            style="
+              color:#777;
+              font-size:12px;
+            "
+          >
             切り出し済み
           </div>
+
           <strong>
             ${regionCount}
           </strong>
+
           件
+
         </div>
 
       </div>
@@ -411,7 +635,7 @@
 
 
   /* =====================================================
-     紐付け済み答案ID
+     MATCHED ANSWER IDS
   ===================================================== */
 
   async function getMatchedAnswerIds() {
@@ -421,8 +645,12 @@
       error
     } =
       await supabaseClient
-        .from("answer_sheets")
-        .select("id")
+        .from(
+          "answer_sheets"
+        )
+        .select(
+          "id"
+        )
         .eq(
           "test_id",
           selectedTestId
@@ -441,7 +669,8 @@
 
 
     return (
-      data || []
+      data ||
+      []
     ).map(
       item =>
         item.id
@@ -451,12 +680,14 @@
 
 
   /* =====================================================
-     実行
+     EXECUTE
   ===================================================== */
 
   document
-    .getElementById("executeButton")
-    .addEventListener(
+    .getElementById(
+      "executeButton"
+    )
+    ?.addEventListener(
       "click",
       async () => {
 
@@ -473,12 +704,15 @@
           );
 
 
-        button.disabled =
-          true;
+        if (button) {
 
+          button.disabled =
+            true;
 
-        button.textContent =
-          "切り出し中...";
+          button.textContent =
+            "切り出し中...";
+
+        }
 
 
         clearResults();
@@ -502,7 +736,10 @@
 
         } catch (error) {
 
-          console.error(error);
+          console.error(
+            "buildRegions:",
+            error
+          );
 
 
           showMessage(
@@ -514,19 +751,22 @@
         }
 
 
-        button.disabled =
-          false;
+        if (button) {
 
+          button.disabled =
+            false;
 
-        button.textContent =
-          "答案を問題別に切り出す";
+          button.textContent =
+            "答案を問題別に切り出す";
+
+        }
 
       }
     );
 
 
   /* =====================================================
-     本体
+     BUILD REGIONS
   ===================================================== */
 
   async function buildRegions(
@@ -534,15 +774,20 @@
   ) {
 
     /*
-      解答欄
-    */
+     * 解答欄
+     *
+     * question_idは使用しない。
+     * box_type=answerを対象にする。
+     */
 
     const {
       data: boxes,
       error: boxError
     } =
       await supabaseClient
-        .from("layout_boxes")
+        .from(
+          "layout_boxes"
+        )
         .select(`
           id,
           page_no,
@@ -551,7 +796,8 @@
           width,
           height,
           points,
-          label
+          label,
+          box_type
         `)
         .eq(
           "test_id",
@@ -563,6 +809,13 @@
         )
         .order(
           "page_no"
+        )
+        .order(
+          "sort_order",
+          {
+            ascending:
+              true
+          }
         );
 
 
@@ -573,7 +826,33 @@
     }
 
 
-    if (!boxes?.length) {
+    /*
+     * 集計枠は切り出さない。
+     */
+
+    const excludedLabels =
+      new Set([
+        "合計",
+        "小計"
+      ]);
+
+
+    const answerBoxes =
+      (
+        boxes ||
+        []
+      ).filter(
+        box =>
+          !excludedLabels.has(
+            String(
+              box.label ||
+              ""
+            ).trim()
+          )
+      );
+
+
+    if (!answerBoxes.length) {
 
       throw new Error(
         "解答欄が設定されていません。"
@@ -583,15 +862,17 @@
 
 
     /*
-      答案
-    */
+     * 答案
+     */
 
     const {
       data: answers,
       error: answerError
     } =
       await supabaseClient
-        .from("answer_sheets")
+        .from(
+          "answer_sheets"
+        )
         .select(`
           id,
           student_id,
@@ -632,21 +913,21 @@
 
 
     /*
-      各答案
-    */
+     * 各答案
+     */
 
     for (
       const answer
       of answers
     ) {
 
-      const pages =
+      const answerPages =
         await loadAnswerPages(
           answer.id
         );
 
 
-      if (!pages.length) {
+      if (!answerPages.length) {
 
         addResult(
           answer,
@@ -662,20 +943,16 @@
 
 
       /*
-        各解答欄
-      */
+       * 各解答欄
+       */
 
       for (
         const box
-        of boxes
+        of answerBoxes
       ) {
 
-        /*
-          該当ページを探す
-        */
-
         const page =
-          pages.find(
+          answerPages.find(
             item =>
               Number(
                 item.page_no
@@ -704,8 +981,8 @@
         try {
 
           /*
-            既存なら再利用
-          */
+           * 既存region
+           */
 
           const existing =
             await getExistingRegion(
@@ -715,8 +992,8 @@
 
 
           /*
-            画像切り出し
-          */
+           * 画像切り出し
+           */
 
           const blob =
             await cropAnswerImage(
@@ -735,8 +1012,8 @@
 
 
           /*
-            Storage
-          */
+           * Storage
+           */
 
           const storagePath =
             `${testId}/${answer.id}/${box.id}.png`;
@@ -755,13 +1032,11 @@
                 storagePath,
                 blob,
                 {
-
                   contentType:
                     "image/png",
 
                   upsert:
                     true
-
                 }
               );
 
@@ -774,8 +1049,10 @@
 
 
           /*
-            DB
-          */
+           * DB
+           *
+           * question_idはNULLでよい。
+           */
 
           const values = {
 
@@ -869,6 +1146,7 @@
         } catch (error) {
 
           console.error(
+            "region:",
             error
           );
 
@@ -894,7 +1172,7 @@
 
 
   /* =====================================================
-     answer_sheet_pages
+     ANSWER PAGES
   ===================================================== */
 
   async function loadAnswerPages(
@@ -940,7 +1218,7 @@
 
 
   /* =====================================================
-     既存region
+     EXISTING REGION
   ===================================================== */
 
   async function getExistingRegion(
@@ -977,13 +1255,14 @@
     }
 
 
-    return data || null;
+    return data ||
+      null;
 
   }
 
 
   /* =====================================================
-     画像切り出し
+     CROP IMAGE
   ===================================================== */
 
   async function cropAnswerImage(
@@ -1033,36 +1312,46 @@
     const x =
       Math.max(
         0,
-        Number(box.x) || 0
+        Number(
+          box.x
+        ) || 0
       );
 
 
     const y =
       Math.max(
         0,
-        Number(box.y) || 0
+        Number(
+          box.y
+        ) || 0
       );
 
 
     const width =
-      Number(box.width) || 1;
+      Number(
+        box.width
+      ) || 1;
 
 
     const height =
-      Number(box.height) || 1;
+      Number(
+        box.height
+      ) || 1;
 
 
     const cropWidth =
       Math.min(
         width,
-        image.naturalWidth - x
+        image.naturalWidth -
+          x
       );
 
 
     const cropHeight =
       Math.min(
         height,
-        image.naturalHeight - y
+        image.naturalHeight -
+          y
       );
 
 
@@ -1102,6 +1391,21 @@
       );
 
 
+    if (!context) {
+
+      throw new Error(
+        "Canvasを初期化できませんでした。"
+      );
+
+    }
+
+
+    /*
+     * Signed URLの画像を
+     * CORS許可付きで読み込んでいるため、
+     * toBlob可能な状態にする。
+     */
+
     context.drawImage(
 
       image,
@@ -1129,7 +1433,7 @@
 
 
   /* =====================================================
-     Image
+     LOAD IMAGE
   ===================================================== */
 
   function loadImage(
@@ -1146,6 +1450,17 @@
           new Image();
 
 
+        /*
+         * 重要:
+         *
+         * StorageのSigned URLを
+         * Canvasへ描画するためCORSを許可。
+         */
+
+        image.crossOrigin =
+          "anonymous";
+
+
         image.onload =
           () =>
             resolve(
@@ -1157,7 +1472,7 @@
           () =>
             reject(
               new Error(
-                "画像を読み込めませんでした。"
+                "答案画像を読み込めませんでした。"
               )
             );
 
@@ -1172,7 +1487,7 @@
 
 
   /* =====================================================
-     Canvas → PNG
+     CANVAS → BLOB
   ===================================================== */
 
   function canvasToBlob(
@@ -1185,29 +1500,41 @@
         reject
       ) => {
 
-        canvas.toBlob(
-          blob => {
+        try {
 
-            if (!blob) {
+          canvas.toBlob(
+            blob => {
 
-              reject(
-                new Error(
-                  "PNG変換に失敗しました。"
-                )
+              if (!blob) {
+
+                reject(
+                  new Error(
+                    "PNG変換に失敗しました。"
+                  )
+                );
+
+                return;
+
+              }
+
+
+              resolve(
+                blob
               );
 
-              return;
+            },
+            "image/png"
+          );
 
-            }
+        } catch (error) {
 
+          reject(
+            new Error(
+              `画像変換に失敗しました: ${error.message}`
+            )
+          );
 
-            resolve(
-              blob
-            );
-
-          },
-          "image/png"
-        );
+        }
 
       }
     );
@@ -1216,7 +1543,7 @@
 
 
   /* =====================================================
-     結果
+     RESULT
   ===================================================== */
 
   function addResult(
@@ -1230,6 +1557,13 @@
       document.getElementById(
         "resultList"
       );
+
+
+    if (!container) {
+
+      return;
+
+    }
 
 
     const item =
@@ -1246,9 +1580,11 @@
         1px solid #d0d6dc;
 
       color:
-        ${isError
-          ? "#c62828"
-          : "#16834b"};
+        ${
+          isError
+            ? "#c62828"
+            : "#16834b"
+        };
 
     `;
 
@@ -1278,13 +1614,25 @@
     resultCount++;
 
 
-    document.getElementById(
-      "resultCount"
-    ).textContent =
-      `${resultCount}件`;
+    const resultCountElement =
+      document.getElementById(
+        "resultCount"
+      );
+
+
+    if (resultCountElement) {
+
+      resultCountElement.textContent =
+        `${resultCount}件`;
+
+    }
 
   }
 
+
+  /* =====================================================
+     CLEAR RESULTS
+  ===================================================== */
 
   function clearResults() {
 
@@ -1292,19 +1640,39 @@
       0;
 
 
-    document.getElementById(
-      "resultList"
-    ).innerHTML =
-      "";
+    const list =
+      document.getElementById(
+        "resultList"
+      );
 
 
-    document.getElementById(
-      "resultCount"
-    ).textContent =
-      "0件";
+    if (list) {
+
+      list.innerHTML =
+        "";
+
+    }
+
+
+    const count =
+      document.getElementById(
+        "resultCount"
+      );
+
+
+    if (count) {
+
+      count.textContent =
+        "0件";
+
+    }
 
   }
 
+
+  /* =====================================================
+     MESSAGE
+  ===================================================== */
 
   function showMessage(
     message,
@@ -1315,6 +1683,13 @@
       document.getElementById(
         "message"
       );
+
+
+    if (!element) {
+
+      return;
+
+    }
 
 
     element.textContent =
@@ -1330,18 +1705,69 @@
 
 
   /* =====================================================
-     Logout
+     LOGOUT
   ===================================================== */
 
   document
     .getElementById(
       "logoutButton"
     )
-    .addEventListener(
+    ?.addEventListener(
       "click",
-      logout
+      async () => {
+
+        if (
+          typeof window.logout ===
+          "function"
+        ) {
+
+          await window.logout();
+
+        }
+
+      }
     );
 
+
+  /* =====================================================
+     ESCAPE
+  ===================================================== */
+
+  function escapeHtml(
+    value
+  ) {
+
+    return String(
+      value ??
+      ""
+    )
+      .replaceAll(
+        "&",
+        "&amp;"
+      )
+      .replaceAll(
+        "<",
+        "&lt;"
+      )
+      .replaceAll(
+        ">",
+        "&gt;"
+      )
+      .replaceAll(
+        '"',
+        "&quot;"
+      )
+      .replaceAll(
+        "'",
+        "&#039;"
+      );
+
+  }
+
+
+  /* =====================================================
+     START
+  ===================================================== */
 
   initialize();
 

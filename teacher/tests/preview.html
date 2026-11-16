@@ -1,27 +1,129 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 
 <head>
 
-  <meta charset="UTF-8">
+<meta charset="UTF-8">
 
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
-  >
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1.0"
+>
 
-  <title>
-    テスト確認 - テスト成績システム
-  </title>
+<title>
+  テスト確認 - テスト成績システム
+</title>
 
-  <link
-    rel="stylesheet"
-    href="/css/common.css"
-  >
+<link
+  rel="stylesheet"
+  href="/css/common.css"
+>
+
+<style>
+
+.preview-main {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.test-information {
+  margin-bottom: 15px;
+}
+
+.page-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(
+      3,
+      minmax(0, 1fr)
+    );
+  gap: 15px;
+}
+
+.page-card {
+  background: #fff;
+  border: 1px solid #d0d6dc;
+  border-radius: 4px;
+  padding: 10px;
+}
+
+.page-title {
+  margin-bottom: 8px;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.page-image {
+  min-height: 250px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #f4f6f8;
+  border: 1px solid #d5dbe0;
+}
+
+.page-image img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.box-preview {
+  overflow-x: auto;
+}
+
+.box-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.box-table th,
+.box-table td {
+  padding: 8px;
+  border: 1px solid #d0d6dc;
+  font-size: 13px;
+}
+
+.box-table th {
+  background: #f3f5f7;
+}
+
+.empty {
+  padding: 40px;
+  color: #777;
+  text-align: center;
+}
+
+@media (max-width: 900px) {
+
+  .page-grid {
+    grid-template-columns:
+      repeat(
+        2,
+        minmax(0, 1fr)
+      );
+  }
+
+}
+
+@media (max-width: 600px) {
+
+  .page-grid {
+    grid-template-columns: 1fr;
+  }
+
+}
+
+</style>
 
 </head>
 
+
 <body>
+
 
 <header class="topbar">
 
@@ -31,11 +133,14 @@
 
   <div class="topbar-space"></div>
 
-  <span id="teacherName">-</span>
+  <span id="teacherName">
+    -
+  </span>
 
   <button
     id="logoutButton"
     class="logout-button"
+    type="button"
   >
     ログアウト
   </button>
@@ -45,112 +150,154 @@
 
 <div class="teacher-layout">
 
-  <aside class="sidebar">
 
-    <div class="sidebar-title">
-      テスト設定
-    </div>
+<aside class="sidebar">
 
-    <a
-      id="pagesLink"
-      href="#"
-      class="menu-link"
-    >
-      解答用紙登録
-    </a>
-
-    <a
-      id="layoutLink"
-      href="#"
-      class="menu-link"
-    >
-      枠設定
-    </a>
-
-    <a
-      id="modelAnswerLink"
-      href="#"
-      class="menu-link"
-    >
-      模範解答
-    </a>
-
-    <a
-      id="previewLink"
-      href="#"
-      class="menu-link active"
-    >
-      テスト確認
-    </a>
-
-  </aside>
+  <div class="sidebar-title">
+    テスト設定
+  </div>
 
 
-  <main class="main-content">
-
-    <div class="page-header">
-
-      <h1>
-        テスト確認
-      </h1>
-
-    </div>
+  <a
+    id="pagesLink"
+    href="#"
+    class="menu-link"
+  >
+    解答用紙登録
+  </a>
 
 
-    <div
-      id="testInformation"
-      class="card"
-    >
-      読み込み中...
-    </div>
+  <a
+    id="layoutLink"
+    href="#"
+    class="menu-link"
+  >
+    枠設定
+  </a>
 
 
-    <div class="card">
-
-      <h3>
-        解答用紙
-      </h3>
-
-      <div
-        id="pagePreview"
-        style="
-          display:grid;
-          grid-template-columns:
-            repeat(3,minmax(0,1fr));
-          gap:15px;
-        "
-      >
-      </div>
-
-    </div>
+  <a
+    id="pointsLink"
+    href="#"
+    class="menu-link"
+  >
+    配点設定
+  </a>
 
 
-    <div class="card">
+  <a
+    id="modelAnswerLink"
+    href="#"
+    class="menu-link"
+  >
+    模範解答
+  </a>
 
-      <h3>
-        設定済み枠
-      </h3>
 
-      <div
-        id="boxPreview"
-      >
-        読み込み中...
-      </div>
+  <a
+    id="previewLink"
+    href="#"
+    class="menu-link active"
+  >
+    テスト確認
+  </a>
 
-    </div>
 
-  </main>
+  <a
+    id="markingLink"
+    href="#"
+    class="menu-link"
+  >
+    デジタル採点
+  </a>
+
+</aside>
+
+
+<main class="main-content preview-main">
+
+
+<div class="page-header">
+
+  <h1>
+    テスト確認
+  </h1>
 
 </div>
 
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<div
+  id="testInformation"
+  class="card test-information"
+>
+  読み込み中...
+</div>
 
-<script src="/js/config.js"></script>
 
-<script src="/js/auth.js"></script>
+<section class="card">
 
-<script src="/js/teacher/test-preview.js"></script>
+  <h3>
+    解答用紙
+  </h3>
+
+
+  <div
+    id="pagePreview"
+    class="page-grid"
+  >
+
+    <div class="empty">
+      読み込み中...
+    </div>
+
+  </div>
+
+</section>
+
+
+<section class="card">
+
+  <h3>
+    設定済み枠
+  </h3>
+
+
+  <div
+    id="boxPreview"
+    class="box-preview"
+  >
+
+    <div class="empty">
+      読み込み中...
+    </div>
+
+  </div>
+
+</section>
+
+
+</main>
+
+</div>
+
+
+<script
+  src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+></script>
+
+<script
+  src="/js/config.js?v=20261116"
+></script>
+
+<script
+  src="/js/auth.js?v=20261116"
+></script>
+
+<script
+  src="/js/teacher/test-preview.js?v=20261116"
+></script>
+
 
 </body>
+
 </html>

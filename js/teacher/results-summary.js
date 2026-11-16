@@ -1,1131 +1,339 @@
+<!DOCTYPE html>
+<html lang="ja">
 
-(function () {
+<head>
 
-  "use strict";
+<meta charset="UTF-8">
+
+<meta
+  name="viewport"
+  content="width=device-width,initial-scale=1.0"
+>
+
+<title>
+  テスト結果 - テスト成績システム
+</title>
+
+<link
+  rel="stylesheet"
+  href="/css/common.css"
+>
+
+<link
+  rel="stylesheet"
+  href="/css/student-result.css"
+>
+
+<style>
+
+.result-waiting {
+  padding:30px;
+
+  background:#fff;
+
+  border:1px solid #d0d6dc;
+
+  text-align:center;
+
+  color:#666;
+}
 
 
-  /* =====================================================
-     STATE
-  ===================================================== */
+.result-score-grid {
+  display:grid;
 
-  let testId = null;
-
-  let students = [];
-
-  let boxes = [];
-
-  let scores = [];
-
-
-  /* =====================================================
-     DOM
-  ===================================================== */
-
-  const testSelect =
-    document.getElementById(
-      "testSelect"
+  grid-template-columns:
+    repeat(
+      auto-fit,
+      minmax(
+        180px,
+        1fr
+      )
     );
 
+  gap:12px;
 
-  const resultBody =
-    document.getElementById(
-      "resultBody"
-    );
+  margin-bottom:15px;
+}
 
 
-  /* =====================================================
-     INIT
-  ===================================================== */
+.result-score-card {
+  padding:16px;
 
-  async function initialize() {
+  background:#fff;
 
-    try {
+  border:1px solid #d0d6dc;
+}
 
-      /*
-       * 現在のauth.jsに合わせる。
-       */
 
-      const result =
-        await requireRole(
-          "teacher"
-        );
+.result-score-label {
+  color:#666;
 
+  font-size:12px;
+}
 
-      if (!result) {
 
-        return;
+.result-score-value {
+  margin-top:5px;
 
-      }
+  font-size:28px;
 
+  font-weight:700;
+}
 
-      const name =
-        document.getElementById(
-          "teacherName"
-        );
 
+.result-score-sub {
+  margin-top:3px;
 
-      if (name) {
+  color:#666;
 
-        name.textContent =
-          result.profile?.name ||
-          "先生";
+  font-size:12px;
+}
 
-      }
 
+.question-results-wrap {
+  overflow:auto;
+}
 
-      await loadTests();
 
+.question-results-table {
+  width:100%;
 
-      setupEvents();
+  border-collapse:collapse;
+}
 
 
-    } catch (error) {
+.question-results-table th,
+.question-results-table td {
+  padding:9px;
 
-      console.error(
-        "results-summary initialize:",
-        error
-      );
+  border:1px solid #d0d6dc;
 
+  text-align:center;
+}
 
-      showError(
-        error.message ||
-        "成績集計を読み込めませんでした。"
-      );
 
-    }
+.question-results-table th {
+  background:#f3f5f7;
+}
 
-  }
 
+.question-results-table td.score {
+  font-weight:700;
+}
 
-  /* =====================================================
-     TEST LIST
-  ===================================================== */
 
-  async function loadTests() {
+.student-answer-pages {
+  display:flex;
 
-    const {
-      data,
-      error
-    } =
-      await supabaseClient
-        .from(
-          "tests"
-        )
-        .select(
-          `
-          id,
-          name,
-          subject,
-          grade,
-          class_name
-          `
-        )
-        .order(
-          "created_at",
-          {
-            ascending:false
-          }
-        );
+  flex-direction:column;
 
+  gap:18px;
+}
 
-    if (error) {
 
-      throw error;
+.student-answer-page {
+  padding:12px;
 
-    }
+  background:#fff;
 
+  border:1px solid #d0d6dc;
+}
 
-    testSelect.innerHTML = `
 
-      <option value="">
-        テストを選択してください
-      </option>
+.student-answer-page-title {
+  margin-bottom:8px;
 
-      ${
-        (data || [])
-          .map(
-            test => `
+  font-weight:700;
+}
 
-              <option
-                value="${escapeHtml(
-                  test.id
-                )}"
-              >
 
-                ${escapeHtml(
-                  test.name
-                )}
+.student-answer-page img {
+  display:block;
 
-                ${
-                  test.subject
-                    ? ` / ${escapeHtml(
-                        test.subject
-                      )}`
-                    : ""
-                }
+  width:100%;
 
-                ${
-                  test.grade
-                    ? ` / ${escapeHtml(
-                        test.grade
-                      )}`
-                    : ""
-                }
+  max-width:1100px;
 
-              </option>
+  height:auto;
 
-            `
-          )
-          .join("")
-      }
+  margin:0 auto;
+}
 
-    `;
 
+.hidden-before-publish {
+  display:none;
+}
 
-    /*
-     * URL ?test=UUID に対応。
-     */
 
-    const params =
-      new URLSearchParams(
-        window.location.search
-      );
+</style>
 
+</head>
 
-    const requestedTest =
-      params.get(
-        "test"
-      );
 
+<body>
 
-    if (
-      requestedTest
-    ) {
 
-      const exists =
-        (data || [])
-          .some(
-            test =>
-              test.id ===
-              requestedTest
-          );
+<header class="topbar">
 
+  <div class="system-name">
+    テスト成績システム
+  </div>
 
-      if (exists) {
 
-        testSelect.value =
-          requestedTest;
+  <div class="topbar-space"></div>
 
 
-        testId =
-          requestedTest;
+  <span id="studentName">
+    -
+  </span>
 
 
-        await loadResults();
+  <button
+    id="logoutButton"
+    class="logout-button"
+    type="button"
+  >
+    ログアウト
+  </button>
 
-      }
+</header>
 
-    }
 
-  }
+<main class="student-main">
 
 
-  /* =====================================================
-     EVENTS
-  ===================================================== */
+<div class="page-header">
 
-  function setupEvents() {
+  <div>
 
-    testSelect.addEventListener(
-      "change",
-      async () => {
+    <h1 id="testName">
+      -
+    </h1>
 
-        testId =
-          testSelect.value ||
-          null;
 
+    <div
+      id="testMeta"
+      class="test-meta"
+    >
+    </div>
 
-        await loadResults();
+  </div>
 
-      }
-    );
+</div>
 
 
-    document
-      .getElementById(
-        "logoutButton"
-      )
-      ?.addEventListener(
-        "click",
-        async () => {
+<section
+  id="resultSummary"
+  class="student-result-summary"
+>
+</section>
 
-          if (
-            typeof window.logout ===
-            "function"
-          ) {
 
-            await window.logout();
+<section
+  id="questionResultsCard"
+  class="student-result-card"
+>
 
-          }
 
-        }
-      );
+<div class="student-result-card-title">
+  設問別結果
+</div>
 
-  }
 
+<div
+  id="questionResults"
+  class="question-results-wrap"
+>
+</div>
 
-  /* =====================================================
-     LOAD RESULTS
-  ===================================================== */
 
-  async function loadResults() {
+</section>
 
-    if (!testId) {
 
-      resultBody.innerHTML =
-        "";
+<section
+  class="student-result-card"
+>
 
-      return;
 
-    }
+<div class="student-result-card-title">
+  答案
+</div>
 
 
-    try {
+<div
+  id="answerStatus"
+  class="result-waiting"
+>
+  結果を確認しています...
+</div>
 
-      /*
-       * ---------------------------------------------------
-       * 採点対象枠
-       * ---------------------------------------------------
-       *
-       * question_id は使わない。
-       *
-       * answer枠を対象にする。
-       */
 
-      const {
-        data:
-          boxData,
-        error:
-          boxError
-      } =
-        await supabaseClient
-          .from(
-            "layout_boxes"
-          )
-          .select(
-            `
-            id,
-            label,
-            points,
-            question_id,
-            box_type,
-            page_no,
-            sort_order
-            `
-          )
-          .eq(
-            "test_id",
-            testId
-          )
-          .order(
-            "page_no",
-            {
-              ascending:true
-            }
-          )
-          .order(
-            "sort_order",
-            {
-              ascending:true
-            }
-          );
+<div
+  id="studentAnswerActions"
+  class="student-result-actions hidden-before-publish"
+>
 
 
-      if (boxError) {
+<a
+  id="originalAnswerLink"
+  class="btn"
+  href="#"
+>
+採点前答案を見る
+</a>
 
-        throw boxError;
 
-      }
+</div>
 
 
-      const excludedLabels =
-        new Set([
-          "QR",
-          "氏名",
-          "合計",
-          "小計"
-        ]);
+</section>
 
 
-      boxes =
-        (boxData || [])
-          .filter(
-            box => {
+<section
+  id="markedAnswerCard"
+  class="student-result-card hidden-before-publish"
+>
 
-              const type =
-                String(
-                  box.box_type ||
-                  ""
-                )
-                .trim()
-                .toLowerCase();
 
+<div class="student-result-card-title">
+  採点済み答案
+</div>
 
-              /*
-               * answer枠だけ。
-               */
 
-              if (
-                type !==
-                "answer"
-              ) {
+<div
+  id="markedPages"
+  class="student-answer-pages"
+>
+</div>
 
-                return false;
 
-              }
+</section>
 
 
-              const label =
-                String(
-                  box.label ||
-                  ""
-                ).trim();
+</main>
 
 
-              /*
-               * 集計枠は除外。
-               */
+<script
+src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+></script>
 
-              if (
-                excludedLabels.has(
-                  label
-                )
-              ) {
 
-                return false;
+<script
+src="/js/config.js?v=20261116"
+></script>
 
-              }
 
+<script
+src="/js/auth.js?v=20261116"
+></script>
 
-              return true;
 
-            }
-          );
+<script
+src="/js/student/result.js?v=20261116"
+></script>
 
 
-      /*
-       * ---------------------------------------------------
-       * 答案
-       * ---------------------------------------------------
-       */
+</body>
 
-      const {
-        data:
-          answerData,
-        error:
-          answerError
-      } =
-        await supabaseClient
-          .from(
-            "answer_sheets"
-          )
-          .select(
-            `
-            id,
-            student_id,
-            status,
-            uploaded_at,
-            created_at
-            `
-          )
-          .eq(
-            "test_id",
-            testId
-          )
-          .not(
-            "student_id",
-            "is",
-            null
-          )
-          .order(
-            "uploaded_at",
-            {
-              ascending:false
-            }
-          );
-
-
-      if (answerError) {
-
-        throw answerError;
-
-      }
-
-
-      const answerSheets =
-        answerData ||
-        [];
-
-
-      if (!answerSheets.length) {
-
-        renderEmpty(
-          "生徒に紐付いた答案がありません。"
-        );
-
-        return;
-
-      }
-
-
-      /*
-       * ---------------------------------------------------
-       * STUDENTS
-       * ---------------------------------------------------
-       */
-
-      const studentIds =
-        [
-          ...new Set(
-            answerSheets
-              .map(
-                answer =>
-                  answer.student_id
-              )
-              .filter(Boolean)
-          )
-        ];
-
-
-      students =
-        [];
-
-
-      if (
-        studentIds.length
-      ) {
-
-        const {
-          data:
-            studentData,
-          error:
-            studentError
-        } =
-          await supabaseClient
-            .from(
-              "students"
-            )
-            .select(
-              `
-              id,
-              student_no,
-              name
-              `
-            )
-            .in(
-              "id",
-              studentIds
-            );
-
-
-        if (studentError) {
-
-          throw studentError;
-
-        }
-
-
-        students =
-          studentData ||
-          [];
-
-      }
-
-
-      /*
-       * ---------------------------------------------------
-       * SCORES
-       * ---------------------------------------------------
-       */
-
-      const {
-        data:
-          scoreData,
-        error:
-          scoreError
-      } =
-        await supabaseClient
-          .from(
-            "scores"
-          )
-          .select(
-            `
-            answer_sheet_id,
-            layout_box_id,
-            score,
-            status
-            `
-          )
-          .in(
-            "answer_sheet_id",
-            answerSheets.map(
-              answer =>
-                answer.id
-            )
-          );
-
-
-      if (scoreError) {
-
-        throw scoreError;
-
-      }
-
-
-      scores =
-        scoreData ||
-        [];
-
-
-      /*
-       * ---------------------------------------------------
-       * MAP
-       * ---------------------------------------------------
-       */
-
-      const studentMap =
-        new Map(
-          students.map(
-            student => [
-              student.id,
-              student
-            ]
-          )
-        );
-
-
-      const scoreMap =
-        new Map();
-
-
-      scores.forEach(
-        score => {
-
-          /*
-           * 採点済みだけ結果として使用。
-           */
-
-          if (
-            score.status !==
-            "marked"
-          ) {
-
-            return;
-
-          }
-
-
-          scoreMap.set(
-            `${score.answer_sheet_id}:${score.layout_box_id}`,
-            Number(
-              score.score
-            ) || 0
-          );
-
-        }
-      );
-
-
-      /*
-       * ---------------------------------------------------
-       * 最新答案を生徒ごとに使用
-       * ---------------------------------------------------
-       */
-
-      const latestAnswerMap =
-        new Map();
-
-
-      answerSheets.forEach(
-        answer => {
-
-          if (
-            !latestAnswerMap.has(
-              answer.student_id
-            )
-          ) {
-
-            latestAnswerMap.set(
-              answer.student_id,
-              answer
-            );
-
-          }
-
-        }
-      );
-
-
-      /*
-       * ---------------------------------------------------
-       * ROWS
-       * ---------------------------------------------------
-       */
-
-      const rows =
-        [];
-
-
-      latestAnswerMap.forEach(
-        answer => {
-
-          const student =
-            studentMap.get(
-              answer.student_id
-            );
-
-
-          if (!student) {
-
-            return;
-
-          }
-
-
-          /*
-           * 各設問の得点
-           */
-
-          const questionScores =
-            boxes.map(
-              box => {
-
-                return (
-                  scoreMap.get(
-                    `${answer.id}:${box.id}`
-                  ) ??
-                  0
-                );
-
-              }
-            );
-
-
-          /*
-           * 合計
-           */
-
-          const total =
-            questionScores.reduce(
-              (
-                sum,
-                value
-              ) =>
-                sum +
-                Number(
-                  value
-                ),
-              0
-            );
-
-
-          /*
-           * 設問平均
-           */
-
-          const average =
-            boxes.length
-              ? total /
-                boxes.length
-              : 0;
-
-
-          /*
-           * 配点合計
-           */
-
-          const maxScore =
-            boxes.reduce(
-              (
-                sum,
-                box
-              ) =>
-                sum +
-                (
-                  Number(
-                    box.points
-                  ) || 0
-                ),
-              0
-            );
-
-
-          /*
-           * 得点率
-           */
-
-          const percentage =
-            maxScore > 0
-              ? total /
-                maxScore *
-                100
-              : 0;
-
-
-          rows.push({
-
-            student,
-
-            answer,
-
-            questionScores,
-
-            total,
-
-            average,
-
-            maxScore,
-
-            percentage,
-
-            rank:
-              null
-
-          });
-
-        }
-      );
-
-
-      /*
-       * ---------------------------------------------------
-       * RANK
-       * ---------------------------------------------------
-       *
-       * 合計点の降順。
-       * 同点は同順位。
-       */
-
-      rows.sort(
-        (
-          a,
-          b
-        ) =>
-          b.total -
-          a.total
-      );
-
-
-      let previousScore =
-        null;
-
-
-      let previousRank =
-        0;
-
-
-      rows.forEach(
-        (
-          row,
-          index
-        ) => {
-
-          if (
-            previousScore !==
-              null &&
-            previousScore ===
-              row.total
-          ) {
-
-            row.rank =
-              previousRank;
-
-          } else {
-
-            row.rank =
-              index + 1;
-
-
-            previousRank =
-              row.rank;
-
-
-            previousScore =
-              row.total;
-
-          }
-
-        }
-      );
-
-
-      renderResults(
-        rows
-      );
-
-
-    } catch (error) {
-
-      console.error(
-        "loadResults:",
-        error
-      );
-
-
-      showError(
-        error.message ||
-        "成績を取得できませんでした。"
-      );
-
-    }
-
-  }
-
-
-  /* =====================================================
-     RENDER
-  ===================================================== */
-
-  function renderResults(
-    rows
-  ) {
-
-    if (!rows.length) {
-
-      renderEmpty(
-        "結果がありません。"
-      );
-
-      return;
-
-    }
-
-
-    resultBody.innerHTML =
-      rows
-        .map(
-          row => {
-
-            const questionCells =
-              row.questionScores
-                .map(
-                  score => `
-
-                    <td>
-                      ${escapeHtml(
-                        formatNumber(
-                          score
-                        )
-                      )}
-                    </td>
-
-                  `
-                )
-                .join("");
-
-
-            return `
-
-              <tr>
-
-                <td>
-                  ${escapeHtml(
-                    row.student.student_no
-                  )}
-                </td>
-
-
-                <td>
-                  ${escapeHtml(
-                    row.student.name
-                  )}
-                </td>
-
-
-                ${questionCells}
-
-
-                <td>
-                  ${escapeHtml(
-                    formatNumber(
-                      row.total
-                    )
-                  )}
-                  /
-                  ${escapeHtml(
-                    formatNumber(
-                      row.maxScore
-                    )
-                  )}
-                </td>
-
-
-                <td>
-                  ${escapeHtml(
-                    row.average.toFixed(
-                      2
-                    )
-                  )}
-                </td>
-
-
-                <td>
-                  ${escapeHtml(
-                    row.percentage.toFixed(
-                      1
-                    )
-                  )}%
-                </td>
-
-
-                <td>
-                  ${escapeHtml(
-                    String(
-                      row.rank
-                    )
-                  )}
-                </td>
-
-              </tr>
-
-            `;
-
-          }
-        )
-        .join("");
-
-  }
-
-
-  /* =====================================================
-     EMPTY
-  ===================================================== */
-
-  function renderEmpty(
-    message
-  ) {
-
-    resultBody.innerHTML = `
-
-      <tr>
-
-        <td
-          colspan="${
-            7 +
-            boxes.length
-          }"
-          style="
-            text-align:center;
-            padding:40px;
-          "
-        >
-
-          ${escapeHtml(
-            message
-          )}
-
-        </td>
-
-      </tr>
-
-    `;
-
-  }
-
-
-  /* =====================================================
-     ERROR
-  ===================================================== */
-
-  function showError(
-    message
-  ) {
-
-    renderEmpty(
-      message
-    );
-
-  }
-
-
-  /* =====================================================
-     FORMAT
-  ===================================================== */
-
-  function formatNumber(
-    value
-  ) {
-
-    const number =
-      Number(
-        value
-      );
-
-
-    if (
-      !Number.isFinite(
-        number
-      )
-    ) {
-
-      return "0";
-
-    }
-
-
-    return Number.isInteger(
-      number
-    )
-      ? String(
-          number
-        )
-      : number.toFixed(
-          1
-        );
-
-  }
-
-
-  /* =====================================================
-     ESCAPE
-  ===================================================== */
-
-  function escapeHtml(
-    value
-  ) {
-
-    return String(
-      value ??
-      ""
-    )
-      .replaceAll(
-        "&",
-        "&amp;"
-      )
-      .replaceAll(
-        "<",
-        "&lt;"
-      )
-      .replaceAll(
-        ">",
-        "&gt;"
-      )
-      .replaceAll(
-        '"',
-        "&quot;"
-      )
-      .replaceAll(
-        "'",
-        "&#039;"
-      );
-
-  }
-
-
-  /* =====================================================
-     START
-  ===================================================== */
-
-  initialize();
-
-})();
+</html>

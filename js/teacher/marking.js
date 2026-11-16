@@ -7,52 +7,33 @@
 
    テスト全体採点
 
-   採点単位
+   現在のDB構造
    ---------------------------------------------------------
-   テスト
-      ↓
-   問題1 × 全生徒
-      ↓
-   問題2 × 全生徒
-      ↓
-   問題3 × 全生徒
-      ↓
-   全問題
+   answer_sheets
+   answer_sheet_pages
+   layout_boxes
+   scores
+   students
 
-   現在の layout_boxes 実データ対応
+   採点対象
    ---------------------------------------------------------
-   QR       → 除外
-   氏名     → 除外
-   answer   → 採点対象
-   合計     → 除外
-   小計     → 除外
+   layout_boxes.box_type = "answer"
+
+   除外
+   ---------------------------------------------------------
+   QR
+   氏名
+   合計
+   小計
 
    question_id
    ---------------------------------------------------------
-   NULLでも問題なし。
-
-   配点
-   ---------------------------------------------------------
-   layout_boxes.points を使用。
-
-   答案画像
-   ---------------------------------------------------------
-   answer_sheet_pages
-      ↓
-   answer-files
-      ↓
-   signed URL
-      ↓
-   CSSで表示
-
-   Canvas / toBlob
-   ---------------------------------------------------------
-   使用しない。
+   NULLでも採点可能。
 
    公開
    ---------------------------------------------------------
-   全採点完了だけでは公開しない。
-   成績・偏差値・順位処理完了後に別処理で公開する。
+   採点完了だけでは公開しない。
+   成績・偏差値・順位処理とは分離する。
 ========================================================= */
 
 
@@ -60,25 +41,38 @@
    STATE
 ========================================================= */
 
-let DB = null;
+let DB =
+  null;
 
-let testId = null;
+let testId =
+  null;
 
-let test = null;
+let initialAnswerId =
+  null;
 
-let answers = [];
+let test =
+  null;
 
-let students = new Map();
+let answers =
+  [];
 
-let pages = new Map();
+let students =
+  new Map();
 
-let questions = [];
+let pages =
+  new Map();
 
-let scores = [];
+let questions =
+  [];
 
-let questionIndex = 0;
+let scores =
+  [];
 
-let saving = false;
+let questionIndex =
+  0;
+
+let saving =
+  false;
 
 
 /* =========================================================
@@ -90,66 +84,55 @@ const statusElement =
     "status"
   );
 
-
 const teacherNameElement =
   document.getElementById(
     "teacherName"
   );
-
 
 const answerTableWrap =
   document.getElementById(
     "answerTableWrap"
   );
 
-
 const questionTitleElement =
   document.getElementById(
     "questionTitle"
   );
-
 
 const questionMetaElement =
   document.getElementById(
     "questionMeta"
   );
 
-
 const previousButton =
   document.getElementById(
     "previousButton"
   );
-
 
 const nextButton =
   document.getElementById(
     "nextButton"
   );
 
-
 const refreshButton =
   document.getElementById(
     "refreshButton"
   );
-
 
 const progressElement =
   document.getElementById(
     "progress"
   );
 
-
 const progressBar =
   document.getElementById(
     "progressBar"
   );
 
-
 const progressText =
   document.getElementById(
     "progressText"
   );
-
 
 const completeElement =
   document.getElementById(
@@ -158,7 +141,7 @@ const completeElement =
 
 
 /* =========================================================
-   START
+   INIT
 ========================================================= */
 
 document.addEventListener(
@@ -177,29 +160,19 @@ async function initialize() {
 
 
     DB =
-      window.SB ||
       window.supabaseClient ||
+      window.SB ||
       null;
 
 
     if (!DB) {
 
       throw new Error(
-        "Supabaseクライアントがありません。js/config.jsを確認してください。"
+        "Supabase Clientが初期化されていません。"
       );
 
     }
 
-
-    /*
-     * URL
-     *
-     * /teacher-marking.html?test=UUID
-     *
-     * または
-     *
-     * /teacher/marking/mark?test=UUID
-     */
 
     const params =
       new URLSearchParams(
@@ -213,19 +186,42 @@ async function initialize() {
       );
 
 
+    initialAnswerId =
+      params.get(
+        "answer"
+      );
+
+
+    /*
+     * mark.htmlから渡される
+     * グローバル値にも対応。
+     */
+
     if (!testId) {
 
-      throw new Error(
-        "テストIDがありません。テスト管理から採点を開始してください。"
-      );
+      testId =
+        window.__INITIAL_TEST_ID__ ||
+        null;
 
     }
 
 
-    testId =
-      String(
-        testId
-      ).trim();
+    if (!initialAnswerId) {
+
+      initialAnswerId =
+        window.__INITIAL_ANSWER_ID__ ||
+        null;
+
+    }
+
+
+    if (!testId) {
+
+      throw new Error(
+        "テストIDがありません。テスト全体の採点画面から開始してください。"
+      );
+
+    }
 
 
     await checkTeacher();
@@ -262,7 +258,7 @@ async function initialize() {
 async function checkTeacher() {
 
   /*
-   * 既存auth.jsにrequireRoleがある場合。
+   * auth.jsが正常なら使用。
    */
 
   if (
@@ -271,12 +267,8 @@ async function checkTeacher() {
   ) {
 
     const result =
-      await withTimeout(
-        window.requireRole(
-          "teacher"
-        ),
-        10000,
-        "ログイン確認がタイムアウトしました。"
+      await window.requireRole(
+        "teacher"
       );
 
 
@@ -287,17 +279,12 @@ async function checkTeacher() {
     }
 
 
-    const profile =
-      result.profile ||
-      result;
-
-
     if (
       teacherNameElement
     ) {
 
       teacherNameElement.textContent =
-        profile.name ||
+        result.profile?.name ||
         "先生";
 
     }
@@ -309,55 +296,40 @@ async function checkTeacher() {
 
 
   /*
-   * requireRoleが無い場合の
-   * Supabase直接確認。
+   * フォールバック。
    */
 
+  const {
+    data,
+    error
+  } =
+    await DB.auth.getUser();
+
+
+  if (error) {
+
+    throw error;
+
+  }
+
+
+  if (!data?.user) {
+
+    location.replace(
+      "/login"
+    );
+
+    return;
+
+  }
+
+
   if (
-    DB.auth &&
-    typeof DB.auth.getUser ===
-    "function"
+    teacherNameElement
   ) {
 
-    const {
-      data,
-      error
-    } =
-      await withTimeout(
-        DB.auth.getUser(),
-        10000,
-        "ログイン確認がタイムアウトしました。"
-      );
-
-
-    if (error) {
-
-      throw new Error(
-        `ログイン確認エラー: ${error.message}`
-      );
-
-    }
-
-
-    if (!data?.user) {
-
-      location.replace(
-        "/login"
-      );
-
-      return;
-
-    }
-
-
-    if (
-      teacherNameElement
-    ) {
-
-      teacherNameElement.textContent =
-        "先生";
-
-    }
+    teacherNameElement.textContent =
+      "先生";
 
   }
 
@@ -387,18 +359,7 @@ function setupEvents() {
       questionIndex--;
 
 
-      try {
-
-        await renderQuestion();
-
-      } catch (error) {
-
-        showFatal(
-          error.message ||
-          "問題を表示できませんでした。"
-        );
-
-      }
+      await renderQuestion();
 
     }
   );
@@ -408,18 +369,7 @@ function setupEvents() {
     "click",
     async () => {
 
-      try {
-
-        await nextQuestion();
-
-      } catch (error) {
-
-        showFatal(
-          error.message ||
-          "次の問題へ進めませんでした。"
-        );
-
-      }
+      await nextQuestion();
 
     }
   );
@@ -437,7 +387,7 @@ function setupEvents() {
 
         showFatal(
           error.message ||
-          "更新に失敗しました。"
+          "更新できませんでした。"
         );
 
       }
@@ -454,54 +404,24 @@ function setupEvents() {
       "click",
       async () => {
 
-        try {
+        if (
+          typeof window.logout ===
+          "function"
+        ) {
 
-          if (
-            typeof window.logout ===
-            "function"
-          ) {
+          await window.logout();
 
-            await window.logout();
-
-            return;
-
-          }
-
-
-          if (
-            typeof window.signOut ===
-            "function"
-          ) {
-
-            await window.signOut();
-
-            return;
-
-          }
-
-
-          if (
-            DB.auth &&
-            typeof DB.auth.signOut ===
-            "function"
-          ) {
-
-            await DB.auth.signOut();
-
-            location.replace(
-              "/login"
-            );
-
-          }
-
-        } catch (error) {
-
-          console.error(
-            "logout:",
-            error
-          );
+          return;
 
         }
+
+
+        await DB.auth.signOut();
+
+
+        location.replace(
+          "/login"
+        );
 
       }
     );
@@ -515,20 +435,109 @@ function setupEvents() {
 
 async function loadEverything() {
 
-  /*
-   * -------------------------------------------------------
-   * TEST
-   * -------------------------------------------------------
-   */
-
   setStatus(
     "テスト情報を取得しています..."
   );
 
 
+  await loadTest();
+
+
+  setStatus(
+    "答案を取得しています..."
+  );
+
+
+  await loadAnswers();
+
+
+  setStatus(
+    "生徒情報を取得しています..."
+  );
+
+
+  await loadStudents();
+
+
+  setStatus(
+    "答案ページを取得しています..."
+  );
+
+
+  await loadPages();
+
+
+  setStatus(
+    "採点対象の設問を取得しています..."
+  );
+
+
+  await loadQuestions();
+
+
+  setStatus(
+    "既存の採点結果を取得しています..."
+  );
+
+
+  await loadScores();
+
+
+  questionIndex =
+    0;
+
+
+  /*
+   * 初期答案が指定されている場合でも、
+   * 採点はテスト全体を表示する。
+   *
+   * その答案が存在することだけ確認する。
+   */
+
+  if (
+    initialAnswerId &&
+    !answers.some(
+      answer =>
+        answer.id ===
+        initialAnswerId
+    )
+  ) {
+
+    initialAnswerId =
+      null;
+
+  }
+
+
+  progressElement?.classList.add(
+    "show"
+  );
+
+
+  completeElement?.classList.remove(
+    "show"
+  );
+
+
+  await renderQuestion();
+
+
+  setStatus(
+    `${test.name} / 答案 ${answers.length}件 / 設問 ${questions.length}問`
+  );
+
+}
+
+
+/* =========================================================
+   LOAD TEST
+========================================================= */
+
+async function loadTest() {
+
   const {
-    data: testData,
-    error: testError
+    data,
+    error
   } =
     await withTimeout(
       DB
@@ -554,16 +563,16 @@ async function loadEverything() {
     );
 
 
-  if (testError) {
+  if (error) {
 
     throw new Error(
-      `テスト取得エラー: ${testError.message}`
+      `テスト取得エラー: ${error.message}`
     );
 
   }
 
 
-  if (!testData) {
+  if (!data) {
 
     throw new Error(
       "指定されたテストが見つかりません。"
@@ -573,23 +582,20 @@ async function loadEverything() {
 
 
   test =
-    testData;
+    data;
+
+}
 
 
-  /*
-   * -------------------------------------------------------
-   * ANSWERS
-   * -------------------------------------------------------
-   */
+/* =========================================================
+   LOAD ANSWERS
+========================================================= */
 
-  setStatus(
-    "答案を取得しています..."
-  );
-
+async function loadAnswers() {
 
   const {
-    data: answerData,
-    error: answerError
+    data,
+    error
   } =
     await withTimeout(
       DB
@@ -626,17 +632,17 @@ async function loadEverything() {
     );
 
 
-  if (answerError) {
+  if (error) {
 
     throw new Error(
-      `答案取得エラー: ${answerError.message}`
+      `答案取得エラー: ${error.message}`
     );
 
   }
 
 
   answers =
-    answerData ||
+    data ||
     [];
 
 
@@ -647,94 +653,6 @@ async function loadEverything() {
     );
 
   }
-
-
-  /*
-   * -------------------------------------------------------
-   * STUDENTS
-   * -------------------------------------------------------
-   */
-
-  setStatus(
-    "生徒情報を取得しています..."
-  );
-
-
-  await loadStudents();
-
-
-  /*
-   * -------------------------------------------------------
-   * PAGES
-   * -------------------------------------------------------
-   */
-
-  setStatus(
-    "答案ページを取得しています..."
-  );
-
-
-  await loadPages();
-
-
-  /*
-   * -------------------------------------------------------
-   * QUESTIONS
-   * -------------------------------------------------------
-   */
-
-  setStatus(
-    "採点対象の設問を取得しています..."
-  );
-
-
-  await loadQuestions();
-
-
-  /*
-   * -------------------------------------------------------
-   * SCORES
-   * -------------------------------------------------------
-   */
-
-  setStatus(
-    "既存の採点結果を取得しています..."
-  );
-
-
-  await loadScores();
-
-
-  /*
-   * -------------------------------------------------------
-   * READY
-   * -------------------------------------------------------
-   */
-
-  questionIndex =
-    0;
-
-
-  progressElement?.classList.add(
-    "show"
-  );
-
-
-  completeElement?.classList.remove(
-    "show"
-  );
-
-
-  nextButton.disabled =
-    false;
-
-
-  await renderQuestion();
-
-
-  setStatus(
-    `${test.name} / 答案 ${answers.length}件 / 設問 ${questions.length}問`
-  );
 
 }
 
@@ -803,23 +721,23 @@ async function loadStudents() {
   }
 
 
-  for (
-    const student
-    of data || []
-  ) {
+  (data || [])
+    .forEach(
+      student => {
 
-    students.set(
-      student.id,
-      student
+        students.set(
+          student.id,
+          student
+        );
+
+      }
     );
-
-  }
 
 }
 
 
 /* =========================================================
-   LOAD ANSWER PAGES
+   LOAD PAGES
 ========================================================= */
 
 async function loadPages() {
@@ -887,34 +805,34 @@ async function loadPages() {
   }
 
 
-  for (
-    const page
-    of data || []
-  ) {
+  (data || [])
+    .forEach(
+      page => {
 
-    if (
-      !pages.has(
-        page.answer_sheet_id
-      )
-    ) {
+        if (
+          !pages.has(
+            page.answer_sheet_id
+          )
+        ) {
 
-      pages.set(
-        page.answer_sheet_id,
-        []
-      );
+          pages.set(
+            page.answer_sheet_id,
+            []
+          );
 
-    }
+        }
 
 
-    pages
-      .get(
-        page.answer_sheet_id
-      )
-      .push(
-        page
-      );
+        pages
+          .get(
+            page.answer_sheet_id
+          )
+          .push(
+            page
+          );
 
-  }
+      }
+    );
 
 }
 
@@ -947,8 +865,7 @@ async function loadQuestions() {
           height,
           question_id,
           points,
-          sort_order,
-          created_at
+          sort_order
           `
         )
         .eq(
@@ -983,35 +900,17 @@ async function loadQuestions() {
   }
 
 
-  const raw =
-    data ||
-    [];
-
-
-  /*
-   * =====================================================
-   * 現在の実DB構造に合わせる
-   *
-   * question_id は使わない。
-   *
-   * box_type = answer
-   * の枠を採点対象候補にする。
-   *
-   * 除外:
-   *   合計
-   *   小計
-   * =====================================================
-   */
-
   const excludedLabels =
     new Set([
+      "QR",
+      "氏名",
       "合計",
       "小計"
     ]);
 
 
   questions =
-    raw
+    (data || [])
       .filter(
         box => {
 
@@ -1025,13 +924,7 @@ async function loadQuestions() {
 
 
           /*
-           * answer以外
-           *
-           * qr
-           * name
-           * etc.
-           *
-           * は採点しない。
+           * answerだけ採点。
            */
 
           if (
@@ -1048,8 +941,7 @@ async function loadQuestions() {
             String(
               box.label ||
               ""
-            )
-              .trim();
+            ).trim();
 
 
           /*
@@ -1079,10 +971,6 @@ async function loadQuestions() {
 
           id:
             box.id,
-
-          /*
-           * question_idはNULLでもOK
-           */
 
           questionId:
             box.question_id ||
@@ -1122,10 +1010,6 @@ async function loadQuestions() {
               box.points
             ) || 0,
 
-          boxType:
-            box.box_type ||
-            "answer",
-
           sortOrder:
             Number(
               box.sort_order
@@ -1134,10 +1018,6 @@ async function loadQuestions() {
         })
       );
 
-
-  /*
-   * ページ → sort_order
-   */
 
   questions.sort(
     (
@@ -1172,19 +1052,16 @@ async function loadQuestions() {
     throw new Error(
       [
         "このテストには採点対象のanswer枠がありません。",
-        `layout_boxes取得数: ${raw.length}件`
+        `layout_boxes取得数: ${
+          data?.length ||
+          0
+        }件`
       ].join(
         "\n"
       )
     );
 
   }
-
-
-  console.log(
-    "採点対象:",
-    questions
-  );
 
 }
 
@@ -1284,22 +1161,24 @@ async function renderQuestion() {
 
 
   questionMetaElement.textContent =
-    `${test.name} / 配点 ${formatNumber(
-      question.points
-    )}点 / 問題 ${
-      questionIndex + 1
-    } / ${
-      questions.length
-    }`;
+    [
+      test.name,
+      `配点 ${formatNumber(
+        question.points
+      )}点`,
+      `問題 ${
+        questionIndex + 1
+      } / ${
+        questions.length
+      }`
+    ].join(
+      " / "
+    );
 
 
   previousButton.disabled =
     questionIndex <=
     0;
-
-
-  nextButton.disabled =
-    false;
 
 
   nextButton.textContent =
@@ -1317,10 +1196,6 @@ async function renderQuestion() {
 
   `;
 
-
-  /*
-   * 同じ設問の全生徒を並列処理。
-   */
 
   const rows =
     await Promise.all(
@@ -1350,15 +1225,15 @@ async function renderQuestion() {
 
       <tr>
 
-        <th class="student-cell">
+        <th>
           生徒
         </th>
 
-        <th class="answer-cell">
+        <th>
           答案
         </th>
 
-        <th class="score-cell">
+        <th>
           得点
         </th>
 
@@ -1404,7 +1279,7 @@ async function renderQuestion() {
 
 
 /* =========================================================
-   ANSWER ROW
+   CREATE ROW
 ========================================================= */
 
 async function createAnswerRow(
@@ -1419,9 +1294,7 @@ async function createAnswerRow(
 
 
   /*
-   * -------------------------------------------------------
    * 生徒
-   * -------------------------------------------------------
    */
 
   const studentCell =
@@ -1440,46 +1313,44 @@ async function createAnswerRow(
     );
 
 
-  const no =
+  const studentNo =
     document.createElement(
       "div"
     );
 
 
-  no.className =
+  studentNo.className =
     "student-no";
 
 
-  no.textContent =
+  studentNo.textContent =
     student?.student_no ||
     "未紐付け";
 
 
-  const name =
+  const studentName =
     document.createElement(
       "div"
     );
 
 
-  name.className =
+  studentName.className =
     "student-name";
 
 
-  name.textContent =
+  studentName.textContent =
     student?.name ||
     "";
 
 
   studentCell.append(
-    no,
-    name
+    studentNo,
+    studentName
   );
 
 
   /*
-   * -------------------------------------------------------
    * 答案
-   * -------------------------------------------------------
    */
 
   const answerCell =
@@ -1530,9 +1401,7 @@ async function createAnswerRow(
 
 
   /*
-   * -------------------------------------------------------
    * 得点
-   * -------------------------------------------------------
    */
 
   const scoreCell =
@@ -1552,32 +1421,42 @@ async function createAnswerRow(
     );
 
 
+  const controls =
+    document.createElement(
+      "div"
+    );
+
+
+  controls.className =
+    "score-controls";
+
+
   const input =
     document.createElement(
       "input"
     );
 
 
-  input.className =
-    "score-input";
-
-
   input.type =
     "number";
+
+
+  input.className =
+    "score-input";
 
 
   input.min =
     "0";
 
 
-  input.step =
-    "0.1";
-
-
   input.max =
     String(
       question.points
     );
+
+
+  input.step =
+    "0.1";
 
 
   input.value =
@@ -1604,6 +1483,42 @@ async function createAnswerRow(
     "保存";
 
 
+  const zeroButton =
+    document.createElement(
+      "button"
+    );
+
+
+  zeroButton.type =
+    "button";
+
+
+  zeroButton.className =
+    "btn";
+
+
+  zeroButton.textContent =
+    "0点";
+
+
+  const fullButton =
+    document.createElement(
+      "button"
+    );
+
+
+  fullButton.type =
+    "button";
+
+
+  fullButton.className =
+    "btn";
+
+
+  fullButton.textContent =
+    "満点";
+
+
   const state =
     document.createElement(
       "div"
@@ -1615,17 +1530,15 @@ async function createAnswerRow(
 
 
   state.textContent =
-    existing &&
-    existing.status ===
+    existing?.status ===
       "marked"
       ? "採点済み"
       : "未採点";
 
 
   if (
-    existing &&
-    existing.status ===
-      "marked"
+    existing?.status ===
+    "marked"
   ) {
 
     state.classList.add(
@@ -1675,21 +1588,65 @@ async function createAnswerRow(
   );
 
 
-  scoreCell.append(
+  zeroButton.addEventListener(
+    "click",
+    async () => {
+
+      input.value =
+        "0";
+
+
+      await saveScore(
+        answer,
+        question,
+        input,
+        warning,
+        state
+      );
+
+    }
+  );
+
+
+  fullButton.addEventListener(
+    "click",
+    async () => {
+
+      input.value =
+        String(
+          question.points
+        );
+
+
+      await saveScore(
+        answer,
+        question,
+        input,
+        warning,
+        state
+      );
+
+    }
+  );
+
+
+  controls.append(
     input,
-    document.createElement(
-      "br"
-    ),
     saveButton,
+    zeroButton,
+    fullButton
+  );
+
+
+  scoreCell.append(
+    controls,
     state,
     warning
   );
 
 
   /*
-   * -------------------------------------------------------
    * 状態
-   * -------------------------------------------------------
    */
 
   const statusCell =
@@ -1698,24 +1655,22 @@ async function createAnswerRow(
     );
 
 
-  if (
-    existing &&
-    existing.status ===
+  statusCell.textContent =
+    existing?.status ===
       "marked"
+      ? "採点済み"
+      : "未採点";
+
+
+  if (
+    existing?.status ===
+    "marked"
   ) {
-
-    statusCell.textContent =
-      "採点済み";
-
 
     statusCell.style.color =
       "#1769aa";
 
   } else {
-
-    statusCell.textContent =
-      "未採点";
-
 
     statusCell.style.color =
       "#b42318";
@@ -1752,11 +1707,6 @@ async function createAnswerViewer(
     [];
 
 
-  /*
-   * 問題のページ番号と
-   * 答案ページ番号を一致。
-   */
-
   const page =
     answerPages.find(
       item =>
@@ -1786,10 +1736,6 @@ async function createAnswerViewer(
 
   }
 
-
-  /*
-   * answer-filesから署名URL。
-   */
 
   const {
     data,
@@ -1864,8 +1810,8 @@ async function createAnswerViewer(
   /*
    * Canvasは使用しない。
    *
-   * 元画像をCSSで設問部分だけ
-   * 表示する。
+   * 画像そのものをCSSで移動して
+   * 設問枠だけ見せる。
    */
 
   const pageWidth =
@@ -1936,15 +1882,11 @@ async function createAnswerViewer(
     scaleY;
 
 
-  /*
-   * 表示幅。
-   */
-
   const displayWidth =
     Math.min(
-      500,
+      520,
       Math.max(
-        350,
+        360,
         cropWidth
       )
     );
@@ -1957,7 +1899,7 @@ async function createAnswerViewer(
 
   const displayHeight =
     Math.max(
-      150,
+      180,
       cropHeight *
       displayScale
     );
@@ -2018,18 +1960,12 @@ async function saveScore(
   }
 
 
-  const value =
-    Number(
-      input.value
-    );
+  const rawValue =
+    input.value;
 
-
-  /*
-   * 未入力
-   */
 
   if (
-    input.value ===
+    rawValue ===
     ""
   ) {
 
@@ -2043,9 +1979,11 @@ async function saveScore(
   }
 
 
-  /*
-   * 数値
-   */
+  const value =
+    Number(
+      rawValue
+    );
+
 
   if (
     !Number.isFinite(
@@ -2063,10 +2001,6 @@ async function saveScore(
   }
 
 
-  /*
-   * 0未満
-   */
-
   if (
     value < 0
   ) {
@@ -2081,18 +2015,18 @@ async function saveScore(
   }
 
 
-  /*
-   * 配点超過
-   */
-
   if (
     value >
-    question.points
+    Number(
+      question.points
+    )
   ) {
 
     showWarning(
       warning,
-      `配点 ${question.points}点を超えています。`
+      `配点 ${formatNumber(
+        question.points
+      )}点を超えています。保存できません。`
     );
 
     return;
@@ -2106,52 +2040,14 @@ async function saveScore(
 
   try {
 
-    /*
-     * 既存scoreを検索。
-     */
-
-    const {
-      data: existing,
-      error: findError
-    } =
-      await withTimeout(
-        DB
-          .from(
-            "scores"
-          )
-          .select(
-            "id"
-          )
-          .eq(
-            "answer_sheet_id",
-            answer.id
-          )
-          .eq(
-            "layout_box_id",
-            question.id
-          )
-          .maybeSingle(),
-        10000,
-        "既存採点確認がタイムアウトしました。"
+    const existing =
+      findScore(
+        answer.id,
+        question.id
       );
 
 
-    if (findError) {
-
-      throw new Error(
-        `既存採点確認エラー: ${findError.message}`
-      );
-
-    }
-
-
-    /*
-     * UPDATE
-     */
-
-    if (
-      existing?.id
-    ) {
+    if (existing) {
 
       const {
         error
@@ -2164,8 +2060,7 @@ async function saveScore(
             .update({
 
               /*
-               * question_idがNULLでも
-               * 問題ない。
+               * question_idはNULLでもよい。
                */
 
               question_id:
@@ -2200,21 +2095,18 @@ async function saveScore(
       }
 
 
-      updateLocalScore(
-        existing.id,
-        answer.id,
-        question,
-        value
-      );
-
-    }
+      existing.score =
+        value;
 
 
-    /*
-     * INSERT
-     */
+      existing.status =
+        "marked";
 
-    else {
+
+      existing.marked_at =
+        new Date().toISOString();
+
+    } else {
 
       const {
         data,
@@ -2248,7 +2140,15 @@ async function saveScore(
 
             })
             .select(
-              "id"
+              `
+              id,
+              answer_sheet_id,
+              layout_box_id,
+              question_id,
+              score,
+              status,
+              marked_at
+              `
             )
             .single(),
           10000,
@@ -2265,31 +2165,9 @@ async function saveScore(
       }
 
 
-      scores.push({
-
-        id:
-          data.id,
-
-        answer_sheet_id:
-          answer.id,
-
-        layout_box_id:
-          question.id,
-
-        question_id:
-          question.questionId ||
-          null,
-
-        score:
-          value,
-
-        status:
-          "marked",
-
-        marked_at:
-          new Date().toISOString()
-
-      });
+      scores.push(
+        data
+      );
 
     }
 
@@ -2307,10 +2185,18 @@ async function saveScore(
     );
 
 
+    /*
+     * ここでは answer_sheets.status を
+     * marked に変更しない。
+     *
+     * 成績・偏差値・順位処理完了前に
+     * 「採点済み答案」として公開しないため。
+     */
+
     updateProgress();
 
 
-    showStatus(
+    setStatus(
       `${getStudentLabel(
         answer
       )} / ${question.label} を保存しました。`
@@ -2339,186 +2225,12 @@ async function saveScore(
       "採点を保存できませんでした。"
     );
 
-
   } finally {
 
     saving =
       false;
 
   }
-
-}
-
-
-/* =========================================================
-   NEXT QUESTION
-========================================================= */
-
-async function nextQuestion() {
-
-  const question =
-    questions[
-      questionIndex
-    ];
-
-
-  /*
-   * 現在の問題が未完了でも
-   * 次へ進める。
-   */
-
-  if (
-    !isQuestionComplete(
-      question
-    )
-  ) {
-
-    const proceed =
-      window.confirm(
-        "この問題には未採点の答案があります。このまま次へ進みますか？"
-      );
-
-
-    if (!proceed) {
-
-      return;
-
-    }
-
-  }
-
-
-  /*
-   * 最後の問題
-   */
-
-  if (
-    questionIndex >=
-    questions.length - 1
-  ) {
-
-    finishMarking();
-
-    return;
-
-  }
-
-
-  questionIndex++;
-
-
-  await renderQuestion();
-
-}
-
-
-/* =========================================================
-   FINISH
-========================================================= */
-
-function finishMarking() {
-
-  const allComplete =
-    questions.every(
-      question =>
-        isQuestionComplete(
-          question
-        )
-    );
-
-
-  if (!allComplete) {
-
-    let remaining =
-      0;
-
-
-    questions.forEach(
-      question => {
-
-        if (
-          !isQuestionComplete(
-            question
-          )
-        ) {
-
-          remaining++;
-
-        }
-
-      }
-    );
-
-
-    showStatus(
-      `まだ未採点の問題があります。残り ${remaining}問です。`,
-      true
-    );
-
-
-    return;
-
-  }
-
-
-  /*
-   * 全採点完了。
-   *
-   * ただし公開しない。
-   */
-
-  completeElement?.classList.add(
-    "show"
-  );
-
-
-  showStatus(
-    "全答案・全設問の採点が完了しました。成績処理待ちです。"
-  );
-
-
-  updateProgress();
-
-
-  nextButton.disabled =
-    true;
-
-}
-
-
-/* =========================================================
-   QUESTION COMPLETE
-========================================================= */
-
-function isQuestionComplete(
-  question
-) {
-
-  if (!question) {
-
-    return false;
-
-  }
-
-
-  return answers.every(
-    answer => {
-
-      const score =
-        findScore(
-          answer.id,
-          question.id
-        );
-
-
-      return Boolean(
-        score &&
-        score.status ===
-          "marked"
-      );
-
-    }
-  );
 
 }
 
@@ -2545,69 +2257,6 @@ function findScore(
 
 
 /* =========================================================
-   LOCAL SCORE
-========================================================= */
-
-function updateLocalScore(
-  id,
-  answerId,
-  question,
-  value
-) {
-
-  const existing =
-    findScore(
-      answerId,
-      question.id
-    );
-
-
-  if (existing) {
-
-    existing.id =
-      id;
-
-    existing.score =
-      value;
-
-    existing.status =
-      "marked";
-
-    existing.question_id =
-      question.questionId ||
-      null;
-
-    return;
-
-  }
-
-
-  scores.push({
-
-    id,
-
-    answer_sheet_id:
-      answerId,
-
-    layout_box_id:
-      question.id,
-
-    question_id:
-      question.questionId ||
-      null,
-
-    score:
-      value,
-
-    status:
-      "marked"
-
-  });
-
-}
-
-
-/* =========================================================
    PROGRESS
 ========================================================= */
 
@@ -2622,36 +2271,34 @@ function updateProgress() {
     0;
 
 
-  for (
-    const answer
-    of answers
-  ) {
+  answers.forEach(
+    answer => {
 
-    for (
-      const question
-      of questions
-    ) {
+      questions.forEach(
+        question => {
 
-      const score =
-        findScore(
-          answer.id,
-          question.id
-        );
+          const score =
+            findScore(
+              answer.id,
+              question.id
+            );
 
 
-      if (
-        score &&
-        score.status ===
-          "marked"
-      ) {
+          if (
+            score &&
+            score.status ===
+              "marked"
+          ) {
 
-        completed++;
+            completed++;
 
-      }
+          }
+
+        }
+      );
 
     }
-
-  }
+  );
 
 
   const percent =
@@ -2664,7 +2311,9 @@ function updateProgress() {
       : 0;
 
 
-  if (progressBar) {
+  if (
+    progressBar
+  ) {
 
     progressBar.style.width =
       `${percent}%`;
@@ -2672,12 +2321,116 @@ function updateProgress() {
   }
 
 
-  if (progressText) {
+  if (
+    progressText
+  ) {
 
     progressText.textContent =
       `${completed} / ${total} 設問答案を採点済み (${percent}%)`;
 
   }
+
+
+  if (
+    progressElement
+  ) {
+
+    progressElement.textContent =
+      `${completed} / ${total}`;
+
+  }
+
+
+  if (
+    total > 0 &&
+    completed === total
+  ) {
+
+    completeElement?.classList.add(
+      "show"
+    );
+
+
+    setStatus(
+      "全答案・全設問の採点が完了しました。成績処理待ちです。"
+    );
+
+  } else {
+
+    completeElement?.classList.remove(
+      "show"
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   NEXT
+========================================================= */
+
+async function nextQuestion() {
+
+  if (
+    questionIndex >=
+    questions.length - 1
+  ) {
+
+    const complete =
+      questions.every(
+        question =>
+          answers.every(
+            answer => {
+
+              const score =
+                findScore(
+                  answer.id,
+                  question.id
+                );
+
+
+              return (
+                score &&
+                score.status ===
+                "marked"
+              );
+
+            }
+          )
+      );
+
+
+    if (complete) {
+
+      completeElement?.classList.add(
+        "show"
+      );
+
+
+      setStatus(
+        "全答案・全設問の採点が完了しました。成績処理待ちです。"
+      );
+
+    } else {
+
+      setStatus(
+        "まだ未採点の答案があります。",
+        true
+      );
+
+    }
+
+
+    return;
+
+  }
+
+
+  questionIndex++;
+
+
+  await renderQuestion();
 
 }
 
@@ -2743,12 +2496,17 @@ function validateScore(
 
 
   if (
-    value > max
+    value >
+    Number(
+      max
+    )
   ) {
 
     showWarning(
       warning,
-      `配点 ${max}点を超えています。`
+      `配点 ${formatNumber(
+        max
+      )}点を超えています。`
     );
 
     return;
@@ -2879,6 +2637,39 @@ async function withTimeout(
 
 
 /* =========================================================
+   STUDENT LABEL
+========================================================= */
+
+function getStudentLabel(
+  answer
+) {
+
+  const student =
+    students.get(
+      answer.student_id
+    );
+
+
+  if (!student) {
+
+    return "未紐付け";
+
+  }
+
+
+  return [
+    student.student_no,
+    student.name
+  ]
+    .filter(Boolean)
+    .join(
+      " / "
+    );
+
+}
+
+
+/* =========================================================
    STATUS
 ========================================================= */
 
@@ -2898,30 +2689,24 @@ function setStatus(
     message;
 
 
-  statusElement.style.color =
+  statusElement.className =
     error
-      ? "#b42318"
-      : "#333";
+      ? "status error"
+      : "status";
 
 }
 
 
 function showStatus(
-  message,
-  error = false
+  message
 ) {
 
   setStatus(
-    message,
-    error
+    message
   );
 
 }
 
-
-/* =========================================================
-   FATAL
-========================================================= */
 
 function showFatal(
   message
@@ -2933,33 +2718,32 @@ function showFatal(
   );
 
 
-  if (!answerTableWrap) {
+  if (
+    answerTableWrap
+  ) {
 
-    return;
+    answerTableWrap.innerHTML = `
+
+      <div class="empty">
+
+        ${escapeHtml(
+          message
+        )}
+
+        <br><br>
+
+        <a
+          href="/teacher/marking"
+          class="btn"
+        >
+          採点一覧へ戻る
+        </a>
+
+      </div>
+
+    `;
 
   }
-
-
-  answerTableWrap.innerHTML = `
-
-    <div class="empty">
-
-      ${escapeHtml(
-        message
-      )}
-
-      <br><br>
-
-      <a
-        href="/teacher-marking.html"
-        class="btn"
-      >
-        採点一覧へ戻る
-      </a>
-
-    </div>
-
-  `;
 
 }
 
@@ -2987,32 +2771,6 @@ function showWarning(
   element.classList.add(
     "show"
   );
-
-}
-
-
-/* =========================================================
-   STUDENT LABEL
-========================================================= */
-
-function getStudentLabel(
-  answer
-) {
-
-  const student =
-    students.get(
-      answer.student_id
-    );
-
-
-  if (!student) {
-
-    return "未紐付け";
-
-  }
-
-
-  return `${student.student_no || ""} / ${student.name || ""}`;
 
 }
 

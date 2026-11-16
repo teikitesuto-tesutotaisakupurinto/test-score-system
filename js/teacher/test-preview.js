@@ -1,3 +1,6 @@
+
+"use strict";
+
 /* =========================================================
    テスト確認
 ========================================================= */
@@ -8,82 +11,171 @@ const previewParams =
   );
 
 const previewTestId =
+  previewParams.get("test") ||
   previewParams.get("id");
 
 
+let previewTest =
+  null;
+
+
+/* =========================================================
+   INIT
+========================================================= */
+
 async function initializePreview() {
 
-  const profile =
-    await getProfile();
+  try {
 
-  if (!profile) {
-    location.href = "/login";
-    return;
-  }
-
-  if (
-    profile.role !== "teacher" &&
-    profile.role !== "admin"
-  ) {
-    location.href = "/student/dashboard";
-    return;
-  }
-
-  document.getElementById(
-    "teacherName"
-  ).textContent =
-    profile.name || "先生";
+    const profile =
+      await getProfile();
 
 
-  if (!previewTestId) {
+    if (!profile) {
 
-    alert(
-      "テストが指定されていません。"
+      location.replace(
+        "/login"
+      );
+
+      return;
+
+    }
+
+
+    if (
+      profile.role !== "teacher" &&
+      profile.role !== "admin"
+    ) {
+
+      location.replace(
+        "/student/dashboard"
+      );
+
+      return;
+
+    }
+
+
+    document.getElementById(
+      "teacherName"
+    ).textContent =
+      profile.name ||
+      "先生";
+
+
+    if (!previewTestId) {
+
+      throw new Error(
+        "テストが指定されていません。"
+      );
+
+    }
+
+
+    setLinks();
+
+
+    await loadTest();
+
+
+    await loadPages();
+
+
+    await loadBoxes();
+
+
+  } catch (error) {
+
+    console.error(
+      "test-preview:",
+      error
     );
 
-    location.href =
-      "/teacher/tests";
 
-    return;
+    showError(
+      error.message ||
+      "テスト確認を読み込めませんでした。"
+    );
 
   }
-
-
-  setLinks();
-
-  await loadTest();
-
-  await loadPages();
-
-  await loadBoxes();
 
 }
 
+
+/* =========================================================
+   LINKS
+========================================================= */
 
 function setLinks() {
 
-  document.getElementById(
-    "pagesLink"
-  ).href =
-    `/teacher/tests/pages?id=${encodeURIComponent(previewTestId)}`;
+  const id =
+    encodeURIComponent(
+      previewTestId
+    );
 
-  document.getElementById(
-    "layoutLink"
-  ).href =
-    `/teacher/tests/layout?id=${encodeURIComponent(previewTestId)}`;
 
-  document.getElementById(
-    "modelAnswerLink"
-  ).href =
-    `/teacher/tests/model-answer?id=${encodeURIComponent(previewTestId)}`;
+  setHref(
+    "pagesLink",
+    `/teacher/tests/pages?test=${id}`
+  );
 
-  document.getElementById(
-    "previewLink"
-  ).href =
-    `/teacher/tests/preview?id=${encodeURIComponent(previewTestId)}`;
+
+  setHref(
+    "layoutLink",
+    `/teacher/tests/layout?test=${id}`
+  );
+
+
+  setHref(
+    "pointsLink",
+    `/teacher/tests/points?test=${id}`
+  );
+
+
+  setHref(
+    "modelAnswerLink",
+    `/teacher/tests/model-answer?test=${id}`
+  );
+
+
+  setHref(
+    "previewLink",
+    `/teacher/tests/preview?test=${id}`
+  );
+
+
+  setHref(
+    "markingLink",
+    `/teacher/marking?test=${id}`
+  );
 
 }
 
+
+function setHref(
+  id,
+  href
+) {
+
+  const element =
+    document.getElementById(
+      id
+    );
+
+
+  if (element) {
+
+    element.href =
+      href;
+
+  }
+
+}
+
+
+/* =========================================================
+   TEST
+========================================================= */
 
 async function loadTest() {
 
@@ -101,7 +193,9 @@ async function loadTest() {
         class_name,
         test_date,
         max_score,
-        status
+        status,
+        results_published,
+        results_published_at
       `)
       .eq(
         "id",
@@ -109,52 +203,104 @@ async function loadTest() {
       )
       .maybeSingle();
 
+
   if (error) {
-    console.error(error);
-    return;
+
+    throw error;
+
   }
+
 
   if (!data) {
-    return;
+
+    throw new Error(
+      "テストが見つかりません。"
+    );
+
   }
 
-  document.getElementById(
-    "testInformation"
-  ).innerHTML = `
+
+  previewTest =
+    data;
+
+
+  const information =
+    document.getElementById(
+      "testInformation"
+    );
+
+
+  if (!information) {
+
+    return;
+
+  }
+
+
+  information.innerHTML = `
 
     <strong>
-      ${escapeHtml(data.name)}
+      ${escapeHtml(
+        data.name
+      )}
     </strong>
 
     <br>
 
     教科：
-    ${escapeHtml(data.subject || "")}
+    ${escapeHtml(
+      data.subject ||
+      "-"
+    )}
 
     ／
 
     学年：
-    ${escapeHtml(data.grade || "")}
+    ${escapeHtml(
+      data.grade ||
+      "-"
+    )}
 
     ／
 
     クラス：
-    ${escapeHtml(data.class_name || "")}
+    ${escapeHtml(
+      data.class_name ||
+      "-"
+    )}
 
     ／
 
     満点：
-    ${data.max_score}
+    ${formatNumber(
+      data.max_score
+    )}
 
     ／
 
     状態：
-    ${escapeHtml(data.status)}
+    ${escapeHtml(
+      data.status ||
+      "-"
+    )}
+
+    ／
+
+    結果：
+    ${
+      data.results_published
+        ? "公開済み"
+        : "未確定"
+    }
 
   `;
 
 }
 
+
+/* =========================================================
+   PAGES
+========================================================= */
 
 async function loadPages() {
 
@@ -176,13 +322,17 @@ async function loadPages() {
         previewTestId
       )
       .order(
-        "page_no"
+        "page_no",
+        {
+          ascending:true
+        }
       );
 
 
   if (error) {
-    console.error(error);
-    return;
+
+    throw error;
+
   }
 
 
@@ -190,6 +340,13 @@ async function loadPages() {
     document.getElementById(
       "pagePreview"
     );
+
+
+  if (!container) {
+
+    return;
+
+  }
 
 
   if (!data?.length) {
@@ -210,80 +367,108 @@ async function loadPages() {
     `;
 
     return;
+
   }
 
 
-  container.innerHTML = "";
+  container.innerHTML =
+    "";
 
 
   for (
-    const page of data
+    const page
+    of data
   ) {
 
-    const card =
-      document.createElement(
-        "div"
-      );
+    await renderPage(
+      container,
+      page
+    );
+
+  }
+
+}
 
 
-    card.className =
-      "card";
+/* =========================================================
+   PAGE
+========================================================= */
 
+async function renderPage(
+  container,
+  page
+) {
 
-    card.style.margin =
-      "0";
-
-
-    card.innerHTML = `
-
-      <strong>
-        ${page.page_no}ページ
-      </strong>
-
-      <div
-        style="
-          margin-top:8px;
-          height:300px;
-          border:1px solid #d0d6dc;
-          background:#f5f6f7;
-          display:flex;
-          align-items:center;
-          justify-content:center;
-          overflow:hidden;
-        "
-      >
-        読み込み中...
-      </div>
-
-    `;
-
-
-    container.appendChild(
-      card
+  const card =
+    document.createElement(
+      "div"
     );
 
 
-    if (
-      !page.image_path
-    ) {
+  card.className =
+    "page-card";
 
-      card
-        .querySelector("div")
-        .textContent =
-        "画像なし";
 
-      continue;
+  const title =
+    document.createElement(
+      "div"
+    );
 
-    }
 
+  title.className =
+    "page-title";
+
+
+  title.textContent =
+    `${page.page_no}ページ`;
+
+
+  const imageArea =
+    document.createElement(
+      "div"
+    );
+
+
+  imageArea.className =
+    "page-image";
+
+
+  imageArea.textContent =
+    "読み込み中...";
+
+
+  card.append(
+    title,
+    imageArea
+  );
+
+
+  container.appendChild(
+    card
+  );
+
+
+  if (!page.image_path) {
+
+    imageArea.textContent =
+      "画像なし";
+
+    return;
+
+  }
+
+
+  try {
 
     const {
-      data: signed,
-      error: signedError
+      data,
+      error
     } =
       await supabaseClient
         .storage
-        .from("model-answers")
+        .from(
+          "test-files"
+        )
         .createSignedUrl(
           page.image_path,
           3600
@@ -291,39 +476,93 @@ async function loadPages() {
 
 
     if (
-      signedError ||
-      !signed?.signedUrl
+      error ||
+      !data?.signedUrl
     ) {
 
-      card
-        .querySelector("div")
-        .textContent =
-        "画像を表示できません。";
+      /*
+       * 旧データでmodel-answersに
+       * 入っている場合にも対応。
+       */
 
-      continue;
+      const fallback =
+        await supabaseClient
+          .storage
+          .from(
+            "model-answers"
+          )
+          .createSignedUrl(
+            page.image_path,
+            3600
+          );
+
+
+      if (
+        fallback.error ||
+        !fallback.data?.signedUrl
+      ) {
+
+        throw new Error(
+          "画像URLを取得できませんでした。"
+        );
+
+      }
+
+
+      renderImage(
+        imageArea,
+        fallback.data.signedUrl
+      );
+
+
+      return;
 
     }
 
 
-    card
-      .querySelector("div")
-      .innerHTML = `
+    renderImage(
+      imageArea,
+      data.signedUrl
+    );
 
-        <img
-          src="${signed.signedUrl}"
-          style="
-            max-width:100%;
-            max-height:100%;
-            object-fit:contain;
-          "
-        >
 
-      `;
+  } catch (error) {
+
+    imageArea.textContent =
+      error.message ||
+      "画像を表示できません。";
 
   }
 
 }
 
+
+/* =========================================================
+   IMAGE
+========================================================= */
+
+function renderImage(
+  target,
+  url
+) {
+
+  target.innerHTML = `
+
+    <img
+      src="${escapeHtml(
+        url
+      )}"
+      alt="解答用紙"
+    >
+
+  `;
+
+}
+
+
+/* =========================================================
+   BOXES
+========================================================= */
 
 async function loadBoxes() {
 
@@ -340,20 +579,32 @@ async function loadBoxes() {
         x,
         y,
         width,
-        height
+        height,
+        points,
+        sort_order
       `)
       .eq(
         "test_id",
         previewTestId
       )
       .order(
-        "page_no"
+        "page_no",
+        {
+          ascending:true
+        }
+      )
+      .order(
+        "sort_order",
+        {
+          ascending:true
+        }
       );
 
 
   if (error) {
-    console.error(error);
-    return;
+
+    throw error;
+
   }
 
 
@@ -363,34 +614,26 @@ async function loadBoxes() {
     );
 
 
-  if (!data?.length) {
-
-    container.innerHTML = `
-      <div style="color:#777;">
-        枠が設定されていません。
-      </div>
-    `;
+  if (!container) {
 
     return;
 
   }
 
 
-  const counts = {};
+  if (!data?.length) {
 
+    container.innerHTML = `
 
-  data.forEach(
-    box => {
+      <div class="empty">
+        枠が設定されていません。
+      </div>
 
-      const key =
-        box.box_type;
+    `;
 
+    return;
 
-      counts[key] =
-        (counts[key] || 0) + 1;
-
-    }
-  );
+  }
 
 
   const labels = {
@@ -399,13 +642,25 @@ async function loadBoxes() {
       "解答欄",
 
     qr:
-      "QRコードシール欄",
+      "QRコード",
 
     student_no:
-      "生徒番号欄",
+      "生徒番号",
 
     name:
-      "氏名欄",
+      "氏名",
+
+    major:
+      "大問",
+
+    minor:
+      "小問",
+
+    subtotal:
+      "小計",
+
+    total:
+      "合計",
 
     other:
       "その他"
@@ -413,9 +668,31 @@ async function loadBoxes() {
   };
 
 
+  const counts =
+    {};
+
+
+  data.forEach(
+    box => {
+
+      const type =
+        box.box_type ||
+        "other";
+
+
+      counts[type] =
+        (
+          counts[type] ||
+          0
+        ) + 1;
+
+    }
+  );
+
+
   container.innerHTML = `
 
-    <table class="table">
+    <table class="box-table">
 
       <thead>
 
@@ -435,27 +712,37 @@ async function loadBoxes() {
 
       <tbody>
 
-        ${Object.entries(counts)
-          .map(
-            ([type,count]) => `
-
-              <tr>
-
-                <td>
-                  ${escapeHtml(
-                    labels[type] || type
-                  )}
-                </td>
-
-                <td>
-                  ${count}
-                </td>
-
-              </tr>
-
-            `
+        ${
+          Object.entries(
+            counts
           )
-          .join("")}
+            .map(
+              (
+                [
+                  type,
+                  count
+                ]
+              ) => `
+
+                <tr>
+
+                  <td>
+                    ${escapeHtml(
+                      labels[type] ||
+                      type
+                    )}
+                  </td>
+
+                  <td>
+                    ${count}
+                  </td>
+
+                </tr>
+
+              `
+            )
+            .join("")
+        }
 
       </tbody>
 
@@ -466,32 +753,129 @@ async function loadBoxes() {
 }
 
 
+/* =========================================================
+   ERROR
+========================================================= */
+
+function showError(
+  message
+) {
+
+  const information =
+    document.getElementById(
+      "testInformation"
+    );
+
+
+  if (information) {
+
+    information.innerHTML = `
+
+      <div
+        style="
+          color:#b42318;
+        "
+      >
+
+        ${escapeHtml(
+          message
+        )}
+
+      </div>
+
+    `;
+
+  }
+
+}
+
+
+/* =========================================================
+   NUMBER
+========================================================= */
+
+function formatNumber(
+  value
+) {
+
+  const n =
+    Number(
+      value
+    );
+
+
+  if (
+    !Number.isFinite(
+      n
+    )
+  ) {
+
+    return "-";
+
+  }
+
+
+  return Number.isInteger(
+    n
+  )
+    ? String(n)
+    : n.toFixed(1);
+
+}
+
+
+/* =========================================================
+   ESCAPE
+========================================================= */
+
+function escapeHtml(
+  value
+) {
+
+  return String(
+    value ??
+    ""
+  )
+    .replaceAll(
+      "&",
+      "&amp;"
+    )
+    .replaceAll(
+      "<",
+      "&lt;"
+    )
+    .replaceAll(
+      ">",
+      "&gt;"
+    )
+    .replaceAll(
+      '"',
+      "&quot;"
+    )
+    .replaceAll(
+      "'",
+      "&#039;"
+    );
+
+}
+
+
+/* =========================================================
+   LOGOUT
+========================================================= */
+
 document
   .getElementById(
     "logoutButton"
   )
-  .addEventListener(
+  ?.addEventListener(
     "click",
-    logout
+    async () => {
+
+      await logout();
+
+    }
   );
-
-
-function escapeHtml(value) {
-
-  if (
-    value === null ||
-    value === undefined
-  ) {
-    return "";
-  }
-
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
 
 
 initializePreview();

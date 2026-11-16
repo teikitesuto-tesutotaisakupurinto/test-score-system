@@ -1,7 +1,6 @@
 
 /* =========================================================
    デジタル採点
-   高速・串刺し採点UI
 ========================================================= */
 
 * {
@@ -11,110 +10,113 @@
 
 html,
 body {
-  width: 100%;
-  height: 100%;
-
   margin: 0;
   padding: 0;
 
-  overflow: hidden;
+  width: 100%;
+  min-height: 100%;
 
   font-family:
     Arial,
     "Noto Sans JP",
     sans-serif;
+
+  background: #eef2f5;
+  color: #222;
 }
 
 
-.marking-page {
-  width: 100%;
-  height: 100vh;
-
-  display: flex;
-  flex-direction: column;
-
-  background: #c8d5e0;
+button,
+input,
+select,
+textarea {
+  font: inherit;
 }
 
 
 /* =========================================================
-   上部ツールバー
+   旧レイアウト互換
 ========================================================= */
+
+.marking-page {
+  width: 100%;
+  min-height: 100vh;
+
+  display: flex;
+  flex-direction: column;
+
+  background: #eef2f5;
+}
+
 
 .marking-toolbar {
   flex-shrink: 0;
 
-  background: #f5f6f7;
+  background: #fff;
 
   border-bottom:
-    1px solid #8f9aa4;
+    1px solid #d0d6dc;
 }
 
 
 .marking-toolbar-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+
   min-height: 42px;
 
-  display: flex;
-
-  align-items: center;
-
-  gap: 5px;
-
-  padding:
-    5px 7px;
+  padding: 6px 8px;
 
   border-bottom:
-    1px solid #d0d6dc;
-
-  flex-wrap: wrap;
+    1px solid #e1e5e8;
 }
 
 
 .marking-toolbar-row:last-child {
-  border-bottom: none;
+  border-bottom: 0;
 }
 
 
 .toolbar-group {
   display: flex;
-
   align-items: center;
-
-  gap: 4px;
+  gap: 5px;
 
   padding-right: 8px;
 
   border-right:
-    1px solid #c8cfd5;
+    1px solid #d5dbe0;
 }
 
 
 .toolbar-group:last-child {
-  border-right: none;
+  border-right: 0;
 }
 
 
 .toolbar-label {
-  color: #555;
+  color: #666;
 
   font-size: 12px;
-
-  white-space: nowrap;
 }
 
 
+/* =========================================================
+   採点ボタン
+========================================================= */
+
 .mark-tool {
-  min-width: 38px;
+  min-width: 42px;
+  height: 36px;
 
-  height: 32px;
-
-  padding:
-    3px 8px;
+  padding: 0 9px;
 
   border:
-    1px solid #adb6be;
+    1px solid #b8c1c9;
 
-  border-radius: 3px;
+  border-radius: 4px;
 
   background: #fff;
 
@@ -127,302 +129,246 @@ body {
 
 
 .mark-tool:hover {
-  background: #edf3f8;
+  background: #f1f4f6;
 }
 
 
 .mark-tool.active {
-  background: #d9ebf8;
+  background: #e3eef8;
 
-  border-color:
-    #1769aa;
+  border-color: #1769aa;
 
-  color:
-    #0f5b94;
+  color: #12598f;
 }
 
 
 .mark-tool:disabled {
-  opacity: .45;
+  opacity: .5;
 
-  cursor: default;
+  cursor: not-allowed;
 }
 
 
 /* =========================================================
-   ○ × △ ◎
+   新採点画面
 ========================================================= */
 
-.mark-tool.symbol {
-  min-width: 42px;
+.marking-main {
+  width: 100%;
+  max-width: 1900px;
 
-  font-size: 18px;
+  margin: 0 auto;
 
-  line-height: 1;
+  padding: 12px;
 }
 
 
-/* =========================================================
-   点数入力
-========================================================= */
-
-#scoreInput {
-  width: 72px;
-
-  height: 32px;
-
-  padding:
-    4px 7px;
-
-  border:
-    1px solid #adb6be;
-
-  border-radius: 3px;
-
-  background: #fff;
-
-  font-size: 14px;
-
-  text-align: center;
-}
-
-
-#scoreInput:focus {
-  outline: none;
-
-  border-color:
-    #1769aa;
-}
-
-
-#markText {
-  width: 130px;
-
-  height: 32px;
-
-  padding:
-    4px 7px;
-
-  border:
-    1px solid #adb6be;
-
-  border-radius: 3px;
-
-  background: #fff;
-}
-
-
-#markText:focus {
-  outline: none;
-
-  border-color:
-    #1769aa;
-}
-
-
-#markColor {
-  width: 38px;
-
-  height: 30px;
-
-  padding: 2px;
-
-  border:
-    1px solid #adb6be;
-
-  background: #fff;
-}
-
-
-#markSize {
-  width: 65px;
-
-  height: 32px;
-
-  padding:
-    4px 6px;
-
-  border:
-    1px solid #adb6be;
-
-  border-radius: 3px;
-
-  background: #fff;
-}
-
-
-.shortcut-help {
-  font-size: 12px;
-
-  color: #555;
-
-  white-space: nowrap;
-}
-
-
-.toolbar-separator {
-  width: 1px;
-
-  height: 22px;
-
-  background: #c8cfd5;
-}
-
-
-.zoom-value {
-  min-width: 55px;
-
-  text-align: center;
-
-  font-size: 13px;
-}
-
-
-.question-info {
-  margin-left: 8px;
-
-  font-weight: 700;
-
-  white-space: nowrap;
-}
-
-
-.point-info {
-  color: #555;
-
-  font-size: 13px;
-
-  white-space: nowrap;
-}
-
-
-.marking-progress {
-  margin-left: auto;
-
-  font-size: 13px;
-
-  font-weight: 700;
-
-  white-space: nowrap;
-}
-
-
-/* =========================================================
-   本体
-========================================================= */
-
-.marking-content {
-  flex: 1;
-
-  min-height: 0;
+.toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
 
   display: flex;
+  align-items: center;
+  gap: 7px;
 
-  overflow: hidden;
-}
+  padding: 8px 10px;
 
-
-/* =========================================================
-   模範解答
-   ---------------------------------------------------------
-   必要な場合のみ表示。
-========================================================= */
-
-.model-pane {
-  flex: 0 0 150px;
-
-  min-width: 0;
+  margin-bottom: 8px;
 
   background: #fff;
 
-  border-right:
-    1px solid #9ca6af;
+  border:
+    1px solid #d0d6dc;
+}
+
+
+.toolbar-title {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+
+.toolbar-space {
+  flex: 1;
+}
+
+
+.mark-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
 
   padding: 7px;
 
-  overflow: auto;
-}
+  margin-bottom: 8px;
 
-
-.model-title {
-  padding: 6px;
-
-  margin:
-    -7px
-    -7px
-    7px;
-
-  background: #ed8052;
-
-  color: #fff;
-
-  font-size: 12px;
-
-  font-weight: 700;
-}
-
-
-.model-image {
-  width: 100%;
-
-  min-height: 150px;
-
-  display: flex;
-
-  align-items: center;
-
-  justify-content: center;
-
-  overflow: auto;
+  background: #fff;
 
   border:
-    1px solid #c7ced5;
+    1px solid #d0d6dc;
+}
 
-  background: #f7f8f9;
 
-  color: #888;
+.mark-toolbar-title {
+  font-size: 12px;
+  font-weight: 700;
+
+  margin-right: 4px;
+}
+
+
+.keyboard-help {
+  margin-left: 8px;
+
+  color: #666;
 
   font-size: 11px;
 }
 
 
-.model-image img {
-  display: block;
+.status {
+  min-height: 34px;
 
-  max-width: 100%;
+  margin-bottom: 8px;
 
-  max-height: 500px;
+  padding: 8px 10px;
 
-  object-fit: contain;
+  background: #fff;
+
+  border:
+    1px solid #d0d6dc;
+
+  font-size: 12px;
+}
+
+
+.status.error {
+  color: #b42318;
+
+  background: #fff8f7;
+
+  border-color: #efc2bc;
 }
 
 
 /* =========================================================
-   答案エリア
-   ---------------------------------------------------------
-   画面いっぱい。
+   問題ヘッダー
 ========================================================= */
 
-.answer-area {
-  flex: 1;
+.question-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 
+  margin-bottom: 8px;
+
+  padding: 9px 11px;
+
+  background: #fff;
+
+  border:
+    1px solid #d0d6dc;
+}
+
+
+.question-info {
   min-width: 0;
+}
 
-  min-height: 0;
 
-  overflow: auto;
+.question-title {
+  font-size: 18px;
 
-  padding: 7px;
+  font-weight: 700;
+}
 
-  background: #c0d0df;
+
+.question-meta {
+  margin-top: 2px;
+
+  color: #666;
+
+  font-size: 12px;
+}
+
+
+.question-space {
+  flex: 1;
+}
+
+
+.navigation {
+  display: flex;
+
+  gap: 5px;
+}
+
+
+/* =========================================================
+   進捗
+========================================================= */
+
+.progress {
+  margin-bottom: 8px;
+
+  padding: 8px 10px;
+
+  background: #fff;
+
+  border:
+    1px solid #d0d6dc;
+}
+
+
+.progress-text {
+  margin-bottom: 5px;
+
+  color: #555;
+
+  font-size: 11px;
+}
+
+
+.progress-track {
+  height: 6px;
+
+  overflow: hidden;
+
+  background: #e1e5e8;
+
+  border-radius: 3px;
+}
+
+
+.progress-bar {
+  width: 0;
+  height: 100%;
+
+  background: #1769aa;
+
+  transition: width .12s;
 }
 
 
 /* =========================================================
    答案グリッド
-   ---------------------------------------------------------
-   列数はJS側で画面サイズに応じて変更可能。
 ========================================================= */
+
+.answer-grid-wrap {
+  width: 100%;
+
+  overflow: auto;
+
+  padding: 6px;
+
+  background: #dfe4e8;
+
+  border:
+    1px solid #cbd2d8;
+}
+
 
 .answer-grid {
   display: grid;
@@ -438,128 +384,74 @@ body {
 
   gap: 7px;
 
-  align-items: start;
+  width: 100%;
 }
 
-
-.no-answer {
-  grid-column:
-    1 / -1;
-
-  padding: 50px;
-
-  background: #fff;
-
-  text-align: center;
-
-  color: #777;
-}
-
-
-/* =========================================================
-   答案カード
-========================================================= */
 
 .answer-card {
-  position: relative;
-
   min-width: 0;
+
+  overflow: hidden;
 
   background: #fff;
 
   border:
-    2px solid #ed8052;
+    1px solid #c8ced4;
 
-  box-shadow:
-    0 1px 2px
-    rgba(
-      0,
-      0,
-      0,
-      .08
-    );
+  border-radius: 3px;
 }
 
 
-.answer-card.selected {
-  border-color:
-    #1769aa;
-
-  box-shadow:
-    0 0 0 2px
-    rgba(
-      23,
-      105,
-      170,
-      .22
-    );
+.answer-card.active {
+  border:
+    2px solid #1769aa;
 }
 
 
-.answer-card.done {
-  border-color:
-    #16834b;
-}
-
-
-.answer-card.error {
-  border-color:
-    #b42318;
-}
-
-
-/* =========================================================
-   答案ヘッダー
-   ---------------------------------------------------------
-   生徒名・生徒番号は表示しない。
-========================================================= */
-
-.answer-header {
-  min-height: 26px;
-
+.answer-card-head {
   display: flex;
-
   align-items: center;
+  justify-content: space-between;
 
-  padding:
-    0 6px;
+  gap: 6px;
 
-  background: #ed8052;
+  min-height: 30px;
 
-  color: #fff;
+  padding: 5px 7px;
 
+  background: #f3f5f7;
+
+  border-bottom:
+    1px solid #d5dbe0;
+}
+
+
+.answer-label {
   font-size: 11px;
 
   font-weight: 700;
 }
 
 
-.answer-card.selected
-.answer-header {
-  background:
-    #1769aa;
+.answer-state {
+  color: #777;
+
+  font-size: 10px;
 }
 
 
-.answer-card.done
-.answer-header {
-  background:
-    #16834b;
-}
+.answer-state.marked {
+  color: #16834b;
 
-
-.answer-status {
-  margin-left: auto;
-
-  font-size: 11px;
+  font-weight: 700;
 }
 
 
 /* =========================================================
-   答案画像ステージ
+   答案画像
 ========================================================= */
 
-.answer-stage {
+.answer-image-area {
   position: relative;
 
   width: 100%;
@@ -568,348 +460,160 @@ body {
 
   overflow: hidden;
 
-  background: #fff;
+  background: #f8f9fa;
+
+  cursor: pointer;
 }
 
 
-.answer-image {
+.answer-image-area img {
   display: block;
 
   width: 100%;
-
   height: auto;
 
-  max-height: none;
-
-  object-fit: contain;
-}
-
-
-/*
- * クロップ画像を使う場合。
- */
-
-.answer-image.crop {
-  width: 100%;
-
-  height: auto;
-
-  object-fit: contain;
-}
-
-
-/*
- * 元答案をCSSクロップ表示する場合。
- */
-
-.answer-image-source {
-  position: absolute;
-
-  max-width: none;
-
-  max-height: none;
-
-  margin: 0;
-}
-
-
-.answer-canvas {
-  position: absolute;
-
-  inset: 0;
-
-  width: 100%;
-
-  height: 100%;
-
-  pointer-events: none;
-
-  z-index: 5;
-}
-
-
-/*
- * 採点記号用レイヤー。
- */
-
-.answer-mark-layer {
-  position: absolute;
-
-  inset: 0;
-
-  z-index: 10;
+  user-select: none;
 
   pointer-events: none;
 }
 
-
-.answer-mark-layer
-.mark-object {
-  pointer-events: auto;
-}
-
-
-/* =========================================================
-   答案カード下部
-========================================================= */
-
-.answer-score-bar {
-  min-height: 38px;
-
-  display: flex;
-
-  align-items: center;
-
-  gap: 4px;
-
-  padding: 4px;
-
-  background: #f2f4f6;
-
-  border-top:
-    1px solid #cdd3d9;
-}
-
-
-.answer-score {
-  min-width: 34px;
-
-  height: 30px;
-
-  padding:
-    2px 7px;
-
-  border:
-    1px solid #adb6be;
-
-  border-radius: 3px;
-
-  background: #fff;
-
-  cursor: pointer;
-
-  font-size: 12px;
-}
-
-
-.answer-score:hover {
-  background:
-    #e8f1f8;
-}
-
-
-.answer-score.active {
-  background:
-    #d9ebf8;
-
-  border-color:
-    #1769aa;
-}
-
-
-.answer-card.done
-.answer-score {
-  border-color:
-    #16834b;
-}
-
-
-/* =========================================================
-   L / K 高速採点
-========================================================= */
-
-.quick-score {
-  min-width: 42px;
-
-  height: 30px;
-
-  padding:
-    2px 8px;
-
-  border:
-    1px solid #adb6be;
-
-  border-radius: 3px;
-
-  background: #fff;
-
-  cursor: pointer;
-
-  font-weight: 700;
-}
-
-
-.quick-score:hover {
-  background:
-    #e8f1f8;
-}
-
-
-.quick-score.full {
-  border-color:
-    #16834b;
-}
-
-
-.quick-score.zero {
-  border-color:
-    #b42318;
-}
-
-
-/* =========================================================
-   数字キー
-========================================================= */
-
-.number-toolbar {
-  display: flex;
-
-  gap: 3px;
-
-  flex-wrap: wrap;
-}
-
-
-.number-button {
-  min-width: 31px;
-
-  height: 30px;
-
-  padding:
-    2px 5px;
-
-  border:
-    1px solid #adb6be;
-
-  border-radius: 3px;
-
-  background: #fff;
-
-  cursor: pointer;
-}
-
-
-.number-button:hover {
-  background:
-    #e8f1f8;
-}
-
-
-/* =========================================================
-   状態
-========================================================= */
-
-.answer-state {
-  padding:
-    3px 6px;
-
-  color: #777;
-
-  font-size: 11px;
-
-  white-space: nowrap;
-}
-
-
-.answer-state.marked {
-  color:
-    #16834b;
-
-  font-weight: 700;
-}
-
-
-.answer-state.unmarked {
-  color:
-    #b42318;
-}
-
-
-/* =========================================================
-   エラー
-========================================================= */
 
 .answer-error {
   min-height: 160px;
 
   display: flex;
-
   align-items: center;
-
   justify-content: center;
 
   padding: 20px;
 
-  color:
-    #b42318;
-
-  background:
-    #fff4f2;
+  color: #b42318;
 
   text-align: center;
 
-  font-size: 12px;
+  font-size: 11px;
 }
 
 
 /* =========================================================
-   フッター
+   採点記号
 ========================================================= */
 
-.marking-footer {
-  min-height: 48px;
+.mark-object {
+  position: absolute;
 
-  flex-shrink: 0;
+  z-index: 20;
 
-  display: flex;
+  color: #d00000;
 
-  align-items: center;
+  line-height: 1;
 
-  gap: 6px;
+  font-weight: 700;
 
-  padding:
-    5px 8px;
+  user-select: none;
 
-  background: #fff;
+  cursor: pointer;
 
-  border-top:
-    1px solid #9da7b0;
+  text-shadow:
+    0 0 1px #fff,
+    0 0 2px #fff;
 }
 
 
-.quick-score-group {
+.mark-object:hover {
+  outline:
+    1px dashed #d00000;
+}
+
+
+/* =========================================================
+   点数
+========================================================= */
+
+.answer-score {
   display: flex;
+  align-items: center;
+  justify-content: center;
 
   gap: 4px;
 
-  flex-wrap: wrap;
+  padding: 6px;
+
+  border-top:
+    1px solid #d5dbe0;
 }
 
 
-.footer-score {
-  min-width: 34px;
+.score-input {
+  width: 68px;
 
-  height: 32px;
+  height: 34px;
+
+  padding: 0 5px;
 
   border:
-    1px solid #adb6be;
+    1px solid #b8c1c9;
+
+  border-radius: 3px;
+
+  text-align: center;
+
+  font-size: 16px;
+}
+
+
+.score-button {
+  height: 32px;
+
+  min-width: 36px;
+
+  padding: 0 7px;
+
+  border:
+    1px solid #b8c1c9;
 
   border-radius: 3px;
 
   background: #fff;
 
   cursor: pointer;
+
+  font-weight: 700;
 }
 
 
-.footer-score:hover {
-  background:
-    #e8f1f8;
+.score-button:hover {
+  background: #f1f4f6;
 }
 
 
-#nextUnmarked {
-  margin-left: auto;
+.score-button.primary {
+  background: #1769aa;
+
+  border-color: #1769aa;
+
+  color: #fff;
+}
+
+
+.score-status {
+  padding:
+    0
+    6px
+    5px;
+
+  text-align: center;
+
+  color: #777;
+
+  font-size: 10px;
+}
+
+
+.score-status.marked {
+  color: #16834b;
+
+  font-weight: 700;
 }
 
 
@@ -917,73 +621,83 @@ body {
    完了
 ========================================================= */
 
-.marking-complete {
-  position: fixed;
-
-  right: 15px;
-
-  bottom: 60px;
-
-  z-index: 50;
-
+.complete {
   display: none;
 
-  padding:
-    10px 14px;
+  margin-top: 8px;
 
-  background: #fff;
+  padding: 14px;
+
+  background: #edf8ef;
 
   border:
-    1px solid #16834b;
+    1px solid #b7d9c0;
 
-  color:
-    #16834b;
+  color: #176b35;
+}
 
-  box-shadow:
-    0 2px 8px
-    rgba(
-      0,
-      0,
-      0,
-      .15
-    );
 
-  font-size: 13px;
+.complete.show {
+  display: block;
+}
+
+
+.complete-title {
+  margin-bottom: 3px;
 
   font-weight: 700;
 }
 
 
-.marking-complete.show {
-  display: block;
-}
-
-
 /* =========================================================
-   スクロールバー
+   旧答案グリッド
 ========================================================= */
 
-.answer-area::-webkit-scrollbar,
-.model-pane::-webkit-scrollbar {
-  width: 10px;
+.marking-content {
+  min-height: 0;
 
-  height: 10px;
+  display: grid;
+
+  grid-template-columns:
+    150px
+    minmax(0, 1fr);
 }
 
 
-.answer-area::-webkit-scrollbar-thumb,
-.model-pane::-webkit-scrollbar-thumb {
-  background:
-    #aab5bf;
+.model-pane {
+  min-width: 0;
 
-  border-radius: 4px;
+  overflow: auto;
+
+  padding: 7px;
+
+  background: #fff;
+
+  border-right:
+    1px solid #9ca6af;
 }
 
 
-.answer-area::-webkit-scrollbar-track,
-.model-pane::-webkit-scrollbar-track {
-  background:
-    #d9e1e8;
+.answer-area {
+  min-width: 0;
+
+  overflow: auto;
+
+  padding: 8px;
+
+  background: #c0d0df;
+}
+
+
+.answer-area .answer-grid {
+  grid-template-columns:
+    repeat(
+      auto-fit,
+      minmax(
+        280px,
+        1fr
+      )
+    );
 }
 
 
@@ -991,47 +705,49 @@ body {
    レスポンシブ
 ========================================================= */
 
-@media (max-width: 1200px) {
+@media(max-width: 900px) {
+
+  .marking-main {
+    padding: 7px;
+  }
+
 
   .answer-grid {
     grid-template-columns:
       repeat(
         auto-fit,
         minmax(
-          250px,
+          270px,
           1fr
         )
       );
+  }
+
+
+  .keyboard-help {
+    width: 100%;
+
+    margin-left: 0;
   }
 
 }
 
 
-@media (max-width: 800px) {
-
-  .marking-toolbar-row {
-    gap: 3px;
-  }
-
-
-  .model-pane {
-    display: none;
-  }
-
+@media(max-width: 600px) {
 
   .answer-grid {
-    grid-template-columns:
-      repeat(
-        auto-fit,
-        minmax(
-          220px,
-          1fr
-        )
-      );
+    grid-template-columns: 1fr;
   }
 
 
-  .shortcut-help {
+  .question-header {
+    align-items: flex-start;
+
+    flex-direction: column;
+  }
+
+
+  .question-space {
     display: none;
   }
 

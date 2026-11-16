@@ -1,54 +1,182 @@
 
-/* =========================================================
-   テスト成績システム
-   js/login.js
+"use strict";
 
-   ログイン処理
+/* =========================================================
+   ログイン
+
+   login.html
+   ---------------------------------------------------------
+   email
+   password
+   loginBtn
+   loginMsg
+
+   ↓
+
+   Supabase Auth
+
+   ↓
+
+   profiles.role
+
+   ↓
+
+   teacher / admin
+     /teacher/index.html
+
+   student
+     /student/tests/index.html
 ========================================================= */
 
-(function () {
 
-  "use strict";
+/* =========================================================
+   DOM
+========================================================= */
+
+const loginButton =
+  document.getElementById(
+    "loginBtn"
+  );
 
 
-  /* =======================================================
-     DOM
-  ======================================================= */
+const emailInput =
+  document.getElementById(
+    "email"
+  );
 
-  const form =
-    document.getElementById(
-      "loginForm"
+
+const passwordInput =
+  document.getElementById(
+    "password"
+  );
+
+
+const loginMessage =
+  document.getElementById(
+    "loginMsg"
+  );
+
+
+/* =========================================================
+   INIT
+========================================================= */
+
+document.addEventListener(
+  "DOMContentLoaded",
+  initializeLogin
+);
+
+
+function initializeLogin() {
+
+  if (!loginButton) {
+
+    return;
+
+  }
+
+
+  loginButton.addEventListener(
+    "click",
+    handleLogin
+  );
+
+
+  emailInput?.addEventListener(
+    "keydown",
+    event => {
+
+      if (
+        event.key ===
+        "Enter"
+      ) {
+
+        event.preventDefault();
+
+        handleLogin();
+
+      }
+
+    }
+  );
+
+
+  passwordInput?.addEventListener(
+    "keydown",
+    event => {
+
+      if (
+        event.key ===
+        "Enter"
+      ) {
+
+        event.preventDefault();
+
+        handleLogin();
+
+      }
+
+    }
+  );
+
+}
+
+
+/* =========================================================
+   LOGIN
+========================================================= */
+
+async function handleLogin() {
+
+  clearMessage();
+
+
+  const email =
+    emailInput?.value
+      ?.trim() ||
+    "";
+
+
+  const password =
+    passwordInput?.value ||
+    "";
+
+
+  if (!email) {
+
+    showMessage(
+      "メールアドレスを入力してください。"
     );
 
 
-  const emailInput =
-    document.getElementById(
-      "email"
+    emailInput?.focus();
+
+    return;
+
+  }
+
+
+  if (!password) {
+
+    showMessage(
+      "パスワードを入力してください。"
     );
 
 
-  const passwordInput =
-    document.getElementById(
-      "password"
-    );
+    passwordInput?.focus();
+
+    return;
+
+  }
 
 
-  const loginButton =
-    document.getElementById(
-      "loginButton"
-    );
+  if (
+    typeof window.login !==
+    "function"
+  ) {
 
-
-  const loginError =
-    document.getElementById(
-      "loginError"
-    );
-
-
-  if (!form) {
-
-    console.error(
-      "loginFormがありません。"
+    showMessage(
+      "認証処理を読み込めませんでした。"
     );
 
     return;
@@ -56,331 +184,187 @@
   }
 
 
-  /* =======================================================
-     ERROR
-  ======================================================= */
-
-  function showError(
-    message
-  ) {
-
-    if (!loginError) {
-
-      alert(
-        message
-      );
-
-      return;
-
-    }
+  setLoading(
+    true
+  );
 
 
-    loginError.textContent =
-      message;
+  try {
+
+    await window.login(
+      email,
+      password
+    );
 
 
-    loginError.style.display =
-      "block";
+    await window.redirectAfterLogin();
+
+
+  } catch (error) {
+
+    console.error(
+      "LOGIN ERROR:",
+      error
+    );
+
+
+    showMessage(
+      formatLoginError(
+        error
+      )
+    );
+
+
+    setLoading(
+      false
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   LOADING
+========================================================= */
+
+function setLoading(
+  loading
+) {
+
+  if (!loginButton) {
+
+    return;
 
   }
 
 
-  function clearError() {
-
-    if (!loginError) {
-
-      return;
-
-    }
+  loginButton.disabled =
+    loading;
 
 
-    loginError.textContent =
-      "";
+  loginButton.textContent =
+    loading
+      ? "ログイン中..."
+      : "ログイン";
+
+}
 
 
-    loginError.style.display =
-      "none";
+/* =========================================================
+   MESSAGE
+========================================================= */
 
-  }
+function showMessage(
+  message
+) {
 
+  if (!loginMessage) {
 
-  /* =======================================================
-     LOADING
-  ======================================================= */
-
-  function setLoading(
-    value
-  ) {
-
-    if (!loginButton) {
-
-      return;
-
-    }
-
-
-    loginButton.disabled =
-      value;
-
-
-    loginButton.textContent =
-      value
-        ? "ログイン中..."
-        : "ログイン";
+    return;
 
   }
 
 
-  /* =======================================================
-     ERROR FORMAT
-  ======================================================= */
+  loginMessage.textContent =
+    message;
 
-  function formatError(
-    error
+
+  loginMessage.style.display =
+    "block";
+
+}
+
+
+function clearMessage() {
+
+  if (!loginMessage) {
+
+    return;
+
+  }
+
+
+  loginMessage.textContent =
+    "";
+
+}
+
+
+/* =========================================================
+   ERROR
+========================================================= */
+
+function formatLoginError(
+  error
+) {
+
+  const message =
+    String(
+      error?.message ||
+      ""
+    );
+
+
+  const lower =
+    message.toLowerCase();
+
+
+  if (
+    lower.includes(
+      "invalid login credentials"
+    )
   ) {
-
-    const message =
-      String(
-        error?.message ||
-        ""
-      );
-
-
-    const lower =
-      message.toLowerCase();
-
-
-    if (
-      lower.includes(
-        "invalid login credentials"
-      )
-    ) {
-
-      return (
-        "メールアドレスまたはパスワードが正しくありません。"
-      );
-
-    }
-
-
-    if (
-      lower.includes(
-        "email not confirmed"
-      )
-    ) {
-
-      return (
-        "メールアドレスの確認が完了していません。"
-      );
-
-    }
-
-
-    if (
-      lower.includes(
-        "too many requests"
-      )
-    ) {
-
-      return (
-        "ログイン試行が多すぎます。しばらく待ってから再度お試しください。"
-      );
-
-    }
-
-
-    if (
-      lower.includes(
-        "permission denied"
-      )
-    ) {
-
-      return (
-        "ログイン権限を確認できません。管理者に確認してください。"
-      );
-
-    }
-
 
     return (
-      message ||
-      "ログインできませんでした。"
+      "メールアドレスまたはパスワードが正しくありません。"
     );
 
   }
 
 
-  /* =======================================================
-     SUBMIT
-  ======================================================= */
+  if (
+    lower.includes(
+      "email not confirmed"
+    )
+  ) {
 
-  form.addEventListener(
-    "submit",
-    async event => {
+    return (
+      "メールアドレスの確認が完了していません。"
+    );
 
-      /*
-       * 通常フォーム送信は禁止。
-       */
+  }
 
-      event.preventDefault();
 
-      event.stopPropagation();
+  if (
+    lower.includes(
+      "too many requests"
+    )
+  ) {
 
+    return (
+      "ログイン試行が多すぎます。しばらく待ってから再度お試しください。"
+    );
 
-      clearError();
+  }
 
 
-      const email =
-        emailInput
-          ?.value
-          .trim() ||
-        "";
+  if (
+    lower.includes(
+      "network"
+    )
+  ) {
 
+    return (
+      "通信に失敗しました。しばらく待ってから再度お試しください。"
+    );
 
-      const password =
-        passwordInput
-          ?.value ||
-        "";
+  }
 
 
-      if (!email) {
-
-        showError(
-          "メールアドレスを入力してください。"
-        );
-
-
-        emailInput?.focus();
-
-
-        return;
-
-      }
-
-
-      if (!password) {
-
-        showError(
-          "パスワードを入力してください。"
-        );
-
-
-        passwordInput?.focus();
-
-
-        return;
-
-      }
-
-
-      /*
-       * config.jsで作成された
-       * Supabase Clientを使用。
-       */
-
-      if (
-        !window.supabaseClient
-      ) {
-
-        showError(
-          "Supabaseの設定を読み込めませんでした。"
-        );
-
-
-        return;
-
-      }
-
-
-      /*
-       * auth.jsが読み込まれているか確認。
-       */
-
-      if (
-        typeof window.login !==
-        "function"
-      ) {
-
-        showError(
-          "認証処理を読み込めませんでした。"
-        );
-
-
-        return;
-
-      }
-
-
-      if (
-        typeof window.redirectAfterLogin !==
-        "function"
-      ) {
-
-        showError(
-          "ログイン後の移動処理を読み込めませんでした。"
-        );
-
-
-        return;
-
-      }
-
-
-      setLoading(
-        true
-      );
-
-
-      try {
-
-        /*
-         * Supabase Auth
-         */
-
-        await window.login(
-          email,
-          password
-        );
-
-
-        /*
-         * teacher/admin/student
-         * に応じて移動。
-         *
-         * teacher
-         *   /teacher/index.html
-         *
-         * student
-         *   /student/index.html
-         */
-
-        await window.redirectAfterLogin();
-
-
-      } catch (error) {
-
-        console.error(
-          "LOGIN ERROR:",
-          error
-        );
-
-
-        showError(
-          formatError(
-            error
-          )
-        );
-
-
-        setLoading(
-          false
-        );
-
-      }
-
-    },
-    true
+  return (
+    message ||
+    "ログインできませんでした。"
   );
 
-
-})();
+}

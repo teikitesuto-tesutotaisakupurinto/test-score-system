@@ -1,58 +1,37 @@
 
+"use strict";
+
 /* =========================================================
-   テスト成績システム
-   生徒用 テスト一覧 完全版
+   生徒用テスト一覧
 
-   認証
-   ---------------------------------------------------------
-   Supabase Auth
-        ↓
-   requireStudent()
-        ↓
-   students.auth_user_id
-        ↓
-   自分の生徒ID確定
-
-   表示
+   公開済みテスト
    ---------------------------------------------------------
    results_published = true
-   のテストだけ表示
 
-   生徒自身のstudent_idは
-   URLやGETパラメータから取得しない。
+   未公開テスト
+   ---------------------------------------------------------
+   一覧には出さない。
+
+   生徒本人
+   ---------------------------------------------------------
+   requireStudent()で確定したstudentのみ使用。
 ========================================================= */
 
 
 (function () {
-
-  "use strict";
-
-
-  /* =====================================================
-     状態
-  ===================================================== */
-
-  let profile = null;
 
   let student = null;
 
   let tests = [];
 
 
-  /* =====================================================
-     初期化
-  ===================================================== */
+  /* =======================================================
+     INIT
+  ======================================================= */
 
   async function initialize() {
 
     try {
-
-      /*
-        生徒認証
-
-        role確認だけではなく、
-        students.auth_user_idまで確認。
-      */
 
       const auth =
         await requireStudent();
@@ -65,17 +44,9 @@
       }
 
 
-      profile =
-        auth.profile;
-
-
       student =
         auth.student;
 
-
-      /*
-        生徒名
-      */
 
       const studentName =
         document.getElementById(
@@ -87,15 +58,35 @@
 
         studentName.textContent =
           student.name ||
-          profile.name ||
+          auth.profile?.name ||
           "生徒";
 
       }
 
 
-      /*
-        公開済みテスト取得
-      */
+      document
+        .getElementById(
+          "logoutButton"
+        )
+        ?.addEventListener(
+          "click",
+          async () => {
+
+            await logout();
+
+          }
+        );
+
+
+      document
+        .getElementById(
+          "refreshButton"
+        )
+        ?.addEventListener(
+          "click",
+          loadTests
+        );
+
 
       await loadTests();
 
@@ -103,7 +94,7 @@
     } catch (error) {
 
       console.error(
-        "生徒テスト一覧:",
+        "student tests:",
         error
       );
 
@@ -118,22 +109,30 @@
   }
 
 
-  /* =====================================================
-     公開済みテスト
-  ===================================================== */
+  /* =======================================================
+     LOAD
+  ======================================================= */
 
   async function loadTests() {
 
-    /*
-      student_published_tests View
+    const container =
+      document.getElementById(
+        "testList"
+      );
 
-      results_published = true
-      のみ。
 
-      RLSでも
-      student_published_tests_select
-      が設定されている。
-    */
+    if (container) {
+
+      container.innerHTML = `
+
+        <div class="empty-state">
+          読み込んでいます...
+        </div>
+
+      `;
+
+    }
+
 
     const {
       data,
@@ -143,7 +142,8 @@
         .from(
           "student_published_tests"
         )
-        .select(`
+        .select(
+          `
           id,
           name,
           subject,
@@ -152,12 +152,16 @@
           max_score,
           results_published,
           results_published_at
-        `)
+          `
+        )
+        .eq(
+          "results_published",
+          true
+        )
         .order(
           "results_published_at",
           {
-            ascending:
-              false
+            ascending:false
           }
         );
 
@@ -178,9 +182,9 @@
   }
 
 
-  /* =====================================================
-     テスト表示
-  ===================================================== */
+  /* =======================================================
+     RENDER
+  ======================================================= */
 
   function renderTests() {
 
@@ -197,24 +201,17 @@
     }
 
 
-    /*
-      公開テストなし
-    */
-
     if (!tests.length) {
 
       container.innerHTML = `
 
-        <div
-          class="empty-state"
-        >
+        <div class="empty-state">
 
           現在、公開されているテストはありません。
 
         </div>
 
       `;
-
 
       return;
 
@@ -229,14 +226,16 @@
               test
             )
         )
-        .join("");
+        .join(
+          ""
+        );
 
   }
 
 
-  /* =====================================================
-     テストカード
-  ===================================================== */
+  /* =======================================================
+     CARD
+  ======================================================= */
 
   function createTestCard(
     test
@@ -261,118 +260,74 @@
         >
 
           ${escapeHtml(
-            test.name
+            test.name ||
+            ""
           )}
 
         </div>
 
 
         <div
-          class="student-test-info"
+          class="student-test-meta"
         >
 
-          ${
-            test.subject
-
-              ? `
-                <div>
-                  教科：
-                  ${escapeHtml(
-                    test.subject
-                  )}
-                </div>
-              `
-
-              : ""
-          }
-
-
-          ${
-            test.grade
-
-              ? `
-                <div>
-                  学年：
-                  ${escapeHtml(
-                    test.grade
-                  )}
-                </div>
-              `
-
-              : ""
-          }
-
-
-          ${
-            test.class_name
-
-              ? `
-                <div>
-                  クラス：
-                  ${escapeHtml(
-                    test.class_name
-                  )}
-                </div>
-              `
-
-              : ""
-          }
-
-
-          ${
-            test.max_score !== null &&
-            test.max_score !== undefined
-
-              ? `
-                <div>
-                  満点：
-                  ${test.max_score}点
-                </div>
-              `
-
-              : ""
-          }
-
-
-          ${
-            publishedAt
-
-              ? `
-                <div>
-                  公開日：
-                  ${escapeHtml(
-                    publishedAt
-                  )}
-                </div>
-              `
-
-              : ""
-          }
+          ${escapeHtml(
+            [
+              test.subject,
+              test.grade,
+              test.class_name
+            ]
+              .filter(Boolean)
+              .join(
+                " / "
+              )
+          )}
 
         </div>
 
 
         <div
-          class="student-test-actions"
+          style="
+            margin-top:8px;
+            color:#666;
+            font-size:12px;
+          "
+        >
+
+          公開：
+          ${escapeHtml(
+            publishedAt
+          )}
+
+        </div>
+
+
+        <div
+          style="
+            display:flex;
+            gap:7px;
+            flex-wrap:wrap;
+            margin-top:12px;
+          "
         >
 
           <a
-            class="btn"
-            href="/student/tests/answer?test=${encodeURIComponent(
+            href="/student/tests/result.html?test=${encodeURIComponent(
               test.id
             )}"
+            class="btn btn-primary"
           >
-            採点前答案
+            成績を見る
           </a>
 
 
           <a
-            class="btn btn-primary"
-            href="/student/tests/result?test=${encodeURIComponent(
+            href="/student/tests/answer.html?test=${encodeURIComponent(
               test.id
             )}"
+            class="btn"
           >
-            採点済み答案・成績
+            採点済み答案を見る
           </a>
 
         </div>
@@ -384,9 +339,9 @@
   }
 
 
-  /* =====================================================
-     エラー
-  ===================================================== */
+  /* =======================================================
+     ERROR
+  ======================================================= */
 
   function showError(
     message
@@ -400,11 +355,6 @@
 
     if (!container) {
 
-      alert(
-        message
-      );
-
-
       return;
 
     }
@@ -414,9 +364,7 @@
 
       <div
         class="empty-state"
-        style="
-          color:#c62828;
-        "
+        style="color:#b42318;"
       >
 
         ${escapeHtml(
@@ -430,20 +378,13 @@
   }
 
 
-  /* =====================================================
-     日付
-  ===================================================== */
+  /* =======================================================
+     DATE
+  ======================================================= */
 
   function formatDate(
     value
   ) {
-
-    if (!value) {
-
-      return "";
-
-    }
-
 
     const date =
       new Date(
@@ -463,74 +404,23 @@
 
 
     return date.toLocaleString(
-      "ja-JP",
-      {
-
-        year:
-          "numeric",
-
-        month:
-          "2-digit",
-
-        day:
-          "2-digit",
-
-        hour:
-          "2-digit",
-
-        minute:
-          "2-digit"
-
-      }
+      "ja-JP"
     );
 
   }
 
 
-  /* =====================================================
-     Logout
-  ===================================================== */
-
-  const logoutButton =
-    document.getElementById(
-      "logoutButton"
-    );
-
-
-  if (logoutButton) {
-
-    logoutButton.addEventListener(
-      "click",
-      async () => {
-
-        await logout();
-
-      }
-    );
-
-  }
-
-
-  /* =====================================================
-     HTML Escape
-  ===================================================== */
+  /* =======================================================
+     ESCAPE
+  ======================================================= */
 
   function escapeHtml(
     value
   ) {
 
-    if (
-      value === null ||
-      value === undefined
-    ) {
-
-      return "";
-
-    }
-
-
     return String(
-      value
+      value ??
+      ""
     )
       .replaceAll(
         "&",
@@ -555,10 +445,6 @@
 
   }
 
-
-  /* =====================================================
-     START
-  ===================================================== */
 
   initialize();
 

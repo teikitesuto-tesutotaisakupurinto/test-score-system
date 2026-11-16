@@ -1,18 +1,18 @@
 
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ja">
 
 <head>
 
-<meta charset="utf-8">
+<meta charset="UTF-8">
 
 <meta
   name="viewport"
-  content="width=device-width,initial-scale=1"
+  content="width=device-width, initial-scale=1.0"
 >
 
 <title>
-  解答登録・枠設定 - テスト成績システム
+  枠設定 - テスト成績システム
 </title>
 
 <link
@@ -22,256 +22,232 @@
 
 <style>
 
-.layout-main {
-  max-width:1400px;
-  margin:0 auto;
+* {
+  box-sizing: border-box;
 }
 
-.toolbar {
-  display:flex;
-  flex-wrap:wrap;
-  gap:8px;
-  margin-bottom:15px;
+body {
+  margin: 0;
+  background: #eef2f5;
+}
+
+.app {
+  min-height: 100vh;
+  display: flex;
+}
+
+.side {
+  width: 220px;
+  flex-shrink: 0;
+  background: #fff;
+  border-right: 1px solid #d0d6dc;
+  padding: 15px;
+}
+
+.side h2 {
+  margin: 0 0 15px;
+  font-size: 17px;
+}
+
+.side a {
+  display: block;
+  padding: 9px 10px;
+  margin-bottom: 4px;
+  color: #333;
+  text-decoration: none;
+  border-radius: 4px;
+}
+
+.side a:hover {
+  background: #f0f3f5;
+}
+
+.side a.active {
+  background: #e5edf4;
+  font-weight: 700;
+}
+
+.main {
+  flex: 1;
+  min-width: 0;
+}
+
+.layout-main {
+  padding: 18px;
 }
 
 .status {
-  padding:10px 12px;
-  margin-bottom:15px;
-
-  background:#f5f6f7;
-
-  border:1px solid #d5dbe0;
-
-  font-size:13px;
-
-  white-space:pre-wrap;
+  min-height: 40px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  background: #fff;
+  border: 1px solid #d0d6dc;
+  white-space: pre-wrap;
+  font-size: 13px;
 }
 
-.status.error {
-  color:#b42318;
+.card {
+  margin-bottom: 14px;
+  padding: 14px;
+  background: #fff;
+  border: 1px solid #d0d6dc;
+  border-radius: 4px;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
 }
 
 .layout-canvas {
-  position:relative;
-
-  overflow:auto;
-
-  min-height:500px;
-
-  background:#e7ebef;
-
-  border:1px solid #cbd2d8;
+  min-height: 650px;
+  overflow: auto;
+  padding: 20px;
+  background: #dfe5eb;
+  border: 1px solid #c9d0d6;
 }
 
-.layout-image {
-  display:block;
-
-  max-width:none;
-
-  user-select:none;
+.layout-page {
+  position: relative;
+  width: min(100%, 1100px);
+  margin: 0 auto 25px;
+  background: #fff;
+  box-shadow: 0 2px 10px rgba(0,0,0,.14);
 }
 
-.draw-layer {
-  position:absolute;
-
-  inset:0;
-
-  cursor:crosshair;
+.layout-page img {
+  display: block;
+  width: 100%;
+  height: auto;
 }
 
-.rect {
-  position:absolute;
-
-  border:2px solid #1769aa;
-
-  background:rgba(
-    23,
-    105,
-    170,
-    .12
-  );
-
-  pointer-events:none;
+.layout-layer {
+  position: absolute;
+  inset: 0;
+  touch-action: none;
 }
 
-.rect.qr {
-  border-color:#333;
-
-  background:rgba(
-    0,
-    0,
-    0,
-    .08
-  );
+.layout-box {
+  position: absolute;
+  border: 2px solid #d00000;
+  background: rgba(208,0,0,.06);
+  cursor: move;
 }
 
-.rect.name {
-  border-color:#777;
-
-  background:rgba(
-    100,
-    100,
-    100,
-    .08
-  );
+.layout-box.selected {
+  border-color: #1769aa;
+  background: rgba(23,105,170,.08);
 }
 
-.rect.aggregate {
-  border-color:#8b5e00;
-
-  background:rgba(
-    139,
-    94,
-    0,
-    .08
-  );
+.layout-box-label {
+  position: absolute;
+  left: 0;
+  top: -23px;
+  padding: 3px 6px;
+  background: #333;
+  color: #fff;
+  font-size: 11px;
+  line-height: 1.2;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
-.rect-label {
-  position:absolute;
-
-  left:2px;
-  top:2px;
-
-  padding:2px 5px;
-
-  background:#fff;
-
-  font-size:11px;
-
-  font-weight:700;
+.resize-handle {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  width: 12px;
+  height: 12px;
+  background: #333;
+  border: 1px solid #fff;
+  cursor: nwse-resize;
 }
 
-.question-card {
-  margin-top:12px;
-
-  padding:15px;
-
-  background:#fff;
-
-  border:1px solid #d0d6dc;
-
-  border-radius:5px;
+.drag-preview {
+  position: absolute;
+  z-index: 999;
+  border: 2px dashed #d00000;
+  background: rgba(208,0,0,.08);
+  pointer-events: none;
 }
 
-.question-grid {
-  display:grid;
-
-  grid-template-columns:
-    120px
-    120px
-    2fr
-    1fr;
-
-  gap:10px;
-
-  align-items:end;
+.question-list {
+  display: grid;
+  gap: 6px;
 }
 
-.question-grid label {
-  display:block;
-
-  margin-bottom:5px;
-
-  font-size:12px;
-
-  font-weight:700;
+.question-row {
+  display: grid;
+  grid-template-columns: 1fr 120px 100px;
+  gap: 8px;
+  align-items: center;
+  padding: 8px;
+  border: 1px solid #d8dde1;
 }
 
-.question-grid input {
-  width:100%;
-
-  height:38px;
-
-  padding:7px 9px;
-
-  border:1px solid #b8c1c9;
-
-  border-radius:4px;
-
-  background:#fff;
-}
-
-.question-actions {
-  margin-top:10px;
-
-  display:flex;
-
-  justify-content:flex-end;
-
-  gap:7px;
+.question-row input {
+  width: 100%;
+  height: 34px;
 }
 
 .box-list {
-  margin-top:15px;
+  display: grid;
+  gap: 5px;
 }
 
 .box-row {
-  display:flex;
-
-  justify-content:space-between;
-
-  align-items:center;
-
-  gap:10px;
-
-  padding:10px;
-
-  border-bottom:1px solid #e1e5e8;
+  display: grid;
+  grid-template-columns: 1fr 100px 100px;
+  gap: 8px;
+  align-items: center;
+  padding: 7px 8px;
+  border: 1px solid #d8dde1;
+  font-size: 12px;
 }
 
-.box-info {
-  min-width:0;
-}
-
-.box-title {
-  font-weight:700;
-
-  font-size:13px;
-}
-
-.box-meta {
-  margin-top:4px;
-
-  color:#666;
-
-  font-size:12px;
+.box-row.selected {
+  background: #edf5fb;
+  border-color: #1769aa;
 }
 
 .total {
-  margin-top:15px;
-
-  padding:12px;
-
-  background:#f5f6f7;
-
-  border:1px solid #d5dbe0;
-
-  font-weight:700;
+  font-weight: 700;
 }
 
 .empty {
-  padding:40px;
-
-  text-align:center;
-
-  color:#777;
+  padding: 45px 20px;
+  text-align: center;
+  color: #777;
 }
 
 @media(max-width:900px) {
 
-  .question-grid {
-    grid-template-columns:
-      1fr 1fr;
+  .side {
+    width: 180px;
+  }
+
+  .question-row {
+    grid-template-columns: 1fr;
+  }
+
+  .box-row {
+    grid-template-columns: 1fr;
   }
 
 }
 
-@media(max-width:600px) {
+@media(max-width:650px) {
 
-  .question-grid {
-    grid-template-columns:
-      1fr;
+  .app {
+    display: block;
+  }
+
+  .side {
+    width: 100%;
+    border-right: 0;
+    border-bottom: 1px solid #d0d6dc;
   }
 
 }
@@ -289,53 +265,54 @@
 
 <aside class="side">
 
-<h2>
-解答・枠設定
-</h2>
+  <h2>
+    テスト設定
+  </h2>
 
 
-<a
-href="/teacher/tests"
->
-テスト一覧
-</a>
+  <a
+    href="/teacher/tests"
+  >
+    テスト一覧
+  </a>
 
 
-<a
-class="active"
-href="#"
->
-解答登録・枠設定
-</a>
+  <a
+    id="pointsLink"
+    href="#"
+  >
+    配点設定
+  </a>
 
 
-<a
-id="pointsLink"
-href="#"
->
-配点設定
-</a>
+  <a
+    href="/teacher/answers/regions"
+  >
+    答案クロップ
+  </a>
 
 
-<a
-href="/teacher/students/qr"
->
-生徒QR発行
-</a>
+  <a
+    href="/teacher/marking"
+  >
+    デジタル採点
+  </a>
 
 
-<a
-href="/teacher/answers/upload"
->
-答案アップロード
-</a>
+  <a
+    href="/teacher/results/summary"
+  >
+    成績処理
+  </a>
 
 
-<a
-href="/teacher/marking"
->
-採点
-</a>
+  <button
+    id="logoutButton"
+    type="button"
+    class="btn"
+  >
+    ログアウト
+  </button>
 
 </aside>
 
@@ -343,170 +320,145 @@ href="/teacher/marking"
 <main class="main layout-main">
 
 
-<h1>
-解答登録・枠設定
-</h1>
-
-
 <div
-id="status"
-class="status"
+  id="status"
+  class="status"
 >
-テスト情報を読み込んでいます...
+  枠設定を起動しています...
 </div>
 
 
 <div class="card">
-
-
-<p>
-解答用紙画像を読み込み、解答欄とQRコードシール欄を設定します。
-</p>
 
 
 <div class="toolbar">
 
 
-<label
-class="btn"
-for="file"
->
-解答用紙を選択
-</label>
-
-
 <input
-id="file"
-type="file"
-accept="image/*"
-hidden
+  id="file"
+  type="file"
+  accept=".pdf,.png,.jpg,.jpeg,.webp"
 >
 
 
 <button
-class="btn btn-primary"
-id="questionMode"
-type="button"
+  id="questionMode"
+  type="button"
+  class="btn btn-primary"
 >
-解答欄
+  解答欄
 </button>
 
 
 <button
-class="btn"
-id="qrMode"
-type="button"
+  id="qrMode"
+  type="button"
+  class="btn"
 >
-QRコードシール欄
+  QR
 </button>
 
 
 <button
-class="btn"
-id="nameMode"
-type="button"
+  id="nameMode"
+  type="button"
+  class="btn"
 >
-氏名欄
+  氏名
 </button>
 
 
 <button
-class="btn"
-id="saveButton"
-type="button"
+  id="saveButton"
+  type="button"
+  class="btn btn-primary"
 >
-枠設定を保存
+  保存
 </button>
 
 
-<a
-id="nextPoints"
-class="btn btn-primary"
-href="#"
+<button
+  id="nextPoints"
+  type="button"
+  class="btn btn-primary"
 >
-枠設定・配点設定へ
-</a>
+  配点設定へ
+</button>
+
+
+</div>
 
 
 </div>
 
 
 <div
-id="canvasWrap"
-class="layout-canvas"
+  id="canvasWrap"
+  class="layout-canvas"
 >
 
 <div class="empty">
-解答用紙を選択してください。
+  解答用紙を読み込んでください。
 </div>
 
 </div>
 
-
-</div>
-
-
-<!-- =====================================================
-     問題設定
-====================================================== -->
 
 <div class="card">
 
 
 <h2>
-問題設定・配点
+  解答欄一覧
 </h2>
 
 
-<p class="small">
-解答欄を作成した後、設問番号と配点を設定します。
-</p>
-
-
 <div
-id="questionList"
-></div>
+  id="questionList"
+  class="question-list"
+>
+
+<div class="empty">
+  まだ解答欄がありません。
+</div>
+
+</div>
 
 
 <button
-id="addQuestion"
-class="btn btn-primary"
-type="button"
+  id="addQuestion"
+  type="button"
+  class="btn btn-primary"
 >
-問題追加
+  解答欄を追加
 </button>
 
 
 <div
-id="total"
-class="total"
+  id="total"
+  class="total"
 >
-合計配点：0点
+  合計配点：0点
 </div>
 
 
 </div>
 
-
-<!-- =====================================================
-     枠一覧
-====================================================== -->
 
 <div class="card">
 
 
 <h2>
-設定済み枠
+  枠一覧
 </h2>
 
 
 <div
-id="boxList"
-class="box-list"
+  id="boxList"
+  class="box-list"
 >
 
 <div class="empty">
-まだ枠がありません。
+  枠がありません。
 </div>
 
 </div>
@@ -517,2029 +469,28 @@ class="box-list"
 
 </main>
 
+
 </div>
 
 
 <script
-src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+  src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
 ></script>
 
 
 <script
-src="/js/config.js?v=20261116"
+  src="/js/config.js?v=20261116"
 ></script>
 
 
 <script
-src="/js/auth.js?v=20261116"
+  src="/js/auth.js?v=20261116"
 ></script>
 
 
-<script>
-
-"use strict";
-
-
-/* =====================================================
-   CLIENT
-===================================================== */
-
-const DB =
-  window.supabaseClient ||
-  window.SB;
-
-
-if (!DB) {
-
-  throw new Error(
-    "Supabase Clientが初期化されていません。"
-  );
-
-}
-
-
-/* =====================================================
-   URL
-===================================================== */
-
-const params =
-  new URLSearchParams(
-    location.search
-  );
-
-
-const testId =
-  params.get(
-    "test"
-  );
-
-
-/* =====================================================
-   STATE
-===================================================== */
-
-let mode =
-  "question";
-
-
-let image =
-  null;
-
-
-let imageNaturalWidth =
-  0;
-
-
-let imageNaturalHeight =
-  0;
-
-
-let boxes =
-  [];
-
-
-let drawing =
-  false;
-
-
-let startPoint =
-  null;
-
-
-/* =====================================================
-   DOM
-===================================================== */
-
-const statusElement =
-  document.getElementById(
-    "status"
-  );
-
-
-const canvasWrap =
-  document.getElementById(
-    "canvasWrap"
-  );
-
-
-const questionList =
-  document.getElementById(
-    "questionList"
-  );
-
-
-const boxList =
-  document.getElementById(
-    "boxList"
-  );
-
-
-/* =====================================================
-   INIT
-===================================================== */
-
-document.addEventListener(
-  "DOMContentLoaded",
-  initialize
-);
-
-
-async function initialize() {
-
-  try {
-
-    if (!DB) {
-
-      throw new Error(
-        "Supabase Clientが初期化されていません。"
-      );
-
-    }
-
-
-    if (!testId) {
-
-      throw new Error(
-        "テストIDがありません。"
-      );
-
-    }
-
-
-    /*
-     * 認証
-     */
-
-    if (
-      typeof window.requireRole ===
-      "function"
-    ) {
-
-      const result =
-        await window.requireRole(
-          "teacher"
-        );
-
-
-      if (!result) {
-
-        return;
-
-      }
-
-    }
-
-
-    const encoded =
-      encodeURIComponent(
-        testId
-      );
-
-
-    document.getElementById(
-      "pointsLink"
-    ).href =
-      `/teacher/tests/points?test=${encoded}`;
-
-
-    document.getElementById(
-      "nextPoints"
-    ).href =
-      `/teacher/tests/points?test=${encoded}`;
-
-
-    setupEvents();
-
-
-    await loadExistingBoxes();
-
-
-  } catch (error) {
-
-    console.error(
-      "layout initialize:",
-      error
-    );
-
-
-    showError(
-      error.message ||
-      "枠設定を読み込めませんでした。"
-    );
-
-  }
-
-}
-
-
-/* =====================================================
-   EVENTS
-===================================================== */
-
-function setupEvents() {
-
-
-  document
-    .getElementById(
-      "questionMode"
-    )
-    .addEventListener(
-      "click",
-      () => {
-
-        mode =
-          "question";
-
-        setModeButton(
-          "questionMode"
-        );
-
-        setStatus(
-          "解答欄モードです。画像上をドラッグしてください。"
-        );
-
-      }
-    );
-
-
-  document
-    .getElementById(
-      "qrMode"
-    )
-    .addEventListener(
-      "click",
-      () => {
-
-        mode =
-          "qr";
-
-        setModeButton(
-          "qrMode"
-        );
-
-        setStatus(
-          "QRコードシール欄モードです。"
-        );
-
-      }
-    );
-
-
-  document
-    .getElementById(
-      "nameMode"
-    )
-    .addEventListener(
-      "click",
-      () => {
-
-        mode =
-          "name";
-
-        setModeButton(
-          "nameMode"
-        );
-
-        setStatus(
-          "氏名欄モードです。"
-        );
-
-      }
-    );
-
-
-  document
-    .getElementById(
-      "file"
-    )
-    .addEventListener(
-      "change",
-      handleFile
-    );
-
-
-  document
-    .getElementById(
-      "addQuestion"
-    )
-    .addEventListener(
-      "click",
-      addQuestion
-    );
-
-
-  document
-    .getElementById(
-      "saveButton"
-    )
-    .addEventListener(
-      "click",
-      saveAll
-    );
-
-
-  document
-    .getElementById(
-      "logoutButton"
-    )
-    ?.addEventListener(
-      "click",
-      async () => {
-
-        if (
-          typeof window.logout ===
-          "function"
-        ) {
-
-          await window.logout();
-
-        }
-
-      }
-    );
-
-}
-
-
-/* =====================================================
-   MODE BUTTON
-===================================================== */
-
-function setModeButton(
-  activeId
-) {
-
-  [
-    "questionMode",
-    "qrMode",
-    "nameMode"
-  ]
-    .forEach(
-      id => {
-
-        document
-          .getElementById(
-            id
-          )
-          ?.classList.toggle(
-            "btn-primary",
-            id === activeId
-          );
-
-      }
-    );
-
-}
-
-
-/* =====================================================
-   LOAD EXISTING
-===================================================== */
-
-async function loadExistingBoxes() {
-
-  setStatus(
-    "既存の枠設定を読み込んでいます..."
-  );
-
-
-  const {
-    data,
-    error
-  } =
-    await DB
-      .from(
-        "layout_boxes"
-      )
-      .select(
-        `
-        id,
-        test_id,
-        page_no,
-        box_type,
-        label,
-        x,
-        y,
-        width,
-        height,
-        question_id,
-        points,
-        sort_order
-        `
-      )
-      .eq(
-        "test_id",
-        testId
-      )
-      .order(
-        "page_no",
-        {
-          ascending:true
-        }
-      )
-      .order(
-        "sort_order",
-        {
-          ascending:true
-        }
-      );
-
-
-  if (error) {
-
-    throw error;
-
-  }
-
-
-  boxes =
-    data ||
-    [];
-
-
-  /*
-   * 重要:
-   *
-   * 既存枠を取得したら
-   * 問題設定も必ず描画する。
-   */
-
-  renderBoxList();
-
-  renderQuestionList();
-
-  updateTotal();
-
-
-  setStatus(
-    `${boxes.length}個の枠を読み込みました。`
-  );
-
-}
-
-
-/* =====================================================
-   FILE
-===================================================== */
-
-function handleFile(
-  event
-) {
-
-  const file =
-    event.target.files[0];
-
-
-  if (!file) {
-
-    return;
-
-  }
-
-
-  if (
-    !file.type.startsWith(
-      "image/"
-    )
-  ) {
-
-    showError(
-      "画像ファイルを選択してください。"
-    );
-
-    return;
-
-  }
-
-
-  const url =
-    URL.createObjectURL(
-      file
-    );
-
-
-  canvasWrap.innerHTML =
-    "";
-
-
-  image =
-    document.createElement(
-      "img"
-    );
-
-
-  image.className =
-    "layout-image";
-
-
-  image.src =
-    url;
-
-
-  image.draggable =
-    false;
-
-
-  canvasWrap.appendChild(
-    image
-  );
-
-
-  image.onload =
-    () => {
-
-      imageNaturalWidth =
-        image.naturalWidth;
-
-
-      imageNaturalHeight =
-        image.naturalHeight;
-
-
-      const layer =
-        document.createElement(
-          "div"
-        );
-
-
-      layer.className =
-        "draw-layer";
-
-
-      canvasWrap.appendChild(
-        layer
-      );
-
-
-      setupDrawing(
-        layer
-      );
-
-
-      renderBoxes();
-
-
-      setStatus(
-        "画像を読み込みました。枠をドラッグして設定できます。"
-      );
-
-    };
-
-}
-
-
-/* =====================================================
-   DRAW
-===================================================== */
-
-function setupDrawing(
-  layer
-) {
-
-  layer.addEventListener(
-    "mousedown",
-    event => {
-
-      if (!image) {
-
-        return;
-
-      }
-
-
-      const rect =
-        image.getBoundingClientRect();
-
-
-      drawing =
-        true;
-
-
-      startPoint = {
-
-        x:
-          event.clientX -
-          rect.left,
-
-        y:
-          event.clientY -
-          rect.top
-
-      };
-
-    }
-  );
-
-
-  layer.addEventListener(
-    "mouseup",
-    event => {
-
-      if (
-        !drawing ||
-        !startPoint
-      ) {
-
-        return;
-
-      }
-
-
-      const rect =
-        image.getBoundingClientRect();
-
-
-      const endX =
-        event.clientX -
-        rect.left;
-
-
-      const endY =
-        event.clientY -
-        rect.top;
-
-
-      const scaleX =
-        imageNaturalWidth /
-        image.clientWidth;
-
-
-      const scaleY =
-        imageNaturalHeight /
-        image.clientHeight;
-
-
-      const x =
-        Math.max(
-          0,
-          Math.min(
-            startPoint.x,
-            endX
-          )
-        ) *
-        scaleX;
-
-
-      const y =
-        Math.max(
-          0,
-          Math.min(
-            startPoint.y,
-            endY
-          )
-        ) *
-        scaleY;
-
-
-      const width =
-        Math.abs(
-          endX -
-          startPoint.x
-        ) *
-        scaleX;
-
-
-      const height =
-        Math.abs(
-          endY -
-          startPoint.y
-        ) *
-        scaleY;
-
-
-      drawing =
-        false;
-
-
-      startPoint =
-        null;
-
-
-      if (
-        width < 10 ||
-        height < 10
-      ) {
-
-        return;
-
-      }
-
-
-      addBox(
-        x,
-        y,
-        width,
-        height
-      );
-
-    }
-  );
-
-
-  layer.addEventListener(
-    "mouseleave",
-    () => {
-
-      drawing =
-        false;
-
-      startPoint =
-        null;
-
-    }
-  );
-
-}
-
-
-/* =====================================================
-   ADD BOX
-===================================================== */
-
-function addBox(
-  x,
-  y,
-  width,
-  height
-) {
-
-  const questionCount =
-    boxes.filter(
-      box =>
-        box.box_type ===
-        "answer"
-    ).length;
-
-
-  let box;
-
-
-  if (
-    mode ===
-    "qr"
-  ) {
-
-    box = {
-
-      id:
-        null,
-
-      test_id:
-        testId,
-
-      page_no:
-        1,
-
-      box_type:
-        "qr",
-
-      label:
-        "QR",
-
-      x,
-      y,
-      width,
-      height,
-
-      /*
-       * QRはquestion_idなし。
-       */
-
-      question_id:
-        null,
-
-      points:
-        0,
-
-      sort_order:
-        boxes.length + 1
-
-    };
-
-  }
-
-
-  else if (
-    mode ===
-    "name"
-  ) {
-
-    box = {
-
-      id:
-        null,
-
-      test_id:
-        testId,
-
-      page_no:
-        1,
-
-      box_type:
-        "name",
-
-      label:
-        "氏名",
-
-      x,
-      y,
-      width,
-      height,
-
-      question_id:
-        null,
-
-      points:
-        0,
-
-      sort_order:
-        boxes.length + 1
-
-    };
-
-  }
-
-
-  else {
-
-    box = {
-
-      id:
-        null,
-
-      test_id:
-        testId,
-
-      page_no:
-        1,
-
-      box_type:
-        "answer",
-
-      label:
-        `問${
-          questionCount + 1
-        }`,
-
-      x,
-      y,
-      width,
-      height,
-
-      /*
-       * question_idを
-       * UUIDとして勝手に作らない。
-       *
-       * 現在のDBではNULLでも
-       * 採点対象として扱う。
-       */
-
-      question_id:
-        null,
-
-      points:
-        0,
-
-      sort_order:
-        boxes.length + 1
-
-    };
-
-  }
-
-
-  boxes.push(
-    box
-  );
-
-
-  renderBoxes();
-
-  renderQuestionList();
-
-  renderBoxList();
-
-  updateTotal();
-
-
-  setStatus(
-    `${box.label} の枠を追加しました。`
-  );
-
-}
-
-
-/* =====================================================
-   RENDER BOXES
-===================================================== */
-
-function renderBoxes() {
-
-  if (!image) {
-
-    return;
-
-  }
-
-
-  canvasWrap
-    .querySelectorAll(
-      ".rect"
-    )
-    .forEach(
-      element =>
-        element.remove()
-    );
-
-
-  const scaleX =
-    image.clientWidth /
-    imageNaturalWidth;
-
-
-  const scaleY =
-    image.clientHeight /
-    imageNaturalHeight;
-
-
-  boxes.forEach(
-    box => {
-
-      const rect =
-        document.createElement(
-          "div"
-        );
-
-
-      rect.className =
-        "rect";
-
-
-      if (
-        box.box_type ===
-        "qr"
-      ) {
-
-        rect.classList.add(
-          "qr"
-        );
-
-      }
-
-
-      if (
-        box.box_type ===
-        "name"
-      ) {
-
-        rect.classList.add(
-          "name"
-        );
-
-      }
-
-
-      if (
-        box.label ===
-          "合計" ||
-        box.label ===
-          "小計"
-      ) {
-
-        rect.classList.add(
-          "aggregate"
-        );
-
-      }
-
-
-      rect.style.left =
-        `${box.x * scaleX}px`;
-
-
-      rect.style.top =
-        `${box.y * scaleY}px`;
-
-
-      rect.style.width =
-        `${box.width * scaleX}px`;
-
-
-      rect.style.height =
-        `${box.height * scaleY}px`;
-
-
-      const label =
-        document.createElement(
-          "span"
-        );
-
-
-      label.className =
-        "rect-label";
-
-
-      label.textContent =
-        box.label ||
-        "枠";
-
-
-      rect.appendChild(
-        label
-      );
-
-
-      canvasWrap.appendChild(
-        rect
-      );
-
-    }
-  );
-
-}
-
-
-/* =====================================================
-   QUESTION LIST
-===================================================== */
-
-function renderQuestionList() {
-
-  questionList.innerHTML =
-    "";
-
-
-  const questions =
-    boxes.filter(
-      box =>
-        box.box_type ===
-        "answer" &&
-        box.label !==
-          "合計" &&
-        box.label !==
-          "小計"
-    );
-
-
-  if (!questions.length) {
-
-    questionList.innerHTML = `
-
-      <div class="empty">
-        解答欄を追加してください。
-      </div>
-
-    `;
-
-    updateTotal();
-
-    return;
-
-  }
-
-
-  questions.forEach(
-    (
-      box,
-      index
-    ) => {
-
-      const card =
-        document.createElement(
-          "div"
-        );
-
-
-      card.className =
-        "question-card";
-
-
-      const grid =
-        document.createElement(
-          "div"
-        );
-
-
-      grid.className =
-        "question-grid";
-
-
-      /*
-       * 設問番号
-       */
-
-      const labelGroup =
-        document.createElement(
-          "div"
-        );
-
-
-      const labelLabel =
-        document.createElement(
-          "label"
-        );
-
-
-      labelLabel.textContent =
-        "設問番号";
-
-
-      const labelInput =
-        document.createElement(
-          "input"
-        );
-
-
-      labelInput.value =
-        box.label ||
-        `問${index + 1}`;
-
-
-      labelInput.addEventListener(
-        "input",
-        () => {
-
-          box.label =
-            labelInput.value;
-
-          renderBoxes();
-
-          renderBoxList();
-
-        }
-      );
-
-
-      labelGroup.append(
-        labelLabel,
-        labelInput
-      );
-
-
-      /*
-       * 配点
-       */
-
-      const pointsGroup =
-        document.createElement(
-          "div"
-        );
-
-
-      const pointsLabel =
-        document.createElement(
-          "label"
-        );
-
-
-      pointsLabel.textContent =
-        "配点";
-
-
-      const pointsInput =
-        document.createElement(
-          "input"
-        );
-
-
-      pointsInput.type =
-        "number";
-
-
-      pointsInput.min =
-        "0";
-
-
-      pointsInput.step =
-        "0.1";
-
-
-      pointsInput.value =
-        Number(
-          box.points
-        ) || 0;
-
-
-      pointsInput.addEventListener(
-        "input",
-        () => {
-
-          box.points =
-            Number(
-              pointsInput.value
-            ) || 0;
-
-
-          updateTotal();
-
-          renderBoxList();
-
-        }
-      );
-
-
-      pointsGroup.append(
-        pointsLabel,
-        pointsInput
-      );
-
-
-      /*
-       * 模範解答
-       *
-       * 現在のlayout_boxesテーブルに
-       * answer/viewpoint列があるとは
-       * 限らないため、DBには保存しない。
-       *
-       * 画面上の入力としては残さない。
-       */
-
-
-      const answerGroup =
-        document.createElement(
-          "div"
-        );
-
-
-      const answerLabel =
-        document.createElement(
-          "label"
-        );
-
-
-      answerLabel.textContent =
-        "採点対象";
-
-
-      const answerText =
-        document.createElement(
-          "div"
-        );
-
-
-      answerText.style.height =
-        "38px";
-
-
-      answerText.style.display =
-        "flex";
-
-
-      answerText.style.alignItems =
-        "center";
-
-
-      answerText.textContent =
-        "答案";
-
-
-      answerGroup.append(
-        answerLabel,
-        answerText
-      );
-
-
-      /*
-       * 枠ID
-       */
-
-      const idGroup =
-        document.createElement(
-          "div"
-        );
-
-
-      const idLabel =
-        document.createElement(
-          "label"
-        );
-
-
-      idLabel.textContent =
-        "枠ID";
-
-
-      const idText =
-        document.createElement(
-          "div"
-        );
-
-
-      idText.style.height =
-        "38px";
-
-
-      idText.style.display =
-        "flex";
-
-
-      idText.style.alignItems =
-        "center";
-
-
-      idText.style.fontSize =
-        "11px";
-
-
-      idText.style.color =
-        "#666";
-
-
-      idText.textContent =
-        box.id ||
-        "未保存";
-
-
-      idGroup.append(
-        idLabel,
-        idText
-      );
-
-
-      grid.append(
-        labelGroup,
-        pointsGroup,
-        answerGroup,
-        idGroup
-      );
-
-
-      /*
-       * 削除
-       */
-
-      const actions =
-        document.createElement(
-          "div"
-        );
-
-
-      actions.className =
-        "question-actions";
-
-
-      const remove =
-        document.createElement(
-          "button"
-        );
-
-
-      remove.type =
-        "button";
-
-
-      remove.className =
-        "btn";
-
-
-      remove.textContent =
-        "この設問を削除";
-
-
-      remove.addEventListener(
-        "click",
-        () => {
-
-          const index =
-            boxes.indexOf(
-              box
-            );
-
-
-          if (
-            index >=
-            0
-          ) {
-
-            boxes.splice(
-              index,
-              1
-            );
-
-          }
-
-
-          renderBoxes();
-
-          renderQuestionList();
-
-          renderBoxList();
-
-          updateTotal();
-
-        }
-      );
-
-
-      actions.append(
-        remove
-      );
-
-
-      card.append(
-        grid,
-        actions
-      );
-
-
-      questionList.appendChild(
-        card
-      );
-
-    }
-  );
-
-
-  updateTotal();
-
-}
-
-
-/* =====================================================
-   ADD QUESTION
-===================================================== */
-
-function addQuestion() {
-
-  const questionCount =
-    boxes.filter(
-      box =>
-        box.box_type ===
-        "answer" &&
-        box.label !==
-          "合計" &&
-        box.label !==
-          "小計"
-    ).length;
-
-
-  boxes.push({
-
-    id:
-      null,
-
-    test_id:
-      testId,
-
-    page_no:
-      1,
-
-    box_type:
-      "answer",
-
-    label:
-      `問${
-        questionCount + 1
-      }`,
-
-    x:
-      0,
-
-    y:
-      0,
-
-    width:
-      100,
-
-    height:
-      100,
-
-    /*
-     * NULLで保存。
-     */
-
-    question_id:
-      null,
-
-    points:
-      0,
-
-    sort_order:
-      boxes.length + 1
-
-  });
-
-
-  renderBoxes();
-
-  renderQuestionList();
-
-  renderBoxList();
-
-  updateTotal();
-
-
-  setStatus(
-    "問題を追加しました。"
-  );
-
-}
-
-
-/* =====================================================
-   BOX LIST
-===================================================== */
-
-function renderBoxList() {
-
-  boxList.innerHTML =
-    "";
-
-
-  if (!boxes.length) {
-
-    boxList.innerHTML = `
-
-      <div class="empty">
-        まだ枠がありません。
-      </div>
-
-    `;
-
-    return;
-
-  }
-
-
-  boxes.forEach(
-    (
-      box,
-      index
-    ) => {
-
-      const row =
-        document.createElement(
-          "div"
-        );
-
-
-      row.className =
-        "box-row";
-
-
-      const info =
-        document.createElement(
-          "div"
-        );
-
-
-      info.className =
-        "box-info";
-
-
-      const title =
-        document.createElement(
-          "div"
-        );
-
-
-      title.className =
-        "box-title";
-
-
-      title.textContent =
-        box.label ||
-        `枠${index + 1}`;
-
-
-      const meta =
-        document.createElement(
-          "div"
-        );
-
-
-      meta.className =
-        "box-meta";
-
-
-      meta.textContent =
-        [
-          `種類: ${box.box_type || "-"}`,
-          `ページ: ${box.page_no || 1}`,
-          `配点: ${formatNumber(box.points)}点`,
-          `question_id: ${box.question_id || "NULL"}`
-        ].join(
-          " / "
-        );
-
-
-      info.append(
-        title,
-        meta
-      );
-
-
-      const remove =
-        document.createElement(
-          "button"
-        );
-
-
-      remove.type =
-        "button";
-
-
-      remove.className =
-        "btn";
-
-
-      remove.textContent =
-        "削除";
-
-
-      remove.addEventListener(
-        "click",
-        () => {
-
-          boxes.splice(
-            index,
-            1
-          );
-
-
-          renderBoxes();
-
-          renderQuestionList();
-
-          renderBoxList();
-
-          updateTotal();
-
-        }
-      );
-
-
-      row.append(
-        info,
-        remove
-      );
-
-
-      boxList.appendChild(
-        row
-      );
-
-    }
-  );
-
-}
-
-
-/* =====================================================
-   SAVE
-===================================================== */
-
-async function saveAll() {
-
-  const saveButton =
-    document.getElementById(
-      "saveButton"
-    );
-
-
-  if (!boxes.length) {
-
-    showError(
-      "保存する枠がありません。"
-    );
-
-    return;
-
-  }
-
-
-  saveButton.disabled =
-    true;
-
-
-  saveButton.textContent =
-    "保存中...";
-
-
-  try {
-
-    /*
-     * 既存枠を削除。
-     */
-
-    const {
-      error:
-        deleteError
-    } =
-      await DB
-        .from(
-          "layout_boxes"
-        )
-        .delete()
-        .eq(
-          "test_id",
-          testId
-        );
-
-
-    if (deleteError) {
-
-      throw deleteError;
-
-    }
-
-
-    /*
-     * 現在のlayout_boxesに存在する
-     * カラムだけを保存する。
-     *
-     * answer / viewpointなど
-     * 存在確認できないカラムは送らない。
-     */
-
-    const rows =
-      boxes.map(
-        (
-          box,
-          index
-        ) => ({
-
-          test_id:
-            testId,
-
-          page_no:
-            Number(
-              box.page_no
-            ) || 1,
-
-          box_type:
-            box.box_type,
-
-          label:
-            box.label ||
-            null,
-
-          x:
-            Number(
-              box.x
-            ) || 0,
-
-          y:
-            Number(
-              box.y
-            ) || 0,
-
-          width:
-            Number(
-              box.width
-            ) || 0,
-
-          height:
-            Number(
-              box.height
-            ) || 0,
-
-          /*
-           * question_idはNULLでも
-           * 採点可能。
-           */
-
-          question_id:
-            box.question_id ||
-            null,
-
-          points:
-            Number(
-              box.points
-            ) || 0,
-
-          sort_order:
-            index + 1
-
-        })
-      );
-
-
-    const {
-      data,
-      error
-    } =
-      await DB
-        .from(
-          "layout_boxes"
-        )
-        .insert(
-          rows
-        )
-        .select(
-          `
-          id,
-          test_id,
-          page_no,
-          box_type,
-          label,
-          x,
-          y,
-          width,
-          height,
-          question_id,
-          points,
-          sort_order
-          `
-        );
-
-
-    if (error) {
-
-      throw error;
-
-    }
-
-
-    boxes =
-      data ||
-      [];
-
-
-    renderBoxes();
-
-    renderQuestionList();
-
-    renderBoxList();
-
-    updateTotal();
-
-
-    setStatus(
-      "枠設定と配点を保存しました。"
-    );
-
-
-    /*
-     * 次は実在する points.html。
-     */
-
-    location.href =
-      `/teacher/tests/points?test=${encodeURIComponent(
-        testId
-      )}`;
-
-
-  } catch (error) {
-
-    console.error(
-      "save layout:",
-      error
-    );
-
-
-    showError(
-      `保存に失敗しました: ${error.message}`
-    );
-
-
-  } finally {
-
-    saveButton.disabled =
-      false;
-
-
-    saveButton.textContent =
-      "枠設定を保存";
-
-  }
-
-}
-
-
-/* =====================================================
-   TOTAL
-===================================================== */
-
-function updateTotal() {
-
-  const questions =
-    boxes.filter(
-      box =>
-        box.box_type ===
-        "answer" &&
-        box.label !==
-          "合計" &&
-        box.label !==
-          "小計"
-    );
-
-
-  const total =
-    questions.reduce(
-      (
-        sum,
-        box
-      ) =>
-        sum +
-        (
-          Number(
-            box.points
-          ) || 0
-        ),
-      0
-    );
-
-
-  const totalElement =
-    document.getElementById(
-      "total"
-    );
-
-
-  if (!totalElement) {
-
-    return;
-
-  }
-
-
-  totalElement.textContent =
-    `合計配点：${
-      Number.isInteger(
-        total
-      )
-        ? total
-        : total.toFixed(
-            1
-          )
-    }点`;
-
-}
-
-
-/* =====================================================
-   STATUS
-===================================================== */
-
-function setStatus(
-  message
-) {
-
-  statusElement.textContent =
-    message;
-
-
-  statusElement.classList.remove(
-    "error"
-  );
-
-}
-
-
-function showError(
-  message
-) {
-
-  statusElement.textContent =
-    message;
-
-
-  statusElement.classList.add(
-    "error"
-  );
-
-}
-
-
-/* =====================================================
-   FORMAT
-===================================================== */
-
-function formatNumber(
-  value
-) {
-
-  const number =
-    Number(
-      value
-    );
-
-
-  if (
-    !Number.isFinite(
-      number
-    )
-  ) {
-
-    return "0";
-
-  }
-
-
-  return Number.isInteger(
-    number
-  )
-    ? String(
-        number
-      )
-    : number.toFixed(
-        1
-      );
-
-}
-
-</script>
+<script
+  src="/js/teacher/test-layout.js?v=20261116"
+></script>
 
 
 </body>

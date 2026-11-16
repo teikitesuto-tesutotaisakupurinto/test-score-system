@@ -23,98 +23,72 @@
 <style>
 
 .preview-main {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 20px;
+  max-width:1400px;
+
+  margin:0 auto;
+
+  padding:20px;
 }
 
-.test-information {
-  margin-bottom: 15px;
+
+.preview-information {
+  margin-bottom:15px;
+
+  padding:14px;
+
+  background:#fff;
+
+  border:
+    1px solid #d0d6dc;
+
+  line-height:1.8;
 }
 
-.page-grid {
-  display: grid;
-  grid-template-columns:
-    repeat(
-      3,
-      minmax(0, 1fr)
-    );
-  gap: 15px;
+
+.preview-toolbar {
+  display:flex;
+
+  flex-wrap:wrap;
+
+  gap:8px;
+
+  margin-bottom:15px;
 }
 
-.page-card {
-  background: #fff;
-  border: 1px solid #d0d6dc;
-  border-radius: 4px;
-  padding: 10px;
+
+.preview-section {
+  margin-bottom:18px;
+
+  padding:15px;
+
+  background:#fff;
+
+  border:
+    1px solid #d0d6dc;
 }
 
-.page-title {
-  margin-bottom: 8px;
-  font-weight: 700;
-  font-size: 13px;
+
+.preview-pages {
+  padding:15px;
+
+  background:#dfe4e8;
+
+  border:
+    1px solid #cbd2d8;
 }
 
-.page-image {
-  min-height: 250px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  background: #f4f6f8;
-  border: 1px solid #d5dbe0;
+
+.preview-box-summary {
+  overflow:auto;
 }
 
-.page-image img {
-  display: block;
-  width: 100%;
-  height: auto;
-}
-
-.box-preview {
-  overflow-x: auto;
-}
-
-.box-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.box-table th,
-.box-table td {
-  padding: 8px;
-  border: 1px solid #d0d6dc;
-  font-size: 13px;
-}
-
-.box-table th {
-  background: #f3f5f7;
-}
 
 .empty {
-  padding: 40px;
-  color: #777;
-  text-align: center;
-}
+  padding:50px;
 
-@media (max-width: 900px) {
+  text-align:center;
 
-  .page-grid {
-    grid-template-columns:
-      repeat(
-        2,
-        minmax(0, 1fr)
-      );
-  }
-
-}
-
-@media (max-width: 600px) {
-
-  .page-grid {
-    grid-template-columns: 1fr;
-  }
-
+  color:#777;
 }
 
 </style>
@@ -127,23 +101,26 @@
 
 <header class="topbar">
 
-  <div class="system-name">
-    テスト成績システム
-  </div>
+<div class="system-name">
+  テスト成績システム
+</div>
 
-  <div class="topbar-space"></div>
 
-  <span id="teacherName">
-    -
-  </span>
+<div class="topbar-space"></div>
 
-  <button
-    id="logoutButton"
-    class="logout-button"
-    type="button"
-  >
-    ログアウト
-  </button>
+
+<span id="teacherName">
+  -
+</span>
+
+
+<button
+id="logoutButton"
+class="logout-button"
+type="button"
+>
+  ログアウト
+</button>
 
 </header>
 
@@ -153,63 +130,56 @@
 
 <aside class="sidebar">
 
-  <div class="sidebar-title">
-    テスト設定
-  </div>
+
+<div class="sidebar-title">
+  テスト設定
+</div>
 
 
-  <a
-    id="pagesLink"
-    href="#"
-    class="menu-link"
-  >
-    解答用紙登録
-  </a>
+<a
+id="pagesLink"
+href="#"
+class="menu-link"
+>
+  解答用紙登録
+</a>
 
 
-  <a
-    id="layoutLink"
-    href="#"
-    class="menu-link"
-  >
-    枠設定
-  </a>
+<a
+id="layoutLink"
+href="#"
+class="menu-link"
+>
+  枠設定
+</a>
 
 
-  <a
-    id="pointsLink"
-    href="#"
-    class="menu-link"
-  >
-    配点設定
-  </a>
+<a
+id="modelAnswerLink"
+href="#"
+class="menu-link"
+>
+  模範解答
+</a>
 
 
-  <a
-    id="modelAnswerLink"
-    href="#"
-    class="menu-link"
-  >
-    模範解答
-  </a>
+<a
+id="previewLink"
+href="#"
+class="menu-link active"
+>
+  テスト確認
+</a>
 
 
-  <a
-    id="previewLink"
-    href="#"
-    class="menu-link active"
-  >
-    テスト確認
-  </a>
+<a
+href="#"
+id="pointsLink"
+class="menu-link"
+>
+  配点設定
+</a>
 
-
-  <a
-    id="markingLink"
-    href="#"
-    class="menu-link"
-  >
-    デジタル採点
-  </a>
 
 </aside>
 
@@ -219,83 +189,180 @@
 
 <div class="page-header">
 
-  <h1>
-    テスト確認
-  </h1>
+<h1>
+  テスト確認
+</h1>
 
 </div>
+
+
+<section
+id="testInformation"
+class="preview-information"
+>
+読み込み中...
+</section>
+
+
+<div class="preview-toolbar">
+
+<a
+href="/teacher/tests"
+class="btn"
+>
+テスト一覧
+</a>
+
+
+<a
+id="pagesLinkTop"
+href="#"
+class="btn"
+>
+解答用紙・枠設定
+</a>
+
+
+<a
+id="pointsLinkTop"
+href="#"
+class="btn"
+>
+配点設定
+</a>
+
+
+<a
+id="markingLink"
+href="#"
+class="btn btn-primary"
+>
+採点へ
+</a>
+
+</div>
+
+
+<section class="preview-section">
+
+
+<h2>
+  解答用紙
+</h2>
 
 
 <div
-  id="testInformation"
-  class="card test-information"
+id="pagePreview"
+class="preview-pages"
 >
-  読み込み中...
+
+<div class="empty">
+読み込み中...
 </div>
 
+</div>
 
-<section class="card">
-
-  <h3>
-    解答用紙
-  </h3>
-
-
-  <div
-    id="pagePreview"
-    class="page-grid"
-  >
-
-    <div class="empty">
-      読み込み中...
-    </div>
-
-  </div>
 
 </section>
 
 
-<section class="card">
-
-  <h3>
-    設定済み枠
-  </h3>
+<section class="preview-section">
 
 
-  <div
-    id="boxPreview"
-    class="box-preview"
-  >
+<h2>
+  解答欄・配点
+</h2>
 
-    <div class="empty">
-      読み込み中...
-    </div>
 
-  </div>
+<div
+id="boxPreview"
+class="preview-box-summary"
+>
+
+<div class="empty">
+読み込み中...
+</div>
+
+</div>
+
 
 </section>
 
 
 </main>
 
+
 </div>
 
 
 <script
-  src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
 ></script>
 
-<script
-  src="/js/config.js?v=20261116"
-></script>
 
 <script
-  src="/js/auth.js?v=20261116"
+src="/js/config.js?v=20261116"
 ></script>
 
+
 <script
-  src="/js/teacher/test-preview.js?v=20261116"
+src="/js/auth.js?v=20261116"
 ></script>
+
+
+<script
+src="/js/teacher/test-preview.js?v=20261116"
+></script>
+
+
+<script>
+
+"use strict";
+
+
+const params =
+  new URLSearchParams(
+    location.search
+  );
+
+
+const testId =
+  params.get(
+    "test"
+  ) ||
+  params.get(
+    "id"
+  );
+
+
+if (testId) {
+
+  const encoded =
+    encodeURIComponent(
+      testId
+    );
+
+
+  document.getElementById(
+    "pagesLinkTop"
+  ).href =
+    `/teacher/tests/pages?test=${encoded}`;
+
+
+  document.getElementById(
+    "pointsLinkTop"
+  ).href =
+    `/teacher/tests/points?test=${encoded}`;
+
+
+  document.getElementById(
+    "markingLink"
+  ).href =
+    `/teacher/marking?test=${encoded}`;
+
+}
+
+</script>
 
 
 </body>

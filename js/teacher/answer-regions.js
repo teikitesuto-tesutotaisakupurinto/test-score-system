@@ -1,216 +1,175 @@
 
-(function () {
+"use strict";
 
-  "use strict";
+/* =========================================================
+   答案クロップ処理
 
+   テストを選択
+      ↓
+   answer枠取得
+      ↓
+   全答案取得
+      ↓
+   answer_sheet_pages取得
+      ↓
+   Storageから元画像をdownload
+      ↓
+   layout_boxesの座標で実クロップ
+      ↓
+   student-answersへ保存
+      ↓
+   answer_regionsへ保存
 
-  /* =====================================================
-     STATE
-  ===================================================== */
+   注意
+   ---------------------------------------------------------
+   question_idはNULLでも保存可能。
+   採点対象の判定はbox_type=answerで行う。
+========================================================= */
 
-  let tests = [];
+let DB = null;
 
-  let selectedTestId = null;
+let tests = [];
 
-  let resultCount = 0;
+let selectedTestId = null;
 
+let selectedTest = null;
 
-  /* =====================================================
-     INIT
-  ===================================================== */
+let running = false;
 
-  async function initialize() {
+let totalCount = 0;
 
-    try {
+let completedCount = 0;
 
-      const profile =
-        await getProfile();
+let successCount = 0;
 
-
-      if (!profile) {
-
-        location.replace(
-          "/login"
-        );
-
-        return;
-
-      }
-
-
-      if (
-        profile.role !== "teacher" &&
-        profile.role !== "admin"
-      ) {
-
-        location.replace(
-          "/student/index.html"
-        );
-
-        return;
-
-      }
+let errorCount = 0;
 
 
-      const teacherName =
-        document.getElementById(
-          "teacherName"
-        );
+/* =========================================================
+   DOM
+========================================================= */
+
+const $ = id =>
+  document.getElementById(id);
 
 
-      if (teacherName) {
+/* =========================================================
+   INIT
+========================================================= */
 
-        teacherName.textContent =
-          profile.name ||
-          "先生";
-
-      }
-
-
-      await loadTests();
-
-    } catch (error) {
-
-      console.error(
-        "answer-regions initialize:",
-        error
-      );
+document.addEventListener(
+  "DOMContentLoaded",
+  initialize
+);
 
 
-      showMessage(
-        error.message ||
-        "答案領域画面を読み込めませんでした。",
-        true
+async function initialize() {
+
+  try {
+
+    DB =
+      window.supabaseClient ||
+      window.SB;
+
+
+    if (!DB) {
+
+      throw new Error(
+        "Supabase Clientが初期化されていません。"
       );
 
     }
 
-  }
+
+    const authResult =
+      await requireRole(
+        "teacher"
+      );
 
 
-  /* =====================================================
-     TEST LIST
-  ===================================================== */
+    if (!authResult) {
 
-  async function loadTests() {
+      return;
 
-    const {
-      data,
+    }
+
+
+    const teacherName =
+      $("teacherName");
+
+
+    if (teacherName) {
+
+      teacherName.textContent =
+        authResult.profile?.name ||
+        "先生";
+
+    }
+
+
+    setupEvents();
+
+    await loadTests();
+
+
+    const params =
+      new URLSearchParams(
+        location.search
+      );
+
+
+    const requestedTest =
+      params.get("test") ||
+      params.get("id");
+
+
+    if (
+      requestedTest &&
+      tests.some(
+        test =>
+          test.id ===
+          requestedTest
+      )
+    ) {
+
+      $("testSelect").value =
+        requestedTest;
+
+
+      selectedTestId =
+        requestedTest;
+
+
+      await selectTest();
+
+    }
+
+  } catch (error) {
+
+    console.error(
+      "answer-regions initialize:",
       error
-    } =
-      await supabaseClient
-        .from(
-          "tests"
-        )
-        .select(`
-          id,
-          name,
-          subject,
-          grade,
-          class_name
-        `)
-        .order(
-          "created_at",
-          {
-            ascending:
-              false
-          }
-        );
+    );
 
 
-    if (error) {
-
-      console.error(
-        error
-      );
-
-
-      showMessage(
-        "テスト一覧を取得できませんでした。",
-        true
-      );
-
-
-      return;
-
-    }
-
-
-    tests =
-      data ||
-      [];
-
-
-    const select =
-      document.getElementById(
-        "testSelect"
-      );
-
-
-    if (!select) {
-
-      return;
-
-    }
-
-
-    select.innerHTML = `
-
-      <option value="">
-        テストを選択してください
-      </option>
-
-      ${
-        tests
-          .map(
-            test => `
-
-              <option
-                value="${escapeHtml(
-                  test.id
-                )}"
-              >
-
-                ${escapeHtml(
-                  test.name
-                )}
-
-                ${
-                  test.subject
-                    ? ` / ${escapeHtml(
-                        test.subject
-                      )}`
-                    : ""
-                }
-
-                ${
-                  test.grade
-                    ? ` / ${escapeHtml(
-                        test.grade
-                      )}`
-                    : ""
-                }
-
-              </option>
-
-            `
-          )
-          .join("")
-      }
-
-    `;
+    showStatus(
+      error.message ||
+      "答案クロップ処理を起動できませんでした。",
+      true
+    );
 
   }
 
+}
 
-  /* =====================================================
-     TEST SELECT
-  ===================================================== */
 
-  document
-    .getElementById(
-      "testSelect"
-    )
+/* =========================================================
+   EVENTS
+========================================================= */
+
+function setupEvents() {
+
+  $("testSelect")
     ?.addEventListener(
       "change",
       async event => {
@@ -220,628 +179,676 @@
           null;
 
 
-        const button =
-          document.getElementById(
-            "executeButton"
-          );
-
-
-        if (!selectedTestId) {
-
-          if (button) {
-
-            button.disabled =
-              true;
-
-          }
-
-
-          const summary =
-            document.getElementById(
-              "summary"
-            );
-
-
-          if (summary) {
-
-            summary.style.display =
-              "none";
-
-          }
-
-
-          return;
-
-        }
-
-
-        if (button) {
-
-          button.disabled =
-            false;
-
-        }
-
-
-        try {
-
-          await loadTestInformation();
-
-          await loadSummary();
-
-        } catch (error) {
-
-          console.error(
-            error
-          );
-
-
-          showMessage(
-            error.message ||
-            "テスト情報を取得できませんでした。",
-            true
-          );
-
-        }
+        await selectTest();
 
       }
     );
 
 
-  /* =====================================================
-     TEST INFORMATION
-  ===================================================== */
+  /*
+   * regions.htmlのボタン。
+   *
+   * executeButtonでもsaveButtonでも動くようにする。
+   */
 
-  async function loadTestInformation() {
+  const executeButton =
+    $("executeButton");
 
-    const test =
-      tests.find(
-        item =>
-          item.id ===
-          selectedTestId
-      );
 
+  const saveButton =
+    $("saveButton");
 
-    if (!test) {
 
-      return;
+  executeButton?.addEventListener(
+    "click",
+    startCrop
+  );
 
-    }
 
+  saveButton?.addEventListener(
+    "click",
+    startCrop
+  );
 
-    const element =
-      document.getElementById(
-        "testInformation"
-      );
 
-
-    if (!element) {
-
-      return;
-
-    }
-
-
-    element.innerHTML = `
-
-      <strong>
-        ${escapeHtml(
-          test.name
-        )}
-      </strong>
-
-      <br>
-
-      教科：
-      ${escapeHtml(
-        test.subject ||
-        "-"
-      )}
-
-      ／
-
-      学年：
-      ${escapeHtml(
-        test.grade ||
-        "-"
-      )}
-
-      ／
-
-      クラス：
-      ${escapeHtml(
-        test.class_name ||
-        "-"
-      )}
-
-    `;
-
-  }
-
-
-  /* =====================================================
-     SUMMARY
-  ===================================================== */
-
-  async function loadSummary() {
-
-    const answerIds =
-      await getMatchedAnswerIds();
-
-
-    const [
-      boxesResult,
-      answersResult,
-      pagesResult,
-      regionsResult
-    ] =
-      await Promise.all([
-
-        supabaseClient
-          .from(
-            "layout_boxes"
-          )
-          .select(
-            "id",
-            {
-              count:
-                "exact",
-              head:
-                true
-            }
-          )
-          .eq(
-            "test_id",
-            selectedTestId
-          )
-          .eq(
-            "box_type",
-            "answer"
-          ),
-
-        supabaseClient
-          .from(
-            "answer_sheets"
-          )
-          .select(
-            "id",
-            {
-              count:
-                "exact",
-              head:
-                true
-            }
-          )
-          .eq(
-            "test_id",
-            selectedTestId
-          )
-          .neq(
-            "status",
-            "unmatched"
-          ),
-
-        answerIds.length
-          ? supabaseClient
-              .from(
-                "answer_sheet_pages"
-              )
-              .select(
-                "id",
-                {
-                  count:
-                    "exact",
-                  head:
-                    true
-                }
-              )
-              .in(
-                "answer_sheet_id",
-                answerIds
-              )
-          : Promise.resolve({
-              count:0,
-              error:null
-            }),
-
-        supabaseClient
-          .from(
-            "answer_regions"
-          )
-          .select(
-            "id",
-            {
-              count:
-                "exact",
-              head:
-                true
-            }
-          )
-
-      ]);
-
-
-    if (
-      boxesResult.error
-    ) {
-
-      throw boxesResult.error;
-
-    }
-
-
-    if (
-      answersResult.error
-    ) {
-
-      throw answersResult.error;
-
-    }
-
-
-    if (
-      pagesResult.error
-    ) {
-
-      throw pagesResult.error;
-
-    }
-
-
-    if (
-      regionsResult.error
-    ) {
-
-      throw regionsResult.error;
-
-    }
-
-
-    const boxCount =
-      boxesResult.count ||
-      0;
-
-
-    const answerCount =
-      answersResult.count ||
-      0;
-
-
-    const pageCount =
-      pagesResult.count ||
-      0;
-
-
-    const regionCount =
-      regionsResult.count ||
-      0;
-
-
-    const summary =
-      document.getElementById(
-        "summary"
-      );
-
-
-    if (!summary) {
-
-      return;
-
-    }
-
-
-    summary.style.display =
-      "block";
-
-
-    summary.innerHTML = `
-
-      <div
-        style="
-          display:grid;
-          grid-template-columns:
-            repeat(
-              4,
-              minmax(0,1fr)
-            );
-          gap:12px;
-        "
-      >
-
-        <div>
-
-          <div
-            style="
-              color:#777;
-              font-size:12px;
-            "
-          >
-            解答欄
-          </div>
-
-          <strong>
-            ${boxCount}
-          </strong>
-
-          個
-
-        </div>
-
-
-        <div>
-
-          <div
-            style="
-              color:#777;
-              font-size:12px;
-            "
-          >
-            答案
-          </div>
-
-          <strong>
-            ${answerCount}
-          </strong>
-
-          枚
-
-        </div>
-
-
-        <div>
-
-          <div
-            style="
-              color:#777;
-              font-size:12px;
-            "
-          >
-            答案ページ
-          </div>
-
-          <strong>
-            ${pageCount}
-          </strong>
-
-          ページ
-
-        </div>
-
-
-        <div>
-
-          <div
-            style="
-              color:#777;
-              font-size:12px;
-            "
-          >
-            切り出し済み
-          </div>
-
-          <strong>
-            ${regionCount}
-          </strong>
-
-          件
-
-        </div>
-
-      </div>
-
-    `;
-
-  }
-
-
-  /* =====================================================
-     MATCHED ANSWER IDS
-  ===================================================== */
-
-  async function getMatchedAnswerIds() {
-
-    const {
-      data,
-      error
-    } =
-      await supabaseClient
-        .from(
-          "answer_sheets"
-        )
-        .select(
-          "id"
-        )
-        .eq(
-          "test_id",
-          selectedTestId
-        )
-        .neq(
-          "status",
-          "unmatched"
-        );
-
-
-    if (error) {
-
-      throw error;
-
-    }
-
-
-    return (
-      data ||
-      []
-    ).map(
-      item =>
-        item.id
-    );
-
-  }
-
-
-  /* =====================================================
-     EXECUTE
-  ===================================================== */
-
-  document
-    .getElementById(
-      "executeButton"
-    )
+  $("logoutButton")
     ?.addEventListener(
       "click",
       async () => {
 
-        if (!selectedTestId) {
-
-          return;
-
-        }
-
-
-        const button =
-          document.getElementById(
-            "executeButton"
-          );
-
-
-        if (button) {
-
-          button.disabled =
-            true;
-
-          button.textContent =
-            "切り出し中...";
-
-        }
-
-
-        clearResults();
-
-
-        try {
-
-          const count =
-            await buildRegions(
-              selectedTestId
-            );
-
-
-          showMessage(
-            `${count}件の答案領域を作成しました。`
-          );
-
-
-          await loadSummary();
-
-
-        } catch (error) {
-
-          console.error(
-            "buildRegions:",
-            error
-          );
-
-
-          showMessage(
-            error.message ||
-            "切り出しに失敗しました。",
-            true
-          );
-
-        }
-
-
-        if (button) {
-
-          button.disabled =
-            false;
-
-          button.textContent =
-            "答案を問題別に切り出す";
-
-        }
+        await logout();
 
       }
     );
 
+}
 
-  /* =====================================================
-     BUILD REGIONS
-  ===================================================== */
 
-  async function buildRegions(
-    testId
-  ) {
+/* =========================================================
+   TESTS
+========================================================= */
 
-    /*
-     * 解答欄
-     *
-     * question_idは使用しない。
-     * box_type=answerを対象にする。
-     */
+async function loadTests() {
 
-    const {
-      data: boxes,
-      error: boxError
-    } =
-      await supabaseClient
-        .from(
-          "layout_boxes"
+  const {
+    data,
+    error
+  } =
+    await DB
+      .from("tests")
+      .select(`
+        id,
+        name,
+        subject,
+        grade,
+        class_name,
+        created_at
+      `)
+      .order(
+        "created_at",
+        {
+          ascending:false
+        }
+      );
+
+
+  if (error) {
+
+    throw new Error(
+      `テスト一覧取得エラー: ${error.message}`
+    );
+
+  }
+
+
+  tests =
+    data || [];
+
+
+  const select =
+    $("testSelect");
+
+
+  if (!select) {
+
+    return;
+
+  }
+
+
+  select.innerHTML = `
+
+    <option value="">
+      テストを選択してください
+    </option>
+
+  `;
+
+
+  tests.forEach(
+    test => {
+
+      const option =
+        document.createElement(
+          "option"
+        );
+
+
+      option.value =
+        test.id;
+
+
+      option.textContent =
+        [
+          test.name,
+          test.subject,
+          test.grade,
+          test.class_name
+        ]
+          .filter(
+            value =>
+              value !== null &&
+              value !== undefined &&
+              String(
+                value
+              ).trim() !== ""
+          )
+          .join(
+            " / "
+          );
+
+
+      select.appendChild(
+        option
+      );
+
+    }
+  );
+
+}
+
+
+/* =========================================================
+   TEST SELECT
+========================================================= */
+
+async function selectTest() {
+
+  clearResults();
+
+
+  if (!selectedTestId) {
+
+    selectedTest =
+      null;
+
+
+    setStatus(
+      "テストを選択してください。"
+    );
+
+
+    return;
+
+  }
+
+
+  selectedTest =
+    tests.find(
+      test =>
+        test.id ===
+        selectedTestId
+    ) ||
+    null;
+
+
+  if (!selectedTest) {
+
+    showStatus(
+      "テストが見つかりません。",
+      true
+    );
+
+    return;
+
+  }
+
+
+  try {
+
+    await renderTestInformation();
+
+    await loadSummary();
+
+  } catch (error) {
+
+    showStatus(
+      error.message ||
+      "テスト情報を取得できませんでした。",
+      true
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   TEST INFORMATION
+========================================================= */
+
+async function renderTestInformation() {
+
+  const element =
+    $("testInformation");
+
+
+  if (!element || !selectedTest) {
+
+    return;
+
+  }
+
+
+  element.innerHTML = `
+
+    <strong>
+      ${escapeHtml(
+        selectedTest.name
+      )}
+    </strong>
+
+    <br>
+
+    教科：
+    ${escapeHtml(
+      selectedTest.subject ||
+      "-"
+    )}
+
+    ／
+
+    学年：
+    ${escapeHtml(
+      selectedTest.grade ||
+      "-"
+    )}
+
+    ／
+
+    クラス：
+    ${escapeHtml(
+      selectedTest.class_name ||
+      "-"
+    )}
+
+  `;
+
+}
+
+
+/* =========================================================
+   SUMMARY
+========================================================= */
+
+async function loadSummary() {
+
+  if (!selectedTestId) {
+
+    return;
+
+  }
+
+
+  const [
+    boxesResult,
+    answersResult,
+    pagesResult,
+    regionsResult
+  ] =
+    await Promise.all([
+
+      DB
+        .from("layout_boxes")
+        .select(
+          "id",
+          {
+            count:"exact",
+            head:true
+          }
         )
-        .select(`
-          id,
-          page_no,
-          x,
-          y,
-          width,
-          height,
-          points,
-          label,
-          box_type
-        `)
         .eq(
           "test_id",
-          testId
+          selectedTestId
         )
         .eq(
           "box_type",
           "answer"
-        )
-        .order(
-          "page_no"
-        )
-        .order(
-          "sort_order",
+        ),
+
+      DB
+        .from("answer_sheets")
+        .select(
+          "id",
           {
-            ascending:
-              true
+            count:"exact",
+            head:true
           }
-        );
+        )
+        .eq(
+          "test_id",
+          selectedTestId
+        )
+        .not(
+          "student_id",
+          "is",
+          null
+        ),
+
+      DB
+        .from("answer_sheet_pages")
+        .select(
+          "id",
+          {
+            count:"exact",
+            head:true
+          }
+        )
+        .in(
+          "answer_sheet_id",
+          await getAnswerIds()
+        ),
+
+      DB
+        .from("answer_regions")
+        .select(
+          "id",
+          {
+            count:"exact",
+            head:true
+          }
+        )
+
+    ]);
 
 
-    if (boxError) {
+  if (boxesResult.error) {
 
-      throw boxError;
+    throw boxesResult.error;
+
+  }
+
+
+  if (answersResult.error) {
+
+    throw answersResult.error;
+
+  }
+
+
+  if (pagesResult.error) {
+
+    throw pagesResult.error;
+
+  }
+
+
+  const summary =
+    $("summary");
+
+
+  if (!summary) {
+
+    return;
+
+  }
+
+
+  summary.style.display =
+    "block";
+
+
+  summary.innerHTML = `
+
+    <div
+      style="
+        display:grid;
+        grid-template-columns:
+          repeat(
+            4,
+            minmax(0,1fr)
+          );
+        gap:12px;
+      "
+    >
+
+      <div>
+        <small>解答欄</small>
+        <br>
+        <strong>
+          ${boxesResult.count || 0}
+        </strong>
+        個
+      </div>
+
+      <div>
+        <small>答案</small>
+        <br>
+        <strong>
+          ${answersResult.count || 0}
+        </strong>
+        枚
+      </div>
+
+      <div>
+        <small>答案ページ</small>
+        <br>
+        <strong>
+          ${pagesResult.count || 0}
+        </strong>
+        ページ
+      </div>
+
+      <div>
+        <small>クロップ済み</small>
+        <br>
+        <strong>
+          ${regionsResult.count || 0}
+        </strong>
+        件
+      </div>
+
+    </div>
+
+  `;
+
+}
+
+
+/* =========================================================
+   ANSWER IDS
+========================================================= */
+
+async function getAnswerIds() {
+
+  if (!selectedTestId) {
+
+    return [];
+
+  }
+
+
+  const {
+    data,
+    error
+  } =
+    await DB
+      .from("answer_sheets")
+      .select(
+        "id"
+      )
+      .eq(
+        "test_id",
+        selectedTestId
+      )
+      .not(
+        "student_id",
+        "is",
+        null
+      );
+
+
+  if (error) {
+
+    throw error;
+
+  }
+
+
+  return (
+    data || []
+  ).map(
+    item =>
+      item.id
+  );
+
+}
+
+
+/* =========================================================
+   START
+========================================================= */
+
+async function startCrop() {
+
+  if (!selectedTestId) {
+
+    showStatus(
+      "テストを選択してください。",
+      true
+    );
+
+    return;
+
+  }
+
+
+  if (running) {
+
+    return;
+
+  }
+
+
+  running =
+    true;
+
+
+  resetCounters();
+
+
+  setButtonsDisabled(
+    true
+  );
+
+
+  try {
+
+    await buildRegions(
+      selectedTestId
+    );
+
+
+    await loadSummary();
+
+
+    if (
+      errorCount ===
+      0
+    ) {
+
+      showStatus(
+        `クロップ完了：${successCount}件`
+      );
+
+    } else {
+
+      showStatus(
+        `クロップ完了：成功 ${successCount}件 / 失敗 ${errorCount}件`,
+        true
+      );
 
     }
 
+  } catch (error) {
 
-    /*
-     * 集計枠は切り出さない。
-     */
-
-    const excludedLabels =
-      new Set([
-        "合計",
-        "小計"
-      ]);
+    console.error(
+      "buildRegions:",
+      error
+    );
 
 
-    const answerBoxes =
-      (
-        boxes ||
-        []
-      ).filter(
+    showStatus(
+      error.message ||
+      "クロップ処理に失敗しました。",
+      true
+    );
+
+  } finally {
+
+    running =
+      false;
+
+
+    setButtonsDisabled(
+      false
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   BUILD REGIONS
+========================================================= */
+
+async function buildRegions(
+  currentTestId
+) {
+
+  /*
+   * 解答欄
+   */
+
+  setStatus(
+    "解答欄を取得しています..."
+  );
+
+
+  const {
+    data: rawBoxes,
+    error: boxError
+  } =
+    await DB
+      .from("layout_boxes")
+      .select(`
+        id,
+        page_no,
+        box_type,
+        label,
+        x,
+        y,
+        width,
+        height,
+        question_id,
+        points,
+        sort_order
+      `)
+      .eq(
+        "test_id",
+        currentTestId
+      )
+      .eq(
+        "box_type",
+        "answer"
+      )
+      .order(
+        "page_no",
+        {
+          ascending:true
+        }
+      )
+      .order(
+        "sort_order",
+        {
+          ascending:true
+        }
+      );
+
+
+  if (boxError) {
+
+    throw boxError;
+
+  }
+
+
+  const excludedLabels =
+    new Set([
+      "QR",
+      "氏名",
+      "合計",
+      "小計"
+    ]);
+
+
+  const boxes =
+    (
+      rawBoxes ||
+      []
+    )
+      .filter(
         box =>
           !excludedLabels.has(
             String(
@@ -852,104 +859,135 @@
       );
 
 
-    if (!answerBoxes.length) {
+  if (!boxes.length) {
 
-      throw new Error(
-        "解答欄が設定されていません。"
+    throw new Error(
+      "採点対象の解答欄がありません。"
+    );
+
+  }
+
+
+  /*
+   * 答案
+   */
+
+  setStatus(
+    "答案を取得しています..."
+  );
+
+
+  const {
+    data: answers,
+    error: answerError
+  } =
+    await DB
+      .from("answer_sheets")
+      .select(`
+        id,
+        student_id,
+        status
+      `)
+      .eq(
+        "test_id",
+        currentTestId
+      )
+      .not(
+        "student_id",
+        "is",
+        null
+      )
+      .order(
+        "created_at",
+        {
+          ascending:true
+        }
       );
 
-    }
+
+  if (answerError) {
+
+    throw answerError;
+
+  }
 
 
-    /*
-     * 答案
-     */
+  if (!answers?.length) {
 
-    const {
-      data: answers,
-      error: answerError
-    } =
-      await supabaseClient
-        .from(
-          "answer_sheets"
-        )
-        .select(`
-          id,
-          student_id,
-          status,
-          students(
-            student_no,
-            name
-          )
-        `)
-        .eq(
-          "test_id",
-          testId
-        )
-        .neq(
-          "status",
-          "unmatched"
-        );
+    throw new Error(
+      "生徒に紐付いた答案がありません。"
+    );
+
+  }
 
 
-    if (answerError) {
-
-      throw answerError;
-
-    }
+  totalCount =
+    answers.length *
+    boxes.length;
 
 
-    if (!answers?.length) {
-
-      throw new Error(
-        "紐付け済み答案がありません。"
-      );
-
-    }
+  updateProgress();
 
 
-    let created =
-      0;
+  /*
+   * 3000人でもブラウザを固めにくくするため、
+   * 1答案ごとに処理する。
+   */
+
+  for (
+    const answer
+    of answers
+  ) {
+
+    let answerPages;
 
 
-    /*
-     * 各答案
-     */
+    try {
 
-    for (
-      const answer
-      of answers
-    ) {
-
-      const answerPages =
+      answerPages =
         await loadAnswerPages(
           answer.id
         );
 
+    } catch (error) {
 
-      if (!answerPages.length) {
+      for (
+        const box
+        of boxes
+      ) {
+
+        completedCount++;
+
+        errorCount++;
+
 
         addResult(
           answer,
-          null,
-          "答案ページなし",
+          box,
+          "答案ページ取得失敗",
           true
         );
 
 
-        continue;
+        updateProgress();
 
       }
 
 
-      /*
-       * 各解答欄
-       */
+      continue;
 
-      for (
-        const box
-        of answerBoxes
-      ) {
+    }
+
+
+    for (
+      const box
+      of boxes
+    ) {
+
+      completedCount++;
+
+
+      try {
 
         const page =
           answerPages.find(
@@ -965,383 +1003,440 @@
 
         if (!page) {
 
-          addResult(
-            answer,
-            box,
-            "該当ページなし",
-            true
+          throw new Error(
+            `ページ${box.page_no}がありません。`
           );
-
-
-          continue;
 
         }
 
 
-        try {
+        if (!page.file_path) {
+
+          throw new Error(
+            "答案ページのfile_pathがありません。"
+          );
+
+        }
+
+
+        const blob =
+          await cropAnswerImage(
+            page.file_path,
+            page,
+            box
+          );
+
+
+        const storagePath =
+          `${currentTestId}/${answer.id}/${box.id}.png`;
+
+
+        const {
+          error:
+            uploadError
+        } =
+          await DB
+            .storage
+            .from(
+              "student-answers"
+            )
+            .upload(
+              storagePath,
+              blob,
+              {
+                contentType:
+                  "image/png",
+
+                upsert:
+                  true
+              }
+            );
+
+
+        if (uploadError) {
+
+          throw uploadError;
+
+        }
+
+
+        const values = {
+
+          answer_sheet_id:
+            answer.id,
+
+          layout_box_id:
+            box.id,
 
           /*
-           * 既存region
+           * question_idはNULLでもOK。
            */
 
-          const existing =
-            await getExistingRegion(
-              answer.id,
+          question_id:
+            box.question_id ||
+            null,
+
+          page_no:
+            Number(
+              box.page_no
+            ) || 1,
+
+          image_path:
+            storagePath,
+
+          x:
+            Number(
+              box.x
+            ) || 0,
+
+          y:
+            Number(
+              box.y
+            ) || 0,
+
+          width:
+            Number(
+              box.width
+            ) || 0,
+
+          height:
+            Number(
+              box.height
+            ) || 0
+
+        };
+
+
+        const {
+          data:
+            existing,
+          error:
+            existingError
+        } =
+          await DB
+            .from(
+              "answer_regions"
+            )
+            .select(
+              "id"
+            )
+            .eq(
+              "answer_sheet_id",
+              answer.id
+            )
+            .eq(
+              "layout_box_id",
               box.id
-            );
+            )
+            .maybeSingle();
 
 
-          /*
-           * 画像切り出し
-           */
+        if (existingError) {
 
-          const blob =
-            await cropAnswerImage(
-              page.file_path,
-              box
-            );
+          throw existingError;
+
+        }
 
 
-          if (!blob) {
-
-            throw new Error(
-              "画像切り出しに失敗しました。"
-            );
-
-          }
-
-
-          /*
-           * Storage
-           */
-
-          const storagePath =
-            `${testId}/${answer.id}/${box.id}.png`;
-
+        if (existing) {
 
           const {
-            error:
-              uploadError
+            error
           } =
-            await supabaseClient
-              .storage
+            await DB
               .from(
-                "student-answers"
+                "answer_regions"
               )
-              .upload(
-                storagePath,
-                blob,
-                {
-                  contentType:
-                    "image/png",
-
-                  upsert:
-                    true
-                }
+              .update(
+                values
+              )
+              .eq(
+                "id",
+                existing.id
               );
 
 
-          if (uploadError) {
+          if (error) {
 
-            throw uploadError;
-
-          }
-
-
-          /*
-           * DB
-           *
-           * question_idはNULLでよい。
-           */
-
-          const values = {
-
-            answer_sheet_id:
-              answer.id,
-
-            question_id:
-              null,
-
-            layout_box_id:
-              box.id,
-
-            page_no:
-              box.page_no,
-
-            image_path:
-              storagePath,
-
-            x:
-              box.x,
-
-            y:
-              box.y,
-
-            width:
-              box.width,
-
-            height:
-              box.height
-
-          };
-
-
-          if (existing) {
-
-            const {
-              error
-            } =
-              await supabaseClient
-                .from(
-                  "answer_regions"
-                )
-                .update(
-                  values
-                )
-                .eq(
-                  "id",
-                  existing.id
-                );
-
-
-            if (error) {
-
-              throw error;
-
-            }
-
-          } else {
-
-            const {
-              error
-            } =
-              await supabaseClient
-                .from(
-                  "answer_regions"
-                )
-                .insert(
-                  values
-                );
-
-
-            if (error) {
-
-              throw error;
-
-            }
+            throw error;
 
           }
 
+        } else {
 
-          created++;
-
-
-          addResult(
-            answer,
-            box,
-            "完了"
-          );
-
-
-        } catch (error) {
-
-          console.error(
-            "region:",
+          const {
             error
-          );
+          } =
+            await DB
+              .from(
+                "answer_regions"
+              )
+              .insert(
+                values
+              );
 
 
-          addResult(
-            answer,
-            box,
-            error.message ||
-            "失敗",
-            true
-          );
+          if (error) {
+
+            throw error;
+
+          }
 
         }
 
+
+        successCount++;
+
+
+        addResult(
+          answer,
+          box,
+          "クロップ完了"
+        );
+
+
+      } catch (error) {
+
+        errorCount++;
+
+
+        console.error(
+          "crop:",
+          error
+        );
+
+
+        addResult(
+          answer,
+          box,
+          error.message ||
+          "クロップ失敗",
+          true
+        );
+
       }
 
+
+      updateProgress();
+
     }
-
-
-    return created;
 
   }
 
 
-  /* =====================================================
-     ANSWER PAGES
-  ===================================================== */
+  return successCount;
 
-  async function loadAnswerPages(
-    answerSheetId
-  ) {
-
-    const {
-      data,
-      error
-    } =
-      await supabaseClient
-        .from(
-          "answer_sheet_pages"
-        )
-        .select(`
-          id,
-          page_no,
-          file_path,
-          file_type,
-          original_name,
-          width_px,
-          height_px
-        `)
-        .eq(
-          "answer_sheet_id",
-          answerSheetId
-        )
-        .order(
-          "page_no"
-        );
+}
 
 
-    if (error) {
+/* =========================================================
+   ANSWER PAGES
+========================================================= */
 
-      throw error;
+async function loadAnswerPages(
+  answerId
+) {
 
-    }
-
-
-    return data || [];
-
-  }
-
-
-  /* =====================================================
-     EXISTING REGION
-  ===================================================== */
-
-  async function getExistingRegion(
-    answerSheetId,
-    layoutBoxId
-  ) {
-
-    const {
-      data,
-      error
-    } =
-      await supabaseClient
-        .from(
-          "answer_regions"
-        )
-        .select(
-          "id"
-        )
-        .eq(
-          "answer_sheet_id",
-          answerSheetId
-        )
-        .eq(
-          "layout_box_id",
-          layoutBoxId
-        )
-        .maybeSingle();
-
-
-    if (error) {
-
-      throw error;
-
-    }
-
-
-    return data ||
-      null;
-
-  }
-
-
-  /* =====================================================
-     CROP IMAGE
-  ===================================================== */
-
-  async function cropAnswerImage(
-    filePath,
-    box
-  ) {
-
-    const {
-      data,
-      error
-    } =
-      await supabaseClient
-        .storage
-        .from(
-          "answer-files"
-        )
-        .createSignedUrl(
-          filePath,
-          3600
-        );
-
-
-    if (error) {
-
-      throw error;
-
-    }
-
-
-    if (
-      !data?.signedUrl
-    ) {
-
-      throw new Error(
-        "答案画像URLを取得できませんでした。"
+  const {
+    data,
+    error
+  } =
+    await DB
+      .from(
+        "answer_sheet_pages"
+      )
+      .select(`
+        id,
+        answer_sheet_id,
+        page_no,
+        file_path,
+        file_type,
+        original_name,
+        width_px,
+        height_px
+      `)
+      .eq(
+        "answer_sheet_id",
+        answerId
+      )
+      .order(
+        "page_no",
+        {
+          ascending:true
+        }
       );
 
-    }
 
+  if (error) {
+
+    throw error;
+
+  }
+
+
+  return data || [];
+
+}
+
+
+/* =========================================================
+   CROP
+========================================================= */
+
+async function cropAnswerImage(
+  filePath,
+  page,
+  box
+) {
+
+  /*
+   * 旧処理の
+   *
+   * createSignedUrl()
+   * ↓
+   * Image
+   * ↓
+   * Canvas.toBlob()
+   *
+   * は使用しない。
+   *
+   * Storage.download()でBlobを直接取得する。
+   */
+
+  const {
+    data:
+      sourceBlob,
+    error
+  } =
+    await DB
+      .storage
+      .from(
+        "answer-files"
+      )
+      .download(
+        filePath
+      );
+
+
+  if (error) {
+
+    throw new Error(
+      `答案画像取得エラー: ${error.message}`
+    );
+
+  }
+
+
+  if (!sourceBlob) {
+
+    throw new Error(
+      "答案画像を取得できませんでした。"
+    );
+
+  }
+
+
+  const objectUrl =
+    URL.createObjectURL(
+      sourceBlob
+    );
+
+
+  try {
 
     const image =
       await loadImage(
-        data.signedUrl
+        objectUrl
       );
+
+
+    /*
+     * layout_boxesの座標が
+     * 元ページの座標系。
+     *
+     * width_px / height_px があれば
+     * 実画像との倍率を補正する。
+     */
+
+    const sourceWidth =
+      Number(
+        page.width_px
+      ) || 0;
+
+
+    const sourceHeight =
+      Number(
+        page.height_px
+      ) || 0;
+
+
+    const scaleX =
+      sourceWidth > 0
+        ? image.naturalWidth /
+          sourceWidth
+        : 1;
+
+
+    const scaleY =
+      sourceHeight > 0
+        ? image.naturalHeight /
+          sourceHeight
+        : 1;
 
 
     const x =
       Math.max(
         0,
-        Number(
-          box.x
-        ) || 0
+        Math.round(
+          (
+            Number(
+              box.x
+            ) || 0
+          ) *
+          scaleX
+        )
       );
 
 
     const y =
       Math.max(
         0,
-        Number(
-          box.y
-        ) || 0
+        Math.round(
+          (
+            Number(
+              box.y
+            ) || 0
+          ) *
+          scaleY
+        )
       );
 
 
-    const width =
-      Number(
-        box.width
-      ) || 1;
+    const requestedWidth =
+      Math.round(
+        (
+          Number(
+            box.width
+          ) || 0
+        ) *
+        scaleX
+      );
 
 
-    const height =
-      Number(
-        box.height
-      ) || 1;
+    const requestedHeight =
+      Math.round(
+        (
+          Number(
+            box.height
+          ) || 0
+        ) *
+        scaleY
+      );
 
 
     const cropWidth =
       Math.min(
-        width,
+        requestedWidth,
         image.naturalWidth -
           x
       );
@@ -1349,7 +1444,7 @@
 
     const cropHeight =
       Math.min(
-        height,
+        requestedHeight,
         image.naturalHeight -
           y
       );
@@ -1361,7 +1456,13 @@
     ) {
 
       throw new Error(
-        "解答欄が画像範囲外です。"
+        [
+          "枠が答案画像の範囲外です。",
+          `画像=${image.naturalWidth}x${image.naturalHeight}`,
+          `枠=${x},${y},${requestedWidth},${requestedHeight}`
+        ].join(
+          " "
+        )
       );
 
     }
@@ -1374,15 +1475,11 @@
 
 
     canvas.width =
-      Math.round(
-        cropWidth
-      );
+      cropWidth;
 
 
     canvas.height =
-      Math.round(
-        cropHeight
-      );
+      cropHeight;
 
 
     const context =
@@ -1399,12 +1496,6 @@
 
     }
 
-
-    /*
-     * Signed URLの画像を
-     * CORS許可付きで読み込んでいるため、
-     * toBlob可能な状態にする。
-     */
 
     context.drawImage(
 
@@ -1429,346 +1520,404 @@
       canvas
     );
 
+  } finally {
+
+    URL.revokeObjectURL(
+      objectUrl
+    );
+
   }
 
-
-  /* =====================================================
-     LOAD IMAGE
-  ===================================================== */
-
-  function loadImage(
-    src
-  ) {
-
-    return new Promise(
-      (
-        resolve,
-        reject
-      ) => {
-
-        const image =
-          new Image();
+}
 
 
-        /*
-         * 重要:
-         *
-         * StorageのSigned URLを
-         * Canvasへ描画するためCORSを許可。
-         */
+/* =========================================================
+   IMAGE
+========================================================= */
 
-        image.crossOrigin =
-          "anonymous";
+function loadImage(
+  source
+) {
+
+  return new Promise(
+    (
+      resolve,
+      reject
+    ) => {
+
+      const image =
+        new Image();
 
 
-        image.onload =
-          () =>
-            resolve(
-              image
-            );
+      image.onload =
+        () => {
 
+          if (
+            image.naturalWidth <=
+            0 ||
+            image.naturalHeight <=
+            0
+          ) {
 
-        image.onerror =
-          () =>
             reject(
               new Error(
-                "答案画像を読み込めませんでした。"
+                "画像サイズを取得できませんでした。"
               )
             );
 
+            return;
 
-        image.src =
-          src;
-
-      }
-    );
-
-  }
+          }
 
 
-  /* =====================================================
-     CANVAS → BLOB
-  ===================================================== */
-
-  function canvasToBlob(
-    canvas
-  ) {
-
-    return new Promise(
-      (
-        resolve,
-        reject
-      ) => {
-
-        try {
-
-          canvas.toBlob(
-            blob => {
-
-              if (!blob) {
-
-                reject(
-                  new Error(
-                    "PNG変換に失敗しました。"
-                  )
-                );
-
-                return;
-
-              }
-
-
-              resolve(
-                blob
-              );
-
-            },
-            "image/png"
+          resolve(
+            image
           );
 
-        } catch (error) {
+        };
+
+
+      image.onerror =
+        () => {
 
           reject(
             new Error(
-              `画像変換に失敗しました: ${error.message}`
+              "答案画像を読み込めませんでした。"
             )
           );
 
-        }
-
-      }
-    );
-
-  }
-
-
-  /* =====================================================
-     RESULT
-  ===================================================== */
-
-  function addResult(
-    answer,
-    box,
-    status,
-    isError = false
-  ) {
-
-    const container =
-      document.getElementById(
-        "resultList"
-      );
-
-
-    if (!container) {
-
-      return;
-
-    }
-
-
-    const item =
-      document.createElement(
-        "div"
-      );
-
-
-    item.style.cssText = `
-
-      padding:9px;
-
-      border-bottom:
-        1px solid #d0d6dc;
-
-      color:
-        ${
-          isError
-            ? "#c62828"
-            : "#16834b"
         };
 
-    `;
+
+      image.src =
+        source;
+
+    }
+  );
+
+}
 
 
-    item.textContent =
+/* =========================================================
+   BLOB
+========================================================= */
 
-      `${answer.students?.student_no || ""}` +
+function canvasToBlob(
+  canvas
+) {
 
-      " - " +
+  return new Promise(
+    (
+      resolve,
+      reject
+    ) => {
 
-      `${answer.students?.name || ""}` +
+      canvas.toBlob(
+        blob => {
 
-      " ／ " +
+          if (!blob) {
 
-      `${box?.label || "解答欄"}` +
+            reject(
+              new Error(
+                "クロップ画像の生成に失敗しました。"
+              )
+            );
 
-      " ／ " +
+            return;
 
-      status;
+          }
 
 
-    container.appendChild(
-      item
+          resolve(
+            blob
+          );
+
+        },
+        "image/png",
+        1
+      );
+
+    }
+  );
+
+}
+
+
+/* =========================================================
+   RESULT
+========================================================= */
+
+function addResult(
+  answer,
+  box,
+  message,
+  error = false
+) {
+
+  const list =
+    $("resultList");
+
+
+  if (!list) {
+
+    return;
+
+  }
+
+
+  const item =
+    document.createElement(
+      "div"
     );
 
 
-    resultCount++;
+  item.className =
+    error
+      ? "result-item error"
+      : "result-item success";
 
 
-    const resultCountElement =
-      document.getElementById(
-        "resultCount"
-      );
-
-
-    if (resultCountElement) {
-
-      resultCountElement.textContent =
-        `${resultCount}件`;
-
-    }
-
-  }
-
-
-  /* =====================================================
-     CLEAR RESULTS
-  ===================================================== */
-
-  function clearResults() {
-
-    resultCount =
-      0;
-
-
-    const list =
-      document.getElementById(
-        "resultList"
-      );
-
-
-    if (list) {
-
-      list.innerHTML =
-        "";
-
-    }
-
-
-    const count =
-      document.getElementById(
-        "resultCount"
-      );
-
-
-    if (count) {
-
-      count.textContent =
-        "0件";
-
-    }
-
-  }
-
-
-  /* =====================================================
-     MESSAGE
-  ===================================================== */
-
-  function showMessage(
-    message,
-    isError = false
-  ) {
-
-    const element =
-      document.getElementById(
-        "message"
-      );
-
-
-    if (!element) {
-
-      return;
-
-    }
-
-
-    element.textContent =
-      message;
-
-
-    element.style.color =
-      isError
-        ? "#c62828"
-        : "#16834b";
-
-  }
-
-
-  /* =====================================================
-     LOGOUT
-  ===================================================== */
-
-  document
-    .getElementById(
-      "logoutButton"
-    )
-    ?.addEventListener(
-      "click",
-      async () => {
-
-        if (
-          typeof window.logout ===
-          "function"
-        ) {
-
-          await window.logout();
-
-        }
-
-      }
+  item.textContent =
+    [
+      box?.label ||
+      "解答欄",
+      message
+    ].join(
+      " / "
     );
 
 
-  /* =====================================================
-     ESCAPE
-  ===================================================== */
+  list.prepend(
+    item
+  );
 
-  function escapeHtml(
-    value
-  ) {
+}
 
-    return String(
-      value ??
-      ""
-    )
-      .replaceAll(
-        "&",
-        "&amp;"
-      )
-      .replaceAll(
-        "<",
-        "&lt;"
-      )
-      .replaceAll(
-        ">",
-        "&gt;"
-      )
-      .replaceAll(
-        '"',
-        "&quot;"
-      )
-      .replaceAll(
-        "'",
-        "&#039;"
-      );
+
+/* =========================================================
+   PROGRESS
+========================================================= */
+
+function resetCounters() {
+
+  totalCount =
+    0;
+
+  completedCount =
+    0;
+
+  successCount =
+    0;
+
+  errorCount =
+    0;
+
+
+  clearResults();
+
+}
+
+
+function updateProgress() {
+
+  const progress =
+    $("cropProgress");
+
+
+  const counter =
+    $("cropCounter");
+
+
+  const box =
+    $("cropProgressBox");
+
+
+  if (box) {
+
+    box.classList.add(
+      "show"
+    );
 
   }
 
 
-  /* =====================================================
-     START
-  ===================================================== */
+  if (progress) {
 
-  initialize();
+    progress.max =
+      Math.max(
+        1,
+        totalCount
+      );
 
-})();
+
+    progress.value =
+      completedCount;
+
+  }
+
+
+  if (counter) {
+
+    counter.textContent =
+      `${completedCount} / ${totalCount}`;
+
+  }
+
+}
+
+
+/* =========================================================
+   CLEAR
+========================================================= */
+
+function clearResults() {
+
+  const list =
+    $("resultList");
+
+
+  if (list) {
+
+    list.innerHTML =
+      "";
+
+  }
+
+
+  const box =
+    $("cropProgressBox");
+
+
+  if (box) {
+
+    box.classList.remove(
+      "show"
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   BUTTONS
+========================================================= */
+
+function setButtonsDisabled(
+  disabled
+) {
+
+  const select =
+    $("testSelect");
+
+
+  const execute =
+    $("executeButton");
+
+
+  const save =
+    $("saveButton");
+
+
+  if (select) {
+
+    select.disabled =
+      disabled;
+
+  }
+
+
+  if (execute) {
+
+    execute.disabled =
+      disabled;
+
+    execute.textContent =
+      disabled
+        ? "クロップ中..."
+        : "答案を問題別に切り出す";
+
+  }
+
+
+  if (save) {
+
+    save.disabled =
+      disabled;
+
+    save.textContent =
+      disabled
+        ? "クロップ中..."
+        : "クロップ開始";
+
+  }
+
+}
+
+
+/* =========================================================
+   STATUS
+========================================================= */
+
+function showStatus(
+  message,
+  error = false
+) {
+
+  const element =
+    $("status");
+
+
+  if (!element) {
+
+    return;
+
+  }
+
+
+  element.textContent =
+    message;
+
+
+  element.className =
+    error
+      ? "status error"
+      : "status";
+
+}
+
+
+/* =========================================================
+   ESCAPE
+========================================================= */
+
+function escapeHtml(
+  value
+) {
+
+  return String(
+    value ??
+    ""
+  )
+    .replaceAll(
+      "&",
+      "&amp;"
+    )
+    .replaceAll(
+      "<",
+      "&lt;"
+    )
+    .replaceAll(
+      ">",
+      "&gt;"
+    )
+    .replaceAll(
+      '"',
+      "&quot;"
+    )
+    .replaceAll(
+      "'",
+      "&#039;"
+    );
+
+}

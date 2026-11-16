@@ -1,623 +1,818 @@
 
-/* =========================================================
-   テスト成績システム
-   js/teacher/answer-return.js
+"use strict";
 
+/* =========================================================
    採点済み答案返却
 
-   仕様
-   ---------------------------------------------------------
-   ・採点済み答案のみ対象
-   ・答案画像を表示
-   ・answer_regionsを利用
-   ・mark_objectsを答案上へ描画
-   ・scoresの点数を答案上へ表示
-   ・氏名 / 生徒番号 / QR / layout_boxesの枠線は
-     返却画像には描画しない
-   ・PDF / PNG / 印刷対応
+   元答案
+      +
+   採点記号
+      +
+   点数
 
-   DB
+   描画しない
    ---------------------------------------------------------
-   answer_sheet_pages
-   answer_regions
-   mark_objects
-   scores
-   layout_boxes
+   ・氏名
+   ・生徒番号
+   ・テスト名
+   ・layout_boxesの枠線
+   ・ヘッダー
+   ・フッター
+
+   公開
+   ---------------------------------------------------------
+   教師側ではmarked答案を確認可能。
+   生徒側への公開は
+   tests.results_published=true
+   のときだけ。
 ========================================================= */
 
-(function () {
 
-  "use strict";
+let DB = null;
 
+let tests = [];
 
-  /* =======================================================
-     STATE
-  ======================================================= */
+let students = [];
 
-  let answerSheetId =
-    null;
+let currentTestId = null;
 
-  let pages =
-    [];
+let currentStudentId = null;
 
-  let regions =
-    [];
+let answerSheetId = null;
 
-  let marks =
-    [];
+let pages = [];
 
-  let scores =
-    [];
+let regions = [];
 
-  let boxes =
-    [];
+let marks = [];
 
-  let DB =
-    null;
+let scores = [];
+
+let boxes = [];
 
 
-  /* =======================================================
-     DOM
-  ======================================================= */
+/* =========================================================
+   DOM
+========================================================= */
 
-  const answerSelect =
-    document.getElementById(
-      "answerSelect"
-    );
-
-
-  const preview =
-    document.getElementById(
-      "returnPreview"
-    );
-
-
-  const statusElement =
-    document.getElementById(
-      "status"
-    );
-
-
-  const printButton =
-    document.getElementById(
-      "printButton"
-    );
-
-
-  const pdfButton =
-    document.getElementById(
-      "pdfButton"
-    );
-
-
-  const downloadButton =
-    document.getElementById(
-      "downloadButton"
-    );
-
-
-  /* =======================================================
-     INITIALIZE
-  ======================================================= */
-
-  document.addEventListener(
-    "DOMContentLoaded",
-    initialize
+const testSelect =
+  document.getElementById(
+    "testSelect"
   );
 
 
-  async function initialize() {
+const studentSelect =
+  document.getElementById(
+    "studentSelect"
+  );
 
-    try {
 
-      DB =
-        window.supabaseClient ||
-        window.SB ||
+const studentArea =
+  document.getElementById(
+    "studentArea"
+  );
+
+
+const preview =
+  document.getElementById(
+    "returnPreview"
+  );
+
+
+const statusElement =
+  document.getElementById(
+    "returnStatus"
+  );
+
+
+const printButton =
+  document.getElementById(
+    "printButton"
+  );
+
+
+const pdfButton =
+  document.getElementById(
+    "pdfButton"
+  );
+
+
+const pngButton =
+  document.getElementById(
+    "pngButton"
+  );
+
+
+/* =========================================================
+   INIT
+========================================================= */
+
+document.addEventListener(
+  "DOMContentLoaded",
+  initialize
+);
+
+
+async function initialize() {
+
+  try {
+
+    DB =
+      window.supabaseClient ||
+      window.SB;
+
+
+    if (!DB) {
+
+      throw new Error(
+        "Supabase Clientが初期化されていません。"
+      );
+
+    }
+
+
+    const auth =
+      await requireRole(
+        "teacher"
+      );
+
+
+    if (!auth) {
+
+      return;
+
+    }
+
+
+    document.getElementById(
+      "teacherName"
+    ).textContent =
+      auth.profile?.name ||
+      "先生";
+
+
+    setupEvents();
+
+
+    await loadTests();
+
+
+    selectFromUrl();
+
+
+  } catch (error) {
+
+    console.error(
+      "answer-return:",
+      error
+    );
+
+
+    showError(
+      error.message ||
+      "答案返却画面を読み込めませんでした。"
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   EVENTS
+========================================================= */
+
+function setupEvents() {
+
+  testSelect?.addEventListener(
+    "change",
+    async () => {
+
+      currentTestId =
+        testSelect.value ||
         null;
 
 
-      if (!DB) {
-
-        throw new Error(
-          "Supabase Clientが初期化されていません。"
-        );
-
-      }
+      currentStudentId =
+        null;
 
 
-      const profile =
-        await requireTeacher();
+      answerSheetId =
+        null;
 
 
-      if (!profile) {
+      clearPreview();
+
+
+      resetStudentSelect();
+
+
+      if (!currentTestId) {
 
         return;
 
       }
 
 
-      const teacherName =
-        document.getElementById(
-          "teacherName"
-        );
+      await loadStudents();
+
+    }
+  );
 
 
-      if (teacherName) {
+  studentSelect?.addEventListener(
+    "change",
+    async () => {
 
-        teacherName.textContent =
-          profile.name ||
-          "先生";
-
-      }
-
-
-      setupEvents();
+      currentStudentId =
+        studentSelect.value ||
+        null;
 
 
-      disableActions(
-        true
-      );
+      if (!currentStudentId) {
 
+        clearPreview();
 
-      await loadAnswers();
-
-
-      /*
-       * URL:
-       *
-       * /teacher/results/return?answer=UUID
-       */
-
-      const answerId =
-        new URLSearchParams(
-          window.location.search
-        ).get(
-          "answer"
-        );
-
-
-      if (answerId) {
-
-        answerSheetId =
-          answerId;
-
-
-        if (answerSelect) {
-
-          answerSelect.value =
-            answerId;
-
-        }
-
-
-        await loadAnswer();
+        return;
 
       }
 
-    } catch (error) {
 
-      console.error(
-        "answer-return initialize:",
-        error
+      await loadAnswer();
+
+    }
+  );
+
+
+  printButton?.addEventListener(
+    "click",
+    printAnswer
+  );
+
+
+  pdfButton?.addEventListener(
+    "click",
+    downloadPdf
+  );
+
+
+  pngButton?.addEventListener(
+    "click",
+    downloadPng
+  );
+
+
+  document
+    .getElementById(
+      "logoutButton"
+    )
+    ?.addEventListener(
+      "click",
+      async () => {
+
+        await logout();
+
+      }
+    );
+
+}
+
+
+/* =========================================================
+   URL
+========================================================= */
+
+function selectFromUrl() {
+
+  const params =
+    new URLSearchParams(
+      location.search
+    );
+
+
+  const requestedTest =
+    params.get(
+      "test"
+    );
+
+
+  const requestedAnswer =
+    params.get(
+      "answer"
+    );
+
+
+  if (requestedTest) {
+
+    const exists =
+      tests.some(
+        test =>
+          test.id ===
+          requestedTest
       );
 
 
-      showError(
-        error.message ||
-        "答案返却画面を読み込めませんでした。"
+    if (exists) {
+
+      currentTestId =
+        requestedTest;
+
+
+      testSelect.value =
+        requestedTest;
+
+
+      loadStudents(
+        requestedAnswer
       );
+
+      return;
 
     }
 
   }
 
 
-  /* =======================================================
-     AUTH
-  ======================================================= */
+  if (requestedAnswer) {
 
-  async function requireTeacher() {
-
-    if (
-      typeof window.requireRole ===
-      "function"
-    ) {
-
-      const result =
-        await window.requireRole(
-          "teacher"
-        );
-
-
-      if (!result) {
-
-        return null;
-
-      }
-
-
-      return (
-        result.profile ||
-        result
-      );
-
-    }
-
-
-    const {
-      data,
-      error
-    } =
-      await DB.auth.getUser();
-
-
-    if (error) {
-
-      throw error;
-
-    }
-
-
-    if (!data?.user) {
-
-      location.replace(
-        "/login"
-      );
-
-      return null;
-
-    }
-
-
-    return {
-
-      name:
-        data.user.email ||
-        "先生"
-
-    };
+    loadAnswerById(
+      requestedAnswer
+    );
 
   }
 
-
-  /* =======================================================
-     EVENTS
-  ======================================================= */
-
-  function setupEvents() {
-
-    answerSelect?.addEventListener(
-      "change",
-      async () => {
-
-        answerSheetId =
-          answerSelect.value ||
-          null;
+}
 
 
-        if (!answerSheetId) {
+/* =========================================================
+   TESTS
+========================================================= */
 
-          clearPreview();
+async function loadTests() {
 
-          return;
-
-        }
-
-
-        try {
-
-          await loadAnswer();
-
-        } catch (error) {
-
-          console.error(
-            error
-          );
-
-
-          showError(
-            error.message ||
-            "答案を読み込めませんでした。"
-          );
-
-        }
-
-      }
-    );
-
-
-    printButton?.addEventListener(
-      "click",
-      async () => {
-
-        try {
-
-          await printAnswer();
-
-        } catch (error) {
-
-          console.error(
-            error
-          );
-
-
-          showError(
-            error.message ||
-            "印刷できませんでした。"
-          );
-
-        }
-
-      }
-    );
-
-
-    pdfButton?.addEventListener(
-      "click",
-      async () => {
-
-        try {
-
-          await downloadPdf();
-
-        } catch (error) {
-
-          console.error(
-            error
-          );
-
-
-          showError(
-            error.message ||
-            "PDFを作成できませんでした。"
-          );
-
-        }
-
-      }
-    );
-
-
-    downloadButton?.addEventListener(
-      "click",
-      async () => {
-
-        try {
-
-          await downloadPng();
-
-        } catch (error) {
-
-          console.error(
-            error
-          );
-
-
-          showError(
-            error.message ||
-            "PNGを作成できませんでした。"
-          );
-
-        }
-
-      }
-    );
-
-
-    document
-      .getElementById(
-        "logoutButton"
+  const {
+    data,
+    error
+  } =
+    await DB
+      .from(
+        "tests"
       )
-      ?.addEventListener(
-        "click",
-        async () => {
-
-          if (
-            typeof window.logout ===
-            "function"
-          ) {
-
-            await window.logout();
-
-            return;
-
-          }
-
-
-          await DB.auth.signOut();
-
-
-          location.replace(
-            "/login"
-          );
-
+      .select(
+        `
+        id,
+        name,
+        subject,
+        grade,
+        class_name
+        `
+      )
+      .order(
+        "created_at",
+        {
+          ascending:false
         }
       );
+
+
+  if (error) {
+
+    throw error;
 
   }
 
 
-  /* =======================================================
-     LOAD ANSWERS
-  ======================================================= */
+  tests =
+    data || [];
 
-  async function loadAnswers() {
 
-    if (!answerSelect) {
+  testSelect.innerHTML = `
 
-      return;
+    <option value="">
+      テストを選択してください
+    </option>
 
+    ${
+      tests
+        .map(
+          test => `
+
+            <option
+              value="${escapeHtml(
+                test.id
+              )}"
+            >
+
+              ${escapeHtml(
+                [
+                  test.name,
+                  test.subject,
+                  test.grade,
+                  test.class_name
+                ]
+                  .filter(Boolean)
+                  .join(
+                    " / "
+                  )
+              )}
+
+            </option>
+
+          `
+        )
+        .join("")
     }
 
+  `;
 
-    setStatus(
-      "採点済み答案を読み込んでいます..."
-    );
-
-
-    /*
-     * teacher/results/return.html から
-     * test_idが指定される場合にも対応。
-     */
-
-    const params =
-      new URLSearchParams(
-        window.location.search
-      );
+}
 
 
-    const testId =
-      params.get(
-        "test"
-      );
+/* =========================================================
+   STUDENTS
+========================================================= */
+
+async function loadStudents(
+  requestedAnswerId = null
+) {
+
+  setStatus(
+    "採点済み答案を取得しています..."
+  );
 
 
-    let query =
-      DB
-        .from(
-          "answer_sheets"
-        )
-        .select(
-          `
+  const {
+    data,
+    error
+  } =
+    await DB
+      .from(
+        "answer_sheets"
+      )
+      .select(
+        `
+        id,
+        student_id,
+        status,
+        created_at,
+        students(
           id,
-          test_id,
-          student_id,
-          status,
-          created_at,
-          uploaded_at
-          `
+          student_no,
+          name
         )
-        .eq(
-          "status",
-          "marked"
-        );
-
-
-    if (testId) {
-
-      query =
-        query.eq(
-          "test_id",
-          testId
-        );
-
-    }
-
-
-    const {
-      data,
-      error
-    } =
-      await query
-        .order(
-          "created_at",
-          {
-            ascending:false
-          }
-        );
-
-
-    if (error) {
-
-      throw error;
-
-    }
-
-
-    const answers =
-      data ||
-      [];
-
-
-    answerSelect.innerHTML = `
-
-      <option value="">
-        ${
-          answers.length
-            ? "採点済み答案を選択してください"
-            : "採点済み答案はありません"
+        `
+      )
+      .eq(
+        "test_id",
+        currentTestId
+      )
+      .eq(
+        "status",
+        "marked"
+      )
+      .not(
+        "student_id",
+        "is",
+        null
+      )
+      .order(
+        "created_at",
+        {
+          ascending:true
         }
-      </option>
-
-    `;
+      );
 
 
-    answers.forEach(
-      (
-        answer,
-        index
-      ) => {
+  if (error) {
 
-        const option =
-          document.createElement(
-            "option"
-          );
+    throw error;
+
+  }
 
 
-        option.value =
-          answer.id;
+  /*
+   * 同一生徒に複数答案がある場合は
+   * 最新のmarked答案を使用。
+   */
+
+  const latest =
+    new Map();
 
 
-        /*
-         * 返却画面でも
-         * 生徒名・生徒番号は表示しない。
-         */
+  (
+    data ||
+    []
+  ).forEach(
+    answer => {
 
-        option.textContent =
-          `答案 ${index + 1}`;
+      if (
+        !latest.has(
+          answer.student_id
+        )
+      ) {
 
-
-        answerSelect.appendChild(
-          option
+        latest.set(
+          answer.student_id,
+          answer
         );
 
       }
-    );
 
+    }
+  );
+
+
+  students =
+    [
+      ...latest.values()
+    ];
+
+
+  studentSelect.innerHTML = `
+
+    <option value="">
+      生徒を選択してください
+    </option>
+
+    ${
+      students
+        .map(
+          answer => `
+
+            <option
+              value="${escapeHtml(
+                answer.student_id
+              )}"
+            >
+
+              ${escapeHtml(
+                [
+                  answer.students?.student_no,
+                  answer.students?.name
+                ]
+                  .filter(Boolean)
+                  .join(
+                    " / "
+                  )
+              )}
+
+            </option>
+
+          `
+        )
+        .join("")
+    }
+
+  `;
+
+
+  studentSelect.disabled =
+    students.length ===
+    0;
+
+
+  studentArea.style.display =
+    "block";
+
+
+  if (!students.length) {
 
     setStatus(
-      answers.length
-        ? `${answers.length}件の採点済み答案があります。`
-        : "採点済み答案はありません。"
+      "このテストには採点済み答案がありません。"
     );
+
+    return;
 
   }
 
 
-  /* =======================================================
-     LOAD ANSWER
-  ======================================================= */
+  if (requestedAnswerId) {
 
-  async function loadAnswer() {
+    const answer =
+      students.find(
+        item =>
+          item.id ===
+          requestedAnswerId
+      );
 
-    if (!answerSheetId) {
+
+    if (answer) {
+
+      currentStudentId =
+        answer.student_id;
+
+
+      studentSelect.value =
+        answer.student_id;
+
+
+      await loadAnswer();
 
       return;
 
     }
 
+  }
 
-    setStatus(
-      "答案を読み込んでいます..."
+
+  setStatus(
+    `${students.length}人の採点済み答案があります。`
+  );
+
+}
+
+
+/* =========================================================
+   ANSWER BY ID
+========================================================= */
+
+async function loadAnswerById(
+  id
+) {
+
+  const {
+    data,
+    error
+  } =
+    await DB
+      .from(
+        "answer_sheets"
+      )
+      .select(
+        `
+        id,
+        test_id,
+        student_id,
+        status
+        `
+      )
+      .eq(
+        "id",
+        id
+      )
+      .eq(
+        "status",
+        "marked"
+      )
+      .maybeSingle();
+
+
+  if (error) {
+
+    throw error;
+
+  }
+
+
+  if (!data) {
+
+    throw new Error(
+      "採点済み答案が見つかりません。"
     );
 
+  }
 
-    clearData();
+
+  currentTestId =
+    data.test_id;
 
 
-    /*
-     * =====================================================
-     * 答案ページ
-     * =====================================================
-     */
+  answerSheetId =
+    data.id;
 
-    const {
-      data:
-        pageData,
-      error:
-        pageError
-    } =
-      await DB
+
+  currentStudentId =
+    data.student_id;
+
+
+  testSelect.value =
+    data.test_id;
+
+
+  await loadStudents(
+    data.id
+  );
+
+}
+
+
+/* =========================================================
+   ANSWER
+========================================================= */
+
+async function loadAnswer() {
+
+  if (
+    !currentTestId ||
+    !currentStudentId
+  ) {
+
+    return;
+
+  }
+
+
+  setStatus(
+    "採点済み答案を読み込んでいます..."
+  );
+
+
+  const {
+    data,
+    error
+  } =
+    await DB
+      .from(
+        "answer_sheets"
+      )
+      .select(
+        `
+        id,
+        test_id,
+        student_id,
+        status
+        `
+      )
+      .eq(
+        "test_id",
+        currentTestId
+      )
+      .eq(
+        "student_id",
+        currentStudentId
+      )
+      .eq(
+        "status",
+        "marked"
+      )
+      .order(
+        "created_at",
+        {
+          ascending:false
+        }
+      )
+      .limit(
+        1
+      )
+      .maybeSingle();
+
+
+  if (error) {
+
+    throw error;
+
+  }
+
+
+  if (!data) {
+
+    clearPreview();
+
+    setStatus(
+      "採点済み答案がありません。",
+      true
+    );
+
+    return;
+
+  }
+
+
+  answerSheetId =
+    data.id;
+
+
+  await loadAnswerData();
+
+
+  await renderPreview();
+
+
+  enableActions();
+
+
+  setStatus(
+    "採点済み答案を表示しています。"
+  );
+
+}
+
+
+/* =========================================================
+   DATA
+========================================================= */
+
+async function loadAnswerData() {
+
+  const [
+    pageResult,
+    regionResult,
+    markResult,
+    scoreResult
+  ] =
+    await Promise.all([
+
+      DB
         .from(
           "answer_sheet_pages"
         )
@@ -642,43 +837,9 @@
           {
             ascending:true
           }
-        );
+        ),
 
-
-    if (pageError) {
-
-      throw pageError;
-
-    }
-
-
-    pages =
-      pageData ||
-      [];
-
-
-    if (!pages.length) {
-
-      throw new Error(
-        "答案ページがありません。"
-      );
-
-    }
-
-
-    /*
-     * =====================================================
-     * answer_regions
-     * =====================================================
-     */
-
-    const {
-      data:
-        regionData,
-      error:
-        regionError
-    } =
-      await DB
+      DB
         .from(
           "answer_regions"
         )
@@ -698,40 +859,9 @@
         .eq(
           "answer_sheet_id",
           answerSheetId
-        )
-        .order(
-          "page_no",
-          {
-            ascending:true
-          }
-        );
+        ),
 
-
-    if (regionError) {
-
-      throw regionError;
-
-    }
-
-
-    regions =
-      regionData ||
-      [];
-
-
-    /*
-     * =====================================================
-     * mark_objects
-     * =====================================================
-     */
-
-    const {
-      data:
-        markData,
-      error:
-        markError
-    } =
-      await DB
+      DB
         .from(
           "mark_objects"
         )
@@ -763,47 +893,9 @@
           {
             ascending:true
           }
-        );
+        ),
 
-
-    if (markError) {
-
-      /*
-       * 採点記号が無い場合でも
-       * 点数だけは返却できる。
-       */
-
-      console.warn(
-        "mark_objects:",
-        markError
-      );
-
-
-      marks =
-        [];
-
-    } else {
-
-      marks =
-        markData ||
-        [];
-
-    }
-
-
-    /*
-     * =====================================================
-     * scores
-     * =====================================================
-     */
-
-    const {
-      data:
-        scoreData,
-      error:
-        scoreError
-    } =
-      await DB
+      DB
         .from(
           "scores"
         )
@@ -824,1582 +916,1291 @@
         .eq(
           "status",
           "marked"
-        );
-
-
-    if (scoreError) {
-
-      throw scoreError;
-
-    }
-
-
-    scores =
-      scoreData ||
-      [];
-
-
-    /*
-     * =====================================================
-     * layout_boxes
-     *
-     * 枠線そのものは描画しない。
-     * 座標・配点・ラベルの参照だけに使う。
-     * =====================================================
-     */
-
-    const layoutBoxIds =
-      [
-        ...new Set(
-          [
-            ...regions.map(
-              region =>
-                region.layout_box_id
-            ),
-
-            ...marks.map(
-              mark =>
-                mark.layout_box_id
-            ),
-
-            ...scores.map(
-              score =>
-                score.layout_box_id
-            )
-
-          ]
-            .filter(Boolean)
         )
-      ];
+
+    ]);
 
 
-    if (layoutBoxIds.length) {
+  if (pageResult.error) {
 
-      const {
-        data:
-          boxData,
-        error:
-          boxError
-      } =
-        await DB
-          .from(
-            "layout_boxes"
-          )
-          .select(
-            `
-            id,
-            question_id,
-            label,
-            points,
-            x,
-            y,
-            width,
-            height,
-            page_no
-            `
-          )
-          .in(
-            "id",
-            layoutBoxIds
-          );
-
-
-      if (boxError) {
-
-        throw boxError;
-
-      }
-
-
-      boxes =
-        boxData ||
-        [];
-
-    }
-
-
-    /*
-     * =====================================================
-     * 表示
-     * =====================================================
-     */
-
-    await renderPreview();
-
-
-    disableActions(
-      false
-    );
-
-
-    setStatus(
-      "採点済み答案を表示しています。"
-    );
+    throw pageResult.error;
 
   }
 
 
-  /* =======================================================
-     PREVIEW
-  ======================================================= */
+  if (regionResult.error) {
 
-  async function renderPreview() {
-
-    if (!preview) {
-
-      return;
-
-    }
-
-
-    preview.innerHTML =
-      "";
-
-
-    /*
-     * ページごとに
-     * 元答案 + 採点記号 + 点数を表示。
-     */
-
-    for (
-      const page
-      of pages
-    ) {
-
-      const pageWrapper =
-        document.createElement(
-          "div"
-        );
-
-
-      pageWrapper.className =
-        "return-page";
-
-
-      pageWrapper.style.cssText = `
-
-        position:relative;
-
-        width:100%;
-
-        margin-bottom:20px;
-
-        background:#fff;
-
-        overflow:hidden;
-
-      `;
-
-
-      const pageTitle =
-        document.createElement(
-          "div"
-        );
-
-
-      pageTitle.textContent =
-        `${page.page_no}ページ`;
-
-
-      pageTitle.style.cssText = `
-
-        padding:7px 9px;
-
-        border-bottom:
-          1px solid #d0d6dc;
-
-        background:#f5f6f7;
-
-        font-size:12px;
-
-        font-weight:700;
-
-      `;
-
-
-      const imageArea =
-        await createPageCanvas(
-          page
-        );
-
-
-      pageWrapper.append(
-        pageTitle,
-        imageArea
-      );
-
-
-      preview.appendChild(
-        pageWrapper
-      );
-
-    }
-
-
-    preview.style.display =
-      pages.length
-        ? "block"
-        : "none";
+    throw regionResult.error;
 
   }
 
 
-  /* =======================================================
-     CREATE PAGE
-  ======================================================= */
+  if (markResult.error) {
 
-  async function createPageCanvas(
-    page
-  ) {
-
-    /*
-     * 元答案画像をStorageから取得。
-     */
-
-    const {
-      data,
-      error
-    } =
-      await DB
-        .storage
-        .from(
-          "answer-files"
-        )
-        .createSignedUrl(
-          page.file_path,
-          900
-        );
-
-
-    if (error) {
-
-      throw error;
-
-    }
-
-
-    if (!data?.signedUrl) {
-
-      throw new Error(
-        "答案画像URLを取得できませんでした。"
-      );
-
-    }
-
-
-    const image =
-      await loadImage(
-        data.signedUrl
-      );
-
-
-    /*
-     * Canvasは返却用画像生成にのみ使用。
-     *
-     * 採点画面のクロップ生成とは別。
-     */
-
-    const canvas =
-      document.createElement(
-        "canvas"
-      );
-
-
-    canvas.width =
-      image.naturalWidth;
-
-
-    canvas.height =
-      image.naturalHeight;
-
-
-    canvas.style.cssText = `
-
-      display:block;
-
-      width:100%;
-
-      height:auto;
-
-    `;
-
-
-    const context =
-      canvas.getContext(
-        "2d"
-      );
-
-
-    if (!context) {
-
-      throw new Error(
-        "Canvasを初期化できませんでした。"
-      );
-
-    }
-
-
-    context.drawImage(
-      image,
-      0,
-      0
-    );
-
-
-    /*
-     * このページに属する
-     * 解答枠だけ処理。
-     */
-
-    const pageRegions =
-      regions.filter(
-        region =>
-          Number(
-            region.page_no
-          ) ===
-          Number(
-            page.page_no
-          )
-      );
-
-
-    pageRegions.forEach(
-      region => {
-
-        drawRegionMarks(
-          context,
-          region
-        );
-
-
-        drawRegionScore(
-          context,
-          region
-        );
-
-      }
-    );
-
-
-    return canvas;
+    throw markResult.error;
 
   }
 
 
-  /* =======================================================
-     REGION MARKS
-  ======================================================= */
+  if (scoreResult.error) {
 
-  function drawRegionMarks(
-    context,
-    region
-  ) {
-
-    const regionMarks =
-      marks.filter(
-        mark =>
-          mark.layout_box_id ===
-          region.layout_box_id
-      );
-
-
-    regionMarks.forEach(
-      mark => {
-
-        drawMark(
-          context,
-          mark,
-          region
-        );
-
-      }
-    );
+    throw scoreResult.error;
 
   }
 
 
-  /* =======================================================
-     DRAW MARK
-  ======================================================= */
+  pages =
+    pageResult.data ||
+    [];
 
-  function drawMark(
-    context,
-    mark,
-    region
-  ) {
 
-    const baseX =
-      Number(
-        region.x
-      ) || 0;
+  regions =
+    regionResult.data ||
+    [];
 
 
-    const baseY =
-      Number(
-        region.y
-      ) || 0;
+  marks =
+    markResult.data ||
+    [];
 
 
-    const x =
-      baseX +
-      (
-        Number(
-          mark.x
-        ) || 0
-      );
+  scores =
+    scoreResult.data ||
+    [];
 
 
-    const y =
-      baseY +
-      (
-        Number(
-          mark.y
-        ) || 0
-      );
-
-
-    const fontSize =
-      Number(
-        mark.font_size
-      ) || 42;
-
-
-    const color =
-      mark.color ||
-      "#d00000";
-
-
-    const strokeWidth =
-      Math.max(
-        2,
-        Number(
-          mark.stroke_width
-        ) || 3
-      );
-
-
-    const type =
-      mark.object_type ||
-      "";
-
-
-    context.save();
-
-
-    context.strokeStyle =
-      color;
-
-
-    context.fillStyle =
-      color;
-
-
-    context.lineWidth =
-      strokeWidth;
-
-
-    context.lineCap =
-      "round";
-
-
-    context.lineJoin =
-      "round";
-
-
-    /*
-     * ○
-     */
-
-    if (
-      type ===
-      "circle"
-    ) {
-
-      context.beginPath();
-
-
-      context.arc(
-        x,
-        y,
-        fontSize / 2,
-        0,
-        Math.PI * 2
-      );
-
-
-      context.stroke();
-
-
-    }
-
-
-    /*
-     * ×
-     */
-
-    else if (
-      type ===
-      "x"
-    ) {
-
-      const half =
-        fontSize / 2;
-
-
-      context.beginPath();
-
-
-      context.moveTo(
-        x - half,
-        y - half
-      );
-
-
-      context.lineTo(
-        x + half,
-        y + half
-      );
-
-
-      context.moveTo(
-        x + half,
-        y - half
-      );
-
-
-      context.lineTo(
-        x - half,
-        y + half
-      );
-
-
-      context.stroke();
-
-    }
-
-
-    /*
-     * △
-     */
-
-    else if (
-      type ===
-      "triangle"
-    ) {
-
-      const half =
-        fontSize / 2;
-
-
-      context.beginPath();
-
-
-      context.moveTo(
-        x,
-        y - half
-      );
-
-
-      context.lineTo(
-        x - half,
-        y + half
-      );
-
-
-      context.lineTo(
-        x + half,
-        y + half
-      );
-
-
-      context.closePath();
-
-
-      context.stroke();
-
-    }
-
-
-    /*
-     * ◎
-     */
-
-    else if (
-      type ===
-      "double_circle"
-    ) {
-
-      context.font =
-        `bold ${fontSize}px Arial`;
-
-
-      context.textBaseline =
-        "middle";
-
-
-      context.fillText(
-        "◎",
-        x,
-        y
-      );
-
-    }
-
-
-    /*
-     * 文字
-     */
-
-    else if (
-      type ===
-      "text"
-    ) {
-
-      context.font =
-        `${fontSize}px Arial`;
-
-
-      context.textBaseline =
-        "middle";
-
-
-      context.fillText(
-        mark.text_value ||
-        "",
-        x,
-        y
-      );
-
-    }
-
-
-    /*
-     * ペン
-     *
-     * pointsがJSON配列の場合に対応。
-     */
-
-    else if (
-      type ===
-      "pen"
-    ) {
-
-      drawPenMark(
-        context,
-        mark,
-        region
-      );
-
-    }
-
-
-    context.restore();
-
-  }
-
-
-  /* =======================================================
-     PEN
-  ======================================================= */
-
-  function drawPenMark(
-    context,
-    mark,
-    region
-  ) {
-
-    let points =
-      mark.points;
-
-
-    if (
-      typeof points ===
-      "string"
-    ) {
-
-      try {
-
-        points =
-          JSON.parse(
-            points
-          );
-
-      } catch (_) {
-
-        points =
-          [];
-
-      }
-
-    }
-
-
-    if (
-      !Array.isArray(
-        points
-      ) ||
-      points.length <
-        2
-    ) {
-
-      return;
-
-    }
-
-
-    const baseX =
-      Number(
-        region.x
-      ) || 0;
-
-
-    const baseY =
-      Number(
-        region.y
-      ) || 0;
-
-
-    context.save();
-
-
-    context.strokeStyle =
-      mark.color ||
-      "#d00000";
-
-
-    context.lineWidth =
-      Math.max(
-        2,
-        Number(
-          mark.stroke_width
-        ) || 3
-      );
-
-
-    context.lineCap =
-      "round";
-
-
-    context.lineJoin =
-      "round";
-
-
-    context.beginPath();
-
-
-    points.forEach(
-      (
-        point,
-        index
-      ) => {
-
-        const x =
-          baseX +
-          (
-            Number(
-              point.x
-            ) || 0
-          );
-
-
-        const y =
-          baseY +
-          (
-            Number(
-              point.y
-            ) || 0
-          );
-
-
-        if (
-          index ===
-          0
-        ) {
-
-          context.moveTo(
-            x,
-            y
-          );
-
-        } else {
-
-          context.lineTo(
-            x,
-            y
-          );
-
-        }
-
-      }
-    );
-
-
-    context.stroke();
-
-
-    context.restore();
-
-  }
-
-
-  /* =======================================================
-     SCORE
-  ======================================================= */
-
-  function drawRegionScore(
-    context,
-    region
-  ) {
-
-    const score =
-      scores.find(
-        item =>
-          item.layout_box_id ===
-          region.layout_box_id
-      );
-
-
-    if (!score) {
-
-      return;
-
-    }
-
-
-    const regionX =
-      Number(
-        region.x
-      ) || 0;
-
-
-    const regionY =
-      Number(
-        region.y
-      ) || 0;
-
-
-    const regionWidth =
-      Number(
-        region.width
-      ) || 100;
-
-
-    const regionHeight =
-      Number(
-        region.height
-      ) || 50;
-
-
-    const x =
-      regionX +
-      regionWidth +
-      10;
-
-
-    const y =
-      regionY +
-      regionHeight / 2;
-
-
-    const fontSize =
-      Math.max(
-        18,
-        Math.min(
-          42,
-          regionHeight *
-          0.25
-        )
-      );
-
-
-    context.save();
-
-
-    context.fillStyle =
-      "#d00000";
-
-
-    context.font =
-      `bold ${fontSize}px Arial`;
-
-
-    context.textBaseline =
-      "middle";
-
-
-    context.fillText(
-      `${formatNumber(
-        score.score
-      )}点`,
-      x,
-      y
-    );
-
-
-    context.restore();
-
-  }
-
-
-  /* =======================================================
-     PDF
-  ======================================================= */
-
-  async function downloadPdf() {
-
-    if (!pages.length) {
-
-      throw new Error(
-        "答案ページがありません。"
-      );
-
-    }
-
-
-    const JsPDF =
-      await loadJsPdf();
-
-
-    const canvases =
-      [];
-
-
-    for (
-      const page
-      of pages
-    ) {
-
-      canvases.push(
-        await createPageCanvas(
-          page
-        )
-      );
-
-    }
-
-
-    const first =
-      canvases[0];
-
-
-    const pdf =
-      new JsPDF({
-
-        orientation:
-          first.width >=
-          first.height
-            ? "landscape"
-            : "portrait",
-
-        unit:
-          "px",
-
-        format:
-          [
-            first.width,
-            first.height
-          ],
-
-        compress:
-          true
-
-      });
-
-
-    canvases.forEach(
-      (
-        canvas,
-        index
-      ) => {
-
-        if (
-          index > 0
-        ) {
-
-          pdf.addPage(
-            [
-              canvas.width,
-              canvas.height
-            ],
-            canvas.width >=
-              canvas.height
-              ? "landscape"
-              : "portrait"
-          );
-
-        }
-
-
-        pdf.addImage(
-          canvas.toDataURL(
-            "image/png"
+  const boxIds =
+    [
+      ...new Set(
+        [
+          ...regions.map(
+            item =>
+              item.layout_box_id
           ),
-          "PNG",
-          0,
-          0,
-          canvas.width,
-          canvas.height,
-          undefined,
-          "FAST"
-        );
 
-      }
-    );
+          ...marks.map(
+            item =>
+              item.layout_box_id
+          ),
 
+          ...scores.map(
+            item =>
+              item.layout_box_id
+          )
 
-    pdf.save(
-      "答案_採点済み.pdf"
-    );
+        ]
+      )
+    ];
 
-  }
 
-
-  /* =======================================================
-     PDF LIBRARY
-  ======================================================= */
-
-  let pdfPromise =
-    null;
-
-
-  function loadJsPdf() {
-
-    if (pdfPromise) {
-
-      return pdfPromise;
-
-    }
-
-
-    pdfPromise =
-      new Promise(
-        (
-          resolve,
-          reject
-        ) => {
-
-          if (
-            window.jspdf?.jsPDF
-          ) {
-
-            resolve(
-              window.jspdf.jsPDF
-            );
-
-            return;
-
-          }
-
-
-          const script =
-            document.createElement(
-              "script"
-            );
-
-
-          script.src =
-            "https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js";
-
-
-          script.onload =
-            () => {
-
-              if (
-                window.jspdf?.jsPDF
-              ) {
-
-                resolve(
-                  window.jspdf.jsPDF
-                );
-
-              } else {
-
-                reject(
-                  new Error(
-                    "PDFライブラリを読み込めませんでした。"
-                  )
-                );
-
-              }
-
-            };
-
-
-          script.onerror =
-            () =>
-              reject(
-                new Error(
-                  "PDFライブラリの読み込みに失敗しました。"
-                )
-              );
-
-
-          document.head.appendChild(
-            script
-          );
-
-        }
-      );
-
-
-    return pdfPromise;
-
-  }
-
-
-  /* =======================================================
-     PRINT
-  ======================================================= */
-
-  async function printAnswer() {
-
-    if (!pages.length) {
-
-      throw new Error(
-        "答案ページがありません。"
-      );
-
-    }
-
-
-    const printWindow =
-      window.open(
-        "",
-        "_blank"
-      );
-
-
-    if (!printWindow) {
-
-      throw new Error(
-        "印刷画面を開けませんでした。"
-      );
-
-    }
-
-
-    printWindow.document.write(`
-
-      <!doctype html>
-
-      <html>
-
-      <head>
-
-        <meta charset="UTF-8">
-
-        <title>
-          採点済み答案
-        </title>
-
-        <style>
-
-          @page {
-            margin:0;
-          }
-
-          html,
-          body {
-            margin:0;
-            padding:0;
-          }
-
-          img {
-            display:block;
-            width:100%;
-            height:auto;
-            page-break-after:always;
-          }
-
-          img:last-child {
-            page-break-after:auto;
-          }
-
-        </style>
-
-      </head>
-
-      <body></body>
-
-      </html>
-
-    `);
-
-
-    printWindow.document.close();
-
-
-    for (
-      const page
-      of pages
-    ) {
-
-      const canvas =
-        await createPageCanvas(
-          page
-        );
-
-
-      const image =
-        printWindow.document
-          .createElement(
-            "img"
-          );
-
-
-      image.src =
-        canvas.toDataURL(
-          "image/png"
-        );
-
-
-      printWindow.document.body
-        .appendChild(
-          image
-        );
-
-    }
-
-
-    await wait(
-      500
-    );
-
-
-    printWindow.focus();
-
-
-    printWindow.print();
-
-  }
-
-
-  /* =======================================================
-     PNG
-  ======================================================= */
-
-  async function downloadPng() {
-
-    if (!pages.length) {
-
-      throw new Error(
-        "答案ページがありません。"
-      );
-
-    }
-
-
-    for (
-      const page
-      of pages
-    ) {
-
-      const canvas =
-        await createPageCanvas(
-          page
-        );
-
-
-      const link =
-        document.createElement(
-          "a"
-        );
-
-
-      link.href =
-        canvas.toDataURL(
-          "image/png"
-        );
-
-
-      link.download =
-        `答案_採点済み_${String(
-          page.page_no
-        ).padStart(
-          3,
-          "0"
-        )}.png`;
-
-
-      document.body.appendChild(
-        link
-      );
-
-
-      link.click();
-
-
-      link.remove();
-
-
-      await wait(
-        150
-      );
-
-    }
-
-  }
-
-
-  /* =======================================================
-     ACTION BUTTONS
-  ======================================================= */
-
-  function disableActions(
-    disabled
-  ) {
-
-    if (printButton) {
-
-      printButton.disabled =
-        disabled;
-
-    }
-
-
-    if (pdfButton) {
-
-      pdfButton.disabled =
-        disabled;
-
-    }
-
-
-    if (downloadButton) {
-
-      downloadButton.disabled =
-        disabled;
-
-    }
-
-  }
-
-
-  /* =======================================================
-     CLEAR DATA
-  ======================================================= */
-
-  function clearData() {
-
-    pages =
-      [];
-
-    regions =
-      [];
-
-    marks =
-      [];
-
-    scores =
-      [];
+  if (!boxIds.length) {
 
     boxes =
       [];
 
+    return;
+
   }
 
 
-  /* =======================================================
-     CLEAR PREVIEW
-  ======================================================= */
+  const {
+    data,
+    error
+  } =
+    await DB
+      .from(
+        "layout_boxes"
+      )
+      .select(
+        `
+        id,
+        question_id,
+        label,
+        points
+        `
+      )
+      .in(
+        "id",
+        boxIds
+      );
 
-  function clearPreview() {
 
-    clearData();
+  if (error) {
 
+    throw error;
 
-    if (preview) {
-
-      preview.innerHTML = `
-
-        <div class="empty">
-          採点済み答案を選択してください。
-        </div>
-
-      `;
+  }
 
 
-      preview.style.display =
-        "block";
+  boxes =
+    data || [];
+
+}
+
+
+/* =========================================================
+   RENDER
+========================================================= */
+
+async function renderPreview() {
+
+  preview.innerHTML =
+    "";
+
+
+  preview.style.display =
+    "block";
+
+
+  if (!pages.length) {
+
+    preview.innerHTML = `
+
+      <div class="return-empty">
+        答案ページがありません。
+      </div>
+
+    `;
+
+    return;
+
+  }
+
+
+  for (
+    const page
+    of pages
+  ) {
+
+    const canvas =
+      await createReturnedCanvas(
+        page
+      );
+
+
+    canvas.style.display =
+      "block";
+
+
+    canvas.style.width =
+      "100%";
+
+
+    canvas.style.height =
+      "auto";
+
+
+    canvas.style.marginBottom =
+      "20px";
+
+
+    preview.appendChild(
+      canvas
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   CANVAS
+========================================================= */
+
+async function createReturnedCanvas(
+  page
+) {
+
+  if (!page.file_path) {
+
+    throw new Error(
+      `答案${page.page_no}ページの画像がありません。`
+    );
+
+  }
+
+
+  const {
+    data,
+    error
+  } =
+    await DB
+      .storage
+      .from(
+        "answer-files"
+      )
+      .createSignedUrl(
+        page.file_path,
+        3600
+      );
+
+
+  if (
+    error ||
+    !data?.signedUrl
+  ) {
+
+    throw new Error(
+      `答案${page.page_no}ページの画像URLを取得できませんでした。`
+    );
+
+  }
+
+
+  const image =
+    await loadImage(
+      data.signedUrl
+    );
+
+
+  const canvas =
+    document.createElement(
+      "canvas"
+    );
+
+
+  canvas.width =
+    image.naturalWidth;
+
+
+  canvas.height =
+    image.naturalHeight;
+
+
+  const context =
+    canvas.getContext(
+      "2d"
+    );
+
+
+  context.drawImage(
+    image,
+    0,
+    0
+  );
+
+
+  const pageRegions =
+    regions.filter(
+      region =>
+        Number(
+          region.page_no
+        ) ===
+        Number(
+          page.page_no
+        )
+    );
+
+
+  pageRegions.forEach(
+    region => {
+
+      const pageMarks =
+        marks.filter(
+          mark =>
+            mark.layout_box_id ===
+            region.layout_box_id
+        );
+
+
+      pageMarks.forEach(
+        mark => {
+
+          drawMark(
+            context,
+            mark,
+            region
+          );
+
+        }
+      );
+
+
+      const score =
+        scores.find(
+          item =>
+            item.layout_box_id ===
+            region.layout_box_id
+        );
+
+
+      if (score) {
+
+        drawScore(
+          context,
+          score,
+          region
+        );
+
+      }
+
+    }
+  );
+
+
+  return canvas;
+
+}
+
+
+/* =========================================================
+   MARK
+========================================================= */
+
+function drawMark(
+  context,
+  mark,
+  region
+) {
+
+  const baseX =
+    Number(
+      region.x
+    ) || 0;
+
+
+  const baseY =
+    Number(
+      region.y
+    ) || 0;
+
+
+  const x =
+    baseX +
+    (
+      Number(
+        mark.x
+      ) || 0
+    );
+
+
+  const y =
+    baseY +
+    (
+      Number(
+        mark.y
+      ) || 0
+    );
+
+
+  const width =
+    Number(
+      mark.width
+    ) ||
+    Number(
+      mark.font_size
+    ) ||
+    50;
+
+
+  const height =
+    Number(
+      mark.height
+    ) ||
+    width;
+
+
+  const color =
+    mark.color ||
+    "#d00000";
+
+
+  const strokeWidth =
+    Number(
+      mark.stroke_width
+    ) || 4;
+
+
+  const fontSize =
+    Number(
+      mark.font_size
+    ) || 42;
+
+
+  context.save();
+
+
+  context.strokeStyle =
+    color;
+
+
+  context.fillStyle =
+    color;
+
+
+  context.lineWidth =
+    strokeWidth;
+
+
+  context.lineCap =
+    "round";
+
+
+  context.lineJoin =
+    "round";
+
+
+  if (
+    mark.object_type ===
+    "circle"
+  ) {
+
+    context.beginPath();
+
+    context.arc(
+      x,
+      y,
+      Math.max(
+        5,
+        width / 2
+      ),
+      0,
+      Math.PI * 2
+    );
+
+    context.stroke();
+
+  } else if (
+    mark.object_type ===
+    "x"
+  ) {
+
+    context.beginPath();
+
+    context.moveTo(
+      x - width / 2,
+      y - height / 2
+    );
+
+    context.lineTo(
+      x + width / 2,
+      y + height / 2
+    );
+
+    context.moveTo(
+      x + width / 2,
+      y - height / 2
+    );
+
+    context.lineTo(
+      x - width / 2,
+      y + height / 2
+    );
+
+    context.stroke();
+
+  } else if (
+    mark.object_type ===
+    "triangle"
+  ) {
+
+    context.beginPath();
+
+    context.moveTo(
+      x,
+      y - height / 2
+    );
+
+    context.lineTo(
+      x - width / 2,
+      y + height / 2
+    );
+
+    context.lineTo(
+      x + width / 2,
+      y + height / 2
+    );
+
+    context.closePath();
+
+    context.stroke();
+
+  } else if (
+    mark.object_type ===
+    "double_circle"
+  ) {
+
+    context.font =
+      `bold ${fontSize}px sans-serif`;
+
+    context.textAlign =
+      "center";
+
+    context.textBaseline =
+      "middle";
+
+    context.fillText(
+      "◎",
+      x,
+      y
+    );
+
+  } else if (
+    mark.object_type ===
+    "text"
+  ) {
+
+    context.font =
+      `${fontSize}px sans-serif`;
+
+    context.textBaseline =
+      "middle";
+
+    context.fillText(
+      mark.text_value ||
+      "",
+      x,
+      y
+    );
+
+  } else if (
+    mark.object_type ===
+    "pen"
+  ) {
+
+    drawPen(
+      context,
+      mark,
+      region
+    );
+
+  }
+
+
+  context.restore();
+
+}
+
+
+/* =========================================================
+   PEN
+========================================================= */
+
+function drawPen(
+  context,
+  mark,
+  region
+) {
+
+  let points =
+    mark.points;
+
+
+  if (
+    typeof points ===
+    "string"
+  ) {
+
+    try {
+
+      points =
+        JSON.parse(
+          points
+        );
+
+    } catch (_) {
+
+      points =
+        [];
 
     }
 
+  }
 
-    disableActions(
+
+  if (
+    !Array.isArray(points) ||
+    points.length <
+      2
+  ) {
+
+    return;
+
+  }
+
+
+  const baseX =
+    Number(
+      region.x
+    ) || 0;
+
+
+  const baseY =
+    Number(
+      region.y
+    ) || 0;
+
+
+  context.beginPath();
+
+
+  points.forEach(
+    (
+      point,
+      index
+    ) => {
+
+      const x =
+        baseX +
+        (
+          Number(
+            point.x
+          ) || 0
+        );
+
+
+      const y =
+        baseY +
+        (
+          Number(
+            point.y
+          ) || 0
+        );
+
+
+      if (
+        index ===
+        0
+      ) {
+
+        context.moveTo(
+          x,
+          y
+        );
+
+      } else {
+
+        context.lineTo(
+          x,
+          y
+        );
+
+      }
+
+    }
+  );
+
+
+  context.stroke();
+
+}
+
+
+/* =========================================================
+   SCORE
+========================================================= */
+
+function drawScore(
+  context,
+  score,
+  region
+) {
+
+  const regionX =
+    Number(
+      region.x
+    ) || 0;
+
+
+  const regionY =
+    Number(
+      region.y
+    ) || 0;
+
+
+  const regionWidth =
+    Number(
+      region.width
+    ) || 100;
+
+
+  const regionHeight =
+    Number(
+      region.height
+    ) || 50;
+
+
+  const x =
+    regionX +
+    regionWidth +
+    10;
+
+
+  const y =
+    regionY +
+    regionHeight / 2;
+
+
+  const fontSize =
+    Math.max(
+      18,
+      Math.min(
+        42,
+        regionHeight * 0.25
+      )
+    );
+
+
+  context.save();
+
+
+  context.fillStyle =
+    "#d00000";
+
+
+  context.font =
+    `bold ${fontSize}px sans-serif`;
+
+
+  context.textBaseline =
+    "middle";
+
+
+  context.fillText(
+    `${Number(
+      score.score
+    ) || 0}点`,
+    x,
+    y
+  );
+
+
+  context.restore();
+
+}
+
+
+/* =========================================================
+   PDF
+========================================================= */
+
+async function downloadPdf() {
+
+  if (!pages.length) {
+
+    setStatus(
+      "答案がありません。",
       true
     );
 
+    return;
 
-    setStatus(
-      "採点済み答案を選択してください。"
+  }
+
+
+  const JsPDF =
+    window.jspdf?.jsPDF;
+
+
+  if (!JsPDF) {
+
+    throw new Error(
+      "PDFライブラリを読み込めませんでした。"
     );
 
   }
 
 
-  /* =======================================================
-     IMAGE
-  ======================================================= */
-
-  function loadImage(
-    src
-  ) {
-
-    return new Promise(
-      (
-        resolve,
-        reject
-      ) => {
-
-        const image =
-          new Image();
-
-
-        image.onload =
-          () =>
-            resolve(
-              image
-            );
-
-
-        image.onerror =
-          () =>
-            reject(
-              new Error(
-                "画像を読み込めませんでした。"
-              )
-            );
-
-
-        image.src =
-          src;
-
-      }
+  const first =
+    await createReturnedCanvas(
+      pages[0]
     );
 
-  }
+
+  const pdf =
+    new JsPDF({
+
+      orientation:
+        first.width >=
+        first.height
+          ? "landscape"
+          : "portrait",
+
+      unit:
+        "px",
+
+      format:
+        [
+          first.width,
+          first.height
+        ],
+
+      compress:
+        true
+
+    });
 
 
-  /* =======================================================
-     WAIT
-  ======================================================= */
+  addCanvasToPdf(
+    pdf,
+    first
+  );
 
-  function wait(
-    milliseconds
+
+  for (
+    let index = 1;
+    index <
+    pages.length;
+    index++
   ) {
 
-    return new Promise(
-      resolve =>
-        setTimeout(
-          resolve,
-          milliseconds
-        )
-    );
-
-  }
-
-
-  /* =======================================================
-     STATUS
-  ======================================================= */
-
-  function setStatus(
-    message
-  ) {
-
-    if (statusElement) {
-
-      statusElement.textContent =
-        message;
-
-    }
-
-  }
-
-
-  function showError(
-    message
-  ) {
-
-    setStatus(
-      message
-    );
-
-  }
-
-
-  /* =======================================================
-     NUMBER
-  ======================================================= */
-
-  function formatNumber(
-    value
-  ) {
-
-    const number =
-      Number(
-        value
+    const canvas =
+      await createReturnedCanvas(
+        pages[index]
       );
 
 
-    if (
-      !Number.isFinite(
-        number
-      )
-    ) {
+    pdf.addPage(
+      [
+        canvas.width,
+        canvas.height
+      ],
+      canvas.width >=
+        canvas.height
+        ? "landscape"
+        : "portrait"
+    );
 
-      return "0";
 
-    }
+    addCanvasToPdf(
+      pdf,
+      canvas
+    );
+
+  }
 
 
-    return Number.isInteger(
-      number
-    )
-      ? String(
-          number
-        )
-      : number.toFixed(
-          1
+  pdf.save(
+    "答案_採点済み.pdf"
+  );
+
+}
+
+
+function addCanvasToPdf(
+  pdf,
+  canvas
+) {
+
+  pdf.addImage(
+    canvas.toDataURL(
+      "image/png"
+    ),
+    "PNG",
+    0,
+    0,
+    canvas.width,
+    canvas.height,
+    undefined,
+    "FAST"
+  );
+
+}
+
+
+/* =========================================================
+   PRINT
+========================================================= */
+
+async function printAnswer() {
+
+  if (!pages.length) {
+
+    setStatus(
+      "答案がありません。",
+      true
+    );
+
+    return;
+
+  }
+
+
+  const printWindow =
+    window.open(
+      "",
+      "_blank"
+    );
+
+
+  if (!printWindow) {
+
+    setStatus(
+      "印刷画面を開けませんでした。",
+      true
+    );
+
+    return;
+
+  }
+
+
+  printWindow.document.write(`
+
+    <!doctype html>
+
+    <html>
+
+    <head>
+
+      <meta charset="UTF-8">
+
+      <title>
+        答案
+      </title>
+
+      <style>
+
+        @page {
+          margin:0;
+        }
+
+        html,
+        body {
+          margin:0;
+          padding:0;
+        }
+
+        img {
+          display:block;
+          width:100%;
+          height:auto;
+          page-break-after:always;
+        }
+
+        img:last-child {
+          page-break-after:auto;
+        }
+
+      </style>
+
+    </head>
+
+    <body></body>
+
+    </html>
+
+  `);
+
+
+  printWindow.document.close();
+
+
+  for (
+    const page
+    of pages
+  ) {
+
+    const canvas =
+      await createReturnedCanvas(
+        page
+      );
+
+
+    const image =
+      printWindow.document
+        .createElement(
+          "img"
         );
 
-  }
+
+    image.src =
+      canvas.toDataURL(
+        "image/png"
+      );
 
 
-  /* =======================================================
-     ESCAPE
-  ======================================================= */
-
-  function escapeHtml(
-    value
-  ) {
-
-    return String(
-      value ??
-      ""
-    )
-      .replaceAll(
-        "&",
-        "&amp;"
-      )
-      .replaceAll(
-        "<",
-        "&lt;"
-      )
-      .replaceAll(
-        ">",
-        "&gt;"
-      )
-      .replaceAll(
-        '"',
-        "&quot;"
-      )
-      .replaceAll(
-        "'",
-        "&#039;"
+    printWindow.document.body
+      .appendChild(
+        image
       );
 
   }
 
 
-})();
+  await wait(
+    500
+  );
+
+
+  printWindow.focus();
+
+  printWindow.print();
+
+}
+
+
+/* =========================================================
+   PNG
+========================================================= */
+
+async function downloadPng() {
+
+  if (!pages.length) {
+
+    setStatus(
+      "答案がありません。",
+      true
+    );
+
+    return;
+
+  }
+
+
+  for (
+    const page
+    of pages
+  ) {
+
+    const canvas =
+      await createReturnedCanvas(
+        page
+      );
+
+
+    const link =
+      document.createElement(
+        "a"
+      );
+
+
+    link.href =
+      canvas.toDataURL(
+        "image/png"
+      );
+
+
+    link.download =
+      `答案_採点済み_${String(
+        page.page_no
+      ).padStart(
+        3,
+        "0"
+      )}.png`;
+
+
+    document.body.appendChild(
+      link
+    );
+
+
+    link.click();
+
+
+    link.remove();
+
+
+    await wait(
+      120
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   UI
+========================================================= */
+
+function resetStudentSelect() {
+
+  studentSelect.innerHTML = `
+
+    <option value="">
+      生徒を選択してください
+    </option>
+
+  `;
+
+
+  studentSelect.disabled =
+    true;
+
+
+  studentArea.style.display =
+    "none";
+
+}
+
+
+function enableActions() {
+
+  printButton.disabled =
+    false;
+
+  pdfButton.disabled =
+    false;
+
+  pngButton.disabled =
+    false;
+
+}
+
+
+function clearPreview() {
+
+  answerSheetId =
+    null;
+
+  pages =
+    [];
+
+  regions =
+    [];
+
+  marks =
+    [];
+
+  scores =
+    [];
+
+  boxes =
+    [];
+
+
+  preview.innerHTML =
+    "";
+
+
+  preview.style.display =
+    "none";
+
+
+  printButton.disabled =
+    true;
+
+  pdfButton.disabled =
+    true;
+
+  pngButton.disabled =
+    true;
+
+}
+
+
+function setStatus(
+  text,
+  error = false
+) {
+
+  if (!statusElement) {
+
+    return;
+
+  }
+
+
+  statusElement.textContent =
+    text;
+
+
+  statusElement.className =
+    error
+      ? "return-status error"
+      : "return-status";
+
+}
+
+
+function showError(
+  text
+) {
+
+  setStatus(
+    text,
+    true
+  );
+
+}
+
+
+/* =========================================================
+   HELPERS
+========================================================= */
+
+function loadImage(
+  src
+) {
+
+  return new Promise(
+    (
+      resolve,
+      reject
+    ) => {
+
+      const image =
+        new Image();
+
+
+      image.onload =
+        () =>
+          resolve(
+            image
+          );
+
+
+      image.onerror =
+        () =>
+          reject(
+            new Error(
+              "画像を読み込めませんでした。"
+            )
+          );
+
+
+      image.src =
+        src;
+
+    }
+  );
+
+}
+
+
+function wait(
+  milliseconds
+) {
+
+  return new Promise(
+    resolve =>
+      setTimeout(
+        resolve,
+        milliseconds
+      )
+  );
+
+}
+
+
+function escapeHtml(
+  value
+) {
+
+  return String(
+    value ??
+    ""
+  )
+    .replaceAll(
+      "&",
+      "&amp;"
+    )
+    .replaceAll(
+      "<",
+      "&lt;"
+    )
+    .replaceAll(
+      ">",
+      "&gt;"
+    )
+    .replaceAll(
+      '"',
+      "&quot;"
+    )
+    .replaceAll(
+      "'",
+      "&#039;"
+    );
+
+}

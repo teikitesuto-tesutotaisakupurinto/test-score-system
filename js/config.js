@@ -1,17 +1,22 @@
 
+"use strict";
+
 /* =========================================================
-   テスト成績システム
    Supabase Configuration
+
+   このファイルでは
+   ・Supabase URL
+   ・Publishable Key
+   ・Supabase Client
+   の初期化だけを担当。
+
+   認証処理は auth.js に統一。
 ========================================================= */
 
 (function () {
 
   "use strict";
 
-
-  /* =======================================================
-     Supabase
-  ======================================================= */
 
   const SUPABASE_URL =
     "https://vwlxcregufhhfzjrnnrr.supabase.co";
@@ -21,9 +26,9 @@
     "sb_publishable_Z3ghYk1JsOI7lbG6Si1nXg_PaEoY8Rn";
 
 
-  /* =======================================================
-     Global
-  ======================================================= */
+  /*
+   * グローバル設定
+   */
 
   window.SUPABASE_URL =
     SUPABASE_URL;
@@ -33,9 +38,9 @@
     SUPABASE_PUBLISHABLE_KEY;
 
 
-  /* =======================================================
-     SDK確認
-  ======================================================= */
+  /*
+   * SDK確認
+   */
 
   if (
     !window.supabase ||
@@ -52,11 +57,29 @@
   }
 
 
-  /* =======================================================
-     Client
-  ======================================================= */
+  /*
+   * 二重初期化を防止。
+   *
+   * config.js
+   * auth.js
+   *
+   * の両方から読み込まれても
+   * 同じClientを使用する。
+   */
 
-  window.supabaseClient =
+  if (
+    window.supabaseClient
+  ) {
+
+    window.SB =
+      window.supabaseClient;
+
+    return;
+
+  }
+
+
+  const client =
     window.supabase.createClient(
 
       SUPABASE_URL,
@@ -89,12 +112,11 @@
     );
 
 
-  /* =======================================================
-     初期化確認
-  ======================================================= */
+  window.supabaseClient =
+    client;
 
-  console.log(
-    "Supabase initialized"
-  );
+
+  window.SB =
+    client;
 
 })();

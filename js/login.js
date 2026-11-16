@@ -1,13 +1,19 @@
 
 /* =========================================================
    テスト成績システム
-   ログイン処理 完全版
+   js/login.js
+
+   ログイン処理
 ========================================================= */
 
 (function () {
 
   "use strict";
 
+
+  /* =======================================================
+     DOM
+  ======================================================= */
 
   const form =
     document.getElementById(
@@ -51,7 +57,7 @@
 
 
   /* =======================================================
-     Error
+     ERROR
   ======================================================= */
 
   function showError(
@@ -99,7 +105,7 @@
 
 
   /* =======================================================
-     Loading
+     LOADING
   ======================================================= */
 
   function setLoading(
@@ -126,7 +132,7 @@
 
 
   /* =======================================================
-     Supabase Error
+     ERROR FORMAT
   ======================================================= */
 
   function formatError(
@@ -183,6 +189,19 @@
     }
 
 
+    if (
+      lower.includes(
+        "permission denied"
+      )
+    ) {
+
+      return (
+        "ログイン権限を確認できません。管理者に確認してください。"
+      );
+
+    }
+
+
     return (
       message ||
       "ログインできませんでした。"
@@ -192,7 +211,7 @@
 
 
   /* =======================================================
-     Submit
+     SUBMIT
   ======================================================= */
 
   form.addEventListener(
@@ -200,15 +219,8 @@
     async event => {
 
       /*
-        絶対に通常フォーム送信しない。
-
-        これにより、
-
-        /login?email=...
-        /login?password=...
-
-        を防止。
-      */
+       * 通常フォーム送信は禁止。
+       */
 
       event.preventDefault();
 
@@ -261,12 +273,51 @@
       }
 
 
+      /*
+       * config.jsで作成された
+       * Supabase Clientを使用。
+       */
+
       if (
         !window.supabaseClient
       ) {
 
         showError(
           "Supabaseの設定を読み込めませんでした。"
+        );
+
+
+        return;
+
+      }
+
+
+      /*
+       * auth.jsが読み込まれているか確認。
+       */
+
+      if (
+        typeof window.login !==
+        "function"
+      ) {
+
+        showError(
+          "認証処理を読み込めませんでした。"
+        );
+
+
+        return;
+
+      }
+
+
+      if (
+        typeof window.redirectAfterLogin !==
+        "function"
+      ) {
+
+        showError(
+          "ログイン後の移動処理を読み込めませんでした。"
         );
 
 
@@ -283,8 +334,8 @@
       try {
 
         /*
-          Authログイン
-        */
+         * Supabase Auth
+         */
 
         await window.login(
           email,
@@ -293,10 +344,15 @@
 
 
         /*
-          Role取得
-          ↓
-          teacher/admin/student
-        */
+         * teacher/admin/student
+         * に応じて移動。
+         *
+         * teacher
+         *   /teacher/index.html
+         *
+         * student
+         *   /student/index.html
+         */
 
         await window.redirectAfterLogin();
 
@@ -325,5 +381,6 @@
     },
     true
   );
+
 
 })();

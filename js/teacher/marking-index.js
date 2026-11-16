@@ -1,845 +1,660 @@
-/* =========================================================
-   テスト成績システム
-   採点一覧
-
-   答案単位ではなくテスト単位。
-
-   テスト選択
-      ↓
-   答案一覧表示
-      ↓
-   採点開始
-      ↓
-   /teacher/marking/mark?test=UUID
-========================================================= */
-
-(function () {
 
 "use strict";
 
+/* =========================================================
+   デジタル採点 起動
 
-let currentTestId = null;
+   旧仕様
+   ---------------------------------------------------------
+   テスト
+     ↓
+   答案選択
+     ↓
+   設問選択
 
-let currentTest = null;
+   新仕様
+   ---------------------------------------------------------
+   テスト
+     ↓
+   採点開始
+     ↓
+   採点画面
+     ↓
+   同一設問を複数答案で串刺し採点
+========================================================= */
 
 
-/* =====================================================
+let DB =
+  null;
+
+
+let tests =
+  [];
+
+let selectedTestId =
+  null;
+
+
+/* =========================================================
    DOM
-===================================================== */
-
-const teacherName =
-document.getElementById(
-  "teacherName"
-);
+========================================================= */
 
 const testSelect =
-document.getElementById(
-  "testSelect"
-);
+  document.getElementById(
+    "testSelect"
+  );
+
 
 const startButton =
-document.getElementById(
-  "startButton"
-);
+  document.getElementById(
+    "startButton"
+  );
 
-const refreshButton =
-document.getElementById(
-  "refreshButton"
-);
 
 const statusElement =
-document.getElementById(
-  "status"
-);
-
-const answerPanel =
-document.getElementById(
-  "answerPanel"
-);
-
-const answerPanelHeader =
-document.getElementById(
-  "answerPanelHeader"
-);
-
-const answerTableBody =
-document.getElementById(
-  "answerTableBody"
-);
-
-const emptyArea =
-document.getElementById(
-  "emptyArea"
-);
+  document.getElementById(
+    "status"
+  );
 
 
-/* =====================================================
+const testList =
+  document.getElementById(
+    "testList"
+  );
+
+
+/* =========================================================
    INIT
-===================================================== */
+========================================================= */
 
 document.addEventListener(
   "DOMContentLoaded",
-  initialize
+  initializeMarkingIndex
 );
 
 
-async function initialize() {
+async function initializeMarkingIndex() {
 
-try {
+  try {
 
-const profile =
-await getProfile();
+    DB =
+      window.supabaseClient ||
+      window.SB;
 
 
-if (!profile) {
+    if (!DB) {
 
-location.replace(
-"/login"
-);
+      throw new Error(
+        "Supabase Clientが初期化されていません。"
+      );
 
-return;
+    }
+
+
+    const auth =
+      await requireRole(
+        "teacher"
+      );
+
+
+    if (!auth) {
+
+      return;
+
+    }
+
+
+    document.getElementById(
+      "teacherName"
+    ).textContent =
+      auth.profile?.name ||
+      "先生";
+
+
+    setupEvents();
+
+
+    await loadTests();
+
+
+    selectFromUrl();
+
+
+  } catch (error) {
+
+    console.error(
+      "marking-index:",
+      error
+    );
+
+
+    showError(
+      error.message ||
+      "採点画面を起動できませんでした。"
+    );
+
+  }
 
 }
 
 
-if (
-profile.role !== "teacher" &&
-profile.role !== "admin"
-) {
-
-location.replace(
-"/student/dashboard"
-);
-
-return;
-
-}
-
-
-if (teacherName) {
-
-teacherName.textContent =
-profile.name ||
-"先生";
-
-}
-
-
-setupEvents();
-
-await loadTests();
-
-
-} catch (error) {
-
-console.error(
-error
-);
-
-showStatus(
-error.message ||
-"採点画面の初期化に失敗しました。",
-true
-);
-
-}
-
-}
-
-
-/* =====================================================
+/* =========================================================
    EVENTS
-===================================================== */
+========================================================= */
 
 function setupEvents() {
 
+  testSelect?.addEventListener(
+    "change",
+    () => {
 
-testSelect?.addEventListener(
-"change",
-async () => {
-
-currentTestId =
-testSelect.value ||
-null;
-
-
-if (!currentTestId) {
-
-clearPreview();
-
-return;
-
-}
+      selectedTestId =
+        testSelect.value ||
+        null;
 
 
-await loadPreview();
-
-}
-);
+      updateStartButton();
 
 
-startButton?.addEventListener(
-"click",
-startMarking
-);
+      renderStatus();
+
+    }
+  );
 
 
-refreshButton?.addEventListener(
-"click",
-async () => {
-
-if (!currentTestId) {
-
-await loadTests();
-
-return;
-
-}
-
-await loadPreview();
-
-}
-);
+  startButton?.addEventListener(
+    "click",
+    startMarking
+  );
 
 
-document
-.getElementById(
-"logoutButton"
-)
-?.addEventListener(
-"click",
-async event => {
+  document
+    .getElementById(
+      "logoutButton"
+    )
+    ?.addEventListener(
+      "click",
+      async () => {
 
-event.preventDefault();
+        await logout();
 
-
-if (
-typeof logout ===
-"function"
-) {
-
-await logout();
-
-}
-
-}
-);
+      }
+    );
 
 }
 
 
-/* =====================================================
-   TESTS
-===================================================== */
+/* =========================================================
+   LOAD TESTS
+========================================================= */
 
 async function loadTests() {
 
-const {
-data,
-error
-} =
-await supabaseClient
-.from(
-"tests"
-)
-.select(
-`
-id,
-name,
-subject,
-grade,
-class_name,
-created_at
-`
-)
-.order(
-"created_at",
-{
-ascending:false
-}
-);
+  const {
+    data,
+    error
+  } =
+    await DB
+      .from(
+        "tests"
+      )
+      .select(
+        `
+        id,
+        name,
+        subject,
+        grade,
+        class_name,
+        results_published,
+        created_at
+        `
+      )
+      .order(
+        "created_at",
+        {
+          ascending:false
+        }
+      );
 
 
-if (error) {
+  if (error) {
 
-throw new Error(
-`テスト一覧を取得できませんでした: ${error.message}`
-);
+    throw error;
 
-}
+  }
 
 
-testSelect.innerHTML = `
-
-<option value="">
-テストを選択してください
-</option>
-
-`;
+  tests =
+    data || [];
 
 
-for (
-const test
-of data || []
-) {
+  testSelect.innerHTML = `
 
-const option =
-document.createElement(
-"option"
-);
+    <option value="">
+      テストを選択してください
+    </option>
+
+    ${
+      tests
+        .map(
+          test => `
+
+            <option
+              value="${escapeHtml(
+                test.id
+              )}"
+            >
+
+              ${escapeHtml(
+                [
+                  test.name,
+                  test.subject,
+                  test.grade,
+                  test.class_name
+                ]
+                  .filter(
+                    value =>
+                      value !== null &&
+                      value !== undefined &&
+                      String(
+                        value
+                      ).trim() !== ""
+                  )
+                  .join(
+                    " / "
+                  )
+              )}
+
+            </option>
+
+          `
+        )
+        .join("")
+    }
+
+  `;
 
 
-option.value =
-test.id;
-
-
-option.textContent =
-[
-test.name,
-test.subject,
-test.grade
-]
-.filter(
-value =>
-value !== null &&
-value !== undefined &&
-String(value).trim() !== ""
-)
-.join(
-" / "
-);
-
-
-testSelect.appendChild(
-option
-);
-
-}
-
-}
-
-
-/* =====================================================
-   PREVIEW
-   テスト選択直後に答案を表示
-===================================================== */
-
-async function loadPreview() {
-
-if (!currentTestId) {
-
-return;
+  renderTestList();
 
 }
 
 
-try {
+/* =========================================================
+   URL
+========================================================= */
 
-showStatus(
-"答案を取得しています..."
-);
+function selectFromUrl() {
 
-
-startButton.disabled =
-true;
-
-
-const {
-data: testData,
-error: testError
-} =
-await supabaseClient
-.from(
-"tests"
-)
-.select(
-`
-id,
-name,
-subject,
-grade,
-class_name
-`
-)
-.eq(
-"id",
-currentTestId
-)
-.single();
+  const params =
+    new URLSearchParams(
+      location.search
+    );
 
 
-if (testError) {
-
-throw new Error(
-`テスト情報を取得できませんでした: ${testError.message}`
-);
-
-}
+  const requested =
+    params.get(
+      "test"
+    );
 
 
-currentTest =
-testData;
+  if (!requested) {
+
+    return;
+
+  }
 
 
-const {
-data: answers,
-error: answerError
-} =
-await supabaseClient
-.from(
-"answer_sheets"
-)
-.select(
-`
-id,
-test_id,
-student_id,
-page_count,
-qr_value,
-status,
-uploaded_at
-`
-)
-.eq(
-"test_id",
-currentTestId
-)
-.order(
-"uploaded_at",
-{
-ascending:false
-}
-);
+  if (
+    !tests.some(
+      test =>
+        test.id ===
+        requested
+    )
+  ) {
+
+    return;
+
+  }
 
 
-if (answerError) {
+  selectedTestId =
+    requested;
 
-throw new Error(
-`答案を取得できませんでした: ${answerError.message}`
-);
+
+  testSelect.value =
+    requested;
+
+
+  updateStartButton();
+
+
+  renderStatus();
+
+
+  /*
+   * test指定で直接来た場合は
+   * そのまま採点開始。
+   *
+   * 「テストを選択してください」の画面を
+   * もう一度出さない。
+   */
+
+  startMarking();
 
 }
 
 
-const list =
-answers || [];
+/* =========================================================
+   TEST LIST
+========================================================= */
+
+function renderTestList() {
+
+  if (!testList) {
+
+    return;
+
+  }
 
 
-if (!list.length) {
+  if (!tests.length) {
 
-clearAnswerRows();
+    testList.innerHTML = `
 
+      <div
+        style="
+          padding:25px;
+          background:#fff;
+          border:1px solid #d0d6dc;
+          color:#777;
+        "
+      >
+        テストがありません。
+      </div>
 
-showStatus(
-`${currentTest.name} に登録された答案はありません。`,
-true
-);
+    `;
 
-return;
+    return;
 
-}
-
-
-/* -----------------------------------------------------
-   STUDENTS
------------------------------------------------------ */
-
-const studentIds =
-[
-...new Set(
-list
-.map(
-answer =>
-answer.student_id
-)
-.filter(Boolean)
-)
-];
+  }
 
 
-let studentMap =
-new Map();
+  testList.innerHTML =
+    tests
+      .map(
+        test => `
+
+          <div class="test-row">
 
 
-if (studentIds.length) {
-
-const {
-data: students,
-error: studentError
-} =
-await supabaseClient
-.from(
-"students"
-)
-.select(
-`
-id,
-student_no,
-name
-`
-)
-.in(
-"id",
-studentIds
-);
+            <div class="test-row-info">
 
 
-if (studentError) {
+              <div class="test-row-name">
 
-throw new Error(
-`生徒情報を取得できませんでした: ${studentError.message}`
-);
+                ${escapeHtml(
+                  test.name
+                )}
 
-}
-
-
-studentMap =
-new Map(
-(students || [])
-.map(
-student => [
-student.id,
-student
-]
-)
-);
-
-}
+              </div>
 
 
-/* -----------------------------------------------------
-   RENDER
------------------------------------------------------ */
+              <div class="test-row-meta">
 
-answerPanel.classList.add(
-"show"
-);
+                ${
+                  [
+                    test.subject,
+                    test.grade,
+                    test.class_name
+                  ]
+                    .filter(
+                      value =>
+                        value !== null &&
+                        value !== undefined &&
+                        String(
+                          value
+                        ).trim() !== ""
+                    )
+                    .map(
+                      value =>
+                        escapeHtml(
+                          value
+                        )
+                    )
+                    .join(
+                      " / "
+                    )
+                }
 
-emptyArea.style.display =
-"none";
-
-
-answerPanelHeader.textContent =
-`${currentTest.name} / 答案 ${list.length}件`;
-
-
-answerTableBody.innerHTML =
-"";
-
-
-for (
-const answer
-of list
-) {
-
-const student =
-studentMap.get(
-answer.student_id
-);
-
-
-const row =
-document.createElement(
-"tr"
-);
+              </div>
 
 
-const noCell =
-document.createElement(
-"td"
-);
+            </div>
 
 
-noCell.innerHTML =
-`
-<div class="student-no">
-${escapeHtml(
-student?.student_no ||
-"未紐付け"
-)}
-</div>
-`;
+            <button
+              type="button"
+              class="btn"
+              data-test-id="${escapeHtml(
+                test.id
+              )}"
+            >
+              このテストを採点
+            </button>
 
 
-const nameCell =
-document.createElement(
-"td"
-);
+          </div>
+
+        `
+      )
+      .join("");
 
 
-nameCell.textContent =
-student?.name ||
-"-";
+  testList
+    .querySelectorAll(
+      "[data-test-id]"
+    )
+    .forEach(
+      button => {
+
+        button.addEventListener(
+          "click",
+          () => {
+
+            selectedTestId =
+              button.dataset.testId;
 
 
-const pageCell =
-document.createElement(
-"td"
-);
+            testSelect.value =
+              selectedTestId;
 
 
-pageCell.textContent =
-String(
-answer.page_count ||
-0
-);
+            updateStartButton();
 
 
-const statusCell =
-document.createElement(
-"td"
-);
+            startMarking();
 
+          }
+        );
 
-statusCell.textContent =
-getStatusText(
-answer.status
-);
-
-
-statusCell.className =
-getStatusClass(
-answer.status
-);
-
-
-row.appendChild(
-noCell
-);
-
-row.appendChild(
-nameCell
-);
-
-row.appendChild(
-pageCell
-);
-
-row.appendChild(
-statusCell
-);
-
-
-answerTableBody.appendChild(
-row
-);
+      }
+    );
 
 }
 
 
-startButton.disabled =
-false;
-
-
-showStatus(
-`${currentTest.name} / ${list.length}件の答案があります。採点開始でテスト全体の採点を開始します。`
-);
-
-
-} catch (error) {
-
-console.error(
-error
-);
-
-
-clearAnswerRows();
-
-
-showStatus(
-error.message ||
-"答案を取得できませんでした。",
-true
-);
-
-}
-
-}
-
-
-/* =====================================================
+/* =========================================================
    START
-===================================================== */
+========================================================= */
 
 function startMarking() {
 
-if (!currentTestId) {
+  if (!selectedTestId) {
 
-showStatus(
-"テストを選択してください。",
-true
-);
+    showError(
+      "テストを選択してください。"
+    );
 
-return;
+    return;
 
-}
-
-
-window.location.href =
-`/teacher/marking/mark?test=${encodeURIComponent(
-currentTestId
-)}`;
-
-}
+  }
 
 
-/* =====================================================
-   CLEAR
-===================================================== */
+  /*
+   * 答案選択画面には行かない。
+   */
 
-function clearPreview() {
-
-currentTest =
-null;
-
-answerPanel.classList.remove(
-"show"
-);
-
-clearAnswerRows();
-
-emptyArea.style.display =
-"block";
-
-startButton.disabled =
-true;
-
-showStatus(
-"テストを選択してください。"
-);
+  location.href =
+    `/teacher/marking/mark?test=${encodeURIComponent(
+      selectedTestId
+    )}`;
 
 }
 
 
-function clearAnswerRows() {
+/* =========================================================
+   BUTTON
+========================================================= */
 
-answerTableBody.innerHTML =
-"";
+function updateStartButton() {
+
+  if (!startButton) {
+
+    return;
+
+  }
+
+
+  startButton.disabled =
+    !selectedTestId;
 
 }
 
 
-/* =====================================================
+/* =========================================================
    STATUS
-===================================================== */
+========================================================= */
 
-function getStatusText(
-status
+function renderStatus() {
+
+  if (!statusElement) {
+
+    return;
+
+  }
+
+
+  if (!selectedTestId) {
+
+    statusElement.textContent =
+      "テストを選択してください。";
+
+    statusElement.className =
+      "marking-status";
+
+    return;
+
+  }
+
+
+  const test =
+    tests.find(
+      item =>
+        item.id ===
+        selectedTestId
+    );
+
+
+  if (!test) {
+
+    return;
+
+  }
+
+
+  statusElement.textContent =
+    [
+      test.name,
+      test.subject,
+      test.grade
+    ]
+      .filter(
+        value =>
+          value !== null &&
+          value !== undefined &&
+          String(
+            value
+          ).trim() !== ""
+      )
+      .join(
+        " / "
+      ) +
+      " を採点します。";
+
+
+  statusElement.className =
+    "marking-status";
+
+}
+
+
+/* =========================================================
+   ERROR
+========================================================= */
+
+function showError(
+  text
 ) {
 
-switch (
-String(
-status ||
-""
-).toLowerCase()
-) {
+  if (!statusElement) {
 
-case "matched":
-return "採点前";
+    return;
 
-case "uploaded":
-return "採点前";
+  }
 
-case "marking":
-return "採点中";
 
-case "marked":
-return "採点完了・成績処理待ち";
+  statusElement.textContent =
+    text;
 
-case "unmatched":
-return "未紐付け";
 
-default:
-return status ||
-"未処理";
-
-}
+  statusElement.className =
+    "marking-status error";
 
 }
 
 
-function getStatusClass(
-status
-) {
-
-switch (
-String(
-status ||
-""
-).toLowerCase()
-) {
-
-case "marking":
-return "state-marking";
-
-case "marked":
-return "state-done";
-
-default:
-return "state-before";
-
-}
-
-}
-
-
-function showStatus(
-text,
-error = false
-) {
-
-if (!statusElement) {
-
-return;
-
-}
-
-
-statusElement.textContent =
-text;
-
-
-statusElement.style.color =
-error
-? "#b42318"
-: "#333";
-
-}
-
-
-/* =====================================================
+/* =========================================================
    ESCAPE
-===================================================== */
+========================================================= */
 
 function escapeHtml(
-value
+  value
 ) {
 
-return String(
-value ??
-""
-)
-.replaceAll(
-"&",
-"&amp;"
-)
-.replaceAll(
-"<",
-"&lt;"
-)
-.replaceAll(
-">",
-"&gt;"
-)
-.replaceAll(
-'"',
-"&quot;"
-)
-.replaceAll(
-"'",
-"&#039;"
-);
+  return String(
+    value ??
+    ""
+  )
+    .replaceAll(
+      "&",
+      "&amp;"
+    )
+    .replaceAll(
+      "<",
+      "&lt;"
+    )
+    .replaceAll(
+      ">",
+      "&gt;"
+    )
+    .replaceAll(
+      '"',
+      "&quot;"
+    )
+    .replaceAll(
+      "'",
+      "&#039;"
+    );
 
 }
-
-})();

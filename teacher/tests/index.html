@@ -12,81 +12,13 @@
 >
 
 <title>
-  テスト管理
+  テスト管理 - テスト成績システム
 </title>
 
 <link
   rel="stylesheet"
   href="/css/common.css"
 >
-
-<style>
-
-.test-actions {
-
-  display:flex;
-
-  flex-wrap:wrap;
-
-  gap:6px;
-
-}
-
-
-.test-actions .btn {
-
-  white-space:nowrap;
-
-}
-
-
-.test-create-grid {
-
-  display:grid;
-
-  grid-template-columns:
-    2fr
-    1fr
-    1fr;
-
-  gap:10px;
-
-}
-
-
-@media(max-width:800px) {
-
-  .test-create-grid {
-
-    grid-template-columns:
-      1fr;
-
-  }
-
-}
-
-
-.test-status {
-
-  font-size:12px;
-
-  color:#666;
-
-}
-
-
-.test-empty {
-
-  padding:30px;
-
-  text-align:center;
-
-  color:#777;
-
-}
-
-
-</style>
 
 </head>
 
@@ -96,28 +28,58 @@
 
 <header class="topbar">
 
-  <div class="system-name">
-    テスト成績システム
-  </div>
+<div class="system-name">
+  テスト成績システム
+</div>
 
 
-  <div class="topbar-space"></div>
+<div class="topbar-space"></div>
 
 
-  <span id="teacherName">
-    -
-  </span>
+<span id="teacherName">
+  -
+</span>
 
 
-  <button
-    id="logoutButton"
-    class="logout-button"
-    type="button"
-  >
-    ログアウト
-  </button>
+<button
+id="logoutButton"
+class="logout-button"
+type="button"
+>
+  ログアウト
+</button>
 
 </header>
+
+
+<div class="teacher-layout">
+
+
+<aside class="sidebar">
+
+
+<div class="sidebar-title">
+  テスト
+</div>
+
+
+<a
+href="/teacher/tests"
+class="menu-link active"
+>
+  テスト一覧
+</a>
+
+
+<a
+href="/teacher/tests/new"
+class="menu-link"
+>
+  テスト作成
+</a>
+
+
+</aside>
 
 
 <main class="main-content">
@@ -125,118 +87,96 @@
 
 <div class="page-header">
 
+
 <h1>
   テスト管理
 </h1>
 
+
+<div
+style="
+  margin-left:auto;
+"
+>
+
+<a
+href="/teacher/tests/new"
+class="btn btn-primary"
+>
+新しいテストを作成
+</a>
+
 </div>
 
 
-<!-- =====================================================
-     CREATE
-====================================================== -->
-
-<section class="card">
+</div>
 
 
-<h2>
-  新しいテスト
-</h2>
+<div class="card">
 
 
-<div class="test-create-grid">
-
-
-<div class="form-group">
-
-<label for="testName">
-  テスト名
-</label>
+<div
+style="
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-bottom:15px;
+"
+>
 
 
 <input
-  id="testName"
-  type="text"
-  autocomplete="off"
+id="testSearch"
+type="search"
+placeholder="テスト名・教科・学年・クラスで検索"
+style="
+  max-width:400px;
+  width:100%;
+"
+autocomplete="off"
 >
 
-</div>
 
-
-<div class="form-group">
-
-<label for="subject">
-  教科
-</label>
-
-
-<input
-  id="subject"
-  type="text"
-  autocomplete="off"
+<select
+id="statusFilter"
+style="max-width:180px;"
 >
 
-</div>
+<option value="">
+  すべての状態
+</option>
 
+<option value="draft">
+  下書き
+</option>
 
-<div class="form-group">
+<option value="open">
+  実施前
+</option>
 
-<label for="grade">
-  学年
-</label>
+<option value="marking">
+  採点中
+</option>
 
+<option value="completed">
+  採点完了
+</option>
 
-<input
-  id="grade"
-  type="text"
-  autocomplete="off"
->
+<option value="published">
+  公開済み
+</option>
 
-</div>
+</select>
 
 
 </div>
 
 
 <div
-  style="
-    margin-top:12px;
-  "
+style="
+  overflow:auto;
+"
 >
-
-
-<button
-  id="createButton"
-  class="btn btn-primary"
-  type="button"
->
-  新しいテストを作成
-</button>
-
-
-</div>
-
-
-</section>
-
-
-<p
-  id="message"
-  class="small"
-  aria-live="polite"
-></p>
-
-
-<!-- =====================================================
-     LIST
-====================================================== -->
-
-<section class="card">
-
-
-<h2>
-  テスト一覧
-</h2>
 
 
 <table class="table">
@@ -259,6 +199,18 @@
 </th>
 
 <th>
+  実施日
+</th>
+
+<th>
+  満点
+</th>
+
+<th>
+  状態
+</th>
+
+<th>
   操作
 </th>
 
@@ -267,14 +219,20 @@
 </thead>
 
 
-<tbody id="rows">
+<tbody
+id="testRows"
+>
 
 <tr>
 
 <td
-  colspan="4"
+colspan="7"
+style="
+  text-align:center;
+  padding:30px;
+"
 >
-  読み込み中...
+読み込み中...
 </td>
 
 </tr>
@@ -285,670 +243,36 @@
 </table>
 
 
-</section>
+</div>
+
+
+</div>
 
 
 </main>
 
 
+</div>
+
+
 <script
-  src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
 ></script>
 
 
 <script
-  src="/js/config.js?v=20261116"
+src="/js/config.js?v=20261116"
 ></script>
 
 
 <script
-  src="/js/auth.js?v=20261116"
+src="/js/auth.js?v=20261116"
 ></script>
 
 
-<script>
-
-"use strict";
-
-
-/* =========================================================
-   DB
-========================================================= */
-
-const DB =
-  window.supabaseClient ||
-  window.SB;
-
-
-if (!DB) {
-
-  throw new Error(
-    "Supabase Clientが初期化されていません。"
-  );
-
-}
-
-
-/* =========================================================
-   DOM
-========================================================= */
-
-const rows =
-  document.getElementById(
-    "rows"
-  );
-
-
-const message =
-  document.getElementById(
-    "message"
-  );
-
-
-const createButton =
-  document.getElementById(
-    "createButton"
-  );
-
-
-const teacherName =
-  document.getElementById(
-    "teacherName"
-  );
-
-
-/* =========================================================
-   STATE
-========================================================= */
-
-let currentUser =
-  null;
-
-
-/* =========================================================
-   INIT
-========================================================= */
-
-document.addEventListener(
-  "DOMContentLoaded",
-  initialize
-);
-
-
-async function initialize() {
-
-  try {
-
-    const result =
-      await requireRole(
-        "teacher"
-      );
-
-
-    if (!result) {
-
-      return;
-
-    }
-
-
-    currentUser =
-      result.user;
-
-
-    teacherName.textContent =
-      result.profile?.name ||
-      "先生";
-
-
-    setupEvents();
-
-
-    await loadTests();
-
-
-  } catch (error) {
-
-    console.error(
-      "teacher/tests:",
-      error
-    );
-
-
-    showMessage(
-      error.message ||
-      "テスト管理を読み込めませんでした。",
-      true
-    );
-
-  }
-
-}
-
-
-/* =========================================================
-   EVENTS
-========================================================= */
-
-function setupEvents() {
-
-  createButton.addEventListener(
-    "click",
-    createTest
-  );
-
-
-  document
-    .getElementById(
-      "logoutButton"
-    )
-    .addEventListener(
-      "click",
-      async () => {
-
-        await logout();
-
-      }
-    );
-
-}
-
-
-/* =========================================================
-   LOAD
-========================================================= */
-
-async function loadTests() {
-
-  rows.innerHTML = `
-
-    <tr>
-
-      <td colspan="4">
-        読み込み中...
-      </td>
-
-    </tr>
-
-  `;
-
-
-  const {
-    data,
-    error
-  } =
-    await DB
-      .from(
-        "tests"
-      )
-      .select(
-        `
-        id,
-        name,
-        subject,
-        grade,
-        class_name,
-        results_published,
-        results_published_at,
-        created_at
-        `
-      )
-      .order(
-        "created_at",
-        {
-          ascending:false
-        }
-      );
-
-
-  if (error) {
-
-    throw new Error(
-      `テスト一覧取得エラー: ${error.message}`
-    );
-
-  }
-
-
-  renderTests(
-    data || []
-  );
-
-}
-
-
-/* =========================================================
-   RENDER
-========================================================= */
-
-function renderTests(
-  tests
-) {
-
-  rows.innerHTML =
-    "";
-
-
-  if (!tests.length) {
-
-    rows.innerHTML = `
-
-      <tr>
-
-        <td
-          colspan="4"
-          class="test-empty"
-        >
-          テストがありません。
-        </td>
-
-      </tr>
-
-    `;
-
-    return;
-
-  }
-
-
-  tests.forEach(
-    test => {
-
-      const row =
-        document.createElement(
-          "tr"
-        );
-
-
-      /* ---------------------------------------------------
-         名前
-      --------------------------------------------------- */
-
-      const nameCell =
-        document.createElement(
-          "td"
-        );
-
-
-      nameCell.textContent =
-        test.name ||
-        "";
-
-
-      /* ---------------------------------------------------
-         教科
-      --------------------------------------------------- */
-
-      const subjectCell =
-        document.createElement(
-          "td"
-        );
-
-
-      subjectCell.textContent =
-        test.subject ||
-        "";
-
-
-      /* ---------------------------------------------------
-         学年
-      --------------------------------------------------- */
-
-      const gradeCell =
-        document.createElement(
-          "td"
-        );
-
-
-      gradeCell.textContent =
-        test.grade ||
-        "";
-
-
-      /* ---------------------------------------------------
-         操作
-      --------------------------------------------------- */
-
-      const actionCell =
-        document.createElement(
-          "td"
-        );
-
-
-      const actions =
-        document.createElement(
-          "div"
-        );
-
-
-      actions.className =
-        "test-actions";
-
-
-      /*
-       * 枠設定
-       */
-
-      actions.appendChild(
-        createActionLink(
-          `/teacher/tests/layout?test=${encodeURIComponent(
-            test.id
-          )}`,
-          "枠設定"
-        )
-      );
-
-
-      /*
-       * 配点
-       */
-
-      actions.appendChild(
-        createActionLink(
-          `/teacher/tests/points?test=${encodeURIComponent(
-            test.id
-          )}`,
-          "配点設定"
-        )
-      );
-
-
-      /*
-       * クロップ
-       */
-
-      actions.appendChild(
-        createActionLink(
-          `/teacher/answers/regions?test=${encodeURIComponent(
-            test.id
-          )}`,
-          "答案クロップ"
-        )
-      );
-
-
-      /*
-       * 採点
-       *
-       * select.htmlは経由しない。
-       */
-
-      actions.appendChild(
-        createActionLink(
-          `/teacher/marking?test=${encodeURIComponent(
-            test.id
-          )}`,
-          "採点"
-        )
-      );
-
-
-      /*
-       * 結果
-       */
-
-      actions.appendChild(
-        createActionLink(
-          `/teacher/results/summary?test=${encodeURIComponent(
-            test.id
-          )}`,
-          test.results_published
-            ? "結果"
-            : "成績処理"
-        )
-      );
-
-
-      /*
-       * 公開状態
-       */
-
-      const status =
-        document.createElement(
-          "span"
-        );
-
-
-      status.className =
-        "test-status";
-
-
-      status.textContent =
-        test.results_published
-          ? "公開済み"
-          : "未確定";
-
-
-      actions.appendChild(
-        status
-      );
-
-
-      actionCell.appendChild(
-        actions
-      );
-
-
-      row.append(
-        nameCell,
-        subjectCell,
-        gradeCell,
-        actionCell
-      );
-
-
-      rows.appendChild(
-        row
-      );
-
-    }
-  );
-
-}
-
-
-/* =========================================================
-   ACTION LINK
-========================================================= */
-
-function createActionLink(
-  href,
-  text
-) {
-
-  const link =
-    document.createElement(
-      "a"
-    );
-
-
-  link.href =
-    href;
-
-
-  link.textContent =
-    text;
-
-
-  link.className =
-    "btn";
-
-
-  return link;
-
-}
-
-
-/* =========================================================
-   CREATE
-========================================================= */
-
-async function createTest() {
-
-  const name =
-    document
-      .getElementById(
-        "testName"
-      )
-      .value
-      .trim();
-
-
-  const subject =
-    document
-      .getElementById(
-        "subject"
-      )
-      .value
-      .trim();
-
-
-  const grade =
-    document
-      .getElementById(
-        "grade"
-      )
-      .value
-      .trim();
-
-
-  if (!name) {
-
-    showMessage(
-      "テスト名を入力してください。",
-      true
-    );
-
-    return;
-
-  }
-
-
-  if (!currentUser) {
-
-    showMessage(
-      "ログイン情報を取得できません。",
-      true
-    );
-
-    return;
-
-  }
-
-
-  createButton.disabled =
-    true;
-
-
-  createButton.textContent =
-    "作成中...";
-
-
-  try {
-
-    const {
-      data,
-      error
-    } =
-      await DB
-        .from(
-          "tests"
-        )
-        .insert({
-
-          name,
-
-          subject:
-            subject ||
-            null,
-
-          grade:
-            grade ||
-            null
-
-        })
-        .select(
-          "id"
-        )
-        .single();
-
-
-    if (error) {
-
-      throw error;
-
-    }
-
-
-    if (!data?.id) {
-
-      throw new Error(
-        "テストIDを取得できませんでした。"
-      );
-
-    }
-
-
-    /*
-     * 作成直後は枠設定。
-     */
-
-    location.href =
-      `/teacher/tests/layout?test=${encodeURIComponent(
-        data.id
-      )}`;
-
-
-  } catch (error) {
-
-    console.error(
-      "create test:",
-      error
-    );
-
-
-    showMessage(
-      error.message ||
-      "テストを作成できませんでした。",
-      true
-    );
-
-
-  } finally {
-
-    createButton.disabled =
-      false;
-
-
-    createButton.textContent =
-      "新しいテストを作成";
-
-  }
-
-}
-
-
-/* =========================================================
-   MESSAGE
-========================================================= */
-
-function showMessage(
-  text,
-  error = false
-) {
-
-  message.textContent =
-    text;
-
-
-  message.style.color =
-    error
-      ? "#b42318"
-      : "";
-
-}
-
-</script>
+<script
+src="/js/teacher/tests.js?v=20261116"
+></script>
 
 
 </body>

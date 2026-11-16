@@ -1,27 +1,30 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 
 <head>
 
-  <meta charset="UTF-8">
+<meta charset="UTF-8">
 
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
-  >
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1.0"
+>
 
-  <title>
-    クラス作成 - テスト成績システム
-  </title>
+<title>
+  クラス作成 - テスト成績システム
+</title>
 
-  <link
-    rel="stylesheet"
-    href="/css/common.css"
-  >
+<link
+  rel="stylesheet"
+  href="/css/common.css"
+>
 
 </head>
 
+
 <body>
+
 
 <header class="topbar">
 
@@ -29,15 +32,19 @@
     テスト成績システム
   </div>
 
+
   <div class="topbar-space"></div>
+
 
   <span id="teacherName">
     -
   </span>
 
+
   <button
     id="logoutButton"
     class="logout-button"
+    type="button"
   >
     ログアウト
   </button>
@@ -47,116 +54,133 @@
 
 <div class="teacher-layout">
 
-  <aside class="sidebar">
 
-    <div class="sidebar-title">
-      クラス
-    </div>
+<aside class="sidebar">
 
-    <a
-      href="/teacher/classes"
-      class="menu-link"
-    >
-      クラス管理
-    </a>
-
-    <a
-      href="/teacher/classes/new"
-      class="menu-link active"
-    >
-      クラス作成
-    </a>
-
-  </aside>
+  <div class="sidebar-title">
+    クラス
+  </div>
 
 
-  <main class="main-content">
-
-    <div class="page-header">
-
-      <h1>
-        クラス作成
-      </h1>
-
-    </div>
+  <a
+    href="/teacher/classes"
+    class="menu-link"
+  >
+    クラス管理
+  </a>
 
 
-    <div class="card">
+  <a
+    href="/teacher/classes/new"
+    class="menu-link active"
+  >
+    クラス作成
+  </a>
 
-      <form id="classForm">
-
-        <div class="form-group">
-
-          <label for="grade">
-            学年
-          </label>
-
-          <input
-            id="grade"
-            type="text"
-            placeholder="中3"
-            maxlength="30"
-            required
-          >
-
-        </div>
+</aside>
 
 
-        <div class="form-group">
-
-          <label for="className">
-            クラス名
-          </label>
-
-          <input
-            id="className"
-            type="text"
-            placeholder="1組"
-            maxlength="50"
-            required
-          >
-
-        </div>
+<main class="main-content">
 
 
-        <div
-          id="message"
-          style="
-            min-height:22px;
-            margin-bottom:12px;
-          "
-        ></div>
+<div class="page-header">
+
+  <h1>
+    クラス作成
+  </h1>
+
+</div>
 
 
-        <div
-          style="
-            display:flex;
-            gap:8px;
-          "
-        >
+<div class="card">
 
-          <button
-            id="saveButton"
-            type="submit"
-            class="btn btn-primary"
-          >
-            作成する
-          </button>
 
-          <a
-            href="/teacher/classes"
-            class="btn"
-          >
-            戻る
-          </a>
+<form id="classForm">
 
-        </div>
 
-      </form>
+<div class="form-group">
 
-    </div>
+<label for="grade">
+  学年
+</label>
 
-  </main>
+
+<input
+  id="grade"
+  type="text"
+  placeholder="中3"
+  maxlength="30"
+  required
+  autocomplete="off"
+>
+
+</div>
+
+
+<div class="form-group">
+
+<label for="className">
+  クラス名
+</label>
+
+
+<input
+  id="className"
+  type="text"
+  placeholder="1組"
+  maxlength="50"
+  required
+  autocomplete="off"
+>
+
+</div>
+
+
+<div
+  id="message"
+  style="
+    min-height:22px;
+    margin-bottom:12px;
+  "
+  aria-live="polite"
+>
+</div>
+
+
+<div
+  style="
+    display:flex;
+    gap:8px;
+  "
+>
+
+<button
+  id="saveButton"
+  type="submit"
+  class="btn btn-primary"
+>
+  作成する
+</button>
+
+
+<a
+  href="/teacher/classes"
+  class="btn"
+>
+  戻る
+</a>
+
+</div>
+
+
+</form>
+
+
+</div>
+
+
+</main>
+
 
 </div>
 
@@ -165,11 +189,19 @@
   src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
 ></script>
 
-<script src="/js/config.js"></script>
+<script
+  src="/js/config.js?v=20261116"
+></script>
 
-<script src="/js/auth.js"></script>
+<script
+  src="/js/auth.js?v=20261116"
+></script>
 
-<script src="/js/teacher/class-new.js"></script>
+<script
+  src="/js/teacher/class-new.js?v=20261116"
+></script>
+
 
 </body>
+
 </html>

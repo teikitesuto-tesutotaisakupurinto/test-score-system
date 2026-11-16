@@ -1,47 +1,99 @@
+
+"use strict";
+
 /* =========================================================
    クラス一覧
 ========================================================= */
 
+let DB = null;
+
+
+/* =========================================================
+   INIT
+========================================================= */
+
+document.addEventListener(
+  "DOMContentLoaded",
+  initializeClasses
+);
+
 
 async function initializeClasses() {
 
-  const profile =
-    await getProfile();
+  try {
+
+    DB =
+      window.supabaseClient ||
+      window.SB;
 
 
-  if (!profile) {
+    if (!DB) {
 
-    window.location.href =
-      "/login";
+      throw new Error(
+        "Supabase Clientが初期化されていません。"
+      );
 
-    return;
+    }
+
+
+    const auth =
+      await requireRole(
+        "teacher"
+      );
+
+
+    if (!auth) {
+
+      return;
+
+    }
+
+
+    document.getElementById(
+      "teacherName"
+    ).textContent =
+      auth.profile?.name ||
+      "先生";
+
+
+    document
+      .getElementById(
+        "logoutButton"
+      )
+      ?.addEventListener(
+        "click",
+        async () => {
+
+          await logout();
+
+        }
+      );
+
+
+    await loadClasses();
+
+
+  } catch (error) {
+
+    console.error(
+      "classes:",
+      error
+    );
+
+
+    showClassError(
+      error.message ||
+      "クラス情報を取得できませんでした。"
+    );
 
   }
-
-
-  if (
-    profile.role !== "teacher" &&
-    profile.role !== "admin"
-  ) {
-
-    window.location.href =
-      "/student/dashboard";
-
-    return;
-
-  }
-
-
-  document.getElementById(
-    "teacherName"
-  ).textContent =
-    profile.name || "先生";
-
-
-  await loadClasses();
 
 }
 
+
+/* =========================================================
+   LOAD CLASSES
+========================================================= */
 
 async function loadClasses() {
 
@@ -49,33 +101,46 @@ async function loadClasses() {
     data: classes,
     error
   } =
-    await supabaseClient
-      .from("classes")
-      .select(`
+    await DB
+      .from(
+        "classes"
+      )
+      .select(
+        `
         id,
         name,
         grade
-      `)
+        `
+      )
       .order(
         "grade",
         {
-          ascending: true
+          ascending:true
         }
       )
       .order(
         "name",
         {
-          ascending: true
+          ascending:true
         }
       );
 
 
   if (error) {
 
-    console.error(error);
+    throw error;
 
-    showClassError(
-      "クラス情報を取得できませんでした。"
+  }
+
+
+  const list =
+    classes || [];
+
+
+  if (!list.length) {
+
+    renderClasses(
+      []
     );
 
     return;
@@ -83,46 +148,68 @@ async function loadClasses() {
   }
 
 
-  const rows = [];
+  /*
+   * 各クラスの生徒数を並列取得。
+   */
+
+  const rows =
+    await Promise.all(
+      list.map(
+        async classItem => {
+
+          const {
+            count,
+            error:
+              countError
+          } =
+            await DB
+              .from(
+                "students"
+              )
+              .select(
+                "id",
+                {
+                  count:"exact",
+                  head:true
+                }
+              )
+              .eq(
+                "class_id",
+                classItem.id
+              )
+              .eq(
+                "active",
+                true
+              );
 
 
-  for (
-    const classItem
-    of classes || []
-  ) {
+          if (countError) {
 
-    const {
-      count
-    } =
-      await supabaseClient
-        .from("students")
-        .select(
-          "id",
-          {
-            count: "exact",
-            head: true
+            console.warn(
+              `クラス ${classItem.name} の生徒数取得失敗`,
+              countError
+            );
+
           }
-        )
-        .eq(
-          "class_id",
-          classItem.id
-        )
-        .eq(
-          "active",
-          true
-        );
 
 
-    rows.push({
+          return {
 
-      ...classItem,
+            ...classItem,
 
-      studentCount:
-        count || 0
+            studentCount:
+              countError
+                ? 0
+                : (
+                    count ||
+                    0
+                  )
 
-    });
+          };
 
-  }
+        }
+      )
+    );
 
 
   renderClasses(
@@ -132,6 +219,10 @@ async function loadClasses() {
 }
 
 
+/* =========================================================
+   RENDER
+========================================================= */
+
 function renderClasses(
   classes
 ) {
@@ -140,6 +231,13 @@ function renderClasses(
     document.getElementById(
       "classRows"
     );
+
+
+  if (!tbody) {
+
+    return;
+
+  }
 
 
   if (!classes.length) {
@@ -156,7 +254,18 @@ function renderClasses(
             color:#777;
           "
         >
+
           クラスが登録されていません。
+
+          <br><br>
+
+          <a
+            href="/teacher/classes/new"
+            class="btn btn-primary"
+          >
+            クラスを作成
+          </a>
+
         </td>
 
       </tr>
@@ -175,35 +284,69 @@ function renderClasses(
 
           <tr>
 
+
             <td>
+
               ${escapeHtml(
-                classItem.grade || ""
+                classItem.grade ||
+                ""
               )}
+
             </td>
 
 
             <td>
+
               ${escapeHtml(
-                classItem.name
+                classItem.name ||
+                ""
               )}
+
             </td>
 
 
             <td>
-              ${classItem.studentCount}人
+
+              ${formatNumber(
+                classItem.studentCount
+              )}人
+
             </td>
 
 
             <td>
 
-              <a
-                href="/teacher/classes/students?id=${encodeURIComponent(classItem.id)}"
-                class="btn"
+              <div
+                style="
+                  display:flex;
+                  gap:6px;
+                  flex-wrap:wrap;
+                "
               >
-                生徒を見る
-              </a>
+
+                <a
+                  href="/teacher/classes/students?id=${encodeURIComponent(
+                    classItem.id
+                  )}"
+                  class="btn"
+                >
+                  生徒を見る
+                </a>
+
+
+                <a
+                  href="/teacher/classes/students?id=${encodeURIComponent(
+                    classItem.id
+                  )}"
+                  class="btn"
+                >
+                  名簿
+                </a>
+
+              </div>
 
             </td>
+
 
           </tr>
 
@@ -214,13 +357,28 @@ function renderClasses(
 }
 
 
+/* =========================================================
+   ERROR
+========================================================= */
+
 function showClassError(
   message
 ) {
 
-  document.getElementById(
-    "classRows"
-  ).innerHTML = `
+  const tbody =
+    document.getElementById(
+      "classRows"
+    );
+
+
+  if (!tbody) {
+
+    return;
+
+  }
+
+
+  tbody.innerHTML = `
 
     <tr>
 
@@ -228,51 +386,106 @@ function showClassError(
         colspan="4"
         style="
           text-align:center;
+          padding:30px;
           color:#c62828;
         "
       >
-        ${escapeHtml(message)}
+
+        ${escapeHtml(
+          message
+        )}
+
       </td>
 
     </tr>
 
   `;
 
+
+  const messageElement =
+    document.getElementById(
+      "classMessage"
+    );
+
+
+  if (messageElement) {
+
+    messageElement.textContent =
+      message;
+
+    messageElement.style.color =
+      "#b42318";
+
+  }
+
 }
 
 
-document
-  .getElementById(
-    "logoutButton"
-  )
-  .addEventListener(
-    "click",
-    logout
-  );
+/* =========================================================
+   NUMBER
+========================================================= */
 
+function formatNumber(
+  value
+) {
+
+  const n =
+    Number(
+      value
+    );
+
+
+  if (
+    !Number.isFinite(
+      n
+    )
+  ) {
+
+    return "0";
+
+  }
+
+
+  return Number.isInteger(
+    n
+  )
+    ? String(n)
+    : n.toFixed(1);
+
+}
+
+
+/* =========================================================
+   ESCAPE
+========================================================= */
 
 function escapeHtml(
   value
 ) {
 
-  if (
-    value === null ||
-    value === undefined
-  ) {
-
-    return "";
-
-  }
-
-
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
+  return String(
+    value ??
+    ""
+  )
+    .replaceAll(
+      "&",
+      "&amp;"
+    )
+    .replaceAll(
+      "<",
+      "&lt;"
+    )
+    .replaceAll(
+      ">",
+      "&gt;"
+    )
+    .replaceAll(
+      '"',
+      "&quot;"
+    )
+    .replaceAll(
+      "'",
+      "&#039;"
+    );
 
 }
-
-
-initializeClasses();

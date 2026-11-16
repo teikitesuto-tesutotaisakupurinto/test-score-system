@@ -11,7 +11,9 @@
   content="width=device-width,initial-scale=1"
 >
 
-<title>成績・答案公開 - テスト成績システム</title>
+<title>
+  成績・答案公開状態 - テスト成績システム
+</title>
 
 <link
   rel="stylesheet"
@@ -21,62 +23,116 @@
 <style>
 
 .main {
-  max-width:900px;
-  margin:0 auto;
-  padding:25px;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 25px;
 }
 
 .card {
-  background:#fff;
-  border:1px solid #d5dbe0;
-  padding:20px;
-  margin-bottom:15px;
+  margin-bottom: 15px;
+  padding: 20px;
+  background: #fff;
+  border: 1px solid #d5dbe0;
 }
 
 #testSelect {
-  width:100%;
-  height:44px;
-  padding:0 10px;
+  width: 100%;
+  height: 44px;
+  padding: 0 10px;
 }
 
 .status {
-  margin-top:15px;
-  padding:12px;
-  border:1px solid #d5dbe0;
-  background:#f5f6f7;
+  margin-top: 15px;
+  padding: 14px;
+  border: 1px solid #d5dbe0;
+  background: #f5f6f7;
+  line-height: 1.8;
+}
+
+.status.processing {
+  background: #fff8e8;
+  border-color: #e6c979;
+  color: #7a4b00;
 }
 
 .status.public {
-  background:#edf8ef;
-  border-color:#b7d9c0;
+  background: #edf8ef;
+  border-color: #b7d9c0;
+  color: #176b35;
 }
 
-.status.private {
-  background:#fff4f2;
-  border-color:#efc2bc;
+.status.error {
+  background: #fff4f2;
+  border-color: #efc2bc;
+  color: #b42318;
 }
 
-.actions {
-  display:flex;
-  gap:10px;
-  margin-top:15px;
+.status-title {
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(
+      2,
+      minmax(0, 1fr)
+    );
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.info-item {
+  padding: 12px;
+  background: #f5f6f7;
+  border: 1px solid #dfe3e6;
+}
+
+.info-label {
+  color: #666;
+  font-size: 12px;
+}
+
+.info-value {
+  margin-top: 3px;
+  font-weight: 700;
+}
+
+.notice {
+  margin-top: 15px;
+  color: #666;
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+@media(max-width:650px) {
+
+  .info-grid {
+    grid-template-columns: 1fr;
+  }
+
 }
 
 </style>
+
 </head>
 
 
 <body>
 
+
 <header class="topbar">
 
 <div class="system-name">
-テスト成績システム
+  テスト成績システム
 </div>
 
 <div class="topbar-space"></div>
 
-<span id="teacherName">-</span>
+<span id="teacherName">
+  -
+</span>
 
 <button
 id="logoutButton"
@@ -91,14 +147,15 @@ type="button"
 
 <main class="main">
 
+
 <section class="card">
 
 <h1>
-成績・答案公開
+  成績・答案公開状態
 </h1>
 
 <p>
-公開したテストだけ、生徒本人が成績・答案を閲覧できます。
+  成績処理が完了したテストは自動的に生徒へ公開されます。
 </p>
 
 </section>
@@ -106,15 +163,18 @@ type="button"
 
 <section class="card">
 
-<label>
-テスト
+
+<label for="testSelect">
+  テスト
 </label>
 
 
-<select id="testSelect">
+<select
+id="testSelect"
+>
 
 <option value="">
-テストを選択してください
+  テストを選択してください
 </option>
 
 </select>
@@ -128,56 +188,112 @@ class="status"
 </div>
 
 
-<div class="actions">
-
-<button
-id="publishButton"
-class="btn btn-primary"
-type="button"
-disabled
+<div
+id="testInformation"
+class="info-grid"
+style="display:none;"
 >
-公開する
-</button>
 
+<div class="info-item">
 
-<button
-id="unpublishButton"
-class="btn"
-type="button"
-disabled
+<div class="info-label">
+  テスト
+</div>
+
+<div
+id="testName"
+class="info-value"
 >
-非公開にする
-</button>
+-
+</div>
 
 </div>
 
+
+<div class="info-item">
+
+<div class="info-label">
+  教科
+</div>
+
+<div
+id="testSubject"
+class="info-value"
+>
+-
+</div>
+
+</div>
+
+
+<div class="info-item">
+
+<div class="info-label">
+  成績処理
+</div>
+
+<div
+id="processingStatus"
+class="info-value"
+>
+-
+</div>
+
+</div>
+
+
+<div class="info-item">
+
+<div class="info-label">
+  公開状態
+</div>
+
+<div
+id="publishedStatus"
+class="info-value"
+>
+-
+</div>
+
+</div>
+
+
+</div>
+
+
+<div class="notice">
+
+結果が確定するまでは、生徒側には点数・採点済み答案を表示しません。
+
+<br>
+
+全答案・全設問の採点と成績処理が完了すると、自動的に公開されます。
+
+</div>
+
+
 </section>
+
 
 </main>
 
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="/js/config.js"></script>
-<script src="/js/auth.js"></script>
-<script src="/js/teacher/test-publish.js"></script>
+<script
+src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+></script>
 
+<script
+src="/js/config.js?v=20261116"
+></script>
 
-<script>
+<script
+src="/js/auth.js?v=20261116"
+></script>
 
-/*
-  Clean URL:
-  /teacher/tests/publish?test=UUID
-
-  test-publish.js側で
-  URLパラメータを初期選択に使用可能。
-*/
-
-window.__INITIAL_TEST_ID__ =
-  new URLSearchParams(
-    window.location.search
-  ).get("test");
-
-</script>
+<script
+src="/js/teacher/test-publish.js?v=20261116"
+></script>
 
 </body>
+
 </html>

@@ -1,3 +1,6 @@
+
+"use strict";
+
 /* =========================================================
    生徒編集
 ========================================================= */
@@ -8,62 +11,122 @@ const params =
   );
 
 const studentId =
-  params.get("id");
+  params.get(
+    "id"
+  );
+
+
+let DB =
+  null;
+
+
+/* =========================================================
+   INIT
+========================================================= */
+
+document.addEventListener(
+  "DOMContentLoaded",
+  initializeStudentEdit
+);
 
 
 async function initializeStudentEdit() {
 
-  const profile =
-    await getProfile();
+  try {
+
+    DB =
+      window.supabaseClient ||
+      window.SB;
 
 
-  if (!profile) {
+    if (!DB) {
 
-    window.location.href =
-      "/login";
+      throw new Error(
+        "Supabase Clientが初期化されていません。"
+      );
 
-    return;
-
-  }
-
-
-  if (
-    profile.role !== "teacher" &&
-    profile.role !== "admin"
-  ) {
-
-    window.location.href =
-      "/student/dashboard";
-
-    return;
-
-  }
+    }
 
 
-  document.getElementById(
-    "teacherName"
-  ).textContent =
-    profile.name || "先生";
+    const auth =
+      await requireRole(
+        "teacher"
+      );
 
 
-  if (!studentId) {
+    if (!auth) {
 
-    alert(
-      "生徒が指定されていません。"
+      return;
+
+    }
+
+
+    document.getElementById(
+      "teacherName"
+    ).textContent =
+      auth.profile?.name ||
+      "先生";
+
+
+    if (!studentId) {
+
+      showError(
+        "生徒が指定されていません。"
+      );
+
+      return;
+
+    }
+
+
+    document
+      .getElementById(
+        "logoutButton"
+      )
+      ?.addEventListener(
+        "click",
+        async () => {
+
+          await logout();
+
+        }
+      );
+
+
+    document
+      .getElementById(
+        "saveButton"
+      )
+      ?.addEventListener(
+        "click",
+        saveStudent
+      );
+
+
+    await loadStudent();
+
+
+  } catch (error) {
+
+    console.error(
+      "student-edit:",
+      error
     );
 
-    window.location.href =
-      "/teacher/students";
 
-    return;
+    showError(
+      error.message ||
+      "生徒編集画面を起動できませんでした。"
+    );
 
   }
-
-
-  await loadStudent();
 
 }
 
+
+/* =========================================================
+   LOAD
+========================================================= */
 
 async function loadStudent() {
 
@@ -71,16 +134,20 @@ async function loadStudent() {
     data,
     error
   } =
-    await supabaseClient
-      .from("students")
-      .select(`
+    await DB
+      .from(
+        "students"
+      )
+      .select(
+        `
         id,
         student_no,
         name,
         grade,
         class_name,
         active
-      `)
+        `
+      )
       .eq(
         "id",
         studentId
@@ -90,24 +157,16 @@ async function loadStudent() {
 
   if (error) {
 
-    console.error(error);
-
-    showError(
-      "生徒情報の取得に失敗しました。"
-    );
-
-    return;
+    throw error;
 
   }
 
 
   if (!data) {
 
-    showError(
+    throw new Error(
       "指定された生徒が見つかりません。"
     );
-
-    return;
 
   }
 
@@ -115,25 +174,29 @@ async function loadStudent() {
   document.getElementById(
     "studentNo"
   ).value =
-    data.student_no;
+    data.student_no ||
+    "";
 
 
   document.getElementById(
     "studentName"
   ).value =
-    data.name;
+    data.name ||
+    "";
 
 
   document.getElementById(
     "studentGrade"
   ).value =
-    data.grade || "";
+    data.grade ||
+    "";
 
 
   document.getElementById(
     "studentClass"
   ).value =
-    data.class_name || "";
+    data.class_name ||
+    "";
 
 
   document.getElementById(
@@ -158,6 +221,160 @@ async function loadStudent() {
 }
 
 
+/* =========================================================
+   SAVE
+========================================================= */
+
+async function saveStudent() {
+
+  const name =
+    document.getElementById(
+      "studentName"
+    )
+      .value
+      .trim();
+
+
+  const grade =
+    document.getElementById(
+      "studentGrade"
+    )
+      .value
+      .trim();
+
+
+  const className =
+    document.getElementById(
+      "studentClass"
+    )
+      .value
+      .trim();
+
+
+  const active =
+    document.getElementById(
+      "studentActive"
+    )
+      .value ===
+      "true";
+
+
+  if (!name) {
+
+    showEditMessage(
+      "氏名を入力してください。",
+      true
+    );
+
+    return;
+
+  }
+
+
+  const button =
+    document.getElementById(
+      "saveButton"
+    );
+
+
+  button.disabled =
+    true;
+
+
+  button.textContent =
+    "保存中...";
+
+
+  showEditMessage(
+    ""
+  );
+
+
+  try {
+
+    const {
+      error
+    } =
+      await DB
+        .from(
+          "students"
+        )
+        .update({
+
+          name,
+
+          grade:
+            grade ||
+            null,
+
+          class_name:
+            className ||
+            null,
+
+          active
+
+        })
+        .eq(
+          "id",
+          studentId
+        );
+
+
+    if (error) {
+
+      throw error;
+
+    }
+
+
+    showEditMessage(
+      "生徒情報を保存しました。",
+      false
+    );
+
+
+    setTimeout(
+      () => {
+
+        window.location.href =
+          "/teacher/students";
+
+      },
+      500
+    );
+
+
+  } catch (error) {
+
+    console.error(
+      "student update:",
+      error
+    );
+
+
+    showEditMessage(
+      error.message ||
+      "保存に失敗しました。",
+      true
+    );
+
+
+    button.disabled =
+      false;
+
+
+    button.textContent =
+      "保存する";
+
+  }
+
+}
+
+
+/* =========================================================
+   ERROR
+========================================================= */
+
 function showError(
   message
 ) {
@@ -167,6 +384,14 @@ function showError(
       "loading"
     );
 
+
+  if (!loading) {
+
+    return;
+
+  }
+
+
   loading.innerHTML = `
 
     <div
@@ -174,7 +399,11 @@ function showError(
         color:#c62828;
       "
     >
-      ${escapeHtml(message)}
+
+      ${escapeHtml(
+        message
+      )}
+
     </div>
 
     <br>
@@ -191,158 +420,52 @@ function showError(
 }
 
 
-document
-  .getElementById(
-    "logoutButton"
-  )
-  .addEventListener(
-    "click",
-    logout
-  );
+/* =========================================================
+   MESSAGE
+========================================================= */
+
+function showEditMessage(
+  text,
+  error = false
+) {
+
+  const element =
+    document.getElementById(
+      "editMessage"
+    );
 
 
-/*
-  保存
-*/
+  if (!element) {
 
-document
-  .getElementById(
-    "saveButton"
-  )
-  .addEventListener(
-    "click",
-    async () => {
-
-      const name =
-        document.getElementById(
-          "studentName"
-        ).value.trim();
-
-
-      const grade =
-        document.getElementById(
-          "studentGrade"
-        ).value.trim();
-
-
-      const className =
-        document.getElementById(
-          "studentClass"
-        ).value.trim();
-
-
-      const active =
-        document.getElementById(
-          "studentActive"
-        ).value === "true";
-
-
-      const message =
-        document.getElementById(
-          "editMessage"
-        );
-
-
-      const button =
-        document.getElementById(
-          "saveButton"
-        );
-
-
-      message.textContent = "";
-
-
-      if (!name) {
-
-        message.textContent =
-          "氏名を入力してください。";
-
-        return;
-
-      }
-
-
-      button.disabled = true;
-
-      button.textContent =
-        "保存中...";
-
-
-      try {
-
-        const {
-          error
-        } =
-          await supabaseClient
-            .from("students")
-            .update({
-
-              name,
-
-              grade:
-                grade || null,
-
-              class_name:
-                className || null,
-
-              active
-
-            })
-            .eq(
-              "id",
-              studentId
-            );
-
-
-        if (error) {
-
-          throw error;
-
-        }
-
-
-        alert(
-          "生徒情報を保存しました。"
-        );
-
-
-        window.location.href =
-          "/teacher/students";
-
-
-      } catch (error) {
-
-        console.error(error);
-
-        message.textContent =
-          error.message ||
-          "保存に失敗しました。";
-
-
-        button.disabled = false;
-
-        button.textContent =
-          "保存する";
-
-      }
-
-    }
-  );
-
-
-function escapeHtml(value) {
-
-  if (
-    value === null ||
-    value === undefined
-  ) {
-
-    return "";
+    return;
 
   }
 
 
-  return String(value)
+  element.textContent =
+    text;
+
+
+  element.style.color =
+    error
+      ? "#c62828"
+      : "#16834b";
+
+}
+
+
+/* =========================================================
+   ESCAPE
+========================================================= */
+
+function escapeHtml(
+  value
+) {
+
+  return String(
+    value ??
+    ""
+  )
     .replaceAll(
       "&",
       "&amp;"
@@ -365,6 +488,3 @@ function escapeHtml(value) {
     );
 
 }
-
-
-initializeStudentEdit();

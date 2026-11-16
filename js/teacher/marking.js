@@ -2,29 +2,40 @@
 "use strict";
 
 /* =========================================================
-   デジタル採点・高速串刺し採点
+   デジタル採点
 
-   仕様
+   新仕様
    ---------------------------------------------------------
-   ・答案選択画面を使用しない
-   ・同じ設問を画面いっぱいに複数答案表示
-   ・画面サイズから表示数を自動調整
-   ・生徒名、学籍番号、QRは表示しない
-   ・大問は表示しない
-   ・設問単位で採点
-   ・L  → ○ + 満点
-   ・K  → × + 0点
-   ・数字 → 部分点
-   ・Enter → 保存
-   ・Backspace → 数字削除
-   ・Escape → 選択解除
-   ・○ × △ ◎ 文字 ペン 消しゴム
-   ・answer_regionsを優先表示
-   ・クロップが無い場合は元答案を枠位置で表示
-   ・採点済みは自動的に次の答案へ
-   ・現在のグループ終了で次グループ
-   ・全員終了で次の設問
-   ・最後まで終了したら成績処理へ
+   テスト
+      ↓
+   1設問
+      ↓
+   全答案を一括表示
+      ↓
+   L / K / 数字
+      ↓
+   保存
+      ↓
+   次の答案へ自動移動
+
+   採点画面では
+   ---------------------------------------------------------
+   ・生徒名を表示しない
+   ・生徒番号を表示しない
+   ・答案を選択させない
+   ・設問を選択させない
+   ・大問を表示しない
+
+   採点対象
+   ---------------------------------------------------------
+   layout_boxes.box_type = answer
+
+   除外
+   ---------------------------------------------------------
+   QR
+   氏名
+   合計
+   小計
 ========================================================= */
 
 
@@ -42,27 +53,23 @@ let answers = [];
 
 let questions = [];
 
-let pages = new Map();
+let scores = [];
+
+let marks = [];
 
 let regions = new Map();
 
-let scores = new Map();
-
-let marks = new Map();
+let pages = new Map();
 
 let questionIndex = 0;
 
-let batchStart = 0;
+let activeAnswerIndex = 0;
 
-let batchSize = 1;
-
-let selectedAnswerId = null;
-
-let selectedTool = null;
+let selectedMarkType = null;
 
 let numericBuffer = "";
 
-let processing = false;
+let saving = false;
 
 
 /* =========================================================
@@ -71,6 +78,46 @@ let processing = false;
 
 const $ = id =>
   document.getElementById(id);
+
+
+const statusElement =
+  $("status");
+
+
+const answerTableWrap =
+  $("answerTableWrap");
+
+
+const questionTitleElement =
+  $("questionTitle");
+
+
+const questionMetaElement =
+  $("questionMeta");
+
+
+const previousButton =
+  $("previousButton");
+
+
+const nextButton =
+  $("nextButton");
+
+
+const refreshButton =
+  $("refreshButton");
+
+
+const progressBar =
+  $("progressBar");
+
+
+const progressText =
+  $("progressText");
+
+
+const completeElement =
+  $("complete");
 
 
 /* =========================================================
@@ -108,9 +155,9 @@ async function initialize() {
 
 
     testId =
-      params.get("test") ||
-      window.__INITIAL_TEST_ID__ ||
-      null;
+      params.get(
+        "test"
+      );
 
 
     if (!testId) {
@@ -122,100 +169,53 @@ async function initialize() {
     }
 
 
-    await requireTeacher();
-
-    setupEvents();
-
-    createNumberButtons();
-
-    await loadAll();
-
-    calculateBatchSize();
-
-    window.addEventListener(
-      "resize",
-      handleResize
-    );
-
-    await render();
-
-  } catch (error) {
-
-    console.error(
-      "marking:",
-      error
-    );
-
-    showError(
-      error.message ||
-      "採点画面を起動できませんでした。"
-    );
-
-  }
-
-}
-
-
-/* =========================================================
-   AUTH
-========================================================= */
-
-async function requireTeacher() {
-
-  if (
-    typeof window.requireRole ===
-    "function"
-  ) {
-
-    const result =
-      await window.requireRole(
+    const auth =
+      await requireRole(
         "teacher"
       );
 
 
-    if (!result) {
+    if (!auth) {
 
       return;
 
     }
 
 
-    const name =
+    const teacherName =
       $("teacherName");
 
 
-    if (name) {
+    if (teacherName) {
 
-      name.textContent =
-        result.profile?.name ||
+      teacherName.textContent =
+        auth.profile?.name ||
         "先生";
 
     }
 
 
-    return;
+    setupEvents();
 
-  }
+    setupMarkToolbar();
 
-
-  const {
-    data,
-    error
-  } =
-    await DB.auth.getUser();
+    setupNavigationLinks();
 
 
-  if (error) {
-
-    throw error;
-
-  }
+    await loadEverything();
 
 
-  if (!data?.user) {
+  } catch (error) {
 
-    location.replace(
-      "/login"
+    console.error(
+      "marking initialize:",
+      error
+    );
+
+
+    showFatal(
+      error.message ||
+      "採点画面を起動できませんでした。"
     );
 
   }
@@ -229,38 +229,109 @@ async function requireTeacher() {
 
 function setupEvents() {
 
-  $("previousButton")
-    ?.addEventListener(
-      "click",
-      previousQuestion
-    );
+  previousButton?.addEventListener(
+    "click",
+    async () => {
 
+      if (
+        questionIndex <=
+        0
+      ) {
 
-  $("nextButton")
-    ?.addEventListener(
-      "click",
-      nextQuestion
-    );
-
-
-  $("nextUnmarked")
-    ?.addEventListener(
-      "click",
-      nextUnmarked
-    );
-
-
-  $("refreshButton")
-    ?.addEventListener(
-      "click",
-      async () => {
-
-        await loadAll();
-
-        await render();
+        return;
 
       }
-    );
+
+
+      questionIndex--;
+
+      activeAnswerIndex =
+        0;
+
+      clearKeyboard();
+
+      await renderQuestion();
+
+    }
+  );
+
+
+  nextButton?.addEventListener(
+    "click",
+    async () => {
+
+      if (
+        questionIndex >=
+        questions.length - 1
+      ) {
+
+        if (
+          isAllMarked()
+        ) {
+
+          completeElement
+            ?.classList.add(
+              "show"
+            );
+
+
+          setStatus(
+            "全答案・全設問の採点が完了しました。"
+          );
+
+        } else {
+
+          setStatus(
+            "未採点の答案があります。",
+            true
+          );
+
+        }
+
+
+        return;
+
+      }
+
+
+      questionIndex++;
+
+      activeAnswerIndex =
+        0;
+
+      clearKeyboard();
+
+      await renderQuestion();
+
+    }
+  );
+
+
+  refreshButton?.addEventListener(
+    "click",
+    async () => {
+
+      try {
+
+        await loadEverything();
+
+      } catch (error) {
+
+        showFatal(
+          error.message ||
+          "更新できませんでした。"
+        );
+
+      }
+
+    }
+  );
+
+
+  document.addEventListener(
+    "keydown",
+    handleKeyboard
+  );
 
 
   $("logoutButton")
@@ -268,26 +339,45 @@ function setupEvents() {
       "click",
       async () => {
 
-        if (
-          typeof window.logout ===
-          "function"
-        ) {
-
-          await window.logout();
-
-        }
+        await logout();
 
       }
     );
 
+}
 
-  /*
-   * 採点ツール
-   */
+
+/* =========================================================
+   LINKS
+========================================================= */
+
+function setupNavigationLinks() {
+
+  const points =
+    $("pointsButton");
+
+
+  if (points) {
+
+    points.href =
+      `/teacher/tests/points?test=${encodeURIComponent(
+        testId
+      )}`;
+
+  }
+
+}
+
+
+/* =========================================================
+   TOOLBAR
+========================================================= */
+
+function setupMarkToolbar() {
 
   document
     .querySelectorAll(
-      "[data-mark]"
+      "#markToolbar [data-mark]"
     )
     .forEach(
       button => {
@@ -296,8 +386,32 @@ function setupEvents() {
           "click",
           () => {
 
-            setTool(
-              button.dataset.mark
+            selectedMarkType =
+              button.dataset.mark ||
+              null;
+
+
+            document
+              .querySelectorAll(
+                "#markToolbar [data-mark]"
+              )
+              .forEach(
+                item => {
+
+                  item.classList.toggle(
+                    "active",
+                    item ===
+                      button
+                  );
+
+                }
+              );
+
+
+            setStatus(
+              `${markLabel(
+                selectedMarkType
+              )}を選択しました。答案をクリックして配置できます。`
             );
 
           }
@@ -306,87 +420,14 @@ function setupEvents() {
       }
     );
 
-
-  /*
-   * L / K
-   */
-
-  document
-    .querySelector(
-      "[data-quick-score=\"full\"]"
-    )
-    ?.addEventListener(
-      "click",
-      () => {
-
-        quickScore(
-          "full"
-        );
-
-      }
-    );
-
-
-  document
-    .querySelector(
-      "[data-quick-score=\"zero\"]"
-    )
-    ?.addEventListener(
-      "click",
-      () => {
-
-        quickScore(
-          "zero"
-        );
-
-      }
-    );
-
-
-  document
-    .getElementById(
-      "numberToolbar"
-    )
-    ?.addEventListener(
-      "click",
-      event => {
-
-        const button =
-          event.target.closest(
-            "[data-score]"
-          );
-
-
-        if (!button) {
-
-          return;
-
-        }
-
-
-        scoreSelected(
-          Number(
-            button.dataset.score
-          )
-        );
-
-      }
-    );
-
-
-  document.addEventListener(
-    "keydown",
-    handleKeyboard
-  );
-
 }
 
 
 /* =========================================================
-   LOAD ALL
+   LOAD EVERYTHING
 ========================================================= */
 
-async function loadAll() {
+async function loadEverything() {
 
   setStatus(
     "採点データを読み込んでいます..."
@@ -397,35 +438,52 @@ async function loadAll() {
 
   await loadAnswers();
 
-  await loadPages();
-
-  await loadRegions();
-
   await loadQuestions();
 
   await loadScores();
 
   await loadMarks();
 
+  await loadPages();
+
+  await loadRegions();
+
+
+  if (!answers.length) {
+
+    throw new Error(
+      "採点対象の答案がありません。"
+    );
+
+  }
+
+
+  if (!questions.length) {
+
+    throw new Error(
+      "採点対象の解答欄がありません。"
+    );
+
+  }
+
 
   questionIndex =
     Math.min(
       questionIndex,
-      Math.max(
-        0,
-        questions.length - 1
-      )
+      questions.length - 1
     );
 
 
-  batchStart =
-    Math.min(
-      batchStart,
-      Math.max(
-        0,
-        answers.length - 1
-      )
-    );
+  activeAnswerIndex =
+    0;
+
+
+  await renderQuestion();
+
+
+  setStatus(
+    `${test.name || "テスト"} の採点です。`
+  );
 
 }
 
@@ -441,14 +499,18 @@ async function loadTest() {
     error
   } =
     await DB
-      .from("tests")
-      .select(`
+      .from(
+        "tests"
+      )
+      .select(
+        `
         id,
         name,
         subject,
         grade,
         class_name
-      `)
+        `
+      )
       .eq(
         "id",
         testId
@@ -489,19 +551,34 @@ async function loadAnswers() {
     error
   } =
     await DB
-      .from("answer_sheets")
-      .select(`
+      .from(
+        "answer_sheets"
+      )
+      .select(
+        `
         id,
         test_id,
         student_id,
-        qr_value,
         status,
-        uploaded_at,
         created_at
-      `)
+        `
+      )
       .eq(
         "test_id",
         testId
+      )
+      .not(
+        "student_id",
+        "is",
+        null
+      )
+      .in(
+        "status",
+        [
+          "uploaded",
+          "marking",
+          "marked"
+        ]
       )
       .order(
         "created_at",
@@ -521,174 +598,6 @@ async function loadAnswers() {
   answers =
     data || [];
 
-
-  if (!answers.length) {
-
-    throw new Error(
-      "このテストには答案がありません。"
-    );
-
-  }
-
-}
-
-
-/* =========================================================
-   PAGES
-========================================================= */
-
-async function loadPages() {
-
-  pages =
-    new Map();
-
-
-  const ids =
-    answers.map(
-      answer =>
-        answer.id
-    );
-
-
-  const {
-    data,
-    error
-  } =
-    await DB
-      .from("answer_sheet_pages")
-      .select(`
-        answer_sheet_id,
-        page_no,
-        file_path,
-        file_type,
-        original_name,
-        width_px,
-        height_px
-      `)
-      .in(
-        "answer_sheet_id",
-        ids
-      )
-      .order(
-        "page_no",
-        {
-          ascending:true
-        }
-      );
-
-
-  if (error) {
-
-    throw error;
-
-  }
-
-
-  (data || [])
-    .forEach(
-      page => {
-
-        if (
-          !pages.has(
-            page.answer_sheet_id
-          )
-        ) {
-
-          pages.set(
-            page.answer_sheet_id,
-            []
-          );
-
-        }
-
-
-        pages
-          .get(
-            page.answer_sheet_id
-          )
-          .push(
-            page
-          );
-
-      }
-    );
-
-}
-
-
-/* =========================================================
-   REGIONS
-========================================================= */
-
-async function loadRegions() {
-
-  regions =
-    new Map();
-
-
-  const ids =
-    answers.map(
-      answer =>
-        answer.id
-    );
-
-
-  const {
-    data,
-    error
-  } =
-    await DB
-      .from("answer_regions")
-      .select(`
-        id,
-        answer_sheet_id,
-        layout_box_id,
-        question_id,
-        page_no,
-        image_path,
-        x,
-        y,
-        width,
-        height
-      `)
-      .in(
-        "answer_sheet_id",
-        ids
-      );
-
-
-  if (error) {
-
-    /*
-     * クロップ未作成でも
-     * 元答案から表示できる。
-     */
-
-    console.warn(
-      "answer_regions:",
-      error
-    );
-
-    return;
-
-  }
-
-
-  (data || [])
-    .forEach(
-      region => {
-
-        regions.set(
-          regionKey(
-            region.answer_sheet_id,
-            region.layout_box_id
-          ),
-          region
-        );
-
-      }
-    );
-
 }
 
 
@@ -703,8 +612,11 @@ async function loadQuestions() {
     error
   } =
     await DB
-      .from("layout_boxes")
-      .select(`
+      .from(
+        "layout_boxes"
+      )
+      .select(
+        `
         id,
         page_no,
         box_type,
@@ -716,10 +628,15 @@ async function loadQuestions() {
         question_id,
         points,
         sort_order
-      `)
+        `
+      )
       .eq(
         "test_id",
         testId
+      )
+      .eq(
+        "box_type",
+        "answer"
       )
       .order(
         "page_no",
@@ -755,16 +672,6 @@ async function loadQuestions() {
     (data || [])
       .filter(
         box =>
-          String(
-            box.box_type ||
-            ""
-          )
-            .trim()
-            .toLowerCase() ===
-          "answer"
-      )
-      .filter(
-        box =>
           !excluded.has(
             String(
               box.label ||
@@ -782,6 +689,7 @@ async function loadQuestions() {
             box.id,
 
           label:
+            box.label ||
             `問${index + 1}`,
 
           pageNo:
@@ -821,7 +729,7 @@ async function loadQuestions() {
           sortOrder:
             Number(
               box.sort_order
-            ) || index
+            ) || 0
 
         })
       );
@@ -830,7 +738,7 @@ async function loadQuestions() {
   if (!questions.length) {
 
     throw new Error(
-      "採点対象の解答欄がありません。"
+      "採点対象のanswer枠がありません。"
     );
 
   }
@@ -845,7 +753,7 @@ async function loadQuestions() {
 async function loadScores() {
 
   scores =
-    new Map();
+    [];
 
 
   const ids =
@@ -855,48 +763,70 @@ async function loadScores() {
     );
 
 
-  const {
-    data,
-    error
-  } =
-    await DB
-      .from("scores")
-      .select(`
-        id,
-        answer_sheet_id,
-        layout_box_id,
-        question_id,
-        score,
-        status,
-        marked_at
-      `)
-      .in(
-        "answer_sheet_id",
-        ids
-      );
+  if (!ids.length) {
 
-
-  if (error) {
-
-    throw error;
+    return;
 
   }
 
 
-  (data || [])
-    .forEach(
-      score => {
+  const chunkSize =
+    300;
 
-        scores.set(
-          scoreKey(
-            score.answer_sheet_id,
-            score.layout_box_id
-          ),
-          score
+
+  for (
+    let start = 0;
+    start <
+    ids.length;
+    start +=
+      chunkSize
+  ) {
+
+    const chunk =
+      ids.slice(
+        start,
+        start +
+          chunkSize
+      );
+
+
+    const {
+      data,
+      error
+    } =
+      await DB
+        .from(
+          "scores"
+        )
+        .select(
+          `
+          id,
+          answer_sheet_id,
+          layout_box_id,
+          question_id,
+          score,
+          status,
+          marked_at
+          `
+        )
+        .in(
+          "answer_sheet_id",
+          chunk
         );
 
-      }
+
+    if (error) {
+
+      throw error;
+
+    }
+
+
+    scores.push(
+      ...(data || [])
     );
+
+  }
 
 }
 
@@ -908,6 +838,115 @@ async function loadScores() {
 async function loadMarks() {
 
   marks =
+    [];
+
+
+  const ids =
+    answers.map(
+      answer =>
+        answer.id
+    );
+
+
+  if (!ids.length) {
+
+    return;
+
+  }
+
+
+  const chunkSize =
+    300;
+
+
+  for (
+    let start = 0;
+    start <
+    ids.length;
+    start +=
+      chunkSize
+  ) {
+
+    const chunk =
+      ids.slice(
+        start,
+        start +
+          chunkSize
+      );
+
+
+    const {
+      data,
+      error
+    } =
+      await DB
+        .from(
+          "mark_objects"
+        )
+        .select(
+          `
+          id,
+          answer_sheet_id,
+          layout_box_id,
+          question_id,
+          object_type,
+          text_value,
+          color,
+          font_size,
+          stroke_width,
+          x,
+          y,
+          width,
+          height,
+          points,
+          created_at
+          `
+        )
+        .in(
+          "answer_sheet_id",
+          chunk
+        )
+        .order(
+          "created_at",
+          {
+            ascending:true
+          }
+        );
+
+
+    if (error) {
+
+      /*
+       * 記号テーブルが無い環境でも
+       * 点数採点は続行。
+       */
+
+      console.warn(
+        "mark_objects:",
+        error
+      );
+
+      return;
+
+    }
+
+
+    marks.push(
+      ...(data || [])
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   PAGES
+========================================================= */
+
+async function loadPages() {
+
+  pages =
     new Map();
 
 
@@ -918,191 +957,212 @@ async function loadMarks() {
     );
 
 
-  const {
-    data,
-    error
-  } =
-    await DB
-      .from("mark_objects")
-      .select(`
-        id,
-        answer_sheet_id,
-        layout_box_id,
-        question_id,
-        object_type,
-        text_value,
-        color,
-        font_size,
-        stroke_width,
-        x,
-        y,
-        width,
-        height,
-        points,
-        created_at
-      `)
-      .in(
-        "answer_sheet_id",
-        ids
-      );
-
-
-  if (error) {
-
-    /*
-     * 記号テーブルが無い場合でも
-     * 点数採点は可能。
-     */
-
-    console.warn(
-      "mark_objects:",
-      error
-    );
+  if (!ids.length) {
 
     return;
 
   }
 
 
-  (data || [])
-    .forEach(
-      mark => {
+  const chunkSize =
+    300;
 
-        const key =
-          scoreKey(
-            mark.answer_sheet_id,
-            mark.layout_box_id
-          );
 
+  for (
+    let start = 0;
+    start <
+    ids.length;
+    start +=
+      chunkSize
+  ) {
+
+    const chunk =
+      ids.slice(
+        start,
+        start +
+          chunkSize
+      );
+
+
+    const {
+      data,
+      error
+    } =
+      await DB
+        .from(
+          "answer_sheet_pages"
+        )
+        .select(
+          `
+          answer_sheet_id,
+          page_no,
+          file_path,
+          width_px,
+          height_px
+          `
+        )
+        .in(
+          "answer_sheet_id",
+          chunk
+        )
+        .order(
+          "page_no",
+          {
+            ascending:true
+          }
+        );
+
+
+    if (error) {
+
+      throw error;
+
+    }
+
+
+    (
+      data ||
+      []
+    ).forEach(
+      page => {
 
         if (
-          !marks.has(key)
+          !pages.has(
+            page.answer_sheet_id
+          )
         ) {
 
-          marks.set(
-            key,
+          pages.set(
+            page.answer_sheet_id,
             []
           );
 
         }
 
 
-        marks
-          .get(key)
+        pages
+          .get(
+            page.answer_sheet_id
+          )
           .push(
-            mark
+            page
           );
 
       }
     );
 
-}
-
-
-/* =========================================================
-   BATCH SIZE
-========================================================= */
-
-function calculateBatchSize() {
-
-  const area =
-    $("answerArea");
-
-
-  if (!area) {
-
-    batchSize =
-      12;
-
-    return;
-
-  }
-
-
-  const width =
-    area.clientWidth;
-
-
-  const height =
-    area.clientHeight;
-
-
-  const minCardWidth =
-    240;
-
-
-  const minCardHeight =
-    230;
-
-
-  const columns =
-    Math.max(
-      1,
-      Math.floor(
-        width /
-        minCardWidth
-      )
-    );
-
-
-  const rows =
-    Math.max(
-      1,
-      Math.floor(
-        height /
-        minCardHeight
-      )
-    );
-
-
-  batchSize =
-    Math.max(
-      1,
-      columns *
-      rows
-    );
-
-}
-
-
-function handleResize() {
-
-  const oldSize =
-    batchSize;
-
-
-  calculateBatchSize();
-
-
-  if (
-    oldSize !==
-    batchSize
-  ) {
-
-    render();
-
   }
 
 }
 
 
 /* =========================================================
-   RENDER
+   REGIONS
 ========================================================= */
 
-async function render() {
+async function loadRegions() {
 
-  if (
-    !questions.length
-  ) {
+  regions =
+    new Map();
+
+
+  const ids =
+    answers.map(
+      answer =>
+        answer.id
+    );
+
+
+  if (!ids.length) {
 
     return;
 
   }
 
 
-  calculateBatchSize();
+  const chunkSize =
+    300;
 
+
+  for (
+    let start = 0;
+    start <
+    ids.length;
+    start +=
+      chunkSize
+  ) {
+
+    const chunk =
+      ids.slice(
+        start,
+        start +
+          chunkSize
+      );
+
+
+    const {
+      data,
+      error
+    } =
+      await DB
+        .from(
+          "answer_regions"
+        )
+        .select(
+          `
+          id,
+          answer_sheet_id,
+          layout_box_id,
+          page_no,
+          image_path,
+          x,
+          y,
+          width,
+          height
+          `
+        )
+        .in(
+          "answer_sheet_id",
+          chunk
+        );
+
+
+    if (error) {
+
+      console.warn(
+        "answer_regions:",
+        error
+      );
+
+      continue;
+
+    }
+
+
+    (
+      data ||
+      []
+    ).forEach(
+      region => {
+
+        regions.set(
+          `${region.answer_sheet_id}:${region.layout_box_id}`,
+          region
+        );
+
+      }
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   RENDER QUESTION
+========================================================= */
+
+async function renderQuestion() {
 
   const question =
     questions[
@@ -1110,22 +1170,21 @@ async function render() {
     ];
 
 
-  const visible =
-    answers.slice(
-      batchStart,
-      batchStart +
-        batchSize
-    );
+  if (!question) {
+
+    return;
+
+  }
 
 
-  $("questionTitle").textContent =
+  questionTitleElement.textContent =
     question.label;
 
 
-  $("questionMeta").textContent =
+  questionMetaElement.textContent =
     [
-      test?.name,
-      test?.subject,
+      test.name,
+      test.subject,
       `配点 ${formatNumber(
         question.points
       )}点`,
@@ -1137,123 +1196,90 @@ async function render() {
       );
 
 
-  $("progressText").textContent =
-    `${batchStart + 1}～${
-      Math.min(
-        batchStart +
-        visible.length,
-        answers.length
+  previousButton.disabled =
+    questionIndex <=
+    0;
+
+
+  nextButton.textContent =
+    questionIndex >=
+      questions.length - 1
+      ? "完了"
+      : "次の問題";
+
+
+  activeAnswerIndex =
+    Math.min(
+      activeAnswerIndex,
+      Math.max(
+        0,
+        answers.length - 1
       )
-    } / ${answers.length}`;
+    );
 
 
-  $("progressTextBar").textContent =
-    `${countMarked()} / ${
-      answers.length *
-      questions.length
-    }`;
-
-  
-  $("progress").classList.add(
-    "show"
-  );
-
-
-  const total =
-    answers.length *
-    questions.length;
-
-
-  const done =
-    countMarked();
-
-
-  $("progressBar").style.width =
-    `${
-      total
-        ? Math.round(
-            done /
-            total *
-            100
-          )
-        : 0
-    }%`;
-
-
-  const grid =
-    $("answerTableWrap");
-
-
-  grid.innerHTML =
+  answerTableWrap.innerHTML =
     "";
 
 
-  if (!visible.length) {
-
-    grid.innerHTML = `
-
-      <div class="no-answer">
-        答案がありません。
-      </div>
-
-    `;
-
-    return;
-
-  }
-
-
-  for (
-    const answer
-    of visible
-  ) {
-
-    const card =
-      await createCard(
-        answer,
-        question
-      );
-
-
-    grid.appendChild(
-      card
+  const grid =
+    document.createElement(
+      "div"
     );
 
-  }
 
-
-  updateNavigation();
+  grid.className =
+    "answer-grid";
 
 
   /*
-   * 先頭答案を選択。
+   * 全答案を一気にカード化。
    */
 
-  if (
-    !selectedAnswerId ||
-    !visible.some(
-      answer =>
-        answer.id ===
-        selectedAnswerId
-    )
-  ) {
-
-    selectAnswer(
-      visible[0]?.id
+  const fragments =
+    await Promise.all(
+      answers.map(
+        (
+          answer,
+          index
+        ) =>
+          createAnswerCard(
+            answer,
+            question,
+            index
+          )
+      )
     );
 
-  }
+
+  fragments.forEach(
+    card =>
+      grid.appendChild(
+        card
+      )
+  );
+
+
+  answerTableWrap.appendChild(
+    grid
+  );
+
+
+  updateActiveCard();
+
+  updateProgress();
 
 }
 
 
 /* =========================================================
-   CARD
+   ANSWER CARD
 ========================================================= */
 
-async function createCard(
+async function createAnswerCard(
   answer,
-  question
+  question,
+  index
 ) {
 
   const card =
@@ -1270,49 +1296,43 @@ async function createCard(
     answer.id;
 
 
-  const score =
-    getScore(
-      answer.id,
-      question.id
+  card.dataset.index =
+    String(
+      index
     );
 
 
-  if (
-    score?.status ===
-    "marked"
-  ) {
-
-    card.classList.add(
-      "done"
-    );
-
-  }
-
-
-  if (
-    selectedAnswerId ===
-    answer.id
-  ) {
-
-    card.classList.add(
-      "selected"
-    );
-
-  }
-
-
-  const header =
+  const head =
     document.createElement(
       "div"
     );
 
 
-  header.className =
-    "answer-header";
+  head.className =
+    "answer-card-head";
 
 
-  header.textContent =
-    "答案";
+  const label =
+    document.createElement(
+      "span"
+    );
+
+
+  label.className =
+    "answer-label";
+
+
+  /*
+   * 生徒名・番号は出さない。
+   */
+
+  label.textContent =
+    `答案 ${String(
+      index + 1
+    ).padStart(
+      3,
+      "0"
+    )}`;
 
 
   const state =
@@ -1322,177 +1342,82 @@ async function createCard(
 
 
   state.className =
-    "answer-status";
+    "answer-state";
 
 
-  state.textContent =
-    score?.status ===
-      "marked"
-      ? "採点済み"
-      : "未採点";
-
-
-  header.appendChild(
-    state
-  );
-
-
-  const stage =
-    await createStage(
-      answer,
-      question
-    );
-
-
-  const scoreBar =
-    createScoreBar(
-      answer,
-      question
-    );
-
-
-  card.append(
-    header,
-    stage,
-    scoreBar
-  );
-
-
-  card.addEventListener(
-    "click",
-    event => {
-
-      if (
-        event.target.closest(
-          "button,input"
-        )
-      ) {
-
-        return;
-
-      }
-
-
-      selectAnswer(
-        answer.id
-      );
-
-    }
-  );
-
-
-  return card;
-
-}
-
-
-/* =========================================================
-   STAGE
-========================================================= */
-
-async function createStage(
-  answer,
-  question
-) {
-
-  const stage =
-    document.createElement(
-      "div"
-    );
-
-
-  stage.className =
-    "answer-stage";
-
-
-  const region =
-    regions.get(
-      regionKey(
-        answer.id,
-        question.id
-      )
+  const existing =
+    findScore(
+      answer.id,
+      question.id
     );
 
 
   if (
-    region?.image_path
+    existing?.status ===
+    "marked"
   ) {
 
-    const image =
-      await createRegionImage(
-        region
-      );
+    state.textContent =
+      "採点済み";
 
 
-    if (image) {
-
-      image.classList.add(
-        "answer-image",
-        "crop"
-      );
-
-
-      stage.appendChild(
-        image
-      );
-
-
-    }
+    state.classList.add(
+      "marked"
+    );
 
   } else {
 
-    await renderOriginalCrop(
-      stage,
-      answer,
-      question
-    );
+    state.textContent =
+      "未採点";
 
   }
 
 
-  const layer =
+  head.append(
+    label,
+    state
+  );
+
+
+  const imageArea =
     document.createElement(
       "div"
     );
 
 
-  layer.className =
-    "answer-mark-layer";
+  imageArea.className =
+    "answer-image-area";
 
 
-  stage.appendChild(
-    layer
-  );
+  imageArea.dataset.answerId =
+    answer.id;
 
 
-  renderMarks(
-    layer,
-    answer.id,
-    question.id
-  );
+  imageArea.dataset.questionId =
+    question.id;
 
 
-  stage.addEventListener(
+  imageArea.addEventListener(
     "click",
     event => {
 
-      event.stopPropagation();
+      activeAnswerIndex =
+        index;
 
 
-      selectAnswer(
-        answer.id
-      );
+      updateActiveCard();
 
 
       if (
-        selectedTool
+        selectedMarkType
       ) {
 
         placeMark(
           event,
-          stage,
-          answer.id,
-          question.id
+          imageArea,
+          answer,
+          question,
+          selectedMarkType
         );
 
       }
@@ -1501,297 +1426,28 @@ async function createStage(
   );
 
 
-  return stage;
-
-}
-
-
-/* =========================================================
-   REGION IMAGE
-========================================================= */
-
-async function createRegionImage(
-  region
-) {
-
-  const {
-    data,
-    error
-  } =
-    await DB
-      .storage
-      .from(
-        "student-answers"
-      )
-      .createSignedUrl(
-        region.image_path,
-        900
-      );
-
-
-  if (error) {
-
-    console.warn(
-      error
-    );
-
-    return null;
-
-  }
-
-
-  if (
-    !data?.signedUrl
-  ) {
-
-    return null;
-
-  }
-
-
-  const image =
-    document.createElement(
-      "img"
-    );
-
-
-  image.src =
-    data.signedUrl;
-
-
-  image.alt =
-    "答案";
-
-
-  image.draggable =
-    false;
-
-
-  await waitImage(
-    image
+  await renderAnswerImage(
+    imageArea,
+    answer,
+    question
   );
 
 
-  return image;
-
-}
-
-
-/* =========================================================
-   ORIGINAL CROP
-========================================================= */
-
-async function renderOriginalCrop(
-  stage,
-  answer,
-  question
-) {
-
-  const list =
-    pages.get(
-      answer.id
-    ) ||
-    [];
-
-
-  const page =
-    list.find(
-      item =>
-        Number(
-          item.page_no
-        ) ===
-        Number(
-          question.pageNo
-        )
-    );
-
-
-  if (!page) {
-
-    stage.innerHTML = `
-
-      <div class="answer-error">
-        答案ページがありません。
-      </div>
-
-    `;
-
-    return;
-
-  }
-
-
-  const {
-    data,
-    error
-  } =
-    await DB
-      .storage
-      .from(
-        "answer-files"
-      )
-      .createSignedUrl(
-        page.file_path,
-        900
-      );
-
-
-  if (
-    error ||
-    !data?.signedUrl
-  ) {
-
-    stage.innerHTML = `
-
-      <div class="answer-error">
-        答案画像を取得できません。
-      </div>
-
-    `;
-
-    return;
-
-  }
-
-
-  const image =
-    document.createElement(
-      "img"
-    );
-
-
-  image.src =
-    data.signedUrl;
-
-
-  image.className =
-    "answer-image-source";
-
-
-  image.alt =
-    "答案";
-
-
-  await waitImage(
-    image
+  renderMarksForCard(
+    imageArea,
+    answer,
+    question
   );
 
 
-  const sourceWidth =
-    Number(
-      page.width_px
-    ) ||
-    image.naturalWidth;
-
-
-  const sourceHeight =
-    Number(
-      page.height_px
-    ) ||
-    image.naturalHeight;
-
-
-  const sx =
-    image.naturalWidth /
-    sourceWidth;
-
-
-  const sy =
-    image.naturalHeight /
-    sourceHeight;
-
-
-  const x =
-    question.x *
-    sx;
-
-
-  const y =
-    question.y *
-    sy;
-
-
-  const w =
-    question.width *
-    sx;
-
-
-  const h =
-    question.height *
-    sy;
-
-
-  const displayWidth =
-    Math.min(
-      600,
-      Math.max(
-        220,
-        w
-      )
-    );
-
-
-  const scale =
-    displayWidth /
-    w;
-
-
-  stage.style.height =
-    `${Math.max(
-      150,
-      h * scale
-    )}px`;
-
-
-  image.style.width =
-    `${image.naturalWidth *
-      scale}px`;
-
-
-  image.style.height =
-    `${image.naturalHeight *
-      scale}px`;
-
-
-  image.style.left =
-    `${-x * scale}px`;
-
-
-  image.style.top =
-    `${-y * scale}px`;
-
-
-  stage.appendChild(
-    image
-  );
-
-}
-
-
-/* =========================================================
-   SCORE BAR
-========================================================= */
-
-function createScoreBar(
-  answer,
-  question
-) {
-
-  const bar =
+  const score =
     document.createElement(
       "div"
     );
 
 
-  bar.className =
-    "answer-score-bar";
-
-
-  const score =
-    getScore(
-      answer.id,
-      question.id
-    );
+  score.className =
+    "answer-score";
 
 
   const input =
@@ -1823,379 +1479,55 @@ function createScoreBar(
 
 
   input.value =
-    score
-      ? score.score
-      : "";
+    existing?.score ??
+    "";
+
+
+  input.dataset.answerId =
+    answer.id;
+
+
+  input.dataset.questionId =
+    question.id;
 
 
   input.addEventListener(
     "focus",
     () => {
 
-      selectAnswer(
-        answer.id
-      );
+      activeAnswerIndex =
+        index;
+
+
+      numericBuffer =
+        input.value ||
+        "";
+
+
+      updateActiveCard();
 
     }
   );
 
 
   input.addEventListener(
-    "change",
-    async () => {
+    "input",
+    () => {
 
-      await saveScore(
-        answer.id,
-        question.id,
-        Number(
-          input.value
-        )
-      );
+      activeAnswerIndex =
+        index;
+
+      numericBuffer =
+        input.value ||
+        "";
 
     }
   );
 
 
-  const full =
-    createButton(
-      "L",
-      "quick-score full",
-      async () => {
-
-        selectAnswer(
-          answer.id
-        );
-
-        await saveScore(
-          answer.id,
-          question.id,
-          question.points
-        );
-
-      }
-    );
-
-
-  const zero =
-    createButton(
-      "K",
-      "quick-score zero",
-      async () => {
-
-        selectAnswer(
-          answer.id
-        );
-
-        await saveScore(
-          answer.id,
-          question.id,
-          0
-        );
-
-      }
-    );
-
-
-  const state =
-    document.createElement(
-      "span"
-    );
-
-
-  state.className =
-    "answer-state";
-
-
-  state.textContent =
-    score?.status ===
-      "marked"
-      ? "採点済み"
-      : "未採点";
-
-
-  if (
-    score?.status ===
-    "marked"
-  ) {
-
-    state.classList.add(
-      "marked"
-    );
-
-  }
-
-
-  bar.append(
-    input,
-    full,
-    zero,
-    state
-  );
-
-
-  return bar;
-
-}
-
-
-/* =========================================================
-   BUTTON
-========================================================= */
-
-function createButton(
-  text,
-  className,
-  handler
-) {
-
-  const button =
-    document.createElement(
-      "button"
-    );
-
-
-  button.type =
-    "button";
-
-
-  button.textContent =
-    text;
-
-
-  button.className =
-    className;
-
-
-  button.addEventListener(
-    "click",
+  input.addEventListener(
+    "keydown",
     event => {
-
-      event.stopPropagation();
-
-      handler();
-
-    }
-  );
-
-
-  return button;
-
-}
-
-
-/* =========================================================
-   TOOL
-========================================================= */
-
-function setTool(
-  tool
-) {
-
-  selectedTool =
-    tool;
-
-
-  document
-    .querySelectorAll(
-      ".mark-tool"
-    )
-    .forEach(
-      button => {
-
-        button.classList.toggle(
-          "active",
-          button.dataset.mark ===
-            tool
-        );
-
-      }
-    );
-
-
-  if (
-    tool ===
-    "eraser"
-  ) {
-
-    setStatus(
-      "消しゴム：答案上の記号をクリックしてください。"
-    );
-
-  }
-
-}
-
-
-/* =========================================================
-   QUICK SCORE
-========================================================= */
-
-async function quickScore(
-  type
-) {
-
-  const answer =
-    getSelectedAnswer();
-
-
-  if (!answer) {
-
-    setStatus(
-      "答案を選択してください。",
-      true
-    );
-
-    return;
-
-  }
-
-
-  const question =
-    questions[
-      questionIndex
-    ];
-
-
-  if (!question) {
-
-    return;
-
-  }
-
-
-  if (
-    type ===
-    "full"
-  ) {
-
-    await addAutoMark(
-      answer.id,
-      question.id,
-      "circle"
-    );
-
-
-    await saveScore(
-      answer.id,
-      question.id,
-      question.points
-    );
-
-
-  } else {
-
-    await addAutoMark(
-      answer.id,
-      question.id,
-      "x"
-    );
-
-
-    await saveScore(
-      answer.id,
-      question.id,
-      0
-    );
-
-  }
-
-
-  await autoAdvance();
-
-}
-
-
-/* =========================================================
-   NUMBER
-========================================================= */
-
-async function scoreSelected(
-  value
-) {
-
-  const answer =
-    getSelectedAnswer();
-
-
-  if (!answer) {
-
-    return;
-
-  }
-
-
-  const question =
-    questions[
-      questionIndex
-    ];
-
-
-  if (!question) {
-
-    return;
-
-  }
-
-
-  if (
-    value >
-    question.points
-  ) {
-
-    setStatus(
-      `配点 ${formatNumber(
-        question.points
-      )}点を超えています。`,
-      true
-    );
-
-    return;
-
-  }
-
-
-  numericBuffer =
-    String(
-      value
-    );
-
-
-  await saveScore(
-    answer.id,
-    question.id,
-    value
-  );
-
-
-  await autoAdvance();
-
-}
-
-
-/* =========================================================
-   KEYBOARD
-========================================================= */
-
-function handleKeyboard(
-  event
-) {
-
-  if (
-    event.target instanceof
-      HTMLInputElement ||
-    event.target instanceof
-      HTMLTextAreaElement
-  ) {
-
-    /*
-     * score-inputは数字入力を許可。
-     */
-
-    if (
-      event.target.classList.contains(
-        "score-input"
-      )
-    ) {
 
       if (
         event.key ===
@@ -2204,25 +1536,1073 @@ function handleKeyboard(
 
         event.preventDefault();
 
-        const answer =
-          getSelectedAnswer();
 
-
-        if (answer) {
-
-          saveScore(
-            answer.id,
-            questions[
-              questionIndex
-            ].id,
-            Number(
-              event.target.value
-            )
-          );
-
-        }
+        saveCardScore(
+          answer,
+          question,
+          input,
+          state
+        );
 
       }
+
+    }
+  );
+
+
+  const saveButton =
+    document.createElement(
+      "button"
+    );
+
+
+  saveButton.className =
+    "score-button primary";
+
+
+  saveButton.type =
+    "button";
+
+
+  saveButton.textContent =
+    "保存";
+
+
+  saveButton.addEventListener(
+    "click",
+    () => {
+
+      activeAnswerIndex =
+        index;
+
+
+      saveCardScore(
+        answer,
+        question,
+        input,
+        state
+      );
+
+    }
+  );
+
+
+  const zeroButton =
+    document.createElement(
+      "button"
+    );
+
+
+  zeroButton.className =
+    "score-button";
+
+
+  zeroButton.type =
+    "button";
+
+
+  zeroButton.textContent =
+    "0";
+
+
+  zeroButton.addEventListener(
+    "click",
+    () => {
+
+      activeAnswerIndex =
+        index;
+
+      input.value =
+        "0";
+
+
+      numericBuffer =
+        "0";
+
+
+      saveCardScore(
+        answer,
+        question,
+        input,
+        state,
+        true
+      );
+
+    }
+  );
+
+
+  const fullButton =
+    document.createElement(
+      "button"
+    );
+
+
+  fullButton.className =
+    "score-button";
+
+
+  fullButton.type =
+    "button";
+
+
+  fullButton.textContent =
+    "満点";
+
+
+  fullButton.addEventListener(
+    "click",
+    () => {
+
+      activeAnswerIndex =
+        index;
+
+      input.value =
+        String(
+          question.points
+        );
+
+
+      numericBuffer =
+        input.value;
+
+
+      saveCardScore(
+        answer,
+        question,
+        input,
+        state,
+        true
+      );
+
+    }
+  );
+
+
+  score.append(
+    input,
+    saveButton,
+    zeroButton,
+    fullButton
+  );
+
+
+  const status =
+    document.createElement(
+      "div"
+    );
+
+
+  status.className =
+    "score-status";
+
+
+  status.textContent =
+    existing?.status ===
+      "marked"
+      ? "採点済み"
+      : "未採点";
+
+
+  if (
+    existing?.status ===
+    "marked"
+  ) {
+
+    status.classList.add(
+      "marked"
+    );
+
+  }
+
+
+  card.append(
+    head,
+    imageArea,
+    score,
+    status
+  );
+
+
+  card._scoreState =
+    status;
+
+
+  card._scoreInput =
+    input;
+
+
+  card._answer =
+    answer;
+
+
+  card._question =
+    question;
+
+
+  return card;
+
+}
+
+
+/* =========================================================
+   ANSWER IMAGE
+========================================================= */
+
+async function renderAnswerImage(
+  target,
+  answer,
+  question
+) {
+
+  const region =
+    regions.get(
+      `${answer.id}:${question.id}`
+    );
+
+
+  if (
+    region?.image_path
+  ) {
+
+    try {
+
+      const {
+        data,
+        error
+      } =
+        await DB
+          .storage
+          .from(
+            "student-answers"
+          )
+          .createSignedUrl(
+            region.image_path,
+            1800
+          );
+
+
+      if (
+        !error &&
+        data?.signedUrl
+      ) {
+
+        const image =
+          document.createElement(
+            "img"
+          );
+
+
+        image.src =
+          data.signedUrl;
+
+
+        image.alt =
+          "答案";
+
+
+        target.appendChild(
+          image
+        );
+
+
+        return;
+
+      }
+
+    } catch (error) {
+
+      console.warn(
+        "region image:",
+        error
+      );
+
+    }
+
+  }
+
+
+  /*
+   * regionが無い場合は
+   * 元答案ページから表示。
+   */
+
+  const answerPages =
+    pages.get(
+      answer.id
+    ) ||
+    [];
+
+
+  const page =
+    answerPages.find(
+      item =>
+        Number(
+          item.page_no
+        ) ===
+        Number(
+          question.pageNo
+        )
+    );
+
+
+  if (!page?.file_path) {
+
+    target.innerHTML = `
+
+      <div class="answer-error">
+        答案画像がありません。
+      </div>
+
+    `;
+
+    return;
+
+  }
+
+
+  try {
+
+    const {
+      data,
+      error
+    } =
+      await DB
+        .storage
+        .from(
+          "answer-files"
+        )
+        .createSignedUrl(
+          page.file_path,
+          1800
+        );
+
+
+    if (
+      error ||
+      !data?.signedUrl
+    ) {
+
+      throw new Error(
+        "答案画像URLを取得できませんでした。"
+      );
+
+    }
+
+
+    const image =
+      document.createElement(
+        "img"
+      );
+
+
+    image.src =
+      data.signedUrl;
+
+
+    image.alt =
+      "答案";
+
+
+    await waitForImage(
+      image
+    );
+
+
+    /*
+     * 元答案を問題枠でCSSクロップ。
+     */
+
+    const sourceWidth =
+      Number(
+        page.width_px
+      ) ||
+      image.naturalWidth;
+
+
+    const sourceHeight =
+      Number(
+        page.height_px
+      ) ||
+      image.naturalHeight;
+
+
+    const scaleX =
+      image.naturalWidth /
+      sourceWidth;
+
+
+    const scaleY =
+      image.naturalHeight /
+      sourceHeight;
+
+
+    const x =
+      (
+        Number(
+          question.x
+        ) || 0
+      ) *
+      scaleX;
+
+
+    const y =
+      (
+        Number(
+          question.y
+        ) || 0
+      ) *
+      scaleY;
+
+
+    const width =
+      (
+        Number(
+          question.width
+        ) || 1
+      ) *
+      scaleX;
+
+
+    const height =
+      (
+        Number(
+          question.height
+        ) || 1
+      ) *
+      scaleY;
+
+
+    target.style.aspectRatio =
+      `${Math.max(
+        1,
+        width
+      )} / ${Math.max(
+        1,
+        height
+      )}`;
+
+
+    image.style.position =
+      "absolute";
+
+
+    image.style.width =
+      `${image.naturalWidth}px`;
+
+
+    image.style.maxWidth =
+      "none";
+
+
+    image.style.left =
+      `${-x}px`;
+
+
+    image.style.top =
+      `${-y}px`;
+
+
+    target.appendChild(
+      image
+    );
+
+  } catch (error) {
+
+    target.innerHTML = `
+
+      <div class="answer-error">
+
+        ${escapeHtml(
+          error.message ||
+          "答案画像を表示できませんでした。"
+        )}
+
+      </div>
+
+    `;
+
+  }
+
+}
+
+
+/* =========================================================
+   MARK RENDER
+========================================================= */
+
+function renderMarksForCard(
+  target,
+  answer,
+  question
+) {
+
+  const list =
+    marks.filter(
+      mark =>
+        mark.answer_sheet_id ===
+          answer.id &&
+        mark.layout_box_id ===
+          question.id
+    );
+
+
+  list.forEach(
+    mark => {
+
+      const element =
+        createMarkElement(
+          mark,
+          target
+        );
+
+
+      target.appendChild(
+        element
+      );
+
+    }
+  );
+
+}
+
+
+/* =========================================================
+   CREATE MARK
+========================================================= */
+
+function createMarkElement(
+  mark,
+  target
+) {
+
+  const element =
+    document.createElement(
+      "div"
+    );
+
+
+  element.className =
+    "mark-object";
+
+
+  element.dataset.markId =
+    mark.id;
+
+
+  element.dataset.markType =
+    mark.object_type;
+
+
+  const fontSize =
+    Number(
+      mark.font_size
+    ) || 32;
+
+
+  const x =
+    Number(
+      mark.x
+    ) || 0;
+
+
+  const y =
+    Number(
+      mark.y
+    ) || 0;
+
+
+  element.style.left =
+    `${x}px`;
+
+
+  element.style.top =
+    `${y}px`;
+
+
+  element.style.fontSize =
+    `${fontSize}px`;
+
+
+  element.style.color =
+    mark.color ||
+    "#d00000";
+
+
+  if (
+    mark.object_type ===
+    "circle"
+  ) {
+
+    element.textContent =
+      "○";
+
+  } else if (
+    mark.object_type ===
+    "x"
+  ) {
+
+    element.textContent =
+      "×";
+
+  } else if (
+    mark.object_type ===
+    "triangle"
+  ) {
+
+    element.textContent =
+      "△";
+
+  } else if (
+    mark.object_type ===
+    "double_circle"
+  ) {
+
+    element.textContent =
+      "◎";
+
+  } else if (
+    mark.object_type ===
+    "text"
+  ) {
+
+    element.textContent =
+      mark.text_value ||
+      "";
+
+  } else if (
+    mark.object_type ===
+    "pen"
+  ) {
+
+    element.textContent =
+      "／";
+
+  }
+
+
+  element.addEventListener(
+    "click",
+    async event => {
+
+      event.stopPropagation();
+
+
+      const answer =
+        answers.find(
+          item =>
+            marks.some(
+              markItem =>
+                markItem.id ===
+                mark.id &&
+                markItem.answer_sheet_id ===
+                item.id
+            )
+        );
+
+
+      const question =
+        questions.find(
+          item =>
+            item.id ===
+            mark.layout_box_id
+        );
+
+
+      if (
+        answer &&
+        question
+      ) {
+
+        await deleteMark(
+          mark,
+          answer,
+          question
+        );
+
+      }
+
+    }
+  );
+
+
+  return element;
+
+}
+
+
+/* =========================================================
+   PLACE MARK
+========================================================= */
+
+function placeMark(
+  event,
+  target,
+  answer,
+  question,
+  type
+) {
+
+  const rect =
+    target.getBoundingClientRect();
+
+
+  const x =
+    Math.max(
+      0,
+      event.clientX -
+        rect.left -
+        16
+    );
+
+
+  const y =
+    Math.max(
+      0,
+      event.clientY -
+        rect.top -
+        16
+    );
+
+
+  const mark = {
+
+    id:
+      crypto.randomUUID(),
+
+    answer_sheet_id:
+      answer.id,
+
+    layout_box_id:
+      question.id,
+
+    question_id:
+      question.questionId ||
+      null,
+
+    object_type:
+      type,
+
+    text_value:
+      type ===
+        "text"
+        ? "文字"
+        : null,
+
+    color:
+      "#d00000",
+
+    font_size:
+      32,
+
+    stroke_width:
+      3,
+
+    x,
+
+    y,
+
+    width:
+      40,
+
+    height:
+      40,
+
+    points:
+      null
+
+  };
+
+
+  marks =
+    marks.filter(
+      item =>
+        !(
+          item.answer_sheet_id ===
+            answer.id &&
+          item.layout_box_id ===
+            question.id &&
+          type !==
+            "pen"
+        )
+    );
+
+
+  marks.push(
+    mark
+  );
+
+
+  renderMarksForCard(
+    target,
+    answer,
+    question
+  );
+
+
+  /*
+   * 保存は点数保存時だけでなく、
+   * 記号選択直後にも実行。
+   */
+
+  saveMarkObject(
+    mark
+  );
+
+
+  selectedMarkType =
+    null;
+
+
+  document
+    .querySelectorAll(
+      "#markToolbar [data-mark]"
+    )
+    .forEach(
+      button =>
+        button.classList.remove(
+          "active"
+        )
+    );
+
+}
+
+
+/* =========================================================
+   SAVE MARK
+========================================================= */
+
+async function saveMarkObject(
+  mark
+) {
+
+  try {
+
+    const {
+      error
+    } =
+      await DB
+        .from(
+          "mark_objects"
+        )
+        .upsert(
+          {
+
+            id:
+              mark.id,
+
+            answer_sheet_id:
+              mark.answer_sheet_id,
+
+            layout_box_id:
+              mark.layout_box_id,
+
+            question_id:
+              mark.question_id,
+
+            object_type:
+              mark.object_type,
+
+            text_value:
+              mark.text_value,
+
+            color:
+              mark.color,
+
+            font_size:
+              mark.font_size,
+
+            stroke_width:
+              mark.stroke_width,
+
+            x:
+              mark.x,
+
+            y:
+              mark.y,
+
+            width:
+              mark.width,
+
+            height:
+              mark.height,
+
+            points:
+              mark.points
+
+          },
+          {
+            onConflict:
+              "id"
+          }
+        );
+
+
+    if (error) {
+
+      throw error;
+
+    }
+
+  } catch (error) {
+
+    console.warn(
+      "mark save:",
+      error
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   DELETE MARK
+========================================================= */
+
+async function deleteMark(
+  mark,
+  answer,
+  question
+) {
+
+  marks =
+    marks.filter(
+      item =>
+        item.id !==
+        mark.id
+    );
+
+
+  try {
+
+    await DB
+      .from(
+        "mark_objects"
+      )
+      .delete()
+      .eq(
+        "id",
+        mark.id
+      );
+
+  } catch (error) {
+
+    console.warn(
+      "mark delete:",
+      error
+    );
+
+  }
+
+
+  const card =
+    document.querySelector(
+      `.answer-card[data-answer-id="${cssEscape(
+        answer.id
+      )}"]`
+    );
+
+
+  const area =
+    card?.querySelector(
+      ".answer-image-area"
+    );
+
+
+  if (area) {
+
+    renderMarksForCard(
+      area,
+      answer,
+      question
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   KEYBOARD
+========================================================= */
+
+async function handleKeyboard(
+  event
+) {
+
+  /*
+   * 入力欄で通常入力している場合、
+   * L/K/Escapeだけ処理。
+   */
+
+  const target =
+    event.target;
+
+
+  const isInput =
+    target instanceof
+      HTMLInputElement ||
+    target instanceof
+      HTMLTextAreaElement ||
+    target instanceof
+      HTMLSelectElement;
+
+
+  if (
+    isInput &&
+    target.classList.contains(
+      "score-input"
+    )
+  ) {
+
+    if (
+      event.key ===
+      "Enter"
+    ) {
+
+      event.preventDefault();
+
+
+      const card =
+        target.closest(
+          ".answer-card"
+        );
+
+
+      if (
+        card?._answer &&
+        card?._question
+      ) {
+
+        await saveCardScore(
+          card._answer,
+          card._question,
+          target,
+          card._scoreState
+        );
+
+      }
+
+
+      return;
+
+    }
+
+
+    if (
+      event.key ===
+      "Escape"
+    ) {
+
+      event.preventDefault();
+
+
+      clearKeyboard();
+
+
+      target.blur();
+
 
       return;
 
@@ -2231,131 +2611,22 @@ function handleKeyboard(
   }
 
 
-  const key =
-    event.key;
-
-
   if (
-    key ===
-    "l" ||
-    key ===
-    "L"
-  ) {
-
-    event.preventDefault();
-
-    quickScore(
-      "full"
-    );
-
-    return;
-
-  }
-
-
-  if (
-    key ===
-    "k" ||
-    key ===
-    "K"
-  ) {
-
-    event.preventDefault();
-
-    quickScore(
-      "zero"
-    );
-
-    return;
-
-  }
-
-
-  if (
-    /^[0-9]$/.test(
-      key
-    )
-  ) {
-
-    event.preventDefault();
-
-
-    numericBuffer +=
-      key;
-
-
-    const value =
-      Number(
-        numericBuffer
-      );
-
-
-    const question =
-      questions[
-        questionIndex
-      ];
-
-
-    if (
-      value <=
-      question.points
-    ) {
-
-      const answer =
-        getSelectedAnswer();
-
-
-      if (answer) {
-
-        saveScore(
-          answer.id,
-          question.id,
-          value
-        );
-
-      }
-
-    }
-
-
-    return;
-
-  }
-
-
-  if (
-    key ===
-    "Backspace"
-  ) {
-
-    numericBuffer =
-      numericBuffer.slice(
-        0,
-        -1
-      );
-
-
-    return;
-
-  }
-
-
-  if (
-    key ===
+    event.key ===
     "Escape"
   ) {
+
+    selectedMarkType =
+      null;
+
 
     numericBuffer =
       "";
 
 
-    selectedTool =
-      null;
-
-
     document
       .querySelectorAll(
-        ".mark-tool"
+        "#markToolbar [data-mark]"
       )
       .forEach(
         button =>
@@ -2370,38 +2641,182 @@ function handleKeyboard(
   }
 
 
+  /*
+   * L = ○ + 満点
+   */
+
   if (
-    key ===
-    "Enter"
+    event.key ===
+      "l" ||
+    event.key ===
+      "L"
   ) {
 
-    const answer =
-      getSelectedAnswer();
+    event.preventDefault();
 
 
-    const question =
-      questions[
-        questionIndex
-      ];
+    await quickScore(
+      questionIndex,
+      activeAnswerIndex,
+      "full"
+    );
 
 
-    if (
-      answer &&
-      numericBuffer !==
-        ""
-    ) {
+    return;
 
-      saveScore(
-        answer.id,
-        question.id,
-        Number(
-          numericBuffer
-        )
+  }
+
+
+  /*
+   * K = × + 0点
+   */
+
+  if (
+    event.key ===
+      "k" ||
+    event.key ===
+      "K"
+  ) {
+
+    event.preventDefault();
+
+
+    await quickScore(
+      questionIndex,
+      activeAnswerIndex,
+      "zero"
+    );
+
+
+    return;
+
+  }
+
+
+  /*
+   * 数字キー
+   */
+
+  if (
+    /^[0-9]$/.test(
+      event.key
+    )
+  ) {
+
+    event.preventDefault();
+
+
+    const card =
+      getActiveCard();
+
+
+    const input =
+      card?.querySelector(
+        ".score-input"
       );
 
 
-      numericBuffer =
-        "";
+    if (!input) {
+
+      return;
+
+    }
+
+
+    numericBuffer +=
+      event.key;
+
+
+    /*
+     * 3桁以上にはしない。
+     */
+
+    numericBuffer =
+      numericBuffer.slice(
+        -3
+      );
+
+
+    input.value =
+      numericBuffer;
+
+
+    return;
+
+  }
+
+
+  if (
+    event.key ===
+    "Backspace"
+  ) {
+
+    event.preventDefault();
+
+
+    numericBuffer =
+      numericBuffer.slice(
+        0,
+        -1
+      );
+
+
+    const card =
+      getActiveCard();
+
+
+    const input =
+      card?.querySelector(
+        ".score-input"
+      );
+
+
+    if (input) {
+
+      input.value =
+        numericBuffer;
+
+    }
+
+
+    return;
+
+  }
+
+
+  /*
+   * Enter
+   */
+
+  if (
+    event.key ===
+    "Enter"
+  ) {
+
+    event.preventDefault();
+
+
+    const card =
+      getActiveCard();
+
+
+    if (
+      card?._answer &&
+      card?._question
+    ) {
+
+      const input =
+        card.querySelector(
+          ".score-input"
+        );
+
+
+      await saveCardScore(
+        card._answer,
+        card._question,
+        input,
+        card._scoreState
+      );
 
     }
 
@@ -2411,325 +2826,203 @@ function handleKeyboard(
 
 
 /* =========================================================
-   SELECT ANSWER
+   QUICK SCORE
 ========================================================= */
 
-function selectAnswer(
-  answerId
+async function quickScore(
+  qIndex,
+  answerIndex,
+  type
 ) {
-
-  selectedAnswerId =
-    answerId;
-
-
-  document
-    .querySelectorAll(
-      ".answer-card"
-    )
-    .forEach(
-      card => {
-
-        card.classList.toggle(
-          "selected",
-          card.dataset.answerId ===
-            answerId
-        );
-
-      }
-    );
-
-}
-
-
-function getSelectedAnswer() {
-
-  return answers.find(
-    answer =>
-      answer.id ===
-      selectedAnswerId
-  ) ||
-  null;
-
-}
-
-
-/* =========================================================
-   AUTO ADVANCE
-========================================================= */
-
-async function autoAdvance() {
-
-  /*
-   * 保存直後に次の未採点答案へ。
-   */
-
-  const visible =
-    answers.slice(
-      batchStart,
-      batchStart +
-        batchSize
-    );
-
-
-  const next =
-    visible.find(
-      answer => {
-
-        const score =
-          getScore(
-            answer.id,
-            questions[
-              questionIndex
-            ].id
-          );
-
-
-        return !(
-          score?.status ===
-          "marked"
-        );
-
-      }
-    );
-
-
-  if (next) {
-
-    selectAnswer(
-      next.id
-    );
-
-    return;
-
-  }
-
-
-  /*
-   * 現在グループ完了。
-   */
-
-  const nextStart =
-    batchStart +
-    batchSize;
-
-
-  if (
-    nextStart <
-    answers.length
-  ) {
-
-    batchStart =
-      nextStart;
-
-
-    selectedAnswerId =
-      null;
-
-
-    await render();
-
-    return;
-
-  }
-
-
-  /*
-   * この設問の全員終了。
-   */
-
-  if (
-    questionIndex <
-    questions.length - 1
-  ) {
-
-    questionIndex++;
-
-    batchStart =
-      0;
-
-    selectedAnswerId =
-      null;
-
-    numericBuffer =
-      "";
-
-    await render();
-
-    return;
-
-  }
-
-
-  /*
-   * 全設問終了。
-   */
-
-  await finishMarking();
-
-}
-
-
-/* =========================================================
-   PREVIOUS
-========================================================= */
-
-async function previousQuestion() {
-
-  if (
-    questionIndex <=
-    0
-  ) {
-
-    return;
-
-  }
-
-
-  questionIndex--;
-
-  batchStart =
-    0;
-
-  selectedAnswerId =
-    null;
-
-  numericBuffer =
-    "";
-
-  await render();
-
-}
-
-
-/* =========================================================
-   NEXT
-========================================================= */
-
-async function nextQuestion() {
-
-  if (
-    questionIndex <
-    questions.length - 1
-  ) {
-
-    questionIndex++;
-
-    batchStart =
-      0;
-
-    selectedAnswerId =
-      null;
-
-    numericBuffer =
-      "";
-
-    await render();
-
-    return;
-
-  }
-
-
-  if (
-    countMarked() >=
-    answers.length *
-    questions.length
-  ) {
-
-    await finishMarking();
-
-  } else {
-
-    setStatus(
-      "未採点の答案があります。",
-      true
-    );
-
-  }
-
-}
-
-
-/* =========================================================
-   NEXT UNMARKED
-========================================================= */
-
-async function nextUnmarked() {
 
   const question =
     questions[
-      questionIndex
+      qIndex
     ];
 
 
-  const index =
-    answers.findIndex(
-      answer =>
+  const answer =
+    answers[
+      answerIndex
+    ];
+
+
+  if (
+    !question ||
+    !answer
+  ) {
+
+    return;
+
+  }
+
+
+  const card =
+    getActiveCard();
+
+
+  if (!card) {
+
+    return;
+
+  }
+
+
+  const input =
+    card.querySelector(
+      ".score-input"
+    );
+
+
+  const state =
+    card._scoreState;
+
+
+  const value =
+    type ===
+      "full"
+      ? Number(
+          question.points
+        )
+      : 0;
+
+
+  input.value =
+    String(
+      value
+    );
+
+
+  /*
+   * 記号をローカル追加。
+   */
+
+  const markType =
+    type ===
+      "full"
+      ? "circle"
+      : "x";
+
+
+  const mark = {
+
+    id:
+      crypto.randomUUID(),
+
+    answer_sheet_id:
+      answer.id,
+
+    layout_box_id:
+      question.id,
+
+    question_id:
+      question.questionId ||
+      null,
+
+    object_type:
+      markType,
+
+    text_value:
+      null,
+
+    color:
+      "#d00000",
+
+    font_size:
+      32,
+
+    stroke_width:
+      3,
+
+    x:
+      8,
+
+    y:
+      8,
+
+    width:
+      40,
+
+    height:
+      40,
+
+    points:
+      value
+
+  };
+
+
+  marks =
+    marks.filter(
+      item =>
         !(
-          getScore(
-            answer.id,
+          item.answer_sheet_id ===
+            answer.id &&
+          item.layout_box_id ===
             question.id
-          )?.status ===
-          "marked"
         )
     );
 
 
-  if (
-    index < 0
-  ) {
-
-    setStatus(
-      "この設問は全員採点済みです。"
-    );
-
-    return;
-
-  }
+  marks.push(
+    mark
+  );
 
 
-  batchStart =
-    Math.floor(
-      index /
-      batchSize
-    ) *
-    batchSize;
-
-
-  selectedAnswerId =
-    answers[
-      index
-    ].id;
-
-
-  await render();
+  await saveCardScore(
+    answer,
+    question,
+    input,
+    state,
+    true
+  );
 
 }
 
 
 /* =========================================================
-   SAVE SCORE
+   SAVE CARD SCORE
 ========================================================= */
 
-async function saveScore(
-  answerId,
-  questionId,
-  value
+async function saveCardScore(
+  answer,
+  question,
+  input,
+  state,
+  autoNext = true
 ) {
 
-  const question =
-    questions.find(
-      item =>
-        item.id ===
-        questionId
-    );
-
-
-  if (!question) {
+  if (saving) {
 
     return;
 
   }
+
+
+  const raw =
+    input?.value ??
+    "";
+
+
+  if (
+    raw ===
+    ""
+  ) {
+
+    setStatus(
+      "点数を入力してください。",
+      true
+    );
+
+    return;
+
+  }
+
+
+  const value =
+    Number(
+      raw
+    );
 
 
   if (
@@ -2738,15 +3031,36 @@ async function saveScore(
     )
   ) {
 
+    setStatus(
+      "点数が不正です。",
+      true
+    );
+
     return;
 
   }
 
 
   if (
-    value < 0 ||
+    value <
+    0
+  ) {
+
+    setStatus(
+      "0点未満にはできません。",
+      true
+    );
+
+    return;
+
+  }
+
+
+  if (
     value >
+    Number(
       question.points
+    )
   ) {
 
     setStatus(
@@ -2761,376 +3075,194 @@ async function saveScore(
   }
 
 
-  const key =
-    scoreKey(
-      answerId,
-      questionId
-    );
+  try {
 
+    saving =
+      true;
 
-  const existing =
-    scores.get(
-      key
-    );
 
-
-  const payload = {
-
-    answer_sheet_id:
-      answerId,
-
-    layout_box_id:
-      questionId,
-
-    question_id:
-      question.questionId ||
-      null,
-
-    score:
-      value,
-
-    status:
-      "marked",
-
-    marked_at:
-      new Date().toISOString()
-
-  };
-
-
-  let saved;
-
-
-  if (
-    existing?.id
-  ) {
-
-    const {
-      data,
-      error
-    } =
-      await DB
-        .from(
-          "scores"
-        )
-        .update(
-          payload
-        )
-        .eq(
-          "id",
-          existing.id
-        )
-        .select()
-        .single();
-
-
-    if (error) {
-
-      throw error;
-
-    }
-
-
-    saved =
-      data;
-
-  } else {
-
-    const {
-      data,
-      error
-    } =
-      await DB
-        .from(
-          "scores"
-        )
-        .insert(
-          payload
-        )
-        .select()
-        .single();
-
-
-    if (error) {
-
-      throw error;
-
-    }
-
-
-    saved =
-      data;
-
-  }
-
-
-  scores.set(
-    key,
-    saved
-  );
-
-
-  await saveMarks(
-    answerId,
-    questionId,
-    question.questionId
-  );
-
-
-  updateProgress();
-
-}
-
-
-/* =========================================================
-   MARKS
-========================================================= */
-
-async function addAutoMark(
-  answerId,
-  questionId,
-  type
-) {
-
-  const key =
-    scoreKey(
-      answerId,
-      questionId
-    );
-
-
-  const existing =
-    marks.get(
-      key
-    ) || [];
-
-
-  const filtered =
-    existing.filter(
-      mark =>
-        mark.object_type !==
-          "circle" &&
-        mark.object_type !==
-          "x"
-    );
-
-
-  filtered.push({
-
-    id:
-      crypto.randomUUID(),
-
-    answer_sheet_id:
-      answerId,
-
-    layout_box_id:
-      questionId,
-
-    question_id:
-      questions[
-        questionIndex
-      ].questionId ||
-      null,
-
-    object_type:
-      type,
-
-    text_value:
-      null,
-
-    color:
-      "#d00000",
-
-    font_size:
-      42,
-
-    stroke_width:
-      4,
-
-    x:
-      12,
-
-    y:
-      12,
-
-    width:
-      48,
-
-    height:
-      48,
-
-    points:
-      null
-
-  });
-
-
-  marks.set(
-    key,
-    filtered
-  );
-
-
-  await saveMarks(
-    answerId,
-    questionId,
-    questions[
-      questionIndex
-    ].questionId
-  );
-
-
-  await render();
-
-}
-
-
-/* =========================================================
-   PLACE MARK
-========================================================= */
-
-async function placeMark(
-  event,
-  stage,
-  answerId,
-  questionId
-) {
-
-  if (
-    selectedTool ===
-    "eraser"
-  ) {
-
-    const object =
-      event.target.closest(
-        ".mark-object"
+    const existing =
+      findScore(
+        answer.id,
+        question.id
       );
 
 
-    if (object) {
+    if (
+      existing?.id
+    ) {
 
-      await deleteMark(
-        answerId,
-        questionId,
-        object.dataset.markId
-      );
-
-    }
-
-    return;
-
-  }
-
-
-  const rect =
-    stage.getBoundingClientRect();
-
-
-  const x =
-    event.clientX -
-    rect.left;
-
-
-  const y =
-    event.clientY -
-    rect.top;
-
-
-  const key =
-    scoreKey(
-      answerId,
-      questionId
-    );
-
-
-  const list =
-    marks.get(
-      key
-    ) || [];
-
-
-  list.push({
-
-    id:
-      crypto.randomUUID(),
-
-    answer_sheet_id:
-      answerId,
-
-    layout_box_id:
-      questionId,
-
-    question_id:
-      questions[
-        questionIndex
-      ].questionId ||
-      null,
-
-    object_type:
-      selectedTool,
-
-    text_value:
-      selectedTool ===
-        "text"
-        ? (
-            $("markText")
-              ?.value ||
-            "文字"
+      const {
+        data,
+        error
+      } =
+        await DB
+          .from(
+            "scores"
           )
-        : null,
+          .update({
 
-    color:
-      $("markColor")
-        ?.value ||
-      "#d00000",
+            question_id:
+              question.questionId ||
+              null,
 
-    font_size:
-      Number(
-        $("markSize")
-          ?.value
-      ) ||
-      42,
+            score:
+              value,
 
-    stroke_width:
-      4,
+            status:
+              "marked",
 
-    x,
-    y,
+            marked_at:
+              new Date().toISOString()
 
-    width:
-      selectedTool ===
-        "pen"
-        ? 80
-        : 50,
-
-    height:
-      selectedTool ===
-        "pen"
-        ? 80
-        : 50,
-
-    points:
-      null
-
-  });
+          })
+          .eq(
+            "id",
+            existing.id
+          )
+          .select()
+          .single();
 
 
-  marks.set(
-    key,
-    list
-  );
+      if (error) {
+
+        throw error;
+
+      }
 
 
-  await saveMarks(
-    answerId,
-    questionId,
-    questions[
-      questionIndex
-    ].questionId
-  );
+      Object.assign(
+        existing,
+        data
+      );
+
+    } else {
+
+      const {
+        data,
+        error
+      } =
+        await DB
+          .from(
+            "scores"
+          )
+          .insert({
+
+            answer_sheet_id:
+              answer.id,
+
+            layout_box_id:
+              question.id,
+
+            question_id:
+              question.questionId ||
+              null,
+
+            score:
+              value,
+
+            status:
+              "marked",
+
+            marked_at:
+              new Date().toISOString()
+
+          })
+          .select()
+          .single();
 
 
-  await render();
+      if (error) {
+
+        throw error;
+
+      }
+
+
+      scores.push(
+        data
+      );
+
+    }
+
+
+    /*
+     * 答案状態をmarkingにしておき、
+     * 全設問完了時にmarkedへ。
+     */
+
+    await DB
+      .from(
+        "answer_sheets"
+      )
+      .update({
+        status:
+          "marking"
+      })
+      .eq(
+        "id",
+        answer.id
+      );
+
+
+    await saveMarksForAnswerQuestion(
+      answer,
+      question
+    );
+
+
+    if (state) {
+
+      state.textContent =
+        "採点済み";
+
+
+      state.className =
+        "score-status marked";
+
+    }
+
+
+    numericBuffer =
+      "";
+
+
+    updateProgress();
+
+
+    /*
+     * 同じ設問の次の答案へ。
+     */
+
+    if (
+      autoNext
+    ) {
+
+      await moveToNextAnswer();
+
+    }
+
+
+  } catch (error) {
+
+    console.error(
+      "save score:",
+      error
+    );
+
+
+    setStatus(
+      error.message ||
+      "採点を保存できませんでした。",
+      true
+    );
+
+  } finally {
+
+    saving =
+      false;
+
+  }
 
 }
 
@@ -3139,14 +3271,23 @@ async function placeMark(
    SAVE MARKS
 ========================================================= */
 
-async function saveMarks(
-  answerId,
-  questionId,
-  realQuestionId
+async function saveMarksForAnswerQuestion(
+  answer,
+  question
 ) {
 
+  const questionMarks =
+    marks.filter(
+      mark =>
+        mark.answer_sheet_id ===
+          answer.id &&
+        mark.layout_box_id ===
+          question.id
+    );
+
+
   /*
-   * 既存記号削除
+   * DB側を一度クリア。
    */
 
   const {
@@ -3160,22 +3301,18 @@ async function saveMarks(
       .delete()
       .eq(
         "answer_sheet_id",
-        answerId
+        answer.id
       )
       .eq(
         "layout_box_id",
-        questionId
+        question.id
       );
 
 
   if (deleteError) {
 
-    /*
-     * 点数保存には影響させない。
-     */
-
     console.warn(
-      "mark_objects delete:",
+      "mark delete:",
       deleteError
     );
 
@@ -3184,16 +3321,7 @@ async function saveMarks(
   }
 
 
-  const list =
-    marks.get(
-      scoreKey(
-        answerId,
-        questionId
-      )
-    ) || [];
-
-
-  if (!list.length) {
+  if (!questionMarks.length) {
 
     return;
 
@@ -3201,20 +3329,20 @@ async function saveMarks(
 
 
   const rows =
-    list.map(
+    questionMarks.map(
       mark => ({
 
         id:
           mark.id,
 
         answer_sheet_id:
-          answerId,
+          answer.id,
 
         layout_box_id:
-          questionId,
+          question.id,
 
         question_id:
-          realQuestionId ||
+          question.questionId ||
           null,
 
         object_type:
@@ -3231,12 +3359,12 @@ async function saveMarks(
         font_size:
           Number(
             mark.font_size
-          ) || 42,
+          ) || 32,
 
         stroke_width:
           Number(
             mark.stroke_width
-          ) || 4,
+          ) || 3,
 
         x:
           Number(
@@ -3251,12 +3379,12 @@ async function saveMarks(
         width:
           Number(
             mark.width
-          ) || 50,
+          ) || 40,
 
         height:
           Number(
             mark.height
-          ) || 50,
+          ) || 40,
 
         points:
           mark.points ??
@@ -3267,7 +3395,8 @@ async function saveMarks(
 
 
   const {
-    error
+    error:
+      insertError
   } =
     await DB
       .from(
@@ -3278,11 +3407,11 @@ async function saveMarks(
       );
 
 
-  if (error) {
+  if (insertError) {
 
     console.warn(
-      "mark_objects insert:",
-      error
+      "mark insert:",
+      insertError
     );
 
   }
@@ -3291,72 +3420,370 @@ async function saveMarks(
 
 
 /* =========================================================
-   DELETE MARK
+   MOVE NEXT ANSWER
 ========================================================= */
 
-async function deleteMark(
-  answerId,
-  questionId,
-  markId
-) {
+async function moveToNextAnswer() {
 
-  const key =
-    scoreKey(
-      answerId,
-      questionId
+  if (
+    activeAnswerIndex >=
+    answers.length - 1
+  ) {
+
+    /*
+     * この設問の全答案完了。
+     */
+
+    if (
+      isQuestionMarked(
+        questions[
+          questionIndex
+        ]
+      )
+    ) {
+
+      setStatus(
+        `${questions[questionIndex].label} の全答案を採点しました。`
+      );
+
+    }
+
+
+    return;
+
+  }
+
+
+  activeAnswerIndex++;
+
+  numericBuffer =
+    "";
+
+
+  updateActiveCard();
+
+
+  const nextCard =
+    getActiveCard();
+
+
+  const input =
+    nextCard?.querySelector(
+      ".score-input"
     );
 
 
-  const list =
-    marks.get(
-      key
-    ) || [];
+  if (input) {
 
+    input.focus();
 
-  marks.set(
-    key,
-    list.filter(
-      mark =>
-        mark.id !==
-        markId
-    )
-  );
-
-
-  await saveMarks(
-    answerId,
-    questionId,
-    questions[
-      questionIndex
-    ].questionId
-  );
-
-
-  await render();
+  }
 
 }
 
 
 /* =========================================================
-   RENDER MARKS
+   ACTIVE CARD
 ========================================================= */
 
-function renderMarks(
-  layer,
+function getActiveCard() {
+
+  return document.querySelector(
+    `.answer-card[data-index="${activeAnswerIndex}"]`
+  );
+
+}
+
+
+function updateActiveCard() {
+
+  document
+    .querySelectorAll(
+      ".answer-card"
+    )
+    .forEach(
+      (
+        card,
+        index
+      ) => {
+
+        card.classList.toggle(
+          "active",
+          index ===
+            activeAnswerIndex
+        );
+
+      }
+    );
+
+}
+
+
+/* =========================================================
+   SCORE FIND
+========================================================= */
+
+function findScore(
   answerId,
   questionId
 ) {
 
-  const list =
-    marks.get(
-      scoreKey(
-        answerId,
+  return scores.find(
+    score =>
+      score.answer_sheet_id ===
+        answerId &&
+      score.layout_box_id ===
         questionId
+  ) ||
+  null;
+
+}
+
+
+/* =========================================================
+   PROGRESS
+========================================================= */
+
+function updateProgress() {
+
+  const total =
+    answers.length *
+    questions.length;
+
+
+  let completed =
+    0;
+
+
+  answers.forEach(
+    answer => {
+
+      questions.forEach(
+        question => {
+
+          const score =
+            findScore(
+              answer.id,
+              question.id
+            );
+
+
+          if (
+            score?.status ===
+            "marked"
+          ) {
+
+            completed++;
+
+          }
+
+        }
+      );
+
+    }
+  );
+
+
+  const percent =
+    total > 0
+      ? Math.round(
+          completed /
+          total *
+          100
+        )
+      : 0;
+
+
+  if (progressBar) {
+
+    progressBar.style.width =
+      `${percent}%`;
+
+  }
+
+
+  if (progressText) {
+
+    progressText.textContent =
+      `${completed} / ${total}件`;
+
+  }
+
+
+  if (
+    total > 0 &&
+    completed === total
+  ) {
+
+    completeElement
+      ?.classList.add(
+        "show"
+      );
+
+
+    /*
+     * 全答案をmarkedへ。
+     */
+
+    finalizeAnswerStatuses();
+
+
+  } else {
+
+    completeElement
+      ?.classList.remove(
+        "show"
+      );
+
+  }
+
+}
+
+
+/* =========================================================
+   FINALIZE ANSWER STATUS
+========================================================= */
+
+async function finalizeAnswerStatuses() {
+
+  /*
+   * ここは何度呼ばれても安全。
+   */
+
+  for (
+    const answer
+    of answers
+  ) {
+
+    const complete =
+      questions.every(
+        question =>
+          findScore(
+            answer.id,
+            question.id
+          )?.status ===
+          "marked"
+      );
+
+
+    if (!complete) {
+
+      continue;
+
+    }
+
+
+    /*
+     * DB状態をmarkedへ。
+     */
+
+    const {
+      error
+    } =
+      await DB
+        .from(
+          "answer_sheets"
+        )
+        .update({
+          status:
+            "marked"
+        })
+        .eq(
+          "id",
+          answer.id
+        );
+
+
+    if (error) {
+
+      console.warn(
+        "answer status:",
+        error
+      );
+
+    }
+
+  }
+
+
+  /*
+   * 公開状態はここでは変更しない。
+   *
+   * 成績集計が完了してから
+   * results_published=true にする。
+   */
+
+  setStatus(
+    "全答案・全設問の採点が完了しました。"
+  );
+
+}
+
+
+/* =========================================================
+   QUESTION COMPLETE
+========================================================= */
+
+function isQuestionMarked(
+  question
+) {
+
+  if (!question) {
+
+    return false;
+
+  }
+
+
+  return answers.every(
+    answer =>
+      findScore(
+        answer.id,
+        question.id
+      )?.status ===
+      "marked"
+  );
+
+}
+
+
+/* =========================================================
+   ALL COMPLETE
+========================================================= */
+
+function isAllMarked() {
+
+  return questions.every(
+    question =>
+      isQuestionMarked(
+        question
       )
-    ) || [];
+  );
+
+}
 
 
-  const symbols = {
+/* =========================================================
+   KEYBOARD CLEAR
+========================================================= */
+
+function clearKeyboard() {
+
+  numericBuffer =
+    "";
+
+}
+
+
+/* =========================================================
+   MARK LABEL
+========================================================= */
+
+function markLabel(
+  type
+) {
+
+  const labels = {
 
     circle:
       "○",
@@ -3368,341 +3795,31 @@ function renderMarks(
       "△",
 
     double_circle:
-      "◎"
+      "◎",
+
+    text:
+      "文字",
+
+    pen:
+      "ペン"
 
   };
 
 
-  list.forEach(
-    mark => {
-
-      const element =
-        document.createElement(
-          "div"
-        );
-
-
-      element.className =
-        "mark-object";
-
-
-      element.dataset.markId =
-        mark.id;
-
-
-      element.style.left =
-        `${Number(
-          mark.x
-        ) || 0}px`;
-
-
-      element.style.top =
-        `${Number(
-          mark.y
-        ) || 0}px`;
-
-
-      element.style.width =
-        `${Number(
-          mark.width
-        ) || 50}px`;
-
-
-      element.style.height =
-        `${Number(
-          mark.height
-        ) || 50}px`;
-
-
-      element.style.color =
-        mark.color ||
-        "#d00000";
-
-
-      element.style.fontSize =
-        `${Number(
-          mark.font_size
-        ) || 42}px`;
-
-
-      element.textContent =
-        symbols[
-          mark.object_type
-        ] ||
-        mark.text_value ||
-        (
-          mark.object_type ===
-          "pen"
-            ? "／"
-            : ""
-        );
-
-
-      element.addEventListener(
-        "dblclick",
-        async event => {
-
-          event.stopPropagation();
-
-
-          await deleteMark(
-            answerId,
-            questionId,
-            mark.id
-          );
-
-        }
-      );
-
-
-      layer.appendChild(
-        element
-      );
-
-    }
-  );
+  return labels[
+    type
+  ] ||
+  type ||
+  "";
 
 }
 
 
 /* =========================================================
-   SCORE
+   IMAGE WAIT
 ========================================================= */
 
-function getScore(
-  answerId,
-  questionId
-) {
-
-  return scores.get(
-    scoreKey(
-      answerId,
-      questionId
-    )
-  ) ||
-  null;
-
-}
-
-
-/* =========================================================
-   PROGRESS
-========================================================= */
-
-function countMarked() {
-
-  let count =
-    0;
-
-
-  answers.forEach(
-    answer => {
-
-      questions.forEach(
-        question => {
-
-          const score =
-            getScore(
-              answer.id,
-              question.id
-            );
-
-
-          if (
-            score?.status ===
-            "marked"
-          ) {
-
-            count++;
-
-          }
-
-        }
-      );
-
-    }
-  );
-
-
-  return count;
-
-}
-
-
-function updateProgress() {
-
-  const total =
-    answers.length *
-    questions.length;
-
-
-  const done =
-    countMarked();
-
-
-  const percent =
-    total
-      ? Math.round(
-          done /
-          total *
-          100
-        )
-      : 0;
-
-
-  $("progressBar").style.width =
-    `${percent}%`;
-
-
-  $("progressText").textContent =
-    `${done} / ${total}`;
-
-
-  $("progressTextBar").textContent =
-    `${done} / ${total} (${percent}%)`;
-
-
-}
-
-
-/* =========================================================
-   FINISH
-========================================================= */
-
-async function finishMarking() {
-
-  if (
-    processing
-  ) {
-
-    return;
-
-  }
-
-
-  processing =
-    true;
-
-
-  $("complete")
-    ?.classList.add(
-      "show"
-    );
-
-
-  setStatus(
-    "全設問の採点が完了しました。成績処理を開始しています..."
-  );
-
-
-  try {
-
-    /*
-     * 採点結果を集計。
-     *
-     * 3000人規模を想定し、
-     * 画面側で全件を一度に描画しない。
-     * 結果は結果画面側で再取得する。
-     */
-
-    sessionStorage.setItem(
-      `marking_complete_${testId}`,
-      JSON.stringify({
-
-        testId,
-
-        completedAt:
-          new Date().toISOString(),
-
-        totalAnswers:
-          answers.length,
-
-        totalQuestions:
-          questions.length
-
-      })
-    );
-
-
-    /*
-     * 結果画面へ。
-     */
-
-    location.replace(
-      `/teacher/results/summary?test=${encodeURIComponent(
-        testId
-      )}&process=1`
-    );
-
-
-  } catch (error) {
-
-    processing =
-      false;
-
-
-    $("complete")
-      ?.classList.remove(
-        "show"
-      );
-
-
-    setStatus(
-      error.message ||
-      "成績処理を開始できませんでした。",
-      true
-    );
-
-  }
-
-}
-
-
-/* =========================================================
-   NAVIGATION
-========================================================= */
-
-function updateNavigation() {
-
-  $("previousButton").disabled =
-    questionIndex <=
-    0;
-
-
-  $("nextButton").textContent =
-    questionIndex >=
-      questions.length - 1
-      ? "採点完了"
-      : "次の問題";
-
-}
-
-
-/* =========================================================
-   UTIL
-========================================================= */
-
-function scoreKey(
-  answerId,
-  questionId
-) {
-
-  return `${answerId}:${questionId}`;
-
-}
-
-
-function regionKey(
-  answerId,
-  questionId
-) {
-
-  return `${answerId}:${questionId}`;
-
-}
-
-
-function waitImage(
+function waitForImage(
   image
 ) {
 
@@ -3714,7 +3831,8 @@ function waitImage(
 
       if (
         image.complete &&
-        image.naturalWidth
+        image.naturalWidth >
+          0
       ) {
 
         resolve();
@@ -3742,85 +3860,27 @@ function waitImage(
 }
 
 
-function createNumberButtons() {
-
-  const toolbar =
-    $("numberToolbar");
-
-
-  if (!toolbar) {
-
-    return;
-
-  }
-
-
-  toolbar.innerHTML =
-    "";
-
-
-  for (
-    let i = 0;
-    i <= 100;
-    i++
-  ) {
-
-    const button =
-      document.createElement(
-        "button"
-      );
-
-
-    button.type =
-      "button";
-
-
-    button.className =
-      "number-button";
-
-
-    button.dataset.score =
-      String(
-        i
-      );
-
-
-    button.textContent =
-      String(
-        i
-      );
-
-
-    toolbar.appendChild(
-      button
-    );
-
-  }
-
-}
-
+/* =========================================================
+   STATUS
+========================================================= */
 
 function setStatus(
   message,
   error = false
 ) {
 
-  const element =
-    $("status");
-
-
-  if (!element) {
+  if (!statusElement) {
 
     return;
 
   }
 
 
-  element.textContent =
+  statusElement.textContent =
     message;
 
 
-  element.className =
+  statusElement.className =
     error
       ? "status error"
       : "status";
@@ -3828,7 +3888,7 @@ function setStatus(
 }
 
 
-function showError(
+function showFatal(
   message
 ) {
 
@@ -3838,19 +3898,30 @@ function showError(
   );
 
 
-  const grid =
-    $("answerTableWrap");
+  if (answerTableWrap) {
 
+    answerTableWrap.innerHTML = `
 
-  if (grid) {
-
-    grid.innerHTML = `
-
-      <div class="no-answer">
+      <div
+        style="
+          padding:50px;
+          text-align:center;
+          color:#b42318;
+        "
+      >
 
         ${escapeHtml(
           message
         )}
+
+        <br><br>
+
+        <a
+          href="/teacher/marking"
+          class="btn"
+        >
+          採点一覧へ戻る
+        </a>
 
       </div>
 
@@ -3861,11 +3932,51 @@ function showError(
 }
 
 
+/* =========================================================
+   CSS ESCAPE
+========================================================= */
+
+function cssEscape(
+  value
+) {
+
+  const text =
+    String(
+      value ??
+      ""
+    );
+
+
+  if (
+    window.CSS &&
+    typeof window.CSS.escape ===
+      "function"
+  ) {
+
+    return window.CSS.escape(
+      text
+    );
+
+  }
+
+
+  return text.replace(
+    /[^a-zA-Z0-9_-]/g,
+    "\\$&"
+  );
+
+}
+
+
+/* =========================================================
+   NUMBER
+========================================================= */
+
 function formatNumber(
   value
 ) {
 
-  const n =
+  const number =
     Number(
       value
     );
@@ -3873,7 +3984,7 @@ function formatNumber(
 
   if (
     !Number.isFinite(
-      n
+      number
     )
   ) {
 
@@ -3883,17 +3994,21 @@ function formatNumber(
 
 
   return Number.isInteger(
-    n
+    number
   )
     ? String(
-        n
+        number
       )
-    : n.toFixed(
+    : number.toFixed(
         1
       );
 
 }
 
+
+/* =========================================================
+   ESCAPE
+========================================================= */
 
 function escapeHtml(
   value

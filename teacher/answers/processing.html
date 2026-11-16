@@ -1,184 +1,528 @@
+
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
 
-  <meta charset="UTF-8">
+<meta charset="UTF-8">
 
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
-  >
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1.0"
+>
 
-  <title>
-    答案処理状況 - テスト成績システム
-  </title>
+<title>
+  答案処理状況 - テスト成績システム
+</title>
 
-  <link
-    rel="stylesheet"
-    href="/css/common.css"
-  >
+<link
+  rel="stylesheet"
+  href="/css/common.css"
+>
+
+<style>
+
+.processing-main {
+  max-width:1400px;
+  margin:0 auto;
+  padding:20px;
+}
+
+
+.processing-toolbar {
+  display:flex;
+
+  flex-wrap:wrap;
+
+  align-items:center;
+
+  gap:8px;
+
+  margin-bottom:15px;
+}
+
+
+.processing-summary {
+  display:grid;
+
+  grid-template-columns:
+    repeat(
+      5,
+      minmax(
+        0,
+        1fr
+      )
+    );
+
+  gap:10px;
+}
+
+
+.summary-item {
+  padding:14px;
+
+  background:#fff;
+
+  border:
+    1px solid #d0d6dc;
+}
+
+
+.summary-label {
+  color:#666;
+
+  font-size:12px;
+}
+
+
+.summary-value {
+  margin-top:4px;
+
+  font-size:24px;
+
+  font-weight:700;
+}
+
+
+.processing-table-wrap {
+  overflow:auto;
+}
+
+
+.processing-table {
+  width:100%;
+
+  min-width:900px;
+
+  border-collapse:collapse;
+}
+
+
+.processing-table th,
+.processing-table td {
+  padding:9px 10px;
+
+  border-bottom:
+    1px solid #e1e5e8;
+
+  vertical-align:middle;
+}
+
+
+.processing-table th {
+  background:#f3f5f7;
+
+  text-align:left;
+
+  white-space:nowrap;
+}
+
+
+.status-badge {
+  display:inline-block;
+
+  padding:4px 8px;
+
+  border-radius:3px;
+
+  font-size:12px;
+
+  font-weight:700;
+}
+
+
+.status-unmatched {
+  color:#b42318;
+
+  background:#fff4f2;
+
+  border:
+    1px solid #efc2bc;
+}
+
+
+.status-uploaded {
+  color:#1769aa;
+
+  background:#edf5fb;
+
+  border:
+    1px solid #b9d5e9;
+}
+
+
+.status-marked {
+  color:#16834b;
+
+  background:#edf8ef;
+
+  border:
+    1px solid #b7d9c0;
+}
+
+
+.status-other {
+  color:#666;
+
+  background:#f5f6f7;
+
+  border:
+    1px solid #d5dbe0;
+}
+
+
+.empty {
+  padding:40px;
+
+  text-align:center;
+
+  color:#777;
+}
+
+
+.error {
+  color:#b42318;
+}
+
+
+@media(max-width:900px) {
+
+  .processing-summary {
+    grid-template-columns:
+      repeat(
+        2,
+        minmax(
+          0,
+          1fr
+        )
+      );
+
+  }
+
+}
+
+
+@media(max-width:550px) {
+
+  .processing-summary {
+    grid-template-columns:
+      1fr;
+  }
+
+}
+
+</style>
 
 </head>
 
+
 <body>
+
 
 <header class="topbar">
 
-  <div class="system-name">
-    テスト成績システム
-  </div>
+<div class="system-name">
+  テスト成績システム
+</div>
 
-  <div class="topbar-space"></div>
 
-  <span id="teacherName">-</span>
+<div class="topbar-space"></div>
 
-  <button
-    id="logoutButton"
-    class="logout-button"
-  >
-    ログアウト
-  </button>
+
+<span id="teacherName">
+  -
+</span>
+
+
+<button
+id="logoutButton"
+class="logout-button"
+type="button"
+>
+  ログアウト
+</button>
 
 </header>
 
 
 <div class="teacher-layout">
 
-  <aside class="sidebar">
 
-    <div class="sidebar-title">
-      答案
-    </div>
+<aside class="sidebar">
 
-    <a
-      href="/teacher/answers/upload"
-      class="menu-link"
-    >
-      答案アップロード
-    </a>
-
-    <a
-      href="/teacher/answers/processing"
-      class="menu-link active"
-    >
-      処理状況
-    </a>
-
-    <a
-      href="/teacher/answers/unmatched"
-      class="menu-link"
-    >
-      未紐付け答案
-    </a>
-
-    <a
-      href="/teacher/answers/matched"
-      class="menu-link"
-    >
-      紐付け済み答案
-    </a>
-
-  </aside>
+<div class="sidebar-title">
+  答案
+</div>
 
 
-  <main class="main-content">
-
-    <div class="page-header">
-
-      <h1>
-        答案処理状況
-      </h1>
-
-      <button
-        id="reloadButton"
-        class="btn"
-      >
-        更新
-      </button>
-
-    </div>
+<a
+href="/teacher/answers/upload"
+class="menu-link"
+>
+  答案アップロード
+</a>
 
 
-    <div class="card">
-
-      <div
-        id="processingSummary"
-      >
-        読み込み中...
-      </div>
-
-    </div>
+<a
+href="/teacher/answers/processing"
+class="menu-link active"
+>
+  処理状況
+</a>
 
 
-    <div class="card">
+<a
+href="/teacher/answers/unmatched"
+class="menu-link"
+>
+  未紐付け答案
+</a>
 
-      <div style="overflow:auto;">
 
-        <table class="table">
+<a
+href="/teacher/answers/matched"
+class="menu-link"
+>
+  紐付け済み答案
+</a>
 
-          <thead>
 
-            <tr>
+<a
+href="/teacher/marking"
+class="menu-link"
+>
+  デジタル採点
+</a>
 
-              <th>
-                登録日時
-              </th>
+</aside>
 
-              <th>
-                テスト
-              </th>
 
-              <th>
-                生徒
-              </th>
+<main class="main-content processing-main">
 
-              <th>
-                QR
-              </th>
 
-              <th>
-                状態
-              </th>
+<div class="page-header">
 
-            </tr>
+<h1>
+  答案処理状況
+</h1>
 
-          </thead>
 
-          <tbody
-            id="processingRows"
-          >
+<div class="processing-toolbar">
 
-            <tr>
+<button
+id="reloadButton"
+class="btn"
+type="button"
+>
+  更新
+</button>
 
-              <td
-                colspan="5"
-                style="text-align:center;"
-              >
-                読み込み中...
-              </td>
 
-            </tr>
+<a
+href="/teacher/answers/upload"
+class="btn btn-primary"
+>
+  答案アップロード
+</a>
 
-          </tbody>
 
-        </table>
-
-      </div>
-
-    </div>
-
-  </main>
+</div>
 
 </div>
 
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<div
+id="message"
+style="
+  min-height:22px;
+  margin-bottom:12px;
+"
+>
+</div>
 
-<script src="/js/config.js"></script>
 
-<script src="/js/auth.js"></script>
+<section class="card">
 
-<script src="/js/teacher/answer-processing.js"></script>
+
+<div
+id="processingSummary"
+class="processing-summary"
+>
+
+<div class="summary-item">
+
+<div class="summary-label">
+  全答案
+</div>
+
+<div
+id="totalCount"
+class="summary-value"
+>
+0
+</div>
+
+</div>
+
+
+<div class="summary-item">
+
+<div class="summary-label">
+  未紐付け
+</div>
+
+<div
+id="unmatchedCount"
+class="summary-value"
+>
+0
+</div>
+
+</div>
+
+
+<div class="summary-item">
+
+<div class="summary-label">
+  紐付け済み
+</div>
+
+<div
+id="uploadedCount"
+class="summary-value"
+>
+0
+</div>
+
+</div>
+
+
+<div class="summary-item">
+
+<div class="summary-label">
+  採点済み
+</div>
+
+<div
+id="markedCount"
+class="summary-value"
+>
+0
+</div>
+
+</div>
+
+
+<div class="summary-item">
+
+<div class="summary-label">
+  公開済み
+</div>
+
+<div
+id="publishedCount"
+class="summary-value"
+>
+0
+</div>
+
+</div>
+
+</div>
+
+
+</section>
+
+
+<section class="card">
+
+
+<div class="processing-table-wrap">
+
+
+<table class="processing-table">
+
+<thead>
+
+<tr>
+
+<th>
+  登録日時
+</th>
+
+<th>
+  テスト
+</th>
+
+<th>
+  生徒
+</th>
+
+<th>
+  QR
+</th>
+
+<th>
+  状態
+</th>
+
+<th>
+  操作
+</th>
+
+</tr>
+
+</thead>
+
+
+<tbody
+id="processingRows"
+>
+
+<tr>
+
+<td
+colspan="6"
+class="empty"
+>
+読み込み中...
+</td>
+
+</tr>
+
+</tbody>
+
+</table>
+
+
+</div>
+
+
+</section>
+
+
+</main>
+
+</div>
+
+
+<script
+src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+></script>
+
+<script
+src="/js/config.js?v=20261116"
+></script>
+
+<script
+src="/js/auth.js?v=20261116"
+></script>
+
+<script
+src="/js/teacher/answer-processing.js?v=20261116"
+></script>
+
 
 </body>
+
 </html>

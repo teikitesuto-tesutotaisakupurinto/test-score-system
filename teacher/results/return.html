@@ -60,164 +60,182 @@
 <div class="teacher-layout">
 
 
-  <aside class="sidebar">
+<aside class="sidebar">
 
-    <div class="sidebar-title">
-      成績
-    </div>
-
-
-    <a
-      href="/teacher/results/summary"
-      class="menu-link"
-    >
-      結果総括表
-    </a>
+  <div class="sidebar-title">
+    成績
+  </div>
 
 
-    <a
-      href="/teacher/results/students"
-      class="menu-link"
-    >
-      生徒別成績
-    </a>
+  <a
+    href="/teacher/results/summary"
+    class="menu-link"
+  >
+    結果総括表
+  </a>
 
 
-    <a
-      href="/teacher/results/questions"
-      class="menu-link"
-    >
-      設問別分析
-    </a>
+  <a
+    href="/teacher/results/return"
+    class="menu-link active"
+  >
+    答案返却
+  </a>
 
 
-    <a
-      href="/teacher/results/return"
-      class="menu-link active"
-    >
-      答案返却
-    </a>
+  <a
+    href="/teacher/tests/publish"
+    class="menu-link"
+  >
+    公開状態
+  </a>
 
-  </aside>
-
-
-  <main class="main-content">
+</aside>
 
 
-    <div class="page-header">
-
-      <h1>
-        採点済み答案返却
-      </h1>
-
-    </div>
+<main class="main-content">
 
 
-    <div class="card">
+<div class="page-header">
+
+  <h1>
+    採点済み答案返却
+  </h1>
+
+</div>
 
 
-      <div class="form-group">
-
-        <label for="answerSelect">
-          答案
-        </label>
+<div class="card">
 
 
-        <select
-          id="answerSelect"
-        >
+<div class="form-group">
 
-          <option value="">
-            採点済み答案を選択してください
-          </option>
-
-        </select>
-
-      </div>
+<label for="testSelect">
+  テスト
+</label>
 
 
-      <div class="return-actions">
+<select
+id="testSelect"
+>
+
+<option value="">
+  テストを選択してください
+</option>
+
+</select>
+
+</div>
 
 
-        <button
-          id="printButton"
-          class="btn btn-primary"
-          type="button"
-          disabled
-        >
-          印刷
-        </button>
+<div
+id="studentArea"
+class="form-group"
+style="display:none;"
+>
+
+<label for="studentSelect">
+  生徒
+</label>
 
 
-        <button
-          id="pdfButton"
-          class="btn"
-          type="button"
-          disabled
-        >
-          PDF保存
-        </button>
+<select
+id="studentSelect"
+disabled
+>
+
+<option value="">
+  生徒を選択してください
+</option>
+
+</select>
+
+</div>
 
 
-        <button
-          id="downloadButton"
-          class="btn"
-          type="button"
-          disabled
-        >
-          PNG保存
-        </button>
+<div
+id="returnStatus"
+class="return-status"
+aria-live="polite"
+>
+テストを選択してください。
+</div>
 
 
-      </div>
+<div class="return-actions">
 
 
-    </div>
+<button
+id="printButton"
+class="btn btn-primary"
+type="button"
+disabled
+>
+印刷
+</button>
 
 
-    <div
-      id="status"
-      class="status"
-    >
-      採点済み答案を読み込んでいます...
-    </div>
+<button
+id="pdfButton"
+class="btn"
+type="button"
+disabled
+>
+PDF保存
+</button>
 
 
-    <div
-      id="returnPreview"
-      class="card return-preview"
-      style="display:none;"
-    >
-    </div>
+<button
+id="pngButton"
+class="btn"
+type="button"
+disabled
+>
+PNG保存
+</button>
+
+</div>
 
 
-  </main>
+</div>
+
+
+<div
+id="returnPreview"
+class="card return-preview"
+style="display:none;"
+>
+</div>
+
+
+</main>
+
 
 </div>
 
 
 <script
-  src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
 ></script>
 
 
 <script
-  src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"
+src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"
 ></script>
 
 
 <script
-  src="/js/config.js?v=20261116"
+src="/js/config.js"
 ></script>
 
 
 <script
-  src="/js/auth.js?v=20261116"
+src="/js/auth.js"
 ></script>
 
 
 <script
-  src="/js/teacher/answer-return.js?v=20261116"
+src="/js/teacher/answer-return.js"
 ></script>
 
 

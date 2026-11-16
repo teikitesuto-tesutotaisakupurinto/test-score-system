@@ -1,43 +1,85 @@
 
-.student-main {
-  max-width: 1200px;
+/* =========================================================
+   成績・結果
+========================================================= */
+
+.results-main {
+  max-width: 1600px;
 
   margin: 0 auto;
 
-  padding: 25px;
+  padding: 20px;
 }
 
 
-/* =========================================================
-   テスト情報
-========================================================= */
+.results-toolbar {
+  display: flex;
 
-.test-meta {
-  margin-top: 5px;
+  align-items: center;
+
+  justify-content: space-between;
+
+  gap: 10px;
+
+  flex-wrap: wrap;
+
+  margin-bottom: 12px;
+}
+
+
+.results-actions {
+  display: flex;
+
+  gap: 7px;
+
+  flex-wrap: wrap;
+}
+
+
+.results-status {
+  min-height: 22px;
+
+  margin-bottom: 12px;
+
+  padding: 9px 11px;
+
+  background: #f5f6f7;
+
+  border:
+    1px solid #d5dbe0;
 
   color: #666;
 
   font-size: 13px;
+
+  white-space: pre-wrap;
 }
 
 
-/* =========================================================
-   結果概要
-========================================================= */
+.results-status.error {
+  color: #b42318;
 
-.student-result-summary {
+  background: #fff8f7;
+
+  border-color: #efc2bc;
+}
+
+
+.results-information {
   margin-bottom: 15px;
 
-  padding: 20px;
+  padding: 14px;
 
   background: #fff;
 
   border:
     1px solid #d0d6dc;
+
+  line-height: 1.8;
 }
 
 
-.result-summary-grid {
+.results-summary-grid {
   display: grid;
 
   grid-template-columns:
@@ -49,41 +91,14 @@
       )
     );
 
-  gap: 15px;
-}
+  gap: 10px;
 
-
-.result-label {
-  margin-bottom: 5px;
-
-  color: #777;
-
-  font-size: 12px;
-}
-
-
-.result-value {
-  font-size: 28px;
-
-  font-weight: 700;
-}
-
-
-.result-sub {
-  margin-top: 2px;
-
-  color: #777;
-
-  font-size: 12px;
-}
-
-
-/* =========================================================
-   結果カード
-========================================================= */
-
-.student-result-card {
   margin-bottom: 15px;
+}
+
+
+.results-summary-card {
+  padding: 14px;
 
   background: #fff;
 
@@ -92,141 +107,81 @@
 }
 
 
-.student-result-card-title {
-  padding: 12px 15px;
+.results-summary-label {
+  color: #666;
 
-  border-bottom:
-    1px solid #d0d6dc;
+  font-size: 12px;
+}
+
+
+.results-summary-value {
+  margin-top: 4px;
+
+  font-size: 22px;
 
   font-weight: 700;
 }
 
 
-.student-result-actions {
-  display: flex;
-
-  flex-wrap: wrap;
-
-  gap: 8px;
-
-  padding: 15px;
-}
-
-
-/* =========================================================
-   設問別結果
-========================================================= */
-
-.question-results-wrap {
+.results-table-wrap {
   overflow: auto;
+
+  background: #fff;
+
+  border:
+    1px solid #d0d6dc;
 }
 
 
-.question-results-table {
+.results-table {
   width: 100%;
 
-  min-width: 500px;
+  min-width: 900px;
 
   border-collapse: collapse;
 }
 
 
-.question-results-table th {
-  padding: 9px;
-
-  border:
-    1px solid #d0d6dc;
-
-  background: #f2f4f6;
-
-  text-align: center;
-
-  white-space: nowrap;
-}
-
-
-.question-results-table td {
-  padding: 9px;
-
-  border:
-    1px solid #d0d6dc;
-
-  text-align: center;
-}
-
-
-.question-results-table .score {
-  font-weight: 700;
-}
-
-
-/* =========================================================
-   採点済み答案
-========================================================= */
-
-.student-answer-pages {
-  padding: 15px;
-
-  background: #dfe5ea;
-}
-
-
-.student-answer-page {
-  max-width: 900px;
-
-  margin:
-    0 auto
-    20px;
-
-  padding: 10px;
-
-  background: #fff;
-
-  border:
-    1px solid #d0d6dc;
-
-  box-shadow:
-    0 1px 5px
-    rgba(
-      0,
-      0,
-      0,
-      .12
-    );
-}
-
-
-.student-answer-page-title {
-  padding: 7px;
-
-  margin-bottom: 8px;
-
-  background: #f2f4f6;
+.results-table th,
+.results-table td {
+  padding: 8px 10px;
 
   border-bottom:
-    1px solid #d5dbe0;
+    1px solid #e1e5e8;
 
-  font-size: 13px;
+  white-space: nowrap;
+
+  text-align: right;
+}
+
+
+.results-table th {
+  background: #f3f5f7;
 
   font-weight: 700;
 }
 
 
-.student-answer-page canvas {
-  display: block;
-
-  width: 100%;
-
-  height: auto;
+.results-table th:first-child,
+.results-table td:first-child,
+.results-table th:nth-child(2),
+.results-table td:nth-child(2) {
+  text-align: left;
 }
 
 
-/* =========================================================
-   空状態
-========================================================= */
+.results-table tbody tr:hover {
+  background: #fafbfc;
+}
 
-.empty-state {
-  padding: 40px;
+
+.results-table .rank {
+  font-weight: 700;
+}
+
+
+.results-empty {
+  padding: 45px;
 
   text-align: center;
 
@@ -234,13 +189,45 @@
 }
 
 
-/* =========================================================
-   スマートフォン
-========================================================= */
+.result-published {
+  display: inline-block;
 
-@media(max-width: 800px) {
+  padding: 3px 7px;
 
-  .result-summary-grid {
+  border:
+    1px solid #b7d9c0;
+
+  border-radius: 3px;
+
+  background: #edf8ef;
+
+  color: #176b35;
+
+  font-size: 11px;
+}
+
+
+.result-unpublished {
+  display: inline-block;
+
+  padding: 3px 7px;
+
+  border:
+    1px solid #efc2bc;
+
+  border-radius: 3px;
+
+  background: #fff8f7;
+
+  color: #b42318;
+
+  font-size: 11px;
+}
+
+
+@media(max-width: 900px) {
+
+  .results-summary-grid {
     grid-template-columns:
       repeat(
         2,
@@ -254,15 +241,45 @@
 }
 
 
-@media(max-width: 500px) {
+@media(max-width: 600px) {
 
-  .student-main {
-    padding: 12px;
+  .results-main {
+    padding: 10px;
   }
 
 
-  .result-summary-grid {
+  .results-summary-grid {
     grid-template-columns: 1fr;
+  }
+
+}
+
+
+@media print {
+
+  .topbar,
+  .sidebar,
+  .results-actions,
+  .results-toolbar .btn,
+  .results-toolbar a {
+    display: none !important;
+  }
+
+
+  .teacher-layout {
+    display: block;
+  }
+
+
+  .main-content {
+    margin: 0;
+
+    padding: 0;
+  }
+
+
+  .results-table {
+    min-width: 0;
   }
 
 }

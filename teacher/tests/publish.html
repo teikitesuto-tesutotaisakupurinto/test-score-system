@@ -12,7 +12,7 @@
 >
 
 <title>
-  成績・答案公開状態 - テスト成績システム
+  成績・答案公開 - テスト成績システム
 </title>
 
 <link
@@ -22,96 +22,94 @@
 
 <style>
 
-.main {
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 25px;
+.publish-main {
+  max-width:900px;
+
+  margin:0 auto;
+
+  padding:25px;
 }
 
-.card {
-  margin-bottom: 15px;
-  padding: 20px;
-  background: #fff;
-  border: 1px solid #d5dbe0;
+
+.publish-card {
+  background:#fff;
+
+  border:
+    1px solid #d5dbe0;
+
+  padding:20px;
+
+  margin-bottom:15px;
 }
+
 
 #testSelect {
-  width: 100%;
-  height: 44px;
-  padding: 0 10px;
+  width:100%;
+
+  height:44px;
+
+  padding:0 10px;
 }
+
 
 .status {
-  margin-top: 15px;
-  padding: 14px;
-  border: 1px solid #d5dbe0;
-  background: #f5f6f7;
-  line-height: 1.8;
+  margin-top:15px;
+
+  padding:12px;
+
+  border:
+    1px solid #d5dbe0;
+
+  background:#f5f6f7;
+
+  line-height:1.7;
 }
 
-.status.processing {
-  background: #fff8e8;
-  border-color: #e6c979;
-  color: #7a4b00;
-}
 
 .status.public {
-  background: #edf8ef;
-  border-color: #b7d9c0;
-  color: #176b35;
+  background:#edf8ef;
+
+  border-color:#b7d9c0;
+
+  color:#176b35;
 }
 
-.status.error {
-  background: #fff4f2;
-  border-color: #efc2bc;
-  color: #b42318;
+
+.status.private {
+  background:#fff4f2;
+
+  border-color:#efc2bc;
+
+  color:#b42318;
 }
 
-.status-title {
-  font-weight: 700;
-  font-size: 16px;
+
+.actions {
+  display:flex;
+
+  flex-wrap:wrap;
+
+  gap:10px;
+
+  margin-top:15px;
 }
 
-.info-grid {
-  display: grid;
-  grid-template-columns:
-    repeat(
-      2,
-      minmax(0, 1fr)
-    );
-  gap: 10px;
-  margin-top: 15px;
-}
 
-.info-item {
-  padding: 12px;
-  background: #f5f6f7;
-  border: 1px solid #dfe3e6;
-}
+.info {
+  margin-top:15px;
 
-.info-label {
-  color: #666;
-  font-size: 12px;
-}
+  padding:12px;
 
-.info-value {
-  margin-top: 3px;
-  font-weight: 700;
-}
+  background:#f5f6f7;
 
-.notice {
-  margin-top: 15px;
-  color: #666;
-  font-size: 13px;
-  line-height: 1.8;
-}
+  border:
+    1px solid #dfe3e6;
 
-@media(max-width:650px) {
+  color:#555;
 
-  .info-grid {
-    grid-template-columns: 1fr;
-  }
+  font-size:12px;
 
+  line-height:1.8;
 }
 
 </style>
@@ -128,44 +126,89 @@
   テスト成績システム
 </div>
 
+
 <div class="topbar-space"></div>
+
 
 <span id="teacherName">
   -
 </span>
+
 
 <button
 id="logoutButton"
 class="logout-button"
 type="button"
 >
-ログアウト
+  ログアウト
 </button>
 
 </header>
 
 
-<main class="main">
+<div class="teacher-layout">
 
 
-<section class="card">
+<aside class="sidebar">
+
+
+<div class="sidebar-title">
+  成績
+</div>
+
+
+<a
+href="/teacher/results/summary"
+class="menu-link"
+>
+結果総括表
+</a>
+
+
+<a
+href="/teacher/results/return"
+class="menu-link"
+>
+答案返却
+</a>
+
+
+<a
+href="/teacher/tests/publish"
+class="menu-link active"
+>
+公開状態
+</a>
+
+
+</aside>
+
+
+<main class="main-content publish-main">
+
+
+<div class="page-header">
 
 <h1>
-  成績・答案公開状態
+  成績・答案公開
 </h1>
 
-<p>
-  成績処理が完了したテストは自動的に生徒へ公開されます。
-</p>
-
-</section>
+</div>
 
 
-<section class="card">
+<section class="publish-card">
 
 
-<label for="testSelect">
-  テスト
+<label
+for="testSelect"
+style="
+  display:block;
+  margin-bottom:7px;
+  font-size:13px;
+  font-weight:700;
+"
+>
+テスト
 </label>
 
 
@@ -174,7 +217,7 @@ id="testSelect"
 >
 
 <option value="">
-  テストを選択してください
+テストを選択してください
 </option>
 
 </select>
@@ -188,86 +231,61 @@ class="status"
 </div>
 
 
-<div
-id="testInformation"
-class="info-grid"
-style="display:none;"
+<div class="actions">
+
+
+<button
+id="publishButton"
+type="button"
+class="btn btn-primary"
+disabled
 >
+生徒へ公開
+</button>
 
-<div class="info-item">
 
-<div class="info-label">
-  テスト
-</div>
-
-<div
-id="testName"
-class="info-value"
+<button
+id="unpublishButton"
+type="button"
+class="btn"
+disabled
 >
--
-</div>
-
-</div>
+公開停止
+</button>
 
 
-<div class="info-item">
-
-<div class="info-label">
-  教科
-</div>
-
-<div
-id="testSubject"
-class="info-value"
+<a
+id="summaryButton"
+href="#"
+class="btn"
 >
--
-</div>
-
-</div>
+結果総括表
+</a>
 
 
-<div class="info-item">
-
-<div class="info-label">
-  成績処理
-</div>
-
-<div
-id="processingStatus"
-class="info-value"
+<a
+id="returnButton"
+href="#"
+class="btn"
 >
--
-</div>
-
-</div>
-
-
-<div class="info-item">
-
-<div class="info-label">
-  公開状態
-</div>
-
-<div
-id="publishedStatus"
-class="info-value"
->
--
-</div>
-
-</div>
+答案返却
+</a>
 
 
 </div>
 
 
-<div class="notice">
+<div class="info">
 
-結果が確定するまでは、生徒側には点数・採点済み答案を表示しません。
+公開前は生徒画面に採点結果・点数・採点済み答案を表示しません。
 
 <br>
 
-全答案・全設問の採点と成績処理が完了すると、自動的に公開されます。
+全答案・全設問の採点が確定してから公開できます。
+
+<br>
+
+公開後は生徒本人の画面だけに、その生徒の成績と採点済み答案が表示されます。
 
 </div>
 
@@ -278,21 +296,72 @@ class="info-value"
 </main>
 
 
+</div>
+
+
 <script
 src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
 ></script>
+
 
 <script
 src="/js/config.js?v=20261116"
 ></script>
 
+
 <script
 src="/js/auth.js?v=20261116"
 ></script>
 
+
 <script
 src="/js/teacher/test-publish.js?v=20261116"
 ></script>
+
+
+<script>
+
+"use strict";
+
+
+const params =
+  new URLSearchParams(
+    location.search
+  );
+
+
+const testId =
+  params.get(
+    "test"
+  ) ||
+  params.get(
+    "id"
+  );
+
+
+if (testId) {
+
+  const encoded =
+    encodeURIComponent(
+      testId
+    );
+
+
+  document.getElementById(
+    "summaryButton"
+  ).href =
+    `/teacher/results/summary?test=${encoded}`;
+
+
+  document.getElementById(
+    "returnButton"
+  ).href =
+    `/teacher/results/return?test=${encoded}`;
+
+}
+
+</script>
+
 
 </body>
 

@@ -23,152 +23,161 @@
 <style>
 
 .qr-main {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 22px;
+  max-width:1200px;
+  margin:0 auto;
+  padding:22px;
 }
+
 
 .page-header {
-  margin-bottom: 18px;
+  margin-bottom:18px;
 }
+
 
 .page-header h1 {
-  margin: 0;
-  font-size: 24px;
+  margin:0;
+  font-size:24px;
 }
+
 
 .page-header p {
-  margin: 7px 0 0;
-  color: #666;
-  font-size: 13px;
+  margin:7px 0 0;
+  color:#666;
+  font-size:13px;
 }
+
 
 .toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 15px;
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-bottom:15px;
 }
+
 
 .status {
-  padding: 10px 12px;
-  margin-bottom: 15px;
+  padding:10px 12px;
+  margin-bottom:15px;
 
-  background: #f5f6f7;
+  background:#f5f6f7;
 
-  border: 1px solid #d5dbe0;
+  border:1px solid #d5dbe0;
 
-  font-size: 13px;
+  font-size:13px;
 }
+
 
 .status.error {
-  color: #b42318;
+  color:#b42318;
 }
 
+
 .qr-grid {
-  display: grid;
+  display:grid;
 
   grid-template-columns:
     repeat(
       4,
-      minmax(0, 1fr)
+      minmax(0,1fr)
     );
 
-  gap: 14px;
+  gap:14px;
 }
+
 
 .qr-card {
-  min-height: 250px;
+  min-height:250px;
 
-  padding: 15px;
+  padding:15px;
 
-  background: #fff;
+  background:#fff;
 
-  border: 1px solid #d0d6dc;
+  border:1px solid #d0d6dc;
 
-  text-align: center;
+  text-align:center;
 
-  break-inside: avoid;
+  break-inside:avoid;
 }
+
 
 .qr-student-no {
-  font-size: 16px;
-
-  font-weight: 700;
+  font-size:16px;
+  font-weight:700;
 }
+
 
 .qr-student-name {
-  margin-top: 4px;
-
-  color: #555;
-
-  font-size: 14px;
+  margin-top:4px;
+  color:#555;
+  font-size:14px;
 }
+
 
 .qr-image {
-  display: flex;
+  display:flex;
 
-  justify-content: center;
+  justify-content:center;
+  align-items:center;
 
-  align-items: center;
-
-  margin-top: 12px;
+  margin-top:12px;
 }
+
 
 .qr-value {
-  margin-top: 8px;
+  margin-top:8px;
 
-  color: #777;
+  color:#777;
 
-  font-size: 10px;
+  font-size:10px;
 
-  word-break: break-all;
+  word-break:break-all;
 }
+
 
 .empty {
-  grid-column: 1 / -1;
+  grid-column:1 / -1;
 
-  padding: 50px;
+  padding:50px;
 
-  text-align: center;
+  text-align:center;
 
-  color: #777;
+  color:#777;
 
-  background: #fff;
+  background:#fff;
 
-  border: 1px solid #d0d6dc;
+  border:1px solid #d0d6dc;
 }
 
 
-@media (max-width: 900px) {
+@media(max-width:900px) {
 
   .qr-grid {
     grid-template-columns:
       repeat(
         2,
-        minmax(0, 1fr
-      )
-    );
+        minmax(0,1fr)
+      );
   }
 
 }
 
 
-@media (max-width: 600px) {
+@media(max-width:600px) {
 
   .qr-main {
-    padding: 14px;
+    padding:14px;
   }
 
+
   .qr-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns:1fr;
   }
 
 }
 
 
 /* =====================================================
-   印刷
+   PRINT
 ===================================================== */
 
 @media print {
@@ -177,14 +186,15 @@
   .toolbar,
   .status,
   .page-header p {
-    display: none !important;
+    display:none !important;
   }
+
 
   .qr-main {
-    max-width: none;
-
-    padding: 0;
+    max-width:none;
+    padding:0;
   }
+
 
   .qr-grid {
     grid-template-columns:
@@ -193,13 +203,13 @@
         1fr
       );
 
-    gap: 8px;
+    gap:8px;
   }
 
-  .qr-card {
-    min-height: 0;
 
-    padding: 8px;
+  .qr-card {
+    min-height:0;
+    padding:8px;
   }
 
 }
@@ -241,76 +251,79 @@
 <main class="qr-main">
 
 
-  <div class="page-header">
+<div class="page-header">
 
-    <h1>
-      生徒QR発行
-    </h1>
+  <h1>
+    生徒QR発行
+  </h1>
 
-    <p>
-      生徒番号をQRコードにして印刷します。
-      答案アップロード時に読み取り、生徒を自動で紐付けます。
-    </p>
 
+  <p>
+    生徒番号をQRコードにして印刷します。
+    答案アップロード時に読み取り、生徒を自動で紐付けます。
+  </p>
+
+</div>
+
+
+<div class="toolbar">
+
+
+<a
+  href="/teacher/dashboard"
+  class="btn"
+>
+  ホーム
+</a>
+
+
+<a
+  href="/teacher/students"
+  class="btn"
+>
+  生徒一覧
+</a>
+
+
+<button
+  id="reloadButton"
+  class="btn"
+  type="button"
+>
+  更新
+</button>
+
+
+<button
+  id="printButton"
+  class="btn btn-primary"
+  type="button"
+>
+  印刷
+</button>
+
+
+</div>
+
+
+<div
+  id="status"
+  class="status"
+>
+  生徒一覧を取得しています...
+</div>
+
+
+<section
+  id="qrGrid"
+  class="qr-grid"
+>
+
+  <div class="empty">
+    読み込み中...
   </div>
 
-
-  <div class="toolbar">
-
-    <a
-      href="/teacher"
-      class="btn"
-    >
-      ホーム
-    </a>
-
-
-    <a
-      href="/teacher/tests"
-      class="btn"
-    >
-      テスト管理
-    </a>
-
-
-    <button
-      id="reloadButton"
-      class="btn"
-      type="button"
-    >
-      更新
-    </button>
-
-
-    <button
-      id="printButton"
-      class="btn btn-primary"
-      type="button"
-    >
-      印刷
-    </button>
-
-  </div>
-
-
-  <div
-    id="status"
-    class="status"
-  >
-    生徒一覧を取得しています...
-  </div>
-
-
-  <section
-    id="qrGrid"
-    class="qr-grid"
-  >
-
-    <div class="empty">
-      読み込み中...
-    </div>
-
-  </section>
+</section>
 
 
 </main>
@@ -326,430 +339,19 @@
 ></script>
 
 
-<script src="/js/config.js"></script>
+<script
+  src="/js/config.js?v=20261116"
+></script>
 
-<script src="/js/auth.js"></script>
 
+<script
+  src="/js/auth.js?v=20261116"
+></script>
 
-<script>
 
-"use strict";
-
-
-let DB =
-  window.SB ||
-  window.supabaseClient;
-
-
-/* =====================================================
-   INIT
-===================================================== */
-
-(async function () {
-
-  try {
-
-    if (!DB) {
-
-      throw new Error(
-        "Supabase接続がありません。"
-      );
-
-    }
-
-
-    const result =
-      await requireRole(
-        "teacher"
-      );
-
-
-    const profile =
-      result?.profile ||
-      result ||
-      {};
-
-
-    document.getElementById(
-      "teacherName"
-    ).textContent =
-      profile.name ||
-      "先生";
-
-
-    setupEvents();
-
-
-    await loadStudents();
-
-
-  } catch (error) {
-
-    console.error(
-      error
-    );
-
-
-    showError(
-      error.message ||
-      "生徒QRを読み込めませんでした。"
-    );
-
-  }
-
-})();
-
-
-/* =====================================================
-   EVENTS
-===================================================== */
-
-function setupEvents() {
-
-
-  document
-    .getElementById(
-      "reloadButton"
-    )
-    ?.addEventListener(
-      "click",
-      loadStudents
-    );
-
-
-  document
-    .getElementById(
-      "printButton"
-    )
-    ?.addEventListener(
-      "click",
-      () => {
-
-        window.print();
-
-      }
-    );
-
-
-  document
-    .getElementById(
-      "logoutButton"
-    )
-    ?.addEventListener(
-      "click",
-      async () => {
-
-        if (
-          typeof logout ===
-          "function"
-        ) {
-
-          await logout();
-
-          return;
-
-        }
-
-
-        if (
-          typeof signOut ===
-          "function"
-        ) {
-
-          await signOut();
-
-        }
-
-      }
-    );
-
-}
-
-
-/* =====================================================
-   STUDENTS
-===================================================== */
-
-async function loadStudents() {
-
-  setStatus(
-    "生徒一覧を取得しています..."
-  );
-
-
-  const {
-    data,
-    error
-  } =
-    await DB
-      .from(
-        "students"
-      )
-      .select(
-        `
-        id,
-        student_no,
-        name,
-        active,
-        qr_token
-        `
-      )
-      .eq(
-        "active",
-        true
-      )
-      .order(
-        "student_no",
-        {
-          ascending:
-            true
-        }
-      );
-
-
-  if (error) {
-
-    throw error;
-
-  }
-
-
-  const students =
-    data ||
-    [];
-
-
-  renderQr(
-    students
-  );
-
-
-  setStatus(
-    `${students.length}名分のQRを発行しました。`
-  );
-
-}
-
-
-/* =====================================================
-   RENDER
-===================================================== */
-
-function renderQr(
-  students
-) {
-
-  const grid =
-    document.getElementById(
-      "qrGrid"
-    );
-
-
-  grid.innerHTML =
-    "";
-
-
-  if (!students.length) {
-
-    grid.innerHTML = `
-
-      <div class="empty">
-
-        有効な生徒が登録されていません。
-
-      </div>
-
-    `;
-
-    return;
-
-  }
-
-
-  for (
-    const student
-    of students
-  ) {
-
-    const card =
-      document.createElement(
-        "article"
-      );
-
-
-    card.className =
-      "qr-card";
-
-
-    const studentNo =
-      document.createElement(
-        "div"
-      );
-
-
-    studentNo.className =
-      "qr-student-no";
-
-
-    studentNo.textContent =
-      student.student_no ||
-      "";
-
-
-    const studentName =
-      document.createElement(
-        "div"
-      );
-
-
-    studentName.className =
-      "qr-student-name";
-
-
-    studentName.textContent =
-      student.name ||
-      "";
-
-
-    const image =
-      document.createElement(
-        "div"
-      );
-
-
-    image.className =
-      "qr-image";
-
-
-    const qr =
-      document.createElement(
-        "div"
-      );
-
-
-    /*
-     * DBにqr_tokenが登録されている場合は
-     * それを優先。
-     *
-     * 未登録なら、
-     *
-     * STUDENT:生徒番号
-     *
-     * を使用。
-     */
-
-    const qrValue =
-      student.qr_token ||
-      `STUDENT:${student.student_no}`;
-
-
-    new QRCode(
-      qr,
-      {
-
-        text:
-          qrValue,
-
-        width:
-          150,
-
-        height:
-          150,
-
-        correctLevel:
-          QRCode.CorrectLevel.M
-
-      }
-    );
-
-
-    image.appendChild(
-      qr
-    );
-
-
-    const value =
-      document.createElement(
-        "div"
-      );
-
-
-    value.className =
-      "qr-value";
-
-
-    value.textContent =
-      qrValue;
-
-
-    card.appendChild(
-      studentNo
-    );
-
-
-    card.appendChild(
-      studentName
-    );
-
-
-    card.appendChild(
-      image
-    );
-
-
-    card.appendChild(
-      value
-    );
-
-
-    grid.appendChild(
-      card
-    );
-
-  }
-
-}
-
-
-/* =====================================================
-   STATUS
-===================================================== */
-
-function setStatus(
-  message,
-  error = false
-) {
-
-  const element =
-    document.getElementById(
-      "status"
-    );
-
-
-  element.textContent =
-    message;
-
-
-  element.className =
-    error
-      ? "status error"
-      : "status";
-
-}
-
-
-function showError(
-  message
-) {
-
-  setStatus(
-    message,
-    true
-  );
-
-}
-
-</script>
+<script
+  src="/js/teacher/qr.js?v=20261116"
+></script>
 
 
 </body>

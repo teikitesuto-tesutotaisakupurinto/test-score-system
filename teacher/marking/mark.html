@@ -23,285 +23,343 @@
 <style>
 
 .marking-main {
-  max-width: 1500px;
-  margin: 0 auto;
-  padding: 22px;
+  max-width:1500px;
+
+  margin:0 auto;
+
+  padding:22px;
 }
+
 
 .toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 15px;
+  display:flex;
+
+  flex-wrap:wrap;
+
+  gap:8px;
+
+  margin-bottom:15px;
 }
+
 
 .status {
-  padding: 10px 12px;
-  margin-bottom: 15px;
+  padding:10px 12px;
 
-  background: #f5f6f7;
+  margin-bottom:15px;
 
-  border: 1px solid #d5dbe0;
+  background:#f5f6f7;
 
-  font-size: 13px;
+  border:1px solid #d5dbe0;
+
+  font-size:13px;
+
+  white-space:pre-wrap;
 }
+
+
+.status.error {
+  color:#b42318;
+}
+
 
 .progress {
-  display: none;
+  display:none;
 
-  margin-bottom: 15px;
-  padding: 14px;
+  margin-bottom:15px;
 
-  background: #fff;
+  padding:14px;
 
-  border: 1px solid #d0d6dc;
+  background:#fff;
+
+  border:1px solid #d0d6dc;
 }
+
 
 .progress.show {
-  display: block;
+  display:block;
 }
+
 
 .progress-track {
-  height: 8px;
+  height:8px;
 
-  background: #e1e5e8;
+  background:#e1e5e8;
 
-  border-radius: 4px;
+  border-radius:4px;
 
-  overflow: hidden;
+  overflow:hidden;
 }
+
 
 .progress-bar {
-  width: 0;
-  height: 100%;
+  width:0;
 
-  background: #1769aa;
+  height:100%;
 
-  transition: width .2s;
+  background:#1769aa;
+
+  transition:width .2s;
 }
+
 
 .progress-text {
-  margin-top: 7px;
+  margin-top:7px;
 
-  color: #666;
+  color:#666;
 
-  font-size: 12px;
+  font-size:12px;
 }
+
 
 .question-header {
-  display: flex;
-  flex-wrap: wrap;
+  display:flex;
 
-  justify-content: space-between;
-  align-items: center;
+  flex-wrap:wrap;
 
-  gap: 12px;
+  justify-content:space-between;
 
-  padding: 15px;
-  margin-bottom: 15px;
+  align-items:center;
 
-  background: #fff;
+  gap:12px;
 
-  border: 1px solid #d0d6dc;
+  padding:15px;
+
+  margin-bottom:15px;
+
+  background:#fff;
+
+  border:1px solid #d0d6dc;
 }
+
 
 .question-title {
-  font-size: 20px;
-  font-weight: 700;
+  font-size:20px;
+
+  font-weight:700;
 }
+
 
 .question-meta {
-  margin-top: 5px;
+  margin-top:5px;
 
-  color: #666;
+  color:#666;
 
-  font-size: 13px;
+  font-size:13px;
 }
+
 
 .navigation {
-  display: flex;
-  gap: 8px;
+  display:flex;
+
+  gap:8px;
 }
+
 
 .answer-table-wrap {
-  overflow-x: auto;
+  overflow-x:auto;
 
-  background: #fff;
+  background:#fff;
 
-  border: 1px solid #d0d6dc;
+  border:1px solid #d0d6dc;
 }
+
 
 .answer-table {
-  width: 100%;
+  width:100%;
 
-  min-width: 1050px;
+  min-width:1050px;
 
-  border-collapse: collapse;
+  border-collapse:collapse;
 }
+
 
 .answer-table th,
 .answer-table td {
-  border: 1px solid #d0d6dc;
+  border:1px solid #d0d6dc;
 
-  padding: 9px;
+  padding:9px;
 
-  vertical-align: top;
+  vertical-align:top;
 
-  font-size: 13px;
+  font-size:13px;
 }
+
 
 .answer-table th {
-  background: #f3f5f7;
+  background:#f3f5f7;
 
-  font-weight: 700;
+  font-weight:700;
 }
+
 
 .student-cell {
-  width: 150px;
-  min-width: 150px;
+  width:150px;
+
+  min-width:150px;
 }
+
 
 .student-no {
-  font-weight: 700;
+  font-weight:700;
 }
+
 
 .student-name {
-  margin-top: 4px;
+  margin-top:4px;
 
-  color: #555;
+  color:#555;
 }
+
 
 .answer-cell {
-  width: 520px;
-  min-width: 520px;
+  width:520px;
+
+  min-width:520px;
 }
+
 
 .answer-viewer {
-  position: relative;
+  position:relative;
 
-  overflow: hidden;
+  overflow:hidden;
 
-  width: 100%;
+  width:100%;
 
-  min-height: 160px;
+  min-height:160px;
 
-  background: #f7f8f9;
+  background:#f7f8f9;
 
-  border: 1px solid #e0e3e6;
+  border:1px solid #e0e3e6;
 }
+
 
 .answer-viewer img {
-  position: absolute;
+  position:absolute;
 
-  max-width: none;
-  max-height: none;
+  max-width:none;
 
-  margin: 0;
+  max-height:none;
 
-  user-select: none;
+  margin:0;
+
+  user-select:none;
 }
+
 
 .answer-error {
-  padding: 40px 10px;
+  padding:40px 10px;
 
-  text-align: center;
+  text-align:center;
 
-  color: #b42318;
+  color:#b42318;
 }
+
 
 .score-cell {
-  width: 150px;
-  min-width: 150px;
+  width:180px;
 
-  text-align: center;
+  min-width:180px;
+
+  text-align:center;
 }
+
 
 .score-input {
-  width: 90px;
+  width:90px;
 
-  height: 40px;
+  height:40px;
 
-  padding: 0 8px;
+  padding:0 8px;
 
-  font-size: 17px;
+  font-size:17px;
 
-  text-align: center;
+  text-align:center;
 }
+
 
 .score-save {
-  margin-top: 7px;
+  margin-top:7px;
 }
+
 
 .score-state {
-  margin-top: 7px;
+  margin-top:7px;
 
-  color: #666;
+  color:#666;
 
-  font-size: 12px;
+  font-size:12px;
 }
+
 
 .score-state.marked {
-  color: #1769aa;
+  color:#1769aa;
 
-  font-weight: 700;
+  font-weight:700;
 }
+
 
 .score-state.error {
-  color: #b42318;
+  color:#b42318;
 
-  font-weight: 700;
+  font-weight:700;
 }
+
 
 .warning {
-  display: none;
+  display:none;
 
-  margin-top: 7px;
+  margin-top:7px;
 
-  padding: 7px;
+  padding:7px;
 
-  color: #b42318;
+  color:#b42318;
 
-  background: #fff4f2;
+  background:#fff4f2;
 
-  border: 1px solid #efc2bc;
+  border:1px solid #efc2bc;
 
-  font-size: 12px;
+  font-size:12px;
 }
+
 
 .warning.show {
-  display: block;
+  display:block;
 }
+
 
 .complete {
-  display: none;
+  display:none;
 
-  margin-top: 15px;
+  margin-top:15px;
 
-  padding: 18px;
+  padding:18px;
 
-  background: #fff;
+  background:#fff;
 
-  border: 1px solid #d0d6dc;
+  border:1px solid #d0d6dc;
 }
+
 
 .complete.show {
-  display: block;
+  display:block;
 }
+
 
 .complete-title {
-  margin-bottom: 8px;
+  margin-bottom:8px;
 
-  font-size: 18px;
+  font-size:18px;
 
-  font-weight: 700;
+  font-weight:700;
 }
 
+
 .empty {
-  padding: 50px;
+  padding:50px;
 
-  text-align: center;
+  text-align:center;
 
-  color: #777;
+  color:#777;
 }
 
 </style>
@@ -314,26 +372,26 @@
 
 <header class="topbar">
 
-  <div class="system-name">
-    テスト成績システム
-  </div>
+<div class="system-name">
+  テスト成績システム
+</div>
 
 
-  <div class="topbar-space"></div>
+<div class="topbar-space"></div>
 
 
-  <span id="teacherName">
-    -
-  </span>
+<span id="teacherName">
+  -
+</span>
 
 
-  <button
-    id="logoutButton"
-    class="logout-button"
-    type="button"
-  >
-    ログアウト
-  </button>
+<button
+  id="logoutButton"
+  class="logout-button"
+  type="button"
+>
+  ログアウト
+</button>
 
 </header>
 
@@ -341,162 +399,185 @@
 <main class="marking-main">
 
 
-  <div class="toolbar">
-
-    <a
-      href="/teacher/marking"
-      class="btn"
-    >
-      採点一覧へ戻る
-    </a>
+<div class="toolbar">
 
 
-    <a
-      id="pointsButton"
-      href="#"
-      class="btn"
-    >
-      配点設定
-    </a>
+<a
+  href="/teacher/marking"
+  class="btn"
+>
+  採点一覧へ戻る
+</a>
 
 
-    <button
-      id="refreshButton"
-      class="btn"
-      type="button"
-    >
-      更新
-    </button>
-
-  </div>
+<a
+  id="pointsButton"
+  href="#"
+  class="btn"
+>
+  配点設定
+</a>
 
 
-  <div
-    id="status"
-    class="status"
-  >
-    JavaScriptを起動しています...
-  </div>
+<button
+  id="refreshButton"
+  class="btn"
+  type="button"
+>
+  更新
+</button>
 
 
-  <div
-    id="progress"
-    class="progress"
-  >
-
-    <div
-      id="progressText"
-      class="progress-text"
-    >
-      -
-    </div>
+</div>
 
 
-    <div class="progress-track">
-
-      <div
-        id="progressBar"
-        class="progress-bar"
-      ></div>
-
-    </div>
-
-  </div>
+<div
+  id="status"
+  class="status"
+>
+  JavaScriptを起動しています...
+</div>
 
 
-  <section
-    class="question-header"
-  >
+<div
+  id="progress"
+  class="progress"
+>
 
-    <div>
-
-      <div
-        id="questionTitle"
-        class="question-title"
-      >
-        -
-      </div>
-
-
-      <div
-        id="questionMeta"
-        class="question-meta"
-      >
-        -
-      </div>
-
-    </div>
+<div
+  id="progressText"
+  class="progress-text"
+>
+  -
+</div>
 
 
-    <div class="navigation">
+<div class="progress-track">
 
-      <button
-        id="previousButton"
-        class="btn"
-        type="button"
-        disabled
-      >
-        前の問題
-      </button>
+<div
+  id="progressBar"
+  class="progress-bar"
+></div>
 
+</div>
 
-      <button
-        id="nextButton"
-        class="btn btn-primary"
-        type="button"
-      >
-        次の問題
-      </button>
-
-    </div>
-
-  </section>
+</div>
 
 
-  <section
-    id="answerTableWrap"
-    class="answer-table-wrap"
-  >
+<section
+  class="question-header"
+>
 
-    <div class="empty">
-      答案を読み込んでいます...
-    </div>
+<div>
 
-  </section>
-
-
-  <section
-    id="complete"
-    class="complete"
-  >
-
-    <div class="complete-title">
-      全答案・全設問の採点が完了しました。
-    </div>
+<div
+  id="questionTitle"
+  class="question-title"
+>
+  -
+</div>
 
 
-    <div>
-      成績・偏差値・順位の処理が完了するまで公開しません。
-    </div>
+<div
+  id="questionMeta"
+  class="question-meta"
+>
+  -
+</div>
 
-  </section>
+</div>
+
+
+<div class="navigation">
+
+<button
+  id="previousButton"
+  class="btn"
+  type="button"
+  disabled
+>
+  前の問題
+</button>
+
+
+<button
+  id="nextButton"
+  class="btn btn-primary"
+  type="button"
+>
+  次の問題
+</button>
+
+</div>
+
+</section>
+
+
+<section
+  id="answerTableWrap"
+  class="answer-table-wrap"
+>
+
+<div class="empty">
+  答案を読み込んでいます...
+</div>
+
+</section>
+
+
+<section
+  id="complete"
+  class="complete"
+>
+
+<div class="complete-title">
+  全答案・全設問の採点が完了しました。
+</div>
+
+
+<div>
+  成績・偏差値・順位の処理が完了するまで公開しません。
+</div>
+
+</section>
 
 
 </main>
 
+
+<!-- =====================================================
+     Supabase
+===================================================== -->
 
 <script
   src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
 ></script>
 
 
-<script src="/js/config.js"></script>
-
-<script src="/js/auth.js"></script>
-
+<!-- =====================================================
+     Config
+===================================================== -->
 
 <script
-  src="/js/teacher/marking.js?v=20261115"
+  src="/js/config.js?v=20261116"
+></script>
+
+
+<!-- =====================================================
+     Auth
+===================================================== -->
+
+<script
+  src="/js/auth.js?v=20261116"
+></script>
+
+
+<!-- =====================================================
+     Marking
+===================================================== -->
+
+<script
+  src="/js/teacher/marking.js?v=20261116"
 ></script>
 
 
@@ -505,39 +586,84 @@
 "use strict";
 
 
-(function () {
+/* =========================================================
+   URL
+========================================================= */
 
-  const params =
-    new URLSearchParams(
-      window.location.search
-    );
-
-
-  const testId =
-    params.get(
-      "test"
-    );
+const params =
+  new URLSearchParams(
+    window.location.search
+  );
 
 
-  const pointsButton =
-    document.getElementById(
-      "pointsButton"
-    );
+const testId =
+  params.get(
+    "test"
+  );
 
 
-  if (
-    pointsButton &&
-    testId
-  ) {
+const answerId =
+  params.get(
+    "answer"
+  );
 
-    pointsButton.href =
-      `/teacher/tests/points?test=${encodeURIComponent(
-        testId
-      )}`;
 
-  }
+/* =========================================================
+   POINTS LINK
+========================================================= */
 
-})();
+const pointsButton =
+  document.getElementById(
+    "pointsButton"
+  );
+
+
+if (
+  pointsButton &&
+  testId
+) {
+
+  pointsButton.href =
+    `/teacher/tests/points?test=${encodeURIComponent(
+      testId
+    )}`;
+
+}
+
+
+/* =========================================================
+   INITIAL ANSWER
+   ---------------------------------------------------------
+   marking.jsがURLのanswerを利用できるように
+   グローバルへ渡す。
+========================================================= */
+
+window.__INITIAL_ANSWER_ID__ =
+  answerId ||
+  null;
+
+
+window.__INITIAL_TEST_ID__ =
+  testId ||
+  null;
+
+
+/* =========================================================
+   REFRESH
+========================================================= */
+
+document
+  .getElementById(
+    "refreshButton"
+  )
+  ?.addEventListener(
+    "click",
+    () => {
+
+      window.location.reload();
+
+    }
+  );
 
 </script>
 

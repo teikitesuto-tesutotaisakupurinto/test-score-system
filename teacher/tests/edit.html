@@ -71,7 +71,7 @@
 .actions {
   display:flex;
 
-  gap:8px;
+  gap:10px;
 
   flex-wrap:wrap;
 }
@@ -82,35 +82,18 @@
 
   margin-bottom:15px;
 
-  padding:10px;
-
-  display:none;
+  white-space:pre-wrap;
 }
 
 
 .message.error {
-  display:block;
-
-  background:#fff4f2;
-
   color:#b42318;
-
-  border:
-    1px solid #efc2bc;
 }
 
 
 .message.success {
-  display:block;
-
-  background:#f1faf5;
-
   color:#16834b;
-
-  border:
-    1px solid #a9d8bd;
 }
-
 
 </style>
 
@@ -119,199 +102,207 @@
 
 <body>
 
+
 <header class="topbar">
 
-  <div class="system-name">
-    テスト成績システム
-  </div>
+<div class="system-name">
+  テスト成績システム
+</div>
 
-  <div class="topbar-space"></div>
 
-  <span id="teacherName">
-    -
-  </span>
+<div class="topbar-space"></div>
 
-  <button
-    id="logoutButton"
-    class="logout-button"
-    type="button"
-  >
-    ログアウト
-  </button>
+
+<span id="teacherName">
+  -
+</span>
+
+
+<button
+id="logoutButton"
+class="logout-button"
+type="button"
+>
+  ログアウト
+</button>
 
 </header>
 
 
 <main class="main">
 
-  <h1 id="pageTitle">
-    テスト編集
-  </h1>
+
+<h1 id="pageTitle">
+  テスト編集
+</h1>
 
 
-  <section class="card">
-
-    <div
-      id="message"
-      class="message"
-      aria-live="polite"
-    ></div>
+<section class="card">
 
 
-    <div class="field">
-
-      <label for="name">
-        テスト名
-      </label>
-
-      <input
-        id="name"
-        type="text"
-        maxlength="200"
-        required
-      >
-
-    </div>
+<div
+id="message"
+class="message"
+aria-live="polite"
+>
+</div>
 
 
-    <div class="field">
+<div class="field">
 
-      <label for="subject">
-        教科
-      </label>
-
-      <input
-        id="subject"
-        type="text"
-        maxlength="50"
-      >
-
-    </div>
+<label for="name">
+  テスト名
+</label>
 
 
-    <div class="field">
+<input
+id="name"
+type="text"
+required
+maxlength="200"
+>
 
-      <label for="grade">
-        学年
-      </label>
-
-      <input
-        id="grade"
-        type="text"
-        maxlength="30"
-      >
-
-    </div>
+</div>
 
 
-    <div class="field">
+<div class="field">
 
-      <label for="className">
-        クラス
-      </label>
-
-      <input
-        id="className"
-        type="text"
-        maxlength="50"
-      >
-
-    </div>
+<label for="subject">
+  教科
+</label>
 
 
-    <div class="field">
+<input
+id="subject"
+type="text"
+maxlength="50"
+>
 
-      <label for="testDate">
-        実施日
-      </label>
-
-      <input
-        id="testDate"
-        type="date"
-      >
-
-    </div>
+</div>
 
 
-    <div class="field">
+<div class="field">
 
-      <label for="maxScore">
-        満点
-      </label>
-
-      <input
-        id="maxScore"
-        type="number"
-        min="0"
-        step="0.5"
-      >
-
-    </div>
+<label for="grade">
+  学年
+</label>
 
 
-    <div class="actions">
+<input
+id="grade"
+type="text"
+maxlength="30"
+>
 
-      <button
-        id="saveButton"
-        class="btn btn-primary"
-        type="button"
-      >
-        保存
-      </button>
+</div>
 
 
-      <button
-        id="pagesButton"
-        class="btn"
-        type="button"
-      >
-        解答用紙・ページ設定
-      </button>
+<div class="field">
+
+<label for="className">
+  クラス
+</label>
 
 
-      <button
-        id="layoutButton"
-        class="btn"
-        type="button"
-      >
-        枠設定
-      </button>
+<input
+id="className"
+type="text"
+maxlength="50"
+>
+
+</div>
 
 
-      <button
-        id="pointsButton"
-        class="btn"
-        type="button"
-      >
-        配点設定
-      </button>
+<div class="field">
+
+<label for="testDate">
+  実施日
+</label>
 
 
-      <button
-        id="backButton"
-        class="btn"
-        type="button"
-      >
-        戻る
-      </button>
+<input
+id="testDate"
+type="date"
+>
 
-    </div>
+</div>
 
-  </section>
+
+<div class="field">
+
+<label for="maxScore">
+  満点
+</label>
+
+
+<input
+id="maxScore"
+type="number"
+min="0"
+step="0.1"
+>
+
+</div>
+
+
+<div class="actions">
+
+
+<button
+id="saveButton"
+class="btn btn-primary"
+type="button"
+>
+保存
+</button>
+
+
+<button
+id="pagesButton"
+class="btn"
+type="button"
+>
+解答用紙・枠設定
+</button>
+
+
+<button
+id="pointsButton"
+class="btn"
+type="button"
+>
+配点設定
+</button>
+
+
+<button
+id="backButton"
+class="btn"
+type="button"
+>
+戻る
+</button>
+
+
+</div>
+
+
+</section>
+
 
 </main>
 
 
 <script
-  src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
 ></script>
 
 <script
-  src="/js/config.js?v=20261116"
+src="/js/config.js"
 ></script>
 
 <script
-  src="/js/auth.js?v=20261116"
+src="/js/auth.js"
 ></script>
 
 
@@ -320,181 +311,375 @@
 "use strict";
 
 
-(async function () {
+let DB = null;
 
-  const profile =
-    await requireTeacher();
-
-
-  if (!profile) {
-
-    return;
-
-  }
+let testId = null;
 
 
-  document.getElementById(
-    "teacherName"
-  ).textContent =
-    profile.name ||
-    "先生";
+document.addEventListener(
+  "DOMContentLoaded",
+  initialize
+);
 
 
-  document
-    .getElementById(
-      "logoutButton"
-    )
-    .addEventListener(
-      "click",
-      logout
-    );
+async function initialize() {
+
+  try {
+
+    DB =
+      window.supabaseClient ||
+      window.SB;
 
 
-  const params =
-    new URLSearchParams(
-      window.location.search
-    );
+    const auth =
+      await requireRole(
+        "teacher"
+      );
 
 
-  const testId =
-    params.get(
-      "id"
-    ) ||
-    params.get(
-      "test"
-    );
-
-
-  const nameInput =
-    document.getElementById(
-      "name"
-    );
-
-
-  const subjectInput =
-    document.getElementById(
-      "subject"
-    );
-
-
-  const gradeInput =
-    document.getElementById(
-      "grade"
-    );
-
-
-  const classInput =
-    document.getElementById(
-      "className"
-    );
-
-
-  const dateInput =
-    document.getElementById(
-      "testDate"
-    );
-
-
-  const maxScoreInput =
-    document.getElementById(
-      "maxScore"
-    );
-
-
-  const message =
-    document.getElementById(
-      "message"
-    );
-
-
-  const saveButton =
-    document.getElementById(
-      "saveButton"
-    );
-
-
-  const pagesButton =
-    document.getElementById(
-      "pagesButton"
-    );
-
-
-  const layoutButton =
-    document.getElementById(
-      "layoutButton"
-    );
-
-
-  const pointsButton =
-    document.getElementById(
-      "pointsButton"
-    );
-
-
-  function showMessage(
-    text,
-    type = "error"
-  ) {
-
-    message.textContent =
-      text;
-
-    message.className =
-      `message ${type}`;
-
-  }
-
-
-  function clearMessage() {
-
-    message.textContent =
-      "";
-
-    message.className =
-      "message";
-
-  }
-
-
-  async function loadTest() {
-
-    if (!testId) {
-
-      document.getElementById(
-        "pageTitle"
-      ).textContent =
-        "テスト作成";
-
+    if (!auth) {
 
       return;
 
     }
 
 
+    document.getElementById(
+      "teacherName"
+    ).textContent =
+      auth.profile?.name ||
+      "先生";
+
+
+    const params =
+      new URLSearchParams(
+        location.search
+      );
+
+
+    testId =
+      params.get(
+        "test"
+      ) ||
+      params.get(
+        "id"
+      );
+
+
+    if (!testId) {
+
+      throw new Error(
+        "テストIDがありません。"
+      );
+
+    }
+
+
+    document
+      .getElementById(
+        "logoutButton"
+      )
+      .addEventListener(
+        "click",
+        async () => {
+
+          await logout();
+
+        }
+      );
+
+
+    document
+      .getElementById(
+        "saveButton"
+      )
+      .addEventListener(
+        "click",
+        saveTest
+      );
+
+
+    document
+      .getElementById(
+        "pagesButton"
+      )
+      .addEventListener(
+        "click",
+        () => {
+
+          location.href =
+            `/teacher/tests/pages?test=${encodeURIComponent(
+              testId
+            )}`;
+
+        }
+      );
+
+
+    document
+      .getElementById(
+        "pointsButton"
+      )
+      .addEventListener(
+        "click",
+        () => {
+
+          location.href =
+            `/teacher/tests/points?test=${encodeURIComponent(
+              testId
+            )}`;
+
+        }
+      );
+
+
+    document
+      .getElementById(
+        "backButton"
+      )
+      .addEventListener(
+        "click",
+        () => {
+
+          location.href =
+            "/teacher/tests";
+
+        }
+      );
+
+
+    await loadTest();
+
+
+  } catch (error) {
+
+    showMessage(
+      error.message ||
+      "テストを読み込めませんでした。",
+      true
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   LOAD
+========================================================= */
+
+async function loadTest() {
+
+  const {
+    data,
+    error
+  } =
+    await DB
+      .from(
+        "tests"
+      )
+      .select(
+        `
+        id,
+        name,
+        subject,
+        grade,
+        class_name,
+        test_date,
+        max_score
+        `
+      )
+      .eq(
+        "id",
+        testId
+      )
+      .maybeSingle();
+
+
+  if (error) {
+
+    throw error;
+
+  }
+
+
+  if (!data) {
+
+    throw new Error(
+      "指定されたテストが見つかりません。"
+    );
+
+  }
+
+
+  document.getElementById(
+    "name"
+  ).value =
+    data.name ||
+    "";
+
+
+  document.getElementById(
+    "subject"
+  ).value =
+    data.subject ||
+    "";
+
+
+  document.getElementById(
+    "grade"
+  ).value =
+    data.grade ||
+    "";
+
+
+  document.getElementById(
+    "className"
+  ).value =
+    data.class_name ||
+    "";
+
+
+  document.getElementById(
+    "testDate"
+  ).value =
+    data.test_date ||
+    "";
+
+
+  document.getElementById(
+    "maxScore"
+  ).value =
+    data.max_score ??
+    "";
+
+}
+
+
+/* =========================================================
+   SAVE
+========================================================= */
+
+async function saveTest() {
+
+  const button =
+    document.getElementById(
+      "saveButton"
+    );
+
+
+  const name =
+    document.getElementById(
+      "name"
+    ).value.trim();
+
+
+  const subject =
+    document.getElementById(
+      "subject"
+    ).value.trim();
+
+
+  const grade =
+    document.getElementById(
+      "grade"
+    ).value.trim();
+
+
+  const className =
+    document.getElementById(
+      "className"
+    ).value.trim();
+
+
+  const testDate =
+    document.getElementById(
+      "testDate"
+    ).value;
+
+
+  const maxScore =
+    Number(
+      document.getElementById(
+        "maxScore"
+      ).value
+    );
+
+
+  if (!name) {
+
+    showMessage(
+      "テスト名を入力してください。",
+      true
+    );
+
+    return;
+
+  }
+
+
+  if (
+    !Number.isFinite(
+      maxScore
+    ) ||
+    maxScore < 0
+  ) {
+
+    showMessage(
+      "満点を正しく入力してください。",
+      true
+    );
+
+    return;
+
+  }
+
+
+  button.disabled =
+    true;
+
+
+  button.textContent =
+    "保存中...";
+
+
+  try {
+
     const {
-      data,
       error
     } =
-      await supabaseClient
+      await DB
         .from(
           "tests"
         )
-        .select(
-          `
-          id,
+        .update({
+
           name,
-          subject,
-          grade,
-          class_name,
-          test_date,
-          max_score
-          `
-        )
+
+          subject:
+            subject ||
+            null,
+
+          grade:
+            grade ||
+            null,
+
+          class_name:
+            className ||
+            null,
+
+          test_date:
+            testDate ||
+            null,
+
+          max_score:
+            maxScore
+
+        })
         .eq(
           "id",
           testId
-        )
-        .maybeSingle();
+        );
 
 
     if (error) {
@@ -504,347 +689,63 @@
     }
 
 
-    if (!data) {
-
-      throw new Error(
-        "指定されたテストが見つかりません。"
-      );
-
-    }
-
-
-    document.getElementById(
-      "pageTitle"
-    ).textContent =
-      "テスト編集";
-
-
-    nameInput.value =
-      data.name ||
-      "";
-
-
-    subjectInput.value =
-      data.subject ||
-      "";
-
-
-    gradeInput.value =
-      data.grade ||
-      "";
-
-
-    classInput.value =
-      data.class_name ||
-      "";
-
-
-    dateInput.value =
-      data.test_date ||
-      "";
-
-
-    maxScoreInput.value =
-      data.max_score ??
-      "";
-
-
-    pagesButton.disabled =
-      false;
-
-
-    layoutButton.disabled =
-      false;
-
-
-    pointsButton.disabled =
-      false;
-
-  }
-
-
-  saveButton.addEventListener(
-    "click",
-    async () => {
-
-      clearMessage();
-
-
-      const name =
-        nameInput.value.trim();
-
-
-      if (!name) {
-
-        showMessage(
-          "テスト名を入力してください。"
-        );
-
-        return;
-
-      }
-
-
-      const maxScoreText =
-        maxScoreInput.value.trim();
-
-
-      const maxScore =
-        maxScoreText ===
-          ""
-          ? null
-          : Number(
-              maxScoreText
-            );
-
-
-      if (
-        maxScoreText !==
-          "" &&
-        (
-          !Number.isFinite(
-            maxScore
-          ) ||
-          maxScore < 0
-        )
-      ) {
-
-        showMessage(
-          "満点を正しく入力してください。"
-        );
-
-        return;
-
-      }
-
-
-      const payload = {
-
-        name,
-
-        subject:
-          subjectInput.value.trim() ||
-          null,
-
-        grade:
-          gradeInput.value.trim() ||
-          null,
-
-        class_name:
-          classInput.value.trim() ||
-          null,
-
-        test_date:
-          dateInput.value ||
-          null,
-
-        max_score:
-          maxScore
-
-      };
-
-
-      saveButton.disabled =
-        true;
-
-
-      try {
-
-        let result;
-
-
-        if (testId) {
-
-          result =
-            await supabaseClient
-              .from(
-                "tests"
-              )
-              .update(
-                payload
-              )
-              .eq(
-                "id",
-                testId
-              )
-              .select(
-                "id"
-              )
-              .single();
-
-        } else {
-
-          result =
-            await supabaseClient
-              .from(
-                "tests"
-              )
-              .insert(
-                payload
-              )
-              .select(
-                "id"
-              )
-              .single();
-
-        }
-
-
-        if (result.error) {
-
-          throw result.error;
-
-        }
-
-
-        const savedId =
-          result.data.id;
-
-
-        showMessage(
-          "保存しました。",
-          "success"
-        );
-
-
-        /*
-         * 新規作成の場合は
-         * 編集画面へ移動。
-         */
-
-        if (!testId) {
-
-          location.href =
-            `/teacher/tests/edit?id=${encodeURIComponent(
-              savedId
-            )}`;
-
-        }
-
-      } catch (error) {
-
-        console.error(
-          error
-        );
-
-
-        showMessage(
-          error.message ||
-          "保存できませんでした。"
-        );
-
-      } finally {
-
-        saveButton.disabled =
-          false;
-
-      }
-
-    }
-  );
-
-
-  pagesButton.addEventListener(
-    "click",
-    () => {
-
-      if (!testId) {
-
-        showMessage(
-          "先にテストを保存してください。"
-        );
-
-        return;
-
-      }
-
-
-      location.href =
-        `/teacher/tests/pages?test=${encodeURIComponent(
-          testId
-        )}`;
-
-    }
-  );
-
-
-  layoutButton.addEventListener(
-    "click",
-    () => {
-
-      if (!testId) {
-
-        showMessage(
-          "先にテストを保存してください。"
-        );
-
-        return;
-
-      }
-
-
-      location.href =
-        `/teacher/tests/layout?test=${encodeURIComponent(
-          testId
-        )}`;
-
-    }
-  );
-
-
-  pointsButton.addEventListener(
-    "click",
-    () => {
-
-      if (!testId) {
-
-        showMessage(
-          "先にテストを保存してください。"
-        );
-
-        return;
-
-      }
-
-
-      location.href =
-        `/teacher/tests/points?test=${encodeURIComponent(
-          testId
-        )}`;
-
-    }
-  );
-
-
-  document
-    .getElementById(
-      "backButton"
-    )
-    .addEventListener(
-      "click",
-      () => {
-
-        location.href =
-          "/teacher/tests";
-
-      }
+    showMessage(
+      "テスト情報を保存しました。",
+      false
     );
 
-
-  try {
-
-    await loadTest();
 
   } catch (error) {
 
     showMessage(
       error.message ||
-      "テストを読み込めませんでした。"
+      "保存に失敗しました。",
+      true
     );
+
+  } finally {
+
+    button.disabled =
+      false;
+
+
+    button.textContent =
+      "保存";
 
   }
 
-})();
+}
+
+
+/* =========================================================
+   MESSAGE
+========================================================= */
+
+function showMessage(
+  text,
+  error = false
+) {
+
+  const element =
+    document.getElementById(
+      "message"
+    );
+
+
+  element.textContent =
+    text;
+
+
+  element.className =
+    error
+      ? "message error"
+      : (
+          text
+            ? "message success"
+            : "message"
+        );
+
+}
 
 </script>
 

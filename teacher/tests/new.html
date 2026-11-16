@@ -1,25 +1,27 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 
 <head>
 
-  <meta charset="UTF-8">
+<meta charset="UTF-8">
 
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
-  >
+<meta
+  name="viewport"
+  content="width=device-width,initial-scale=1.0"
+>
 
-  <title>
-    テスト作成 - テスト成績システム
-  </title>
+<title>
+  テスト作成 - テスト成績システム
+</title>
 
-  <link
-    rel="stylesheet"
-    href="/css/common.css"
-  >
+<link
+  rel="stylesheet"
+  href="/css/common.css"
+>
 
 </head>
+
 
 <body>
 
@@ -38,6 +40,7 @@
   <button
     id="logoutButton"
     class="logout-button"
+    type="button"
   >
     ログアウト
   </button>
@@ -197,8 +200,9 @@
           id="message"
           style="
             min-height:22px;
-            margin-bottom:12px;
+            margin:15px 0 12px;
           "
+          aria-live="polite"
         ></div>
 
 
@@ -216,6 +220,7 @@
           >
             テストを作成
           </button>
+
 
           <a
             href="/teacher/tests"
@@ -239,11 +244,17 @@
   src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
 ></script>
 
-<script src="/js/config.js"></script>
+<script
+  src="/js/config.js?v=20261116"
+></script>
 
-<script src="/js/auth.js"></script>
+<script
+  src="/js/auth.js?v=20261116"
+></script>
 
-<script src="/js/teacher/test-new.js"></script>
+<script
+  src="/js/teacher/test-new.js?v=20261116"
+></script>
 
 </body>
 

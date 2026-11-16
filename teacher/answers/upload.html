@@ -4,21 +4,195 @@
 
 <head>
 
-  <meta charset="utf-8">
+<meta charset="utf-8">
 
-  <meta
-    name="viewport"
-    content="width=device-width,initial-scale=1"
-  >
+<meta
+  name="viewport"
+  content="width=device-width,initial-scale=1"
+>
 
-  <title>
-    答案アップロード - テスト成績システム
-  </title>
+<title>
+  答案アップロード - テスト成績システム
+</title>
 
-  <link
-    rel="stylesheet"
-    href="/css/common.css"
-  >
+<link
+  rel="stylesheet"
+  href="/css/common.css"
+>
+
+<style>
+
+.upload-main {
+  max-width:1100px;
+  margin:0 auto;
+  padding:20px;
+}
+
+.upload-card {
+  background:#fff;
+  border:1px solid #d0d6dc;
+  padding:18px;
+  border-radius:4px;
+}
+
+.form-group {
+  margin-bottom:16px;
+}
+
+.form-group label {
+  display:block;
+  margin-bottom:6px;
+  font-weight:700;
+  font-size:13px;
+}
+
+.form-group select,
+.form-group input[type="file"] {
+  width:100%;
+  min-height:40px;
+}
+
+.help {
+  color:#666;
+  font-size:12px;
+  line-height:1.8;
+}
+
+.actions {
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:15px;
+}
+
+.processing {
+  display:none;
+  margin-top:18px;
+  padding:14px;
+  border:1px solid #d0d6dc;
+  background:#f8fafb;
+}
+
+.processing.show {
+  display:block;
+}
+
+.progress-track {
+  width:100%;
+  height:8px;
+  margin-top:8px;
+  background:#dfe4e8;
+  overflow:hidden;
+  border-radius:4px;
+}
+
+.progress-bar {
+  width:0;
+  height:100%;
+  background:#1769aa;
+  transition:width .15s;
+}
+
+.progress-text {
+  margin-top:8px;
+  color:#666;
+  font-size:12px;
+}
+
+.processing-log {
+  max-height:260px;
+  overflow:auto;
+  margin-top:12px;
+  padding:8px;
+  background:#fff;
+  border:1px solid #e0e4e7;
+  font-size:12px;
+}
+
+.log-row {
+  padding:4px 0;
+  border-bottom:1px solid #edf0f2;
+}
+
+.log-row.success {
+  color:#16834b;
+}
+
+.log-row.error {
+  color:#b42318;
+}
+
+.file-list {
+  margin-top:12px;
+  padding:10px;
+  background:#f5f6f7;
+  border:1px solid #dfe3e6;
+  font-size:12px;
+}
+
+.file-item {
+  padding:4px 0;
+}
+
+.message {
+  min-height:24px;
+  margin-top:12px;
+  white-space:pre-wrap;
+}
+
+.message.error {
+  color:#b42318;
+}
+
+.message.success {
+  color:#16834b;
+}
+
+.summary {
+  display:none;
+  margin-top:15px;
+  padding:12px;
+  background:#f5f6f7;
+  border:1px solid #dfe3e6;
+}
+
+.summary.show {
+  display:block;
+}
+
+.summary-grid {
+  display:grid;
+  grid-template-columns:
+    repeat(3,minmax(0,1fr));
+  gap:10px;
+}
+
+.summary-item {
+  padding:10px;
+  background:#fff;
+  border:1px solid #d5dbe0;
+}
+
+.summary-label {
+  color:#666;
+  font-size:11px;
+}
+
+.summary-value {
+  margin-top:3px;
+  font-size:20px;
+  font-weight:700;
+}
+
+@media(max-width:700px) {
+
+  .summary-grid {
+    grid-template-columns:1fr;
+  }
+
+}
+
+</style>
 
 </head>
 
@@ -26,312 +200,328 @@
 <body>
 
 
-<!-- =====================================================
-     共通上部バー
-====================================================== -->
-
 <header class="topbar">
 
-  <div class="system-name">
-    テスト成績システム
-  </div>
+<div class="system-name">
+  テスト成績システム
+</div>
 
-  <div class="topbar-space"></div>
+<div class="topbar-space"></div>
 
-  <span id="teacherName">
-    -
-  </span>
+<span id="teacherName">
+  -
+</span>
 
-  <button
-    id="logoutButton"
-    type="button"
-    class="logout-button"
-  >
-    ログアウト
-  </button>
+<button
+id="logoutButton"
+type="button"
+class="logout-button"
+>
+ログアウト
+</button>
 
 </header>
 
 
-<!-- =====================================================
-     メイン
-====================================================== -->
+<main class="main-content upload-main">
 
-<main class="main-content">
 
+<div class="page-header">
 
-  <div class="page-header">
+<h1>
+  答案アップロード
+</h1>
 
-    <h1>
-      答案アップロード
-    </h1>
+</div>
 
-  </div>
 
+<section class="upload-card">
 
-  <div class="card">
 
+<div class="form-group">
 
-    <!-- =================================================
-         テスト
-    ================================================== -->
+<label for="test">
+  テスト
+</label>
 
-    <div class="form-group">
 
-      <label for="test">
-        テスト
-      </label>
+<select id="test">
 
+<option value="">
+  テストを選択してください
+</option>
 
-      <select id="test">
+</select>
 
-        <option value="">
-          テストを選択してください
-        </option>
+</div>
 
-      </select>
 
-    </div>
+<div class="form-group">
 
+<label for="answerType">
+  答案種類
+</label>
 
-    <!-- =================================================
-         答案種類
-    ================================================== -->
 
-    <div class="form-group">
+<select id="answerType">
 
-      <label for="answerType">
-        答案種類
-      </label>
+<option value="student">
+  生徒答案
+</option>
 
+<option value="model">
+  解答用紙・模範解答
+</option>
 
-      <select id="answerType">
+</select>
 
-        <option value="student">
-          生徒答案
-        </option>
+</div>
 
-        <option value="model">
-          解答用紙・模範解答
-        </option>
 
-      </select>
+<div class="form-group">
 
-    </div>
+<label for="files">
+  答案ファイル
+</label>
 
 
-    <!-- =================================================
-         ファイル
-    ================================================== -->
+<input
+id="files"
+type="file"
+multiple
+accept="
+.pdf,
+.jpg,
+.jpeg,
+.png,
+.webp,
+.gif,
+.bmp,
+.zip
+"
+>
 
-    <div class="form-group">
 
-      <label for="files">
-        答案ファイル
-      </label>
+<div class="help">
 
+PDF / JPG / JPEG / PNG / WEBP / GIF / BMP / ZIP
 
-      <input
-        id="files"
-        type="file"
-        multiple
-        accept=".pdf,.jpg,.jpeg,.png,.webp,.gif,.bmp,.zip"
-      >
+<br>
 
-    </div>
+PDFはページ単位で処理します。
 
+<br>
 
-    <p class="small muted">
+ZIPは内部のPDF・画像を順番に処理します。
 
-      PDF / JPG / JPEG / PNG / WEBP / GIF / BMP / ZIP
+<br>
 
-      <br>
+生徒答案はQRコードから生徒を自動紐付けします。
 
-      PDFはページ単位で処理します。
+<br>
 
-      <br>
+QRを読み取れなかった答案は「未紐付け」として残します。
 
-      ZIPは内部のPDF・画像を展開して処理します。
+</div>
 
-      <br>
-
-      生徒答案はQRコードを読み取り、生徒を自動特定します。
-
-    </p>
-
-
-    <!-- =================================================
-         選択ファイル
-    ================================================== -->
-
-    <div
-      id="fileList"
-      hidden
-    ></div>
-
-
-    <!-- =================================================
-         操作
-    ================================================== -->
-
-    <div class="quick-actions">
-
-      <button
-        id="uploadButton"
-        type="button"
-        class="quick-button primary"
-      >
-        アップロード開始
-      </button>
-
-
-      <button
-        id="clearButton"
-        type="button"
-        class="quick-button"
-      >
-        クリア
-      </button>
-
-    </div>
-
-
-    <!-- =================================================
-         処理状況
-    ================================================== -->
-
-    <div
-      id="processingArea"
-      hidden
-      style="
-        margin-top:18px;
-        padding:14px;
-        border:1px solid #d0d6dc;
-        background:#f8fafb;
-        border-radius:4px;
-      "
-    >
-
-      <div
-        id="processingTitle"
-        style="
-          font-weight:700;
-          margin-bottom:8px;
-        "
-      >
-        処理中
-      </div>
-
-
-      <div
-        style="
-          height:7px;
-          background:#dfe4e8;
-          overflow:hidden;
-          border-radius:4px;
-        "
-      >
-
-        <div
-          id="progressBar"
-          style="
-            width:0;
-            height:100%;
-            background:#1769aa;
-            transition:width .2s;
-          "
-        ></div>
-
-      </div>
-
-
-      <p
-        id="progressText"
-        class="small muted"
-      >
-        待機中
-      </p>
-
-
-      <div
-        id="processingLog"
-        style="
-          max-height:260px;
-          overflow:auto;
-          margin-top:10px;
-          font-size:13px;
-        "
-      ></div>
-
-    </div>
-
-
-    <!-- =================================================
-         メッセージ
-    ================================================== -->
-
-    <p
-      id="message"
-      class="small"
-      aria-live="polite"
-    ></p>
-
-
-    <!-- =================================================
-         結果
-    ================================================== -->
-
-    <div
-      id="uploadList"
-      hidden
-    ></div>
-
-
-  </div>
+</div>
+
+
+<div
+id="fileList"
+class="file-list"
+hidden
+>
+</div>
+
+
+<div class="actions">
+
+<button
+id="uploadButton"
+type="button"
+class="btn btn-primary"
+>
+アップロード開始
+</button>
+
+
+<button
+id="clearButton"
+type="button"
+class="btn"
+>
+クリア
+</button>
+
+
+<a
+href="/teacher/answers/processing"
+class="btn"
+>
+処理状況
+</a>
+
+
+<a
+href="/teacher/answers/unmatched"
+class="btn"
+>
+未紐付け答案
+</a>
+
+</div>
+
+
+<div
+id="processingArea"
+class="processing"
+>
+
+<div
+id="processingTitle"
+>
+処理中
+</div>
+
+
+<div class="progress-track">
+
+<div
+id="progressBar"
+class="progress-bar"
+>
+</div>
+
+</div>
+
+
+<div
+id="progressText"
+class="progress-text"
+>
+待機中
+</div>
+
+
+<div
+id="processingLog"
+class="processing-log"
+>
+</div>
+
+</div>
+
+
+<div
+id="message"
+class="message"
+aria-live="polite"
+>
+</div>
+
+
+<div
+id="uploadList"
+class="summary"
+>
+
+<div class="summary-grid">
+
+<div class="summary-item">
+
+<div class="summary-label">
+  答案
+</div>
+
+<div
+id="uploadedCount"
+class="summary-value"
+>
+0
+</div>
+
+</div>
+
+
+<div class="summary-item">
+
+<div class="summary-label">
+  自動紐付け
+</div>
+
+<div
+id="matchedCount"
+class="summary-value"
+>
+0
+</div>
+
+</div>
+
+
+<div class="summary-item">
+
+<div class="summary-label">
+  未紐付け
+</div>
+
+<div
+id="unmatchedCount"
+class="summary-value"
+>
+0
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+
+</section>
 
 
 </main>
 
 
-<!-- =====================================================
-     ライブラリ
-====================================================== -->
+<script
+src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+></script>
 
 <script
-  src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"
+></script>
+
+<script
+src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"
+></script>
+
+<script
+src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"
 ></script>
 
 
 <script
-  src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"
+src="/js/config.js?v=20261116"
 ></script>
-
 
 <script
-  src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"
+src="/js/auth.js?v=20261116"
 ></script>
-
 
 <script
-  src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"
+src="/js/lib/pdf-loader.js?v=20261116"
 ></script>
 
+<script
+src="/js/lib/file-parser.js?v=20261116"
+></script>
 
-<!-- =====================================================
-     共通JS
-====================================================== -->
-
-<script src="/js/config.js"></script>
-
-<script src="/js/auth.js"></script>
-
-
-<!-- =====================================================
-     答案アップロード
-     sなしを使用
-====================================================== -->
-
-<script src="/js/teacher/answer-upload.js"></script>
+<script
+src="/js/teacher/answer-upload.js?v=20261116"
+></script>
 
 
 </body>

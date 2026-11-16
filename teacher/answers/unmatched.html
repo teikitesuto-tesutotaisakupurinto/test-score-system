@@ -1,129 +1,271 @@
+
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
 
-  <meta charset="UTF-8">
+<meta charset="UTF-8">
 
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
-  >
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1.0"
+>
 
-  <title>
-    未紐付け答案 - テスト成績システム
-  </title>
+<title>
+  未紐付け答案 - テスト成績システム
+</title>
 
-  <link
-    rel="stylesheet"
-    href="/css/common.css"
-  >
+<link
+  rel="stylesheet"
+  href="/css/common.css"
+>
+
+<style>
+
+.unmatched-main {
+  max-width:1400px;
+  margin:0 auto;
+  padding:20px;
+}
+
+.unmatched-card {
+  margin-bottom:12px;
+  padding:15px;
+  background:#fff;
+  border:1px solid #d0d6dc;
+  border-radius:4px;
+}
+
+.answer-grid {
+  display:grid;
+  grid-template-columns:
+    minmax(0,1fr)
+    320px;
+  gap:20px;
+  align-items:start;
+}
+
+.answer-info h3 {
+  margin-top:0;
+  margin-bottom:8px;
+}
+
+.answer-info p {
+  margin:5px 0;
+  color:#555;
+  font-size:13px;
+}
+
+.student-select {
+  width:100%;
+  height:40px;
+  padding:0 8px;
+  margin-top:6px;
+}
+
+.match-button {
+  width:100%;
+  margin-top:8px;
+}
+
+.message {
+  min-height:24px;
+  margin-bottom:12px;
+  white-space:pre-wrap;
+}
+
+.message.error {
+  color:#b42318;
+}
+
+.message.success {
+  color:#16834b;
+}
+
+.empty {
+  padding:40px;
+  text-align:center;
+  color:#777;
+}
+
+.status-badge {
+  display:inline-block;
+  padding:3px 7px;
+  background:#fff4f2;
+  color:#b42318;
+  border:1px solid #efc2bc;
+  border-radius:3px;
+  font-size:12px;
+}
+
+@media(max-width:750px) {
+
+  .answer-grid {
+    grid-template-columns:1fr;
+  }
+
+}
+
+</style>
 
 </head>
 
+
 <body>
+
 
 <header class="topbar">
 
-  <div class="system-name">
-    テスト成績システム
-  </div>
+<div class="system-name">
+  テスト成績システム
+</div>
 
-  <div class="topbar-space"></div>
 
-  <span id="teacherName">-</span>
+<div class="topbar-space"></div>
 
-  <button
-    id="logoutButton"
-    class="logout-button"
-  >
-    ログアウト
-  </button>
+
+<span id="teacherName">
+  -
+</span>
+
+
+<button
+id="logoutButton"
+class="logout-button"
+type="button"
+>
+  ログアウト
+</button>
 
 </header>
 
 
 <div class="teacher-layout">
 
-  <aside class="sidebar">
 
-    <div class="sidebar-title">
-      答案
-    </div>
+<aside class="sidebar">
 
-    <a
-      href="/teacher/answers/upload"
-      class="menu-link"
-    >
-      答案アップロード
-    </a>
-
-    <a
-      href="/teacher/answers/processing"
-      class="menu-link"
-    >
-      処理状況
-    </a>
-
-    <a
-      href="/teacher/answers/unmatched"
-      class="menu-link active"
-    >
-      未紐付け答案
-    </a>
-
-    <a
-      href="/teacher/answers/matched"
-      class="menu-link"
-    >
-      紐付け済み答案
-    </a>
-
-  </aside>
+<div class="sidebar-title">
+  答案
+</div>
 
 
-  <main class="main-content">
-
-    <div class="page-header">
-
-      <h1>
-        未紐付け答案
-      </h1>
-
-    </div>
+<a
+href="/teacher/answers/upload"
+class="menu-link"
+>
+  答案アップロード
+</a>
 
 
-    <div class="card">
-
-      <p>
-        QRが読み取れなかった答案です。
-        生徒番号を選択して手動で紐付けできます。
-      </p>
-
-    </div>
+<a
+href="/teacher/answers/processing"
+class="menu-link"
+>
+  処理状況
+</a>
 
 
-    <div
-      id="answerList"
-    >
+<a
+href="/teacher/answers/unmatched"
+class="menu-link active"
+>
+  未紐付け答案
+</a>
 
-      <div class="card">
-        読み込み中...
-      </div>
 
-    </div>
+<a
+href="/teacher/answers/matched"
+class="menu-link"
+>
+  紐付け済み答案
+</a>
 
-  </main>
+
+<a
+href="/teacher/marking"
+class="menu-link"
+>
+  デジタル採点
+</a>
+
+</aside>
+
+
+<main class="main-content unmatched-main">
+
+
+<div class="page-header">
+
+<h1>
+  未紐付け答案
+</h1>
 
 </div>
 
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<div class="card">
 
-<script src="/js/config.js"></script>
+<p>
+  QRが読み取れなかった答案です。
+  生徒番号を選択して手動で紐付けできます。
+</p>
 
-<script src="/js/auth.js"></script>
+<p
+style="
+  margin-bottom:0;
+  color:#666;
+  font-size:12px;
+"
+>
+  紐付け後は自動的に答案クロップを再生成し、
+  採点画面で使用できる状態にします。
+</p>
 
-<script src="/js/teacher/answer-unmatched.js"></script>
+</div>
+
+
+<div
+id="message"
+class="message"
+aria-live="polite"
+>
+</div>
+
+
+<div
+id="answerList"
+>
+
+<div class="unmatched-card">
+  読み込み中...
+</div>
+
+</div>
+
+
+</main>
+
+</div>
+
+
+<script
+src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+></script>
+
+<script
+src="/js/config.js?v=20261116"
+></script>
+
+<script
+src="/js/auth.js?v=20261116"
+></script>
+
+<script
+src="/js/teacher/answer-unmatched.js?v=20261116"
+></script>
+
 
 </body>
+
 </html>

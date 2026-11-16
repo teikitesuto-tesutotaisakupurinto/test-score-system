@@ -1,183 +1,291 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 
 <head>
 
-  <meta charset="UTF-8">
+<meta charset="UTF-8">
 
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
-  >
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1.0"
+>
 
-  <title>
-    クラス生徒 - テスト成績システム
-  </title>
+<title>
+  クラス生徒 - テスト成績システム
+</title>
 
-  <link
-    rel="stylesheet"
-    href="/css/common.css"
-  >
+<link
+  rel="stylesheet"
+  href="/css/common.css"
+>
+
+<style>
+
+.class-main {
+  max-width:1400px;
+  margin:0 auto;
+  padding:20px;
+}
+
+.class-information {
+  margin-bottom:15px;
+  padding:14px;
+  background:#fff;
+  border:1px solid #d0d6dc;
+}
+
+.student-table-wrap {
+  overflow:auto;
+}
+
+.student-table {
+  width:100%;
+  border-collapse:collapse;
+}
+
+.student-table th,
+.student-table td {
+  padding:9px 10px;
+  border-bottom:1px solid #e1e5e8;
+  white-space:nowrap;
+}
+
+.student-table th {
+  background:#f3f5f7;
+  text-align:left;
+}
+
+.student-status {
+  display:inline-block;
+  padding:3px 7px;
+  border-radius:3px;
+  font-size:12px;
+}
+
+.student-status.active {
+  color:#176b35;
+  background:#edf8ef;
+  border:1px solid #b7d9c0;
+}
+
+.student-status.inactive {
+  color:#777;
+  background:#f5f6f7;
+  border:1px solid #d5dbe0;
+}
+
+.empty {
+  padding:40px;
+  color:#777;
+  text-align:center;
+}
+
+</style>
 
 </head>
 
+
 <body>
+
 
 <header class="topbar">
 
-  <div class="system-name">
-    テスト成績システム
-  </div>
+<div class="system-name">
+  テスト成績システム
+</div>
 
-  <div class="topbar-space"></div>
 
-  <span id="teacherName">
-    -
-  </span>
+<div class="topbar-space"></div>
 
-  <button
-    id="logoutButton"
-    class="logout-button"
-  >
-    ログアウト
-  </button>
+
+<span id="teacherName">
+  -
+</span>
+
+
+<button
+id="logoutButton"
+class="logout-button"
+type="button"
+>
+ログアウト
+</button>
 
 </header>
 
 
 <div class="teacher-layout">
 
-  <aside class="sidebar">
 
-    <div class="sidebar-title">
-      クラス
-    </div>
+<aside class="sidebar">
 
-    <a
-      href="/teacher/classes"
-      class="menu-link active"
-    >
-      クラス管理
-    </a>
-
-    <a
-      href="/teacher/classes/new"
-      class="menu-link"
-    >
-      クラス作成
-    </a>
-
-  </aside>
+<div class="sidebar-title">
+  クラス
+</div>
 
 
-  <main class="main-content">
-
-    <div class="page-header">
-
-      <h1 id="classTitle">
-        クラス生徒
-      </h1>
-
-      <div style="margin-left:auto;">
-
-        <a
-          href="/teacher/students"
-          class="btn"
-        >
-          生徒一覧
-        </a>
-
-      </div>
-
-    </div>
+<a
+href="/teacher/classes"
+class="menu-link active"
+>
+  クラス管理
+</a>
 
 
-    <div class="card">
+<a
+href="/teacher/classes/new"
+class="menu-link"
+>
+  クラス作成
+</a>
 
-      <div
-        id="classInformation"
-        style="
-          margin-bottom:16px;
-        "
-      >
-        読み込み中...
-      </div>
+</aside>
 
 
-      <div style="overflow:auto;">
-
-        <table class="table">
-
-          <thead>
-
-            <tr>
-
-              <th>
-                生徒番号
-              </th>
-
-              <th>
-                氏名
-              </th>
-
-              <th>
-                学年
-              </th>
-
-              <th>
-                クラス
-              </th>
-
-              <th>
-                状態
-              </th>
-
-              <th>
-                操作
-              </th>
-
-            </tr>
-
-          </thead>
+<main class="main-content class-main">
 
 
-          <tbody id="studentRows">
+<div class="page-header">
 
-            <tr>
+<h1 id="classTitle">
+  クラス生徒
+</h1>
 
-              <td
-                colspan="6"
-                style="
-                  text-align:center;
-                "
-              >
-                読み込み中...
-              </td>
 
-            </tr>
+<div style="margin-left:auto;">
 
-          </tbody>
+<a
+href="/teacher/classes"
+class="btn"
+>
+クラス一覧
+</a>
 
-        </table>
 
-      </div>
+<a
+href="/teacher/students"
+class="btn"
+>
+生徒一覧
+</a>
 
-    </div>
+</div>
 
-  </main>
+</div>
+
+
+<div
+id="message"
+style="
+  min-height:22px;
+  margin-bottom:10px;
+"
+aria-live="polite"
+>
+</div>
+
+
+<section class="class-information">
+
+
+<div
+id="classInformation"
+>
+読み込み中...
+</div>
+
+
+</section>
+
+
+<section class="card">
+
+
+<div class="student-table-wrap">
+
+<table class="student-table">
+
+<thead>
+
+<tr>
+
+<th>
+  生徒番号
+</th>
+
+<th>
+  氏名
+</th>
+
+<th>
+  学年
+</th>
+
+<th>
+  クラス
+</th>
+
+<th>
+  状態
+</th>
+
+<th>
+  操作
+</th>
+
+</tr>
+
+</thead>
+
+
+<tbody
+id="studentRows"
+>
+
+<tr>
+
+<td
+colspan="6"
+class="empty"
+>
+読み込み中...
+</td>
+
+</tr>
+
+</tbody>
+
+</table>
+
+</div>
+
+
+</section>
+
+
+</main>
 
 </div>
 
 
 <script
-  src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
 ></script>
 
-<script src="/js/config.js"></script>
+<script
+src="/js/config.js?v=20261116"
+></script>
 
-<script src="/js/auth.js"></script>
+<script
+src="/js/auth.js?v=20261116"
+></script>
 
-<script src="/js/teacher/class-students.js"></script>
+<script
+src="/js/teacher/class-students.js?v=20261116"
+></script>
+
 
 </body>
+
 </html>

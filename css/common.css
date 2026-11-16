@@ -1,3 +1,4 @@
+
 * {
   box-sizing: border-box;
 }
@@ -35,12 +36,19 @@ button {
   cursor: pointer;
 }
 
+button:disabled,
+input:disabled,
+select:disabled {
+  cursor: not-allowed;
+  opacity: .65;
+}
+
 /* =========================
    上部バー
 ========================= */
 
 .topbar {
-  height: 54px;
+  min-height: 54px;
 
   display: flex;
   align-items: center;

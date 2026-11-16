@@ -1,28 +1,29 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 
 <head>
 
-  <meta charset="UTF-8">
+<meta charset="UTF-8">
 
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
-  >
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1.0"
+>
 
-  <title>
-    答案返却 - テスト成績システム
-  </title>
+<title>
+  答案返却 - テスト成績システム
+</title>
 
-  <link
-    rel="stylesheet"
-    href="/css/common.css"
-  >
+<link
+  rel="stylesheet"
+  href="/css/common.css"
+>
 
-  <link
-    rel="stylesheet"
-    href="/css/answer-return.css"
-  >
+<link
+  rel="stylesheet"
+  href="/css/answer-return.css"
+>
 
 </head>
 
@@ -54,7 +55,6 @@
   </button>
 
 </header>
-
 
 
 <div class="teacher-layout">
@@ -101,7 +101,6 @@
   </aside>
 
 
-
   <main class="main-content">
 
 
@@ -114,23 +113,22 @@
     </div>
 
 
-
     <div class="card">
 
 
       <div class="form-group">
 
-        <label for="testSelect">
-          テスト
+        <label for="answerSelect">
+          答案
         </label>
 
 
         <select
-          id="testSelect"
+          id="answerSelect"
         >
 
           <option value="">
-            テストを選択してください
+            採点済み答案を選択してください
           </option>
 
         </select>
@@ -138,34 +136,8 @@
       </div>
 
 
+      <div class="return-actions">
 
-      <div
-        class="form-group"
-      >
-
-        <label for="studentSelect">
-          生徒
-        </label>
-
-
-        <select
-          id="studentSelect"
-          disabled
-        >
-
-          <option value="">
-            先にテストを選択してください
-          </option>
-
-        </select>
-
-      </div>
-
-
-
-      <div
-        class="return-actions"
-      >
 
         <button
           id="printButton"
@@ -186,11 +158,29 @@
           PDF保存
         </button>
 
+
+        <button
+          id="downloadButton"
+          class="btn"
+          type="button"
+          disabled
+        >
+          PNG保存
+        </button>
+
+
       </div>
 
 
     </div>
 
+
+    <div
+      id="status"
+      class="status"
+    >
+      採点済み答案を読み込んでいます...
+    </div>
 
 
     <div
@@ -206,7 +196,6 @@
 </div>
 
 
-
 <script
   src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
 ></script>
@@ -217,11 +206,19 @@
 ></script>
 
 
-<script src="/js/config.js"></script>
+<script
+  src="/js/config.js?v=20261116"
+></script>
 
-<script src="/js/auth.js"></script>
 
-<script src="/js/teacher/answer-return.js"></script>
+<script
+  src="/js/auth.js?v=20261116"
+></script>
+
+
+<script
+  src="/js/teacher/answer-return.js?v=20261116"
+></script>
 
 
 </body>

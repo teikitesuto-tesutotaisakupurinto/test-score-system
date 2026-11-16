@@ -1,59 +1,191 @@
+
 /* =========================================================
    テスト一覧
+   js/teacher/tests.js
 ========================================================= */
+
+"use strict";
+
 
 let allTests = [];
 
 
+/* =========================================================
+   INITIALIZE
+========================================================= */
+
 async function initializeTests() {
 
-  const profile =
-    await getProfile();
+  try {
+
+    const profile =
+      await getProfile();
 
 
-  if (!profile) {
+    if (!profile) {
 
-    window.location.href =
-      "/login";
+      window.location.href =
+        "/login";
 
-    return;
+      return;
+
+    }
+
+
+    /*
+     * 先生・管理者のみ。
+     */
+
+    if (
+      profile.role !== "teacher" &&
+      profile.role !== "admin"
+    ) {
+
+      /*
+       * 現在の学生トップ。
+       */
+
+      window.location.href =
+        "/student/index.html";
+
+      return;
+
+    }
+
+
+    const teacherName =
+      document.getElementById(
+        "teacherName"
+      );
+
+
+    if (teacherName) {
+
+      teacherName.textContent =
+        profile.name ||
+        "先生";
+
+    }
+
+
+    setupEvents();
+
+
+    await loadTests();
+
+
+  } catch (error) {
+
+    console.error(
+      "initializeTests:",
+      error
+    );
+
+
+    showError(
+      error.message ||
+      "テスト一覧を読み込めませんでした。"
+    );
 
   }
-
-
-  if (
-    profile.role !== "teacher" &&
-    profile.role !== "admin"
-  ) {
-
-    window.location.href =
-      "/student/dashboard";
-
-    return;
-
-  }
-
-
-  document.getElementById(
-    "teacherName"
-  ).textContent =
-    profile.name || "先生";
-
-
-  await loadTests();
 
 }
 
 
+/* =========================================================
+   EVENTS
+========================================================= */
+
+function setupEvents() {
+
+  document
+    .getElementById(
+      "testSearch"
+    )
+    ?.addEventListener(
+      "input",
+      renderTests
+    );
+
+
+  document
+    .getElementById(
+      "statusFilter"
+    )
+    ?.addEventListener(
+      "change",
+      renderTests
+    );
+
+
+  document
+    .getElementById(
+      "logoutButton"
+    )
+    ?.addEventListener(
+      "click",
+      async () => {
+
+        if (
+          typeof window.logout ===
+          "function"
+        ) {
+
+          await window.logout();
+
+        }
+
+      }
+    );
+
+}
+
+
+/* =========================================================
+   LOAD TESTS
+========================================================= */
+
 async function loadTests() {
+
+  const tbody =
+    document.getElementById(
+      "testRows"
+    );
+
+
+  if (tbody) {
+
+    tbody.innerHTML = `
+
+      <tr>
+
+        <td
+          colspan="7"
+          style="
+            text-align:center;
+            padding:30px;
+          "
+        >
+          読み込み中...
+        </td>
+
+      </tr>
+
+    `;
+
+  }
+
 
   const {
     data,
     error
   } =
     await supabaseClient
-      .from("tests")
-      .select(`
+      .from(
+        "tests"
+      )
+      .select(
+        `
         id,
         name,
         subject,
@@ -63,38 +195,28 @@ async function loadTests() {
         max_score,
         status,
         created_at
-      `)
+        `
+      )
       .order(
         "created_at",
         {
-          ascending: false
+          ascending:false
         }
       );
 
 
   if (error) {
 
-    console.error(error);
+    console.error(
+      "loadTests:",
+      error
+    );
 
-    document.getElementById(
-      "testRows"
-    ).innerHTML = `
 
-      <tr>
+    showError(
+      `テスト情報を取得できませんでした: ${error.message}`
+    );
 
-        <td
-          colspan="7"
-          style="
-            text-align:center;
-            color:#c62828;
-          "
-        >
-          テスト情報を取得できませんでした。
-        </td>
-
-      </tr>
-
-    `;
 
     return;
 
@@ -102,7 +224,8 @@ async function loadTests() {
 
 
   allTests =
-    data || [];
+    data ||
+    [];
 
 
   renderTests();
@@ -110,20 +233,49 @@ async function loadTests() {
 }
 
 
+/* =========================================================
+   RENDER
+========================================================= */
+
 function renderTests() {
 
-  const keyword =
+  const tbody =
+    document.getElementById(
+      "testRows"
+    );
+
+
+  if (!tbody) {
+
+    return;
+
+  }
+
+
+  const searchElement =
     document.getElementById(
       "testSearch"
-    ).value
-      .trim()
-      .toLowerCase();
+    );
+
+
+  const statusElement =
+    document.getElementById(
+      "statusFilter"
+    );
+
+
+  const keyword =
+    searchElement
+      ? searchElement.value
+          .trim()
+          .toLowerCase()
+      : "";
 
 
   const status =
-    document.getElementById(
-      "statusFilter"
-    ).value;
+    statusElement
+      ? statusElement.value
+      : "";
 
 
   const filtered =
@@ -131,7 +283,18 @@ function renderTests() {
       test => {
 
         const target =
-          `${test.name || ""} ${test.subject || ""}`
+          [
+            test.name,
+            test.subject,
+            test.grade,
+            test.class_name
+          ]
+            .filter(
+              value =>
+                value !== null &&
+                value !== undefined
+            )
+            .join(" ")
             .toLowerCase();
 
 
@@ -149,7 +312,8 @@ function renderTests() {
 
         if (
           status &&
-          test.status !== status
+          test.status !==
+            status
         ) {
 
           return false;
@@ -160,12 +324,6 @@ function renderTests() {
         return true;
 
       }
-    );
-
-
-  const tbody =
-    document.getElementById(
-      "testRows"
     );
 
 
@@ -198,79 +356,157 @@ function renderTests() {
   tbody.innerHTML =
     filtered
       .map(
-        test => `
-
-          <tr>
-
-            <td>
-              <strong>
-                ${escapeHtml(
-                  test.name
-                )}
-              </strong>
-            </td>
-
-            <td>
-              ${escapeHtml(
-                test.subject || ""
-              )}
-            </td>
-
-            <td>
-              ${escapeHtml(
-                test.grade || ""
-              )}
-            </td>
-
-            <td>
-              ${escapeHtml(
-                test.test_date || ""
-              )}
-            </td>
-
-            <td>
-              ${test.max_score}
-            </td>
-
-            <td>
-              ${getStatusLabel(
-                test.status
-              )}
-            </td>
-
-            <td>
-
-              <a
-                href="/teacher/tests/edit?id=${encodeURIComponent(test.id)}"
-                class="btn"
-              >
-                編集
-              </a>
-
-              <a
-                href="/teacher/tests/layout?id=${encodeURIComponent(test.id)}"
-                class="btn"
-              >
-                解答登録
-              </a>
-
-              <a
-                href="/teacher/tests/questions?id=${encodeURIComponent(test.id)}"
-                class="btn"
-              >
-                問題
-              </a>
-
-            </td>
-
-          </tr>
-
-        `
+        test =>
+          renderTestRow(
+            test
+          )
       )
       .join("");
 
 }
 
+
+/* =========================================================
+   TEST ROW
+========================================================= */
+
+function renderTestRow(
+  test
+) {
+
+  const encoded =
+    encodeURIComponent(
+      test.id
+    );
+
+
+  /*
+   * 現在の実ファイル構成
+   *
+   * 編集
+   *   /teacher/tests/edit
+   *
+   * 枠設定
+   *   /teacher/tests/layout
+   *
+   * 配点
+   *   /teacher/tests/points
+   *
+   * 採点
+   *   /teacher/marking
+   *
+   * 問題ページは存在しないため
+   * /teacher/tests/questions は使用しない。
+   */
+
+  return `
+
+    <tr>
+
+      <td>
+
+        <strong>
+          ${escapeHtml(
+            test.name
+          )}
+        </strong>
+
+      </td>
+
+
+      <td>
+        ${escapeHtml(
+          test.subject ||
+          ""
+        )}
+      </td>
+
+
+      <td>
+        ${escapeHtml(
+          test.grade ||
+          ""
+        )}
+      </td>
+
+
+      <td>
+        ${escapeHtml(
+          test.test_date ||
+          ""
+        )}
+      </td>
+
+
+      <td>
+        ${formatNumber(
+          test.max_score
+        )}
+      </td>
+
+
+      <td>
+        ${getStatusLabel(
+          test.status
+        )}
+      </td>
+
+
+      <td>
+
+        <div
+          style="
+            display:flex;
+            flex-wrap:wrap;
+            gap:6px;
+          "
+        >
+
+          <a
+            href="/teacher/tests/edit?id=${encoded}"
+            class="btn"
+          >
+            編集
+          </a>
+
+
+          <a
+            href="/teacher/tests/layout?id=${encoded}"
+            class="btn"
+          >
+            枠設定
+          </a>
+
+
+          <a
+            href="/teacher/tests/points?id=${encoded}"
+            class="btn"
+          >
+            配点
+          </a>
+
+
+          <a
+            href="/teacher/marking?test=${encoded}"
+            class="btn btn-primary"
+          >
+            採点
+          </a>
+
+        </div>
+
+      </td>
+
+    </tr>
+
+  `;
+
+}
+
+
+/* =========================================================
+   STATUS
+========================================================= */
 
 function getStatusLabel(
   status
@@ -305,35 +541,107 @@ function getStatusLabel(
 }
 
 
-document
-  .getElementById(
-    "testSearch"
+/* =========================================================
+   FORMAT
+========================================================= */
+
+function formatNumber(
+  value
+) {
+
+  if (
+    value === null ||
+    value === undefined ||
+    value === ""
+  ) {
+
+    return "";
+
+  }
+
+
+  const number =
+    Number(
+      value
+    );
+
+
+  if (
+    !Number.isFinite(
+      number
+    )
+  ) {
+
+    return "";
+
+  }
+
+
+  return Number.isInteger(
+    number
   )
-  .addEventListener(
-    "input",
-    renderTests
+    ? String(
+        number
+      )
+    : number.toFixed(
+        1
+      );
+
+}
+
+
+/* =========================================================
+   ERROR
+========================================================= */
+
+function showError(
+  message
+) {
+
+  const tbody =
+    document.getElementById(
+      "testRows"
+    );
+
+
+  if (tbody) {
+
+    tbody.innerHTML = `
+
+      <tr>
+
+        <td
+          colspan="7"
+          style="
+            text-align:center;
+            padding:30px;
+            color:#c62828;
+          "
+        >
+
+          ${escapeHtml(
+            message
+          )}
+
+        </td>
+
+      </tr>
+
+    `;
+
+  }
+
+
+  console.error(
+    message
   );
 
-
-document
-  .getElementById(
-    "statusFilter"
-  )
-  .addEventListener(
-    "change",
-    renderTests
-  );
+}
 
 
-document
-  .getElementById(
-    "logoutButton"
-  )
-  .addEventListener(
-    "click",
-    logout
-  );
-
+/* =========================================================
+   ESCAPE
+========================================================= */
 
 function escapeHtml(
   value
@@ -349,14 +657,35 @@ function escapeHtml(
   }
 
 
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
+  return String(
+    value
+  )
+    .replaceAll(
+      "&",
+      "&amp;"
+    )
+    .replaceAll(
+      "<",
+      "&lt;"
+    )
+    .replaceAll(
+      ">",
+      "&gt;"
+    )
+    .replaceAll(
+      '"',
+      "&quot;"
+    )
+    .replaceAll(
+      "'",
+      "&#039;"
+    );
 
 }
 
+
+/* =========================================================
+   START
+========================================================= */
 
 initializeTests();

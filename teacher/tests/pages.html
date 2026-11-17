@@ -8,7 +8,7 @@
 
 <meta
   name="viewport"
-  content="width=device-width,initial-scale=1.0"
+  content="width=device-width, initial-scale=1.0"
 >
 
 <title>
@@ -22,78 +22,164 @@
 
 <style>
 
+/* =========================================================
+   基本
+========================================================= */
+
 * {
-  box-sizing:border-box;
+  box-sizing: border-box;
+}
+
+
+html,
+body {
+  margin: 0;
+  padding: 0;
 }
 
 
 body {
-  margin:0;
-  background:#f3f5f7;
+  background: #f3f5f7;
+  color: #222;
 }
 
+
+/* =========================================================
+   メイン
+========================================================= */
 
 .main {
-  max-width:1500px;
-  margin:0 auto;
-  padding:20px;
+  max-width: 1500px;
+
+  margin: 0 auto;
+
+  padding: 20px;
 }
 
 
+/* =========================================================
+   見出し
+========================================================= */
+
+.page-header {
+  margin-bottom: 14px;
+}
+
+
+.page-header h1 {
+  margin: 0;
+
+  font-size: 24px;
+}
+
+
+.page-description {
+  margin:
+    5px
+    0
+    0;
+
+  color: #666;
+
+  font-size: 13px;
+}
+
+
+/* =========================================================
+   ツールバー
+========================================================= */
+
 .toolbar {
-  display:flex;
-  align-items:center;
-  flex-wrap:wrap;
-  gap:8px;
+  display: flex;
 
-  padding:12px;
-  margin-bottom:12px;
+  align-items: center;
 
-  background:#fff;
+  flex-wrap: wrap;
 
-  border:1px solid #d5dbe0;
+  gap: 8px;
+
+  padding: 12px;
+
+  margin-bottom: 12px;
+
+  background: #fff;
+
+  border:
+    1px solid #d5dbe0;
+}
+
+
+.toolbar input[type="file"] {
+  max-width: 300px;
 }
 
 
 .toolbar-status {
-  width:100%;
+  width: 100%;
 
-  padding:8px 10px;
+  padding:
+    8px
+    10px;
 
-  background:#f5f6f7;
+  background: #f5f6f7;
 
-  border:1px solid #e1e5e8;
+  border:
+    1px solid #e1e5e8;
 
-  color:#555;
+  color: #555;
 
-  font-size:12px;
+  font-size: 12px;
 }
 
 
+.auto-detect-button {
+  border:
+    1px solid #1769aa;
+
+  background: #fff;
+
+  color: #1769aa;
+}
+
+
+.auto-detect-button:hover {
+  background: #edf5fb;
+}
+
+
+/* =========================================================
+   ビューア
+========================================================= */
+
 .viewer {
-  min-height:650px;
+  min-height: 650px;
 
-  padding:25px;
+  padding: 25px;
 
-  background:#dfe3e8;
+  background: #dfe3e8;
 
-  border:1px solid #ccd2d7;
+  border:
+    1px solid #ccd2d7;
 
-  overflow:auto;
+  overflow: auto;
 }
 
 
 .page {
-  position:relative;
+  position: relative;
 
-  width:min(
-    100%,
-    1000px
-  );
+  width:
+    min(
+      100%,
+      1000px
+    );
 
-  margin:0 auto 30px;
+  margin:
+    0
+    auto
+    30px;
 
-  background:#fff;
+  background: #fff;
 
   box-shadow:
     0 2px 12px
@@ -106,38 +192,46 @@ body {
 }
 
 
-.page img {
-  display:block;
+.page img,
+.page canvas {
+  display: block;
 
-  width:100%;
+  width: 100%;
 
-  height:auto;
+  height: auto;
 }
 
 
 .page-layer {
-  position:absolute;
+  position: absolute;
 
-  inset:0;
+  inset: 0;
 
-  user-select:none;
+  user-select: none;
 
-  touch-action:none;
+  touch-action: none;
+
+  z-index: 10;
 }
 
 
+/* =========================================================
+   枠
+========================================================= */
+
 .layout-box {
-  position:absolute;
+  position: absolute;
 
-  min-width:8px;
+  min-width: 8px;
 
-  min-height:8px;
+  min-height: 8px;
 
-  cursor:move;
+  cursor: move;
 
-  z-index:20;
+  z-index: 30;
 
-  border:2px solid #1769aa;
+  border:
+    2px solid #1769aa;
 
   background:
     rgba(
@@ -150,56 +244,103 @@ body {
 
 
 .layout-box.selected {
-  outline:3px solid #111;
+  outline:
+    3px solid #111;
 
-  outline-offset:1px;
+  outline-offset: 1px;
 }
 
+
+.layout-box[data-box-type="qr"] {
+  border-color: #7b3f98;
+
+  background:
+    rgba(
+      123,
+      63,
+      152,
+      .08
+    );
+}
+
+
+.layout-box[data-box-type="name"],
+.layout-box[data-box-type="student_no"] {
+  border-color: #26734d;
+
+  background:
+    rgba(
+      38,
+      115,
+      77,
+      .08
+    );
+}
+
+
+/* =========================================================
+   枠ラベル
+========================================================= */
 
 .layout-box-label {
-  position:absolute;
+  position: absolute;
 
-  top:-25px;
+  top: -25px;
 
-  left:0;
+  left: 0;
 
-  padding:3px 7px;
+  padding:
+    3px
+    7px;
 
-  background:#222;
+  background: #222;
 
-  color:#fff;
+  color: #fff;
 
-  font-size:11px;
+  font-size: 11px;
 
-  white-space:nowrap;
+  line-height: 1.3;
 
-  pointer-events:none;
+  white-space: nowrap;
+
+  pointer-events: none;
 }
 
+
+/* =========================================================
+   リサイズ
+========================================================= */
 
 .resize-handle {
-  position:absolute;
+  position: absolute;
 
-  right:-6px;
+  right: -6px;
 
-  bottom:-6px;
+  bottom: -6px;
 
-  width:12px;
+  width: 12px;
 
-  height:12px;
+  height: 12px;
 
-  background:#222;
+  background: #222;
 
-  border:1px solid #fff;
+  border:
+    1px solid #fff;
 
-  cursor:nwse-resize;
+  cursor:
+    nwse-resize;
 }
 
 
-.drag-preview {
-  position:absolute;
+/* =========================================================
+   手動ドラッグ仮枠
+========================================================= */
 
-  border:2px dashed #d00000;
+.drag-preview {
+  position: absolute;
+
+  border:
+    2px dashed #d00000;
 
   background:
     rgba(
@@ -209,37 +350,109 @@ body {
       .10
     );
 
-  pointer-events:none;
+  pointer-events: none;
 
-  z-index:9999;
+  z-index: 9999;
 }
 
 
-.empty-view {
-  padding:80px 20px;
+/* =========================================================
+   自動検出候補
+========================================================= */
 
-  text-align:center;
+.auto-box-candidate {
+  position: absolute;
 
-  color:#666;
+  z-index: 25;
+
+  border:
+    2px dashed #d00000;
+
+  background:
+    rgba(
+      208,
+      0,
+      0,
+      .06
+    );
+
+  cursor: pointer;
+
+  transition:
+    background
+    .1s,
+    border-color
+    .1s;
 }
 
+
+.auto-box-candidate:hover {
+  background:
+    rgba(
+      208,
+      0,
+      0,
+      .18
+    );
+
+  border-color:
+    #a00000;
+}
+
+
+.auto-box-candidate::after {
+  content:
+    "クリックで枠化";
+
+  position: absolute;
+
+  top: 2px;
+
+  left: 2px;
+
+  padding:
+    2px
+    4px;
+
+  background:
+    rgba(
+      0,
+      0,
+      0,
+      .75
+    );
+
+  color: #fff;
+
+  font-size: 9px;
+
+  pointer-events: none;
+
+  white-space: nowrap;
+}
+
+
+/* =========================================================
+   枠設定バー
+========================================================= */
 
 .box-panel {
-  position:fixed;
+  position: fixed;
 
-  top:64px;
+  top: 54px;
 
-  left:0;
+  left: 0;
 
-  right:0;
+  right: 0;
 
-  z-index:1000;
+  z-index: 1000;
 
-  display:none;
+  display: block;
 
-  background:#fff;
+  background: #fff;
 
-  border-bottom:1px solid #cbd1d6;
+  border-bottom:
+    1px solid #cbd1d6;
 
   box-shadow:
     0 3px 14px
@@ -252,121 +465,235 @@ body {
 }
 
 
-.box-panel.open {
-  display:block;
-}
-
-
 .box-panel-header {
-  display:flex;
+  display: flex;
 
-  align-items:center;
+  align-items: center;
 
-  padding:7px 15px;
+  gap: 12px;
 
-  background:#f4f6f8;
+  min-height: 42px;
 
-  border-bottom:1px solid #e0e4e7;
+  padding:
+    7px
+    15px;
+
+  background: #f4f6f8;
+
+  border-bottom:
+    1px solid #e0e4e7;
 }
 
 
 .box-panel-title {
-  margin:0;
+  margin: 0;
 
-  font-size:15px;
+  font-size: 15px;
+
+  font-weight: 700;
 }
 
 
 .box-panel-close {
-  margin-left:auto;
+  margin-left: auto;
 
-  border:0;
+  border: 0;
 
-  background:transparent;
+  background: transparent;
 
-  cursor:pointer;
+  cursor: pointer;
+
+  padding:
+    5px
+    9px;
 }
 
 
 .box-panel-body {
-  display:flex;
+  display: flex;
 
-  align-items:center;
+  align-items: center;
 
-  flex-wrap:wrap;
+  flex-wrap: wrap;
 
-  gap:10px;
+  gap: 10px;
 
-  padding:9px 15px;
+  padding:
+    9px
+    15px;
+}
+
+
+.role-label {
+  font-size: 12px;
+
+  font-weight: 700;
 }
 
 
 #boxRole {
-  width:170px;
+  width: 150px;
 
-  height:36px;
+  height: 36px;
 
-  padding:0 8px;
+  padding:
+    0
+    8px;
 
-  border:1px solid #c8ced4;
+  border:
+    1px solid #c8ced4;
 
-  background:#fff;
+  background: #fff;
 }
 
 
 #parentInfo {
-  min-width:250px;
+  min-width: 260px;
 
-  padding:7px 10px;
+  padding:
+    7px
+    10px;
 
-  background:#f5f6f7;
+  background: #f5f6f7;
 
-  border:1px solid #e0e4e7;
+  border:
+    1px solid #e0e4e7;
 
-  color:#666;
+  color: #666;
 
-  font-size:11px;
+  font-size: 11px;
 }
 
 
 .box-panel-actions {
-  display:flex;
+  display: flex;
 
-  gap:7px;
+  gap: 7px;
+}
+
+
+.box-panel-actions button {
+  min-height: 36px;
 }
 
 
 .delete-box {
-  border:1px solid #c94b43;
+  border:
+    1px solid #c94b43;
 
-  background:#fff;
+  background: #fff;
 
-  color:#b42318;
+  color: #b42318;
 }
 
 
-@media(max-width:700px) {
+/* =========================================================
+   自動検出状態
+========================================================= */
+
+.detect-info {
+  padding:
+    8px
+    10px;
+
+  margin-top: 8px;
+
+  background: #f5f6f7;
+
+  border:
+    1px solid #dfe4e7;
+
+  color: #555;
+
+  font-size: 11px;
+
+  line-height: 1.6;
+}
+
+
+/* =========================================================
+   空表示
+========================================================= */
+
+.empty-view {
+  padding:
+    80px
+    20px;
+
+  text-align: center;
+
+  color: #666;
+}
+
+
+.empty-view strong {
+  display: block;
+
+  margin-bottom: 8px;
+
+  color: #333;
+}
+
+
+/* =========================================================
+   上部余白
+========================================================= */
+
+.main {
+  padding-top: 115px;
+}
+
+
+/* =========================================================
+   スマホ
+========================================================= */
+
+@media (
+  max-width: 700px
+) {
 
   .main {
-    padding:10px;
+    padding:
+      120px
+      10px
+      10px;
   }
 
 
   .viewer {
-    padding:8px;
+    padding: 8px;
+  }
+
+
+  .box-panel {
+    top: 54px;
   }
 
 
   .box-panel-body {
-    align-items:stretch;
+    align-items: stretch;
 
-    flex-direction:column;
+    flex-direction: column;
   }
 
 
-  #boxRole,
+  #boxRole {
+    width: 100%;
+  }
+
+
   #parentInfo {
-    width:100%;
+    width: 100%;
+  }
+
+
+  .box-panel-actions {
+    width: 100%;
+  }
+
+
+  .box-panel-actions button {
+    flex: 1;
   }
 
 }
@@ -379,218 +706,304 @@ body {
 <body>
 
 
+<!-- =======================================================
+     TOPBAR
+======================================================= -->
+
 <header class="topbar">
 
-<div class="system-name">
-  テスト成績システム
-</div>
+  <div class="system-name">
+    テスト成績システム
+  </div>
 
-<div class="topbar-space"></div>
 
-<span id="teacherName">
-  -
-</span>
+  <div class="topbar-space"></div>
 
-<button
-id="logoutButton"
-class="logout-button"
-type="button"
->
-  ログアウト
-</button>
+
+  <span id="teacherName">
+    -
+  </span>
+
+
+  <button
+    id="logoutButton"
+    class="logout-button"
+    type="button"
+  >
+    ログアウト
+  </button>
 
 </header>
 
 
+<!-- =======================================================
+     枠設定ツール
+======================================================= -->
+
 <section
-id="boxPanel"
-class="box-panel"
+  id="boxPanel"
+  class="box-panel"
 >
 
-<div class="box-panel-header">
 
-<h2 class="box-panel-title">
-  枠設定
-</h2>
+  <div class="box-panel-header">
 
-
-<button
-id="closePanelButton"
-class="box-panel-close"
-type="button"
->
-閉じる
-</button>
-
-</div>
+    <h2 class="box-panel-title">
+      枠設定
+    </h2>
 
 
-<div class="box-panel-body">
+    <button
+      id="closePanelButton"
+      class="box-panel-close"
+      type="button"
+    >
+      閉じる
+    </button>
+
+  </div>
 
 
-<strong>
-枠種類
-</strong>
+  <div class="box-panel-body">
 
 
-<select id="boxRole">
-
-<option value="answer">
-  解答欄
-</option>
-
-<option value="qr">
-  QR
-</option>
-
-<option value="name">
-  氏名
-</option>
-
-<option value="student_no">
-  生徒番号
-</option>
-
-<option value="other">
-  その他
-</option>
-
-</select>
+    <span class="role-label">
+      枠種類
+    </span>
 
 
-<div id="parentInfo">
-  解答欄をドラッグして作成します。
-</div>
+    <select id="boxRole">
+
+      <option value="major">
+        大問
+      </option>
+
+      <option value="minor">
+        小問
+      </option>
+
+      <option
+        value="answer"
+        selected
+      >
+        解答欄
+      </option>
+
+      <option value="qr">
+        QR
+      </option>
+
+      <option value="subtotal">
+        小計
+      </option>
+
+      <option value="total">
+        合計
+      </option>
+
+      <option value="name">
+        氏名
+      </option>
+
+      <option value="student_no">
+        生徒番号
+      </option>
+
+      <option value="instruction">
+        説明
+      </option>
+
+      <option value="other">
+        その他
+      </option>
+
+    </select>
 
 
-<div class="box-panel-actions">
-
-<button
-id="applyButton"
-type="button"
-class="btn btn-primary"
->
-反映
-</button>
+    <div id="parentInfo">
+      解答欄として新しい枠を作成します。
+    </div>
 
 
-<button
-id="deleteSelectedButton"
-type="button"
-class="delete-box"
->
-選択枠を削除
-</button>
-
-</div>
+    <div class="box-panel-actions">
 
 
-</div>
+      <button
+        id="applyButton"
+        type="button"
+        class="btn btn-primary"
+      >
+        反映
+      </button>
+
+
+      <button
+        id="deleteSelectedButton"
+        type="button"
+        class="delete-box"
+      >
+        選択枠を削除
+      </button>
+
+
+    </div>
+
+
+    <div
+      class="box-panel-actions"
+    >
+
+      <button
+        id="detectButton"
+        type="button"
+        class="btn"
+      >
+        枠を自動検出
+      </button>
+
+    </div>
+
+
+    <div
+      id="detectInfo"
+      class="detect-info"
+    >
+      赤い点線が自動検出候補です。候補をクリックすると、現在選択中の枠種類として登録します。
+    </div>
+
+
+  </div>
 
 </section>
 
 
+<!-- =======================================================
+     MAIN
+======================================================= -->
+
 <main class="main">
 
 
-<div class="page-header">
+<header class="page-header">
 
-<h1>
-  解答用紙・枠設定
-</h1>
+  <h1>
+    解答用紙・枠設定
+  </h1>
 
-</div>
+
+  <p class="page-description">
+
+    解答用紙を登録すると、枠候補を自動検出できます。
+
+    候補をクリックして正式な枠にし、必要ならドラッグで微調整してください。
+
+  </p>
+
+</header>
 
 
 <section class="toolbar">
 
 
-<input
-id="answerFile"
-type="file"
-accept=".pdf,.jpg,.jpeg,.png,.webp"
->
+  <input
+    id="answerFile"
+    type="file"
+    accept=".pdf,.jpg,.jpeg,.png,.webp"
+  >
 
 
-<button
-id="uploadButton"
-type="button"
-class="btn btn-primary"
->
-解答用紙を登録
-</button>
+  <button
+    id="uploadButton"
+    type="button"
+    class="btn btn-primary"
+  >
+    解答用紙を登録
+  </button>
 
 
-<button
-id="saveButton"
-type="button"
-class="btn btn-primary"
->
-枠を保存
-</button>
+  <button
+    id="detectButtonTop"
+    type="button"
+    class="auto-detect-button btn"
+  >
+    枠を自動検出
+  </button>
 
 
-<a
-id="pointsLink"
-href="#"
-class="btn"
->
-配点設定
-</a>
+  <button
+    id="saveButton"
+    type="button"
+    class="btn btn-primary"
+  >
+    枠を保存
+  </button>
 
 
-<a
-id="modelAnswerLink"
-href="#"
-class="btn"
->
-模範解答
-</a>
+  <a
+    id="pointsButton"
+    class="btn"
+    href="#"
+  >
+    配点設定
+  </a>
 
 
-<a
-id="previewLink"
-href="#"
-class="btn"
->
-テスト確認
-</a>
+  <a
+    id="modelAnswerButton"
+    class="btn"
+    href="#"
+  >
+    模範解答
+  </a>
 
 
-<button
-id="backButton"
-type="button"
-class="btn"
->
-戻る
-</button>
+  <a
+    id="previewButton"
+    class="btn"
+    href="#"
+  >
+    テスト確認
+  </a>
 
 
-<div
-id="status"
-class="toolbar-status"
->
-解答用紙を登録してください。
-</div>
+  <button
+    id="backButton"
+    type="button"
+    class="btn"
+  >
+    戻る
+  </button>
+
+
+  <div
+    id="status"
+    class="toolbar-status"
+  >
+    解答用紙を登録してください。
+  </div>
 
 
 </section>
 
 
 <section
-id="viewer"
-class="viewer"
+  id="viewer"
+  class="viewer"
 >
 
-<div class="empty-view">
 
-<strong>
-解答用紙がありません
-</strong>
+  <div class="empty-view">
 
-PDFまたは画像を登録してください。
+    <strong>
+      解答用紙がありません
+    </strong>
 
-</div>
+
+    PDFまたは画像を登録してください。
+
+
+  </div>
+
 
 </section>
 
@@ -598,34 +1011,170 @@ PDFまたは画像を登録してください。
 </main>
 
 
+<!-- =======================================================
+     LIBRARIES
+======================================================= -->
+
 <script
-src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+  src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+></script>
+
+
+<!--
+  OpenCV.jsはGitには置かずCDNからロード。
+  枠の輪郭検出に使用。
+-->
+
+<script
+  async
+  src="https://docs.opencv.org/4.x/opencv.js"
 ></script>
 
 
 <script
-src="/js/config.js?v=20261116"
+  src="/js/config.js?v=20261117"
 ></script>
 
 
 <script
-src="/js/auth.js?v=20261116"
+  src="/js/auth.js?v=20261117"
 ></script>
 
 
 <script
-src="/js/lib/pdf-loader.js?v=20261116"
+  src="/js/lib/pdf-loader.js?v=20261117"
 ></script>
 
 
 <script
-src="/js/lib/file-parser.js?v=20261116"
+  src="/js/lib/file-parser.js?v=20261117"
 ></script>
 
 
 <script
-src="/js/teacher/test-pages.js?v=20261116"
+  src="/js/teacher/test-pages.js?v=20261117"
 ></script>
+
+
+<script>
+
+"use strict";
+
+
+/* =========================================================
+   URL LINKS
+========================================================= */
+
+const params =
+  new URLSearchParams(
+    location.search
+  );
+
+
+const testId =
+  params.get(
+    "test"
+  );
+
+
+if (testId) {
+
+  const encoded =
+    encodeURIComponent(
+      testId
+    );
+
+
+  const pointsButton =
+    document.getElementById(
+      "pointsButton"
+    );
+
+
+  const modelAnswerButton =
+    document.getElementById(
+      "modelAnswerButton"
+    );
+
+
+  const previewButton =
+    document.getElementById(
+      "previewButton"
+    );
+
+
+  if (pointsButton) {
+
+    pointsButton.href =
+      `/teacher/tests/points?test=${encoded}`;
+
+  }
+
+
+  if (modelAnswerButton) {
+
+    modelAnswerButton.href =
+      `/teacher/tests/model-answer?test=${encoded}`;
+
+  }
+
+
+  if (previewButton) {
+
+    previewButton.href =
+      `/teacher/tests/preview?test=${encoded}`;
+
+  }
+
+}
+
+
+/* =========================================================
+   自動検出ボタン
+========================================================= */
+
+document
+  .getElementById(
+    "detectButtonTop"
+  )
+  ?.addEventListener(
+    "click",
+    () => {
+
+      if (
+        typeof window.detectAllPages ===
+        "function"
+      ) {
+
+        window.detectAllPages();
+
+      }
+
+    }
+  );
+
+
+document
+  .getElementById(
+    "detectButton"
+  )
+  ?.addEventListener(
+    "click",
+    () => {
+
+      if (
+        typeof window.detectAllPages ===
+        "function"
+      ) {
+
+        window.detectAllPages();
+
+      }
+
+    }
+  );
+
+</script>
 
 
 </body>

@@ -1,22 +1,16 @@
+
 "use strict";
 
 /* =========================================================
-   テスト成績システム
-   js/teacher/test-pages.js
-
    解答用紙登録 + 枠設定
 
-   ・PDF / 画像
-   ・test-files Storage
+   ・test-files
    ・test_pages
    ・layout_boxes
-   ・ドラッグで枠作成
-   ・枠移動
-   ・枠リサイズ
-   ・枠削除
-   ・枠保存
+   ・手動ドラッグ
+   ・自動枠検出
+   ・検出候補クリック
 ========================================================= */
-
 
 let selectedTestId = null;
 
@@ -24,23 +18,21 @@ let pages = [];
 
 let boxes = [];
 
+let candidates = [];
+
 let selectedBoxId = null;
 
 let drawing = false;
 
-let drawingPointerId = null;
-
-let drawStart = null;
+let drawLayer = null;
 
 let drawPage = null;
 
-let drawLayer = null;
+let drawStart = null;
 
 let drawPreview = null;
 
 let dragMode = null;
-
-let dragPointerId = null;
 
 let dragBoxId = null;
 
@@ -76,11 +68,6 @@ const uploadButton =
 const saveButton =
   document.getElementById(
     "saveButton"
-  );
-
-const backButton =
-  document.getElementById(
-    "backButton"
   );
 
 const boxPanel =
@@ -213,6 +200,7 @@ async function initialize() {
 
     setupEvents();
 
+    openBoxPanel();
 
     updateRoleHelp();
 
@@ -235,7 +223,7 @@ async function initialize() {
   } catch (error) {
 
     console.error(
-      "test-pages initialize:",
+      "test-pages:",
       error
     );
 
@@ -293,17 +281,6 @@ function setupEvents() {
   );
 
 
-  backButton?.addEventListener(
-    "click",
-    () => {
-
-      location.href =
-        "/teacher/tests";
-
-    }
-  );
-
-
   document
     .getElementById(
       "logoutButton"
@@ -331,11 +308,6 @@ function setupEvents() {
 ========================================================= */
 
 async function loadLayout() {
-
-  setStatus(
-    "解答用紙を読み込んでいます..."
-  );
-
 
   const {
     data: pageData,
@@ -450,7 +422,7 @@ async function loadLayout() {
 
   setStatus(
     pages.length
-      ? "解答欄を選択して、答案上をドラッグしてください。"
+      ? "解答用紙上をドラッグして枠を作成できます。アップロード後は自動検出候補も表示します。"
       : "解答用紙を登録してください。"
   );
 
@@ -498,14 +470,14 @@ function normalizeBoxes() {
 
       if (
         box.points ===
-          null ||
+        null ||
         box.points ===
-          undefined
+        undefined
       ) {
 
         box.points =
           box.box_type ===
-            "answer"
+          "answer"
             ? 0
             : null;
 
@@ -518,403 +490,7 @@ function normalizeBoxes() {
 
 
 /* =========================================================
-   SELECTED BOX
-========================================================= */
-
-function getSelectedBox() {
-
-  if (!selectedBoxId) {
-
-    return null;
-
-  }
-
-
-  return boxes.find(
-    box =>
-      box.id ===
-      selectedBoxId
-  ) || null;
-
-}
-
-
-/* =========================================================
-   UPLOAD
-========================================================= */
-
-async function uploadAnswerSheet() {
-
-  const file =
-    answerFile?.files?.[0];
-
-
-  if (!file) {
-
-    setStatus(
-      "解答用紙ファイルを選択してください。",
-      true
-    );
-
-    return;
-
-  }
-
-
-  if (!selectedTestId) {
-
-    setStatus(
-      "テストIDがありません。",
-      true
-    );
-
-    return;
-
-  }
-
-
-  uploadButton.disabled =
-    true;
-
-
-  try {
-
-    setStatus(
-      "解答用紙を解析しています..."
-    );
-
-
-    const parsed =
-      await parseFile(
-        file
-      );
-
-
-    if (!parsed.length) {
-
-      throw new Error(
-        "解答用紙のページを取得できませんでした。"
-      );
-
-    }
-
-
-    const startPage =
-      pages.length
-        ? Math.max(
-            ...pages.map(
-              page =>
-                Number(
-                  page.page_no
-                ) || 0
-            )
-          ) + 1
-        : 1;
-
-
-    for (
-      let index = 0;
-      index <
-      parsed.length;
-      index++
-    ) {
-
-      const page =
-        parsed[index];
-
-
-      const pageNo =
-        startPage +
-        index;
-
-
-      const path =
-        [
-          selectedTestId,
-          "answer-sheet",
-          crypto.randomUUID(),
-          `page-${String(
-            pageNo
-          ).padStart(
-            3,
-            "0"
-          )}.png`
-        ].join(
-          "/"
-        );
-
-
-      setStatus(
-        `解答用紙を保存しています... ${
-          index + 1
-        } / ${
-          parsed.length
-        }`
-      );
-
-
-      const {
-        error:
-          uploadError
-      } =
-        await supabaseClient
-          .storage
-          .from(
-            "test-files"
-          )
-          .upload(
-            path,
-            page.blob,
-            {
-              contentType:
-                "image/png",
-
-              cacheControl:
-                "3600",
-
-              upsert:
-                false
-            }
-          );
-
-
-      if (uploadError) {
-
-        throw uploadError;
-
-      }
-
-
-      const {
-        data,
-        error
-      } =
-        await supabaseClient
-          .from(
-            "test_pages"
-          )
-          .insert({
-
-            test_id:
-              selectedTestId,
-
-            page_no:
-              pageNo,
-
-            image_path:
-              path,
-
-            width_px:
-              page.width ||
-              null,
-
-            height_px:
-              page.height ||
-              null,
-
-            original_name:
-              file.name
-
-          })
-          .select(
-            `
-            id,
-            test_id,
-            page_no,
-            image_path,
-            width_px,
-            height_px,
-            original_name
-            `
-          )
-          .single();
-
-
-      if (error) {
-
-        await supabaseClient
-          .storage
-          .from(
-            "test-files"
-          )
-          .remove([
-            path
-          ]);
-
-
-        throw error;
-
-      }
-
-
-      pages.push(
-        data
-      );
-
-    }
-
-
-    pages.sort(
-      (
-        a,
-        b
-      ) =>
-        Number(
-          a.page_no
-        ) -
-        Number(
-          b.page_no
-        )
-    );
-
-
-    answerFile.value =
-      "";
-
-
-    await renderAllPages();
-
-
-    setStatus(
-      `${parsed.length}ページの解答用紙を登録しました。`
-    );
-
-
-  } catch (error) {
-
-    console.error(
-      "uploadAnswerSheet:",
-      error
-    );
-
-
-    setStatus(
-      error.message ||
-      "解答用紙の登録に失敗しました。",
-      true
-    );
-
-  } finally {
-
-    uploadButton.disabled =
-      false;
-
-  }
-
-}
-
-
-/* =========================================================
-   FILE PARSER
-========================================================= */
-
-async function parseFile(
-  file
-) {
-
-  if (
-    window.TEST_SCORE_FILES?.parseFile
-  ) {
-
-    return await window.TEST_SCORE_FILES
-      .parseFile(
-        file
-      );
-
-  }
-
-
-  const extension =
-    getExtension(
-      file.name
-    );
-
-
-  if (
-    extension ===
-    "pdf"
-  ) {
-
-    if (
-      window.TEST_SCORE_PDF
-        ?.pdfToPages
-    ) {
-
-      return await window.TEST_SCORE_PDF
-        .pdfToPages(
-          file,
-          2
-        );
-
-    }
-
-
-    throw new Error(
-      "PDF処理エンジンが読み込まれていません。"
-    );
-
-  }
-
-
-  if (
-    [
-      "jpg",
-      "jpeg",
-      "png",
-      "webp"
-    ].includes(
-      extension
-    )
-  ) {
-
-    const image =
-      await loadImage(
-        URL.createObjectURL(
-          file
-        )
-      );
-
-
-    const blob =
-      await imageToPng(
-        image
-      );
-
-
-    return [
-
-      {
-
-        pageNo:
-          1,
-
-        name:
-          file.name,
-
-        blob,
-
-        width:
-          image.naturalWidth,
-
-        height:
-          image.naturalHeight
-
-      }
-
-    ];
-
-  }
-
-
-  throw new Error(
-    "PDF、JPG、JPEG、PNG、WEBPのみ対応しています。"
-  );
-
-}
-
-
-/* =========================================================
-   RENDER ALL
+   RENDER
 ========================================================= */
 
 async function renderAllPages() {
@@ -961,7 +537,7 @@ async function renderAllPages() {
 
 
 /* =========================================================
-   RENDER PAGE
+   PAGE
 ========================================================= */
 
 async function renderPage(
@@ -1043,6 +619,29 @@ async function renderPage(
       }
     );
 
+
+  candidates
+    .filter(
+      candidate =>
+        Number(
+          candidate.pageNo
+        ) ===
+        Number(
+          page.page_no
+        )
+    )
+    .forEach(
+      candidate => {
+
+        renderCandidate(
+          layer,
+          page,
+          candidate
+        );
+
+      }
+    );
+
 }
 
 
@@ -1109,7 +708,7 @@ async function createPageImage(
 
 
 /* =========================================================
-   DRAWING
+   MANUAL DRAW
 ========================================================= */
 
 function setupDrawing(
@@ -1133,9 +732,9 @@ function setupDrawing(
 
       if (
         event.button !==
-          0 &&
+        0 &&
         event.pointerType !==
-          "touch"
+        "touch"
       ) {
 
         return;
@@ -1143,23 +742,16 @@ function setupDrawing(
       }
 
 
-      event.preventDefault();
-
-
       drawing =
         true;
 
 
-      drawingPointerId =
-        event.pointerId;
+      drawLayer =
+        layer;
 
 
       drawPage =
         page;
-
-
-      drawLayer =
-        layer;
 
 
       const rect =
@@ -1204,18 +796,11 @@ function setupDrawing(
     "pointermove",
     event => {
 
-      if (
-        !drawing ||
-        event.pointerId !==
-          drawingPointerId
-      ) {
+      if (!drawing) {
 
         return;
 
       }
-
-
-      event.preventDefault();
 
 
       updateDrawPreview(
@@ -1230,18 +815,11 @@ function setupDrawing(
     "pointerup",
     event => {
 
-      if (
-        !drawing ||
-        event.pointerId !==
-          drawingPointerId
-      ) {
+      if (!drawing) {
 
         return;
 
       }
-
-
-      event.preventDefault();
 
 
       finishDrawing(
@@ -1254,18 +832,7 @@ function setupDrawing(
 
   layer.addEventListener(
     "pointercancel",
-    event => {
-
-      if (
-        event.pointerId ===
-        drawingPointerId
-      ) {
-
-        cancelDrawing();
-
-      }
-
-    }
+    cancelDrawing
   );
 
 }
@@ -1315,20 +882,6 @@ function updateDrawPreview(
     );
 
 
-  const width =
-    Math.abs(
-      current.x -
-      drawStart.x
-    );
-
-
-  const height =
-    Math.abs(
-      current.y -
-      drawStart.y
-    );
-
-
   drawPreview.style.left =
     `${left}px`;
 
@@ -1338,28 +891,28 @@ function updateDrawPreview(
 
 
   drawPreview.style.width =
-    `${width}px`;
+    `${Math.abs(
+      current.x -
+      drawStart.x
+    )}px`;
 
 
   drawPreview.style.height =
-    `${height}px`;
+    `${Math.abs(
+      current.y -
+      drawStart.y
+    )}px`;
 
 }
 
 
 /* =========================================================
-   FINISH DRAWING
+   FINISH DRAW
 ========================================================= */
 
 async function finishDrawing(
   event
 ) {
-
-  /*
-   * finishDrawing()の中で
-   * drawPageをnullにする前に
-   * 必要な値を全部退避する。
-   */
 
   const layer =
     drawLayer;
@@ -1425,19 +978,14 @@ async function finishDrawing(
     );
 
 
-  /*
-   * ここで一度だけ描画状態を解除。
-   * page/layerはローカル変数に残っている。
-   */
-
   cancelDrawing();
 
 
   if (
     width <
-      8 ||
+    8 ||
     height <
-      8
+    8
   ) {
 
     return;
@@ -1504,7 +1052,7 @@ async function finishDrawing(
 
     points:
       info.boxType ===
-        "answer"
+      "answer"
         ? 0
         : null,
 
@@ -1534,17 +1082,13 @@ async function finishDrawing(
 
 
 /* =========================================================
-   CANCEL DRAWING
+   CANCEL DRAW
 ========================================================= */
 
 function cancelDrawing() {
 
   drawing =
     false;
-
-
-  drawingPointerId =
-    null;
 
 
   drawStart =
@@ -1555,17 +1099,8 @@ function cancelDrawing() {
     null;
 
 
-  if (
-    drawLayer
-  ) {
-
-    drawLayer
-      .removeEventListener(
-        "pointermove",
-        updateDrawPreview
-      );
-
-  }
+  drawLayer =
+    null;
 
 
   drawPreview?.remove();
@@ -1574,15 +1109,1710 @@ function cancelDrawing() {
   drawPreview =
     null;
 
+}
 
-  drawLayer =
-    null;
+
+/* =========================================================
+   AUTO DETECTION
+========================================================= */
+
+async function detectAllPages() {
+
+  candidates =
+    [];
+
+
+  if (!pages.length) {
+
+    return;
+
+  }
+
+
+  setStatus(
+    "解答用紙の枠を自動検出しています..."
+  );
+
+
+  for (
+    const page
+    of pages
+  ) {
+
+    try {
+
+      const detected =
+        await detectPageCandidates(
+          page
+        );
+
+
+      candidates.push(
+        ...detected
+      );
+
+    } catch (error) {
+
+      console.warn(
+        "auto detect:",
+        error
+      );
+
+    }
+
+  }
+
+
+  await renderAllPages();
+
+
+  setStatus(
+    candidates.length
+      ? `自動検出 ${candidates.length}個。候補をクリックすると枠として追加できます。`
+      : "自動検出できる枠がありません。手動ドラッグで設定できます。"
+  );
 
 }
 
 
 /* =========================================================
-   BOX RENDER
+   DETECT PAGE
+========================================================= */
+
+async function detectPageCandidates(
+  page
+) {
+
+  const {
+    data,
+    error
+  } =
+    await supabaseClient
+      .storage
+      .from(
+        "test-files"
+      )
+      .createSignedUrl(
+        page.image_path,
+        600
+      );
+
+
+  if (
+    error ||
+    !data?.signedUrl
+  ) {
+
+    return [];
+
+  }
+
+
+  const image =
+    await loadImage(
+      data.signedUrl
+    );
+
+
+  const maxWidth =
+    1800;
+
+
+  const scale =
+    Math.min(
+      1,
+      maxWidth /
+      image.naturalWidth
+    );
+
+
+  const canvas =
+    document.createElement(
+      "canvas"
+    );
+
+
+  canvas.width =
+    Math.round(
+      image.naturalWidth *
+      scale
+    );
+
+
+  canvas.height =
+    Math.round(
+      image.naturalHeight *
+      scale
+    );
+
+
+  const context =
+    canvas.getContext(
+      "2d",
+      {
+        willReadFrequently:
+          true
+      }
+    );
+
+
+  context.drawImage(
+    image,
+    0,
+    0,
+    canvas.width,
+    canvas.height
+  );
+
+
+  /*
+   * OpenCVが利用可能なら輪郭検出。
+   */
+
+  if (
+    window.cv
+  ) {
+
+    return detectWithOpenCV(
+      canvas,
+      page,
+      scale
+    );
+
+  }
+
+
+  /*
+   * OpenCVがまだ無い場合は
+   * 単純な投影検出。
+   */
+
+  return detectWithProjection(
+    canvas,
+    page,
+    scale
+  );
+
+}
+
+
+/* =========================================================
+   OPENCV
+========================================================= */
+
+function detectWithOpenCV(
+  canvas,
+  page,
+  scale
+) {
+
+  const src =
+    cv.imread(
+      canvas
+    );
+
+
+  const gray =
+    new cv.Mat();
+
+
+  const threshold =
+    new cv.Mat();
+
+
+  const contours =
+    new cv.MatVector();
+
+
+  const hierarchy =
+    new cv.Mat();
+
+
+  try {
+
+    cv.cvtColor(
+      src,
+      gray,
+      cv.COLOR_RGBA2GRAY
+    );
+
+
+    cv.threshold(
+      gray,
+      threshold,
+      205,
+      255,
+      cv.THRESH_BINARY_INV
+    );
+
+
+    cv.findContours(
+      threshold,
+      contours,
+      hierarchy,
+      cv.RETR_LIST,
+      cv.CHAIN_APPROX_SIMPLE
+    );
+
+
+    const result =
+      [];
+
+
+    for (
+      let i = 0;
+      i <
+      contours.size();
+      i++
+    ) {
+
+      const contour =
+        contours.get(
+          i
+        );
+
+
+      const perimeter =
+        cv.arcLength(
+          contour,
+          true
+        );
+
+
+      const approx =
+        new cv.Mat();
+
+
+      cv.approxPolyDP(
+        contour,
+        approx,
+        perimeter *
+          0.025,
+        true
+      );
+
+
+      const rect =
+        cv.boundingRect(
+          contour
+        );
+
+
+      const area =
+        rect.width *
+        rect.height;
+
+
+      const imageArea =
+        canvas.width *
+        canvas.height;
+
+
+      const ratio =
+        rect.width /
+        Math.max(
+          1,
+          rect.height
+        );
+
+
+      if (
+        approx.rows >= 4 &&
+        approx.rows <= 6 &&
+        area >
+          imageArea *
+          0.0002 &&
+        area <
+          imageArea *
+          0.35 &&
+        ratio >
+          0.15 &&
+        ratio <
+          8
+      ) {
+
+        const duplicate =
+          result.some(
+            candidate =>
+              overlapRatio(
+                candidate,
+                {
+                  x:
+                    rect.x /
+                    scale,
+
+                  y:
+                    rect.y /
+                    scale,
+
+                  width:
+                    rect.width /
+                    scale,
+
+                  height:
+                    rect.height /
+                    scale
+                }
+              ) >
+              0.75
+          );
+
+
+        if (!duplicate) {
+
+          result.push({
+
+            id:
+              crypto.randomUUID(),
+
+            pageNo:
+              Number(
+                page.page_no
+              ),
+
+            x:
+              rect.x /
+              scale,
+
+            y:
+              rect.y /
+              scale,
+
+            width:
+              rect.width /
+              scale,
+
+            height:
+              rect.height /
+              scale
+
+          });
+
+        }
+
+      }
+
+
+      approx.delete();
+
+      contour.delete();
+
+    }
+
+
+    return result
+      .sort(
+        (
+          a,
+          b
+        ) =>
+          a.y -
+          b.y ||
+          a.x -
+          b.x
+      )
+      .slice(
+        0,
+        300
+      );
+
+  } finally {
+
+    src.delete();
+
+    gray.delete();
+
+    threshold.delete();
+
+    contours.delete();
+
+    hierarchy.delete();
+
+  }
+
+}
+
+
+/* =========================================================
+   SIMPLE DETECTION
+========================================================= */
+
+function detectWithProjection(
+  canvas,
+  page,
+  scale
+) {
+
+  const context =
+    canvas.getContext(
+      "2d",
+      {
+        willReadFrequently:
+          true
+      }
+    );
+
+
+  const data =
+    context.getImageData(
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
+
+
+  const rows =
+    new Uint32Array(
+      canvas.height
+    );
+
+
+  const cols =
+    new Uint32Array(
+      canvas.width
+    );
+
+
+  for (
+    let y = 0;
+    y <
+    canvas.height;
+    y++
+  ) {
+
+    for (
+      let x = 0;
+      x <
+      canvas.width;
+      x++
+    ) {
+
+      const index =
+        (
+          y *
+          canvas.width +
+          x
+        ) *
+        4;
+
+
+      const gray =
+        (
+          data.data[index] +
+          data.data[index + 1] +
+          data.data[index + 2]
+        ) /
+        3;
+
+
+      if (
+        gray <
+        150
+      ) {
+
+        rows[y]++;
+
+        cols[x]++;
+
+      }
+
+    }
+
+  }
+
+
+  const horizontal =
+    findRuns(
+      rows,
+      canvas.width *
+      0.18
+    );
+
+
+  const vertical =
+    findRuns(
+      cols,
+      canvas.height *
+      0.18
+    );
+
+
+  const result =
+    [];
+
+
+  for (
+    let yi = 0;
+    yi <
+    horizontal.length;
+    yi++
+  ) {
+
+    for (
+      let xi = 0;
+      xi <
+      vertical.length;
+      xi++
+    ) {
+
+      for (
+        let yj = yi + 1;
+        yj <
+        Math.min(
+          yi + 8,
+          horizontal.length
+        );
+        yj++
+      ) {
+
+        for (
+          let xj = xi + 1;
+          xj <
+          Math.min(
+            xi + 8,
+            vertical.length
+          );
+          xj++
+        ) {
+
+          const x =
+            vertical[xi];
+
+
+          const right =
+            vertical[xj];
+
+
+          const y =
+            horizontal[yi];
+
+
+          const bottom =
+            horizontal[yj];
+
+
+          const width =
+            right -
+            x;
+
+
+          const height =
+            bottom -
+            y;
+
+
+          if (
+            width <
+            30 ||
+            height <
+            20
+          ) {
+
+            continue;
+
+          }
+
+
+          if (
+            width >
+            canvas.width *
+            0.9 ||
+            height >
+            canvas.height *
+            0.4
+          ) {
+
+            continue;
+
+          }
+
+
+          result.push({
+
+            id:
+              crypto.randomUUID(),
+
+            pageNo:
+              Number(
+                page.page_no
+              ),
+
+            x:
+              x /
+              scale,
+
+            y:
+              y /
+              scale,
+
+            width:
+              width /
+              scale,
+
+            height:
+              height /
+              scale
+
+          });
+
+        }
+
+      }
+
+    }
+
+  }
+
+
+  return deduplicateCandidates(
+    result
+  ).slice(
+    0,
+    200
+  );
+
+}
+
+
+function findRuns(
+  values,
+  threshold
+) {
+
+  const runs =
+    [];
+
+
+  let start =
+    -1;
+
+
+  for (
+    let i = 0;
+    i <
+    values.length;
+    i++
+  ) {
+
+    if (
+      values[i] >=
+      threshold
+    ) {
+
+      if (
+        start <
+        0
+      ) {
+
+        start =
+          i;
+
+      }
+
+    } else if (
+      start >=
+      0
+    ) {
+
+      if (
+        i -
+        start >=
+        2
+      ) {
+
+        runs.push(
+          Math.round(
+            (
+              start +
+              i
+            ) /
+            2
+          )
+        );
+
+      }
+
+
+      start =
+        -1;
+
+    }
+
+  }
+
+
+  return runs;
+
+}
+
+
+/* =========================================================
+   CANDIDATE
+========================================================= */
+
+function renderCandidate(
+  layer,
+  page,
+  candidate
+) {
+
+  const element =
+    document.createElement(
+      "div"
+    );
+
+
+  element.className =
+    "auto-box-candidate";
+
+
+  const scale =
+    getPageScale(
+      layer,
+      page
+    );
+
+
+  element.style.left =
+    `${candidate.x * scale}px`;
+
+
+  element.style.top =
+    `${candidate.y * scale}px`;
+
+
+  element.style.width =
+    `${candidate.width * scale}px`;
+
+
+  element.style.height =
+    `${candidate.height * scale}px`;
+
+
+  element.title =
+    "クリックして枠として追加";
+
+
+  element.addEventListener(
+    "pointerdown",
+    event => {
+
+      event.stopPropagation();
+
+      event.preventDefault();
+
+
+      acceptCandidate(
+        candidate
+      );
+
+    }
+  );
+
+
+  layer.appendChild(
+    element
+  );
+
+}
+
+
+/* =========================================================
+   ACCEPT CANDIDATE
+========================================================= */
+
+async function acceptCandidate(
+  candidate
+) {
+
+  const role =
+    boxRole?.value ||
+    "answer";
+
+
+  const info =
+    ROLE_INFO[
+      role
+    ] ||
+    ROLE_INFO.answer;
+
+
+  const box = {
+
+    id:
+      crypto.randomUUID(),
+
+    test_id:
+      selectedTestId,
+
+    page_no:
+      candidate.pageNo,
+
+    box_type:
+      info.boxType,
+
+    label:
+      info.label,
+
+    x:
+      candidate.x,
+
+    y:
+      candidate.y,
+
+    width:
+      candidate.width,
+
+    height:
+      candidate.height,
+
+    question_id:
+      null,
+
+    points:
+      info.boxType ===
+        "answer"
+        ? 0
+        : null,
+
+    sort_order:
+      boxes.length
+
+  };
+
+
+  boxes.push(
+    box
+  );
+
+
+  selectedBoxId =
+    box.id;
+
+
+  candidates =
+    candidates.filter(
+      item =>
+        item.id !==
+        candidate.id
+    );
+
+
+  await renderAllPages();
+
+
+  setStatus(
+    `${box.label}として枠を作成しました。`
+  );
+
+}
+
+
+/* =========================================================
+   SAVE
+========================================================= */
+
+async function saveBoxes() {
+
+  if (!selectedTestId) {
+
+    return;
+
+  }
+
+
+  saveButton.disabled =
+    true;
+
+
+  try {
+
+    const {
+      data: existing,
+      error: existingError
+    } =
+      await supabaseClient
+        .from(
+          "layout_boxes"
+        )
+        .select(
+          "id"
+        )
+        .eq(
+          "test_id",
+          selectedTestId
+        );
+
+
+    if (existingError) {
+
+      throw existingError;
+
+    }
+
+
+    const ids =
+      new Set(
+        boxes
+          .filter(
+            box =>
+              isUuid(
+                box.id
+              )
+          )
+          .map(
+            box =>
+              box.id
+          )
+      );
+
+
+    for (
+      const oldBox
+      of (
+        existing ||
+        []
+      )
+    ) {
+
+      if (
+        !ids.has(
+          oldBox.id
+        )
+      ) {
+
+        const {
+          error
+        } =
+          await supabaseClient
+            .from(
+              "layout_boxes"
+            )
+            .delete()
+            .eq(
+              "id",
+              oldBox.id
+            );
+
+
+        if (error) {
+
+          throw error;
+
+        }
+
+      }
+
+    }
+
+
+    for (
+      let index = 0;
+      index <
+      boxes.length;
+      index++
+    ) {
+
+      const box =
+        boxes[index];
+
+
+      const payload = {
+
+        test_id:
+          selectedTestId,
+
+        page_no:
+          Number(
+            box.page_no
+          ),
+
+        box_type:
+          normalizeBoxType(
+            box.box_type
+          ),
+
+        label:
+          box.label ||
+          null,
+
+        x:
+          Number(
+            box.x
+          ) || 0,
+
+        y:
+          Number(
+            box.y
+          ) || 0,
+
+        width:
+          Number(
+            box.width
+          ) || 0,
+
+        height:
+          Number(
+            box.height
+          ) || 0,
+
+        question_id:
+          null,
+
+        points:
+          normalizeBoxType(
+            box.box_type
+          ) ===
+            "answer"
+            ? Number(
+                box.points
+              ) || 0
+            : null,
+
+        sort_order:
+          index
+
+      };
+
+
+      if (
+        isUuid(
+          box.id
+        )
+      ) {
+
+        const {
+          error
+        } =
+          await supabaseClient
+            .from(
+              "layout_boxes"
+            )
+            .update(
+              payload
+            )
+            .eq(
+              "id",
+              box.id
+            );
+
+
+        if (error) {
+
+          throw error;
+
+        }
+
+      } else {
+
+        const {
+          data,
+          error
+        } =
+          await supabaseClient
+            .from(
+              "layout_boxes"
+            )
+            .insert(
+              payload
+            )
+            .select()
+            .single();
+
+
+        if (error) {
+
+          throw error;
+
+        }
+
+
+        box.id =
+          data.id;
+
+      }
+
+    }
+
+
+    await loadLayout();
+
+
+    setStatus(
+      "枠設定を保存しました。"
+    );
+
+
+  } catch (error) {
+
+    console.error(
+      "saveBoxes:",
+      error
+    );
+
+
+    setStatus(
+      error.message ||
+      "枠設定を保存できませんでした。",
+      true
+    );
+
+  } finally {
+
+    saveButton.disabled =
+      false;
+
+  }
+
+}
+
+
+/* =========================================================
+   SELECTED
+========================================================= */
+
+function getSelectedBox() {
+
+  if (!selectedBoxId) {
+
+    return null;
+
+  }
+
+
+  return boxes.find(
+    box =>
+      box.id ===
+      selectedBoxId
+  ) || null;
+
+}
+
+
+/* =========================================================
+   APPLY
+========================================================= */
+
+function applySelectedBox() {
+
+  const box =
+    getSelectedBox();
+
+
+  if (!box) {
+
+    setStatus(
+      "選択されている枠がありません。",
+      true
+    );
+
+    return;
+
+  }
+
+
+  const role =
+    boxRole?.value ||
+    "answer";
+
+
+  const info =
+    ROLE_INFO[
+      role
+    ] ||
+    ROLE_INFO.answer;
+
+
+  box.box_type =
+    info.boxType;
+
+
+  box.label =
+    info.label;
+
+
+  box.points =
+    info.boxType ===
+      "answer"
+      ? Number(
+          box.points
+        ) || 0
+      : null;
+
+
+  renderAllPages();
+
+
+  setStatus(
+    `${box.label}に設定しました。`
+  );
+
+}
+
+
+/* =========================================================
+   DELETE
+========================================================= */
+
+function deleteSelectedBox() {
+
+  if (!selectedBoxId) {
+
+    return;
+
+  }
+
+
+  boxes =
+    boxes.filter(
+      box =>
+        box.id !==
+        selectedBoxId
+    );
+
+
+  selectedBoxId =
+    null;
+
+
+  renderAllPages();
+
+
+  setStatus(
+    "枠を削除しました。保存するとDBにも反映されます。"
+  );
+
+}
+
+
+/* =========================================================
+   ROLE
+========================================================= */
+
+function updateRoleHelp() {
+
+  const role =
+    boxRole?.value ||
+    "answer";
+
+
+  const info =
+    ROLE_INFO[
+      role
+    ] ||
+    ROLE_INFO.answer;
+
+
+  if (parentInfo) {
+
+    parentInfo.textContent =
+      `${info.label}として新しい枠を作成します。`;
+
+  }
+
+}
+
+
+/* =========================================================
+   PANEL
+========================================================= */
+
+function openBoxPanel() {
+
+  if (!boxPanel) {
+
+    return;
+
+  }
+
+
+  boxPanel.classList.add(
+    "open"
+  );
+
+
+  boxPanel.style.display =
+    "block";
+
+}
+
+
+function closeBoxPanel() {
+
+  if (!boxPanel) {
+
+    return;
+
+  }
+
+
+  boxPanel.classList.remove(
+    "open"
+  );
+
+}
+
+
+/* =========================================================
+   KEYBOARD
+========================================================= */
+
+function handleKeyboard(
+  event
+) {
+
+  if (
+    event.target instanceof
+      HTMLInputElement ||
+    event.target instanceof
+      HTMLTextAreaElement ||
+    event.target instanceof
+      HTMLSelectElement
+  ) {
+
+    return;
+
+  }
+
+
+  if (
+    event.key ===
+    "Escape"
+  ) {
+
+    cancelDrawing();
+
+
+    dragMode =
+      null;
+
+
+    selectedBoxId =
+      null;
+
+
+    renderAllPages();
+
+  }
+
+
+  if (
+    event.key ===
+    "Delete"
+  ) {
+
+    deleteSelectedBox();
+
+  }
+
+}
+
+
+/* =========================================================
+   GEOMETRY
+========================================================= */
+
+function getPoint(
+  event,
+  rect
+) {
+
+  return {
+
+    x:
+      Math.max(
+        0,
+        Math.min(
+          rect.width,
+          event.clientX -
+          rect.left
+        )
+      ),
+
+    y:
+      Math.max(
+        0,
+        Math.min(
+          rect.height,
+          event.clientY -
+          rect.top
+        )
+      )
+
+  };
+
+}
+
+
+function getPageScale(
+  layer,
+  page
+) {
+
+  const sourceWidth =
+    Number(
+      page.width_px
+    ) ||
+    layer.clientWidth;
+
+
+  if (!sourceWidth) {
+
+    return 1;
+
+  }
+
+
+  return (
+    layer.clientWidth /
+    sourceWidth
+  );
+
+}
+
+
+/* =========================================================
+   MOVE / RESIZE
+========================================================= */
+
+function beginMove(
+  event,
+  box
+) {
+
+  dragMode =
+    "move";
+
+
+  dragBoxId =
+    box.id;
+
+
+  dragStart = {
+
+    x:
+      event.clientX,
+
+    y:
+      event.clientY
+
+  };
+
+
+  dragOriginal = {
+
+    x:
+      Number(
+        box.x
+      ) || 0,
+
+    y:
+      Number(
+        box.y
+      ) || 0
+
+  };
+
+}
+
+
+function beginResize(
+  event,
+  box
+) {
+
+  dragMode =
+    "resize";
+
+
+  dragBoxId =
+    box.id;
+
+
+  dragStart = {
+
+    x:
+      event.clientX,
+
+    y:
+      event.clientY
+
+  };
+
+
+  dragOriginal = {
+
+    width:
+      Number(
+        box.width
+      ) || 10,
+
+    height:
+      Number(
+        box.height
+      ) || 10
+
+  };
+
+}
+
+
+document.addEventListener(
+  "pointermove",
+  event => {
+
+    if (!dragMode) {
+
+      return;
+
+    }
+
+
+    const box =
+      boxes.find(
+        item =>
+          item.id ===
+          dragBoxId
+      );
+
+
+    if (!box) {
+
+      return;
+
+    }
+
+
+    const page =
+      pages.find(
+        item =>
+          Number(
+            item.page_no
+          ) ===
+          Number(
+            box.page_no
+          )
+      );
+
+
+    if (!page) {
+
+      return;
+
+    }
+
+
+    const layer =
+      document.querySelector(
+        `.page-layer[data-page-no="${CSS.escape(
+          String(
+            page.page_no
+          )
+        )}"]`
+      );
+
+
+    if (!layer) {
+
+      return;
+
+    }
+
+
+    const scale =
+      getPageScale(
+        layer,
+        page
+      );
+
+
+    const dx =
+      (
+        event.clientX -
+        dragStart.x
+      ) /
+      scale;
+
+
+    const dy =
+      (
+        event.clientY -
+        dragStart.y
+      ) /
+      scale;
+
+
+    if (
+      dragMode ===
+      "move"
+    ) {
+
+      box.x =
+        Math.max(
+          0,
+          dragOriginal.x +
+          dx
+        );
+
+
+      box.y =
+        Math.max(
+          0,
+          dragOriginal.y +
+          dy
+        );
+
+    } else {
+
+      box.width =
+        Math.max(
+          5,
+          dragOriginal.width +
+          dx
+        );
+
+
+      box.height =
+        Math.max(
+          5,
+          dragOriginal.height +
+          dy
+        );
+
+    }
+
+
+    renderBoxLayer(
+      page
+    );
+
+  }
+);
+
+
+document.addEventListener(
+  "pointerup",
+  () => {
+
+    dragMode =
+      null;
+
+    dragBoxId =
+      null;
+
+    dragStart =
+      null;
+
+    dragOriginal =
+      null;
+
+  }
+);
+
+
+/* =========================================================
+   BOX
 ========================================================= */
 
 function renderBox(
@@ -1599,10 +2829,6 @@ function renderBox(
 
   element.className =
     "layout-box";
-
-
-  element.dataset.boxId =
-    box.id;
 
 
   if (
@@ -1701,8 +2927,6 @@ function renderBox(
 
         beginResize(
           event,
-          layer,
-          page,
           box
         );
 
@@ -1710,8 +2934,6 @@ function renderBox(
 
         beginMove(
           event,
-          layer,
-          page,
           box
         );
 
@@ -1729,302 +2951,7 @@ function renderBox(
 
 
 /* =========================================================
-   MOVE
-========================================================= */
-
-function beginMove(
-  event,
-  layer,
-  page,
-  box
-) {
-
-  dragMode =
-    "move";
-
-
-  dragPointerId =
-    event.pointerId;
-
-
-  dragBoxId =
-    box.id;
-
-
-  dragStart = {
-
-    x:
-      event.clientX,
-
-    y:
-      event.clientY
-
-  };
-
-
-  dragOriginal = {
-
-    x:
-      Number(
-        box.x
-      ) || 0,
-
-    y:
-      Number(
-        box.y
-      ) || 0
-
-  };
-
-
-  try {
-
-    layer.setPointerCapture(
-      event.pointerId
-    );
-
-  } catch (_) {}
-
-}
-
-
-/* =========================================================
-   RESIZE
-========================================================= */
-
-function beginResize(
-  event,
-  layer,
-  page,
-  box
-) {
-
-  dragMode =
-    "resize";
-
-
-  dragPointerId =
-    event.pointerId;
-
-
-  dragBoxId =
-    box.id;
-
-
-  dragStart = {
-
-    x:
-      event.clientX,
-
-    y:
-      event.clientY
-
-  };
-
-
-  dragOriginal = {
-
-    width:
-      Number(
-        box.width
-      ) || 10,
-
-    height:
-      Number(
-        box.height
-      ) || 10
-
-  };
-
-
-  try {
-
-    layer.setPointerCapture(
-      event.pointerId
-    );
-
-  } catch (_) {}
-
-}
-
-
-/* =========================================================
-   GLOBAL POINTER MOVE
-========================================================= */
-
-document.addEventListener(
-  "pointermove",
-  event => {
-
-    if (
-      !dragMode ||
-      event.pointerId !==
-        dragPointerId
-    ) {
-
-      return;
-
-    }
-
-
-    const box =
-      boxes.find(
-        item =>
-          item.id ===
-          dragBoxId
-      );
-
-
-    if (!box) {
-
-      return;
-
-    }
-
-
-    const page =
-      pages.find(
-        item =>
-          Number(
-            item.page_no
-          ) ===
-          Number(
-            box.page_no
-          )
-      );
-
-
-    if (!page) {
-
-      return;
-
-    }
-
-
-    const layer =
-      document.querySelector(
-        `.page-layer[data-page-no="${CSS.escape(
-          String(
-            box.page_no
-          )
-        )}"]`
-      );
-
-
-    if (!layer) {
-
-      return;
-
-    }
-
-
-    const scale =
-      getPageScale(
-        layer,
-        page
-      );
-
-
-    const dx =
-      (
-        event.clientX -
-        dragStart.x
-      ) /
-      scale;
-
-
-    const dy =
-      (
-        event.clientY -
-        dragStart.y
-      ) /
-      scale;
-
-
-    if (
-      dragMode ===
-      "move"
-    ) {
-
-      box.x =
-        Math.max(
-          0,
-          dragOriginal.x +
-          dx
-        );
-
-
-      box.y =
-        Math.max(
-          0,
-          dragOriginal.y +
-          dy
-        );
-
-    } else {
-
-      box.width =
-        Math.max(
-          5,
-          dragOriginal.width +
-          dx
-        );
-
-
-      box.height =
-        Math.max(
-          5,
-          dragOriginal.height +
-          dy
-        );
-
-    }
-
-
-    renderBoxLayer(
-      page
-    );
-
-  }
-);
-
-
-/* =========================================================
-   GLOBAL POINTER UP
-========================================================= */
-
-document.addEventListener(
-  "pointerup",
-  event => {
-
-    if (
-      dragPointerId ===
-      event.pointerId
-    ) {
-
-      dragMode =
-        null;
-
-      dragPointerId =
-        null;
-
-      dragBoxId =
-        null;
-
-      dragStart =
-        null;
-
-      dragOriginal =
-        null;
-
-    }
-
-  }
-);
-
-
-/* =========================================================
-   RENDER BOX LAYER
+   BOX LAYER
 ========================================================= */
 
 function renderBoxLayer(
@@ -2069,545 +2996,144 @@ function renderBoxLayer(
         )
     )
     .forEach(
-      box => {
-
+      box =>
         renderBox(
           layer,
           page,
           box
-        );
-
-      }
-    );
-
-}
-
-
-/* =========================================================
-   APPLY
-========================================================= */
-
-function applySelectedBox() {
-
-  const box =
-    getSelectedBox();
-
-
-  if (!box) {
-
-    setStatus(
-      "選択されている枠がありません。",
-      true
-    );
-
-    return;
-
-  }
-
-
-  const role =
-    boxRole?.value ||
-    "answer";
-
-
-  const info =
-    ROLE_INFO[
-      role
-    ] ||
-    ROLE_INFO.answer;
-
-
-  box.box_type =
-    info.boxType;
-
-
-  box.label =
-    info.label;
-
-
-  box.points =
-    info.boxType ===
-      "answer"
-      ? Number(
-          box.points
-        ) || 0
-      : null;
-
-
-  renderAllPages();
-
-
-  setStatus(
-    `${box.label}に変更しました。`
-  );
-
-}
-
-
-/* =========================================================
-   DELETE
-========================================================= */
-
-function deleteSelectedBox() {
-
-  if (!selectedBoxId) {
-
-    return;
-
-  }
-
-
-  boxes =
-    boxes.filter(
-      box =>
-        box.id !==
-        selectedBoxId
-    );
-
-
-  selectedBoxId =
-    null;
-
-
-  renderAllPages();
-
-
-  setStatus(
-    "枠を削除しました。保存するとDBにも反映されます。"
-  );
-
-}
-
-
-/* =========================================================
-   SAVE
-========================================================= */
-
-async function saveBoxes() {
-
-  if (!selectedTestId) {
-
-    return;
-
-  }
-
-
-  saveButton.disabled =
-    true;
-
-
-  try {
-
-    setStatus(
-      "枠設定を保存しています..."
-    );
-
-
-    const {
-      data: existing,
-      error: existingError
-    } =
-      await supabaseClient
-        .from(
-          "layout_boxes"
         )
-        .select(
-          "id"
-        )
-        .eq(
-          "test_id",
-          selectedTestId
-        );
+    );
+
+}
 
 
-    if (existingError) {
+/* =========================================================
+   CANDIDATE DEDUPE
+========================================================= */
 
-      throw existingError;
+function deduplicateCandidates(
+  list
+) {
 
-    }
+  const result =
+    [];
 
 
-    const currentIds =
-      new Set(
-        boxes
-          .filter(
-            box =>
-              isUuid(
-                box.id
-              )
-          )
-          .map(
-            box =>
-              box.id
-          )
+  for (
+    const candidate
+    of list
+  ) {
+
+    const duplicate =
+      result.some(
+        existing =>
+          overlapRatio(
+            candidate,
+            existing
+          ) >
+          0.70
       );
 
 
-    for (
-      const oldBox
-      of (
-        existing ||
-        []
-      )
-    ) {
+    if (!duplicate) {
 
-      if (
-        !currentIds.has(
-          oldBox.id
-        )
-      ) {
-
-        const {
-          error
-        } =
-          await supabaseClient
-            .from(
-              "layout_boxes"
-            )
-            .delete()
-            .eq(
-              "id",
-              oldBox.id
-            );
-
-
-        if (error) {
-
-          throw error;
-
-        }
-
-      }
+      result.push(
+        candidate
+      );
 
     }
 
-
-    for (
-      let index = 0;
-      index <
-      boxes.length;
-      index++
-    ) {
-
-      const box =
-        boxes[index];
+  }
 
 
-      const payload = {
+  return result;
 
-        test_id:
-          selectedTestId,
-
-        page_no:
-          Number(
-            box.page_no
-          ) || 1,
-
-        box_type:
-          normalizeBoxType(
-            box.box_type
-          ),
-
-        label:
-          box.label ||
-          null,
-
-        x:
-          Number(
-            box.x
-          ) || 0,
-
-        y:
-          Number(
-            box.y
-          ) || 0,
-
-        width:
-          Number(
-            box.width
-          ) || 0,
-
-        height:
-          Number(
-            box.height
-          ) || 0,
-
-        question_id:
-          null,
-
-        points:
-          box.box_type ===
-            "answer"
-            ? Number(
-                box.points
-              ) || 0
-            : null,
-
-        sort_order:
-          index
-
-      };
+}
 
 
-      if (
-        isUuid(
-          box.id
-        )
-      ) {
+function overlapRatio(
+  a,
+  b
+) {
 
-        const {
-          error
-        } =
-          await supabaseClient
-            .from(
-              "layout_boxes"
-            )
-            .update(
-              payload
-            )
-            .eq(
-              "id",
-              box.id
-            );
-
-
-        if (error) {
-
-          throw error;
-
-        }
-
-      } else {
-
-        const {
-          data,
-          error
-        } =
-          await supabaseClient
-            .from(
-              "layout_boxes"
-            )
-            .insert(
-              payload
-            )
-            .select()
-            .single();
-
-
-        if (error) {
-
-          throw error;
-
-        }
-
-
-        box.id =
-          data.id;
-
-      }
-
-    }
-
-
-    await loadLayout();
-
-
-    setStatus(
-      "枠設定を保存しました。"
+  const left =
+    Math.max(
+      a.x,
+      b.x
     );
 
 
-  } catch (error) {
-
-    console.error(
-      "saveBoxes:",
-      error
+  const top =
+    Math.max(
+      a.y,
+      b.y
     );
 
 
-    setStatus(
-      error.message ||
-      "枠設定の保存に失敗しました。",
-      true
+  const right =
+    Math.min(
+      a.x +
+      a.width,
+      b.x +
+      b.width
     );
 
-  } finally {
 
-    saveButton.disabled =
-      false;
-
-  }
-
-}
-
-
-/* =========================================================
-   ROLE HELP
-========================================================= */
-
-function updateRoleHelp() {
-
-  const role =
-    boxRole?.value ||
-    "answer";
-
-
-  const info =
-    ROLE_INFO[
-      role
-    ] ||
-    ROLE_INFO.answer;
-
-
-  if (parentInfo) {
-
-    parentInfo.textContent =
-      `${info.label}を作成します。`;
-
-  }
-
-}
-
-
-/* =========================================================
-   PANEL
-========================================================= */
-
-function closeBoxPanel() {
-
-  boxPanel?.classList.remove(
-    "open"
-  );
-
-}
-
-
-/* =========================================================
-   KEYBOARD
-========================================================= */
-
-function handleKeyboard(
-  event
-) {
-
-  const target =
-    event.target;
+  const bottom =
+    Math.min(
+      a.y +
+      a.height,
+      b.y +
+      b.height
+    );
 
 
   if (
-    target instanceof
-      HTMLInputElement ||
-    target instanceof
-      HTMLTextAreaElement ||
-    target instanceof
-      HTMLSelectElement
+    right <=
+    left ||
+    bottom <=
+    top
   ) {
 
-    return;
+    return 0;
 
   }
 
 
-  if (
-    event.key ===
-    "Escape"
-  ) {
-
-    cancelDrawing();
-
-
-    dragMode =
-      null;
-
-
-    selectedBoxId =
-      null;
+  const intersection =
+    (
+      right -
+      left
+    ) *
+    (
+      bottom -
+      top
+    );
 
 
-    renderAllPages();
-
-  }
-
-
-  if (
-    event.key ===
-    "Delete"
-  ) {
-
-    deleteSelectedBox();
-
-  }
-
-}
+  const areaA =
+    a.width *
+    a.height;
 
 
-/* =========================================================
-   GEOMETRY
-========================================================= */
-
-function getPoint(
-  event,
-  rect
-) {
-
-  return {
-
-    x:
-      Math.max(
-        0,
-        Math.min(
-          rect.width,
-          event.clientX -
-          rect.left
-        )
-      ),
-
-    y:
-      Math.max(
-        0,
-        Math.min(
-          rect.height,
-          event.clientY -
-          rect.top
-        )
-      )
-
-  };
-
-}
-
-
-function getPageScale(
-  layer,
-  page
-) {
-
-  const sourceWidth =
-    Number(
-      page.width_px
-    ) ||
-    layer.clientWidth;
-
-
-  if (
-    !sourceWidth
-  ) {
-
-    return 1;
-
-  }
+  const areaB =
+    b.width *
+    b.height;
 
 
   return (
-    layer.clientWidth /
-    sourceWidth
+    intersection /
+    Math.min(
+      areaA,
+      areaB
+    )
   );
 
 }
 
 
 /* =========================================================
-   IMAGE
+   LOAD IMAGE
 ========================================================= */
 
 function loadImage(
@@ -2649,116 +3175,9 @@ function loadImage(
 }
 
 
-function imageToPng(
-  image
-) {
-
-  const canvas =
-    document.createElement(
-      "canvas"
-    );
-
-
-  canvas.width =
-    image.naturalWidth;
-
-
-  canvas.height =
-    image.naturalHeight;
-
-
-  const context =
-    canvas.getContext(
-      "2d"
-    );
-
-
-  context.fillStyle =
-    "#fff";
-
-
-  context.fillRect(
-    0,
-    0,
-    canvas.width,
-    canvas.height
-  );
-
-
-  context.drawImage(
-    image,
-    0,
-    0
-  );
-
-
-  return new Promise(
-    (
-      resolve,
-      reject
-    ) => {
-
-      canvas.toBlob(
-        blob => {
-
-          if (!blob) {
-
-            reject(
-              new Error(
-                "PNG変換に失敗しました。"
-              )
-            );
-
-            return;
-
-          }
-
-
-          resolve(
-            blob
-          );
-
-        },
-        "image/png"
-      );
-
-    }
-  );
-
-}
-
-
 /* =========================================================
    UTIL
 ========================================================= */
-
-function getExtension(
-  value
-) {
-
-  const name =
-    String(
-      value ||
-      ""
-    )
-      .split("?")[0]
-      .toLowerCase();
-
-
-  const index =
-    name.lastIndexOf(
-      "."
-    );
-
-
-  return index >= 0
-    ? name.slice(
-        index + 1
-      )
-    : "";
-
-}
-
 
 function normalizeBoxType(
   value
@@ -2782,6 +3201,34 @@ function normalizeBoxType(
 }
 
 
+function getExtension(
+  value
+) {
+
+  const text =
+    String(
+      value ||
+      ""
+    )
+      .split("?")[0]
+      .toLowerCase();
+
+
+  const index =
+    text.lastIndexOf(
+      "."
+    );
+
+
+  return index >= 0
+    ? text.slice(
+        index + 1
+      )
+    : "";
+
+}
+
+
 function isUuid(
   value
 ) {
@@ -2799,7 +3246,7 @@ function isUuid(
 
 
 function setStatus(
-  message,
+  text,
   error = false
 ) {
 
@@ -2811,7 +3258,7 @@ function setStatus(
 
 
   statusElement.textContent =
-    message;
+    text;
 
 
   statusElement.classList.toggle(

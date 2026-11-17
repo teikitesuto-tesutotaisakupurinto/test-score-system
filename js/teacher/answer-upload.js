@@ -4,24 +4,14 @@
 /* =========================================================
    答案アップロード
 
-   PDF / 画像 / ZIP
-        ↓
-   ページ画像化
-        ↓
-   Storage
-        ↓
-   answer_sheets
-        ↓
-   answer_sheet_pages
-        ↓
-   QR解析
-        ↓
-   生徒自動紐付け
-        ↓
-   uploaded / unmatched
-
-   採点画面では
-   uploaded の答案を対象にする。
+   ・先生 / 管理者のみ
+   ・テスト選択
+   ・?test=UUID の自動選択
+   ・複数ファイル
+   ・PDF / 画像 / ZIP
+   ・answer_sheets
+   ・answer_sheet_pages
+   ・QRによる生徒紐付け
 ========================================================= */
 
 let DB = null;
@@ -37,45 +27,74 @@ let uploading = false;
    DOM
 ========================================================= */
 
-const testSelect =
+const teacherName =
   document.getElementById(
-    "testSelect"
+    "teacherName"
   );
 
+const testSelect =
+  document.getElementById(
+    "test"
+  );
+
+const answerType =
+  document.getElementById(
+    "answerType"
+  );
 
 const fileInput =
   document.getElementById(
-    "answerFiles"
+    "files"
   );
 
+const fileList =
+  document.getElementById(
+    "fileList"
+  );
 
 const uploadButton =
   document.getElementById(
     "uploadButton"
   );
 
-
-const statusElement =
+const clearButton =
   document.getElementById(
-    "status"
+    "clearButton"
   );
 
-
-const progressElement =
+const messageElement =
   document.getElementById(
-    "progress"
+    "message"
   );
 
+const processingArea =
+  document.getElementById(
+    "processingArea"
+  );
+
+const processingTitle =
+  document.getElementById(
+    "processingTitle"
+  );
 
 const progressBar =
   document.getElementById(
     "progressBar"
   );
 
-
 const progressText =
   document.getElementById(
     "progressText"
+  );
+
+const processingLog =
+  document.getElementById(
+    "processingLog"
+  );
+
+const uploadList =
+  document.getElementById(
+    "uploadList"
   );
 
 
@@ -120,9 +139,7 @@ async function initialize() {
     }
 
 
-    document.getElementById(
-      "teacherName"
-    ).textContent =
+    teacherName.textContent =
       auth.profile?.name ||
       "先生";
 
@@ -136,17 +153,20 @@ async function initialize() {
     selectTestFromUrl();
 
 
+    updateState();
+
+
   } catch (error) {
 
     console.error(
-      "answer-upload:",
+      "answer-upload initialize:",
       error
     );
 
 
-    setStatus(
+    showMessage(
       error.message ||
-      "答案アップロード画面を起動できませんでした。",
+      "答案アップロード画面を読み込めませんでした。",
       true
     );
 
@@ -170,15 +190,33 @@ function setupEvents() {
         null;
 
 
-      updateUploadButton();
+      updateState();
 
     }
   );
 
 
+  answerType?.addEventListener(
+    "change",
+    updateState
+  );
+
+
+  fileInput?.addEventListener(
+    "change",
+    renderFileList
+  );
+
+
   uploadButton?.addEventListener(
     "click",
-    uploadAnswers
+    uploadFiles
+  );
+
+
+  clearButton?.addEventListener(
+    "click",
+    clearFiles
   );
 
 
@@ -218,13 +256,15 @@ async function loadTests() {
         name,
         subject,
         grade,
-        class_name
+        class_name,
+        test_date,
+        status
         `
       )
       .order(
         "created_at",
         {
-          ascending:false
+          ascending: false
         }
       );
 
@@ -258,14 +298,9 @@ async function loadTests() {
             >
 
               ${escapeHtml(
-                [
-                  test.name,
-                  test.subject,
-                  test.grade,
-                  test.class_name
-                ]
-                  .filter(Boolean)
-                  .join(" / ")
+                formatTestName(
+                  test
+                )
               )}
 
             </option>
@@ -277,14 +312,11 @@ async function loadTests() {
 
   `;
 
-
-  updateUploadButton();
-
 }
 
 
 /* =========================================================
-   URL
+   URL TEST
 ========================================================= */
 
 function selectTestFromUrl() {
@@ -295,30 +327,151 @@ function selectTestFromUrl() {
     );
 
 
-  const requested =
+  const testId =
     params.get(
       "test"
     );
 
 
-  if (
-    requested &&
+  if (!testId) {
+
+    return;
+
+  }
+
+
+  const exists =
     tests.some(
       test =>
         test.id ===
-        requested
-    )
-  ) {
-
-    selectedTestId =
-      requested;
+        testId
+    );
 
 
-    testSelect.value =
-      requested;
+  if (!exists) {
+
+    showMessage(
+      "URLで指定されたテストが見つかりません。",
+      true
+    );
+
+    return;
+
+  }
 
 
-    updateUploadButton();
+  selectedTestId =
+    testId;
+
+
+  testSelect.value =
+    testId;
+
+}
+
+
+/* =========================================================
+   FILE LIST
+========================================================= */
+
+function renderFileList() {
+
+  const files =
+    [
+      ...(fileInput?.files || [])
+    ];
+
+
+  if (!files.length) {
+
+    fileList.hidden =
+      true;
+
+    fileList.innerHTML =
+      "";
+
+    return;
+
+  }
+
+
+  fileList.hidden =
+    false;
+
+
+  fileList.innerHTML = `
+
+    <div
+      style="
+        padding:10px;
+        margin-top:10px;
+        background:#f5f6f7;
+        border:1px solid #d5dbe0;
+      "
+    >
+
+      <strong>
+        選択ファイル ${files.length}件
+      </strong>
+
+      <div
+        style="
+          margin-top:7px;
+          line-height:1.7;
+        "
+      >
+
+        ${
+          files
+            .map(
+              (
+                file,
+                index
+              ) => `
+
+                <div>
+
+                  ${index + 1}.
+                  ${escapeHtml(
+                    file.name
+                  )}
+
+                </div>
+
+              `
+            )
+            .join("")
+        }
+
+      </div>
+
+    </div>
+
+  `;
+
+}
+
+
+/* =========================================================
+   STATE
+========================================================= */
+
+function updateState() {
+
+  const ready =
+    Boolean(
+      selectedTestId
+    ) &&
+    Boolean(
+      fileInput?.files?.length
+    ) &&
+    !uploading;
+
+
+  if (uploadButton) {
+
+    uploadButton.disabled =
+      !ready;
 
   }
 
@@ -329,7 +482,7 @@ function selectTestFromUrl() {
    UPLOAD
 ========================================================= */
 
-async function uploadAnswers() {
+async function uploadFiles() {
 
   if (uploading) {
 
@@ -340,7 +493,7 @@ async function uploadAnswers() {
 
   if (!selectedTestId) {
 
-    setStatus(
+    showMessage(
       "テストを選択してください。",
       true
     );
@@ -358,10 +511,25 @@ async function uploadAnswers() {
 
   if (!files.length) {
 
-    setStatus(
+    showMessage(
       "答案ファイルを選択してください。",
       true
     );
+
+    return;
+
+  }
+
+
+  if (
+    answerType?.value ===
+    "model"
+  ) {
+
+    location.href =
+      `/teacher/tests/model-answer?test=${encodeURIComponent(
+        selectedTestId
+      )}`;
 
     return;
 
@@ -372,24 +540,17 @@ async function uploadAnswers() {
     true;
 
 
-  setControlsDisabled(
-    true
-  );
+  updateState();
 
 
-  showProgress(
-    0,
-    files.length
-  );
+  showProcessing();
 
 
-  let completed =
-    0;
+  clearMessage();
 
 
   let success =
     0;
-
 
   let failed =
     0;
@@ -398,13 +559,26 @@ async function uploadAnswers() {
   try {
 
     for (
-      const file
-      of files
+      let index = 0;
+      index <
+      files.length;
+      index++
     ) {
+
+      const file =
+        files[index];
+
+
+      setProgress(
+        index,
+        files.length,
+        `処理中: ${file.name}`
+      );
+
 
       try {
 
-        await processFile(
+        await processStudentAnswer(
           file
         );
 
@@ -412,51 +586,53 @@ async function uploadAnswers() {
         success++;
 
 
-      } catch (error) {
-
-        console.error(
-          `答案処理失敗: ${file.name}`,
-          error
+        addLog(
+          `完了: ${file.name}`
         );
 
+
+      } catch (error) {
 
         failed++;
 
 
+        addLog(
+          `失敗: ${file.name} - ${
+            error.message
+          }`,
+          true
+        );
+
       }
 
 
-      completed++;
-
-
-      updateProgress(
-        completed,
-        files.length
-      );
-
-
-      /*
-       * 大量答案でもUIを固めない。
-       */
-
-      await yieldBrowser();
+      await nextFrame();
 
     }
 
 
-    if (
-      failed
-    ) {
+    setProgress(
+      files.length,
+      files.length,
+      "処理完了"
+    );
 
-      setStatus(
-        `${success}ファイルを処理しました。${failed}ファイルは失敗しました。`,
+
+    processingTitle.textContent =
+      "処理完了";
+
+
+    if (failed) {
+
+      showMessage(
+        `${success}件完了、${failed}件失敗しました。`,
         true
       );
 
     } else {
 
-      setStatus(
-        `${success}ファイルの答案登録が完了しました。`
+      showMessage(
+        `${success}件の答案を登録しました。`
       );
 
     }
@@ -468,9 +644,7 @@ async function uploadAnswers() {
       false;
 
 
-    setControlsDisabled(
-      false
-    );
+    updateState();
 
   }
 
@@ -478,49 +652,28 @@ async function uploadAnswers() {
 
 
 /* =========================================================
-   PROCESS FILE
+   PROCESS ANSWER
 ========================================================= */
 
-async function processFile(
+async function processStudentAnswer(
   file
 ) {
 
+  const parsed =
+    await parseFile(
+      file
+    );
+
+
   if (
-    !window.TEST_SCORE_FILES
+    !parsed?.length
   ) {
 
     throw new Error(
-      "ファイル解析エンジンが読み込まれていません。"
+      "ページを取得できませんでした。"
     );
 
   }
-
-
-  const pages =
-    await window.TEST_SCORE_FILES
-      .parseFile(
-        file
-      );
-
-
-  if (!pages?.length) {
-
-    throw new Error(
-      `${file.name} に有効なページがありません。`
-    );
-
-  }
-
-
-  /*
-   * 1ファイル = 1答案。
-   *
-   * ZIPの場合は内部の全ページを
-   * 1答案として登録する。
-   */
-
-  const answerId =
-    crypto.randomUUID();
 
 
   const {
@@ -533,14 +686,14 @@ async function processFile(
       )
       .insert({
 
-        id:
-          answerId,
-
         test_id:
           selectedTestId,
 
         status:
           "unmatched",
+
+        original_file_path:
+          null,
 
         qr_value:
           null
@@ -566,46 +719,40 @@ async function processFile(
     for (
       let index = 0;
       index <
-      pages.length;
+      parsed.length;
       index++
     ) {
 
       const page =
-        pages[index];
+        parsed[index];
 
 
       const pageNo =
         index + 1;
 
 
-      const safeName =
-        sanitizeFileName(
-          file.name
-        );
-
-
       const path =
         [
           selectedTestId,
-          answerId,
-          `${String(
+          answer.id,
+          `page-${String(
             pageNo
           ).padStart(
             3,
             "0"
-          )}_${safeName}.png`
+          )}.png`
         ].join(
           "/"
         );
 
 
       const {
-        error:uploadError
+        error
       } =
         await DB
           .storage
           .from(
-            "answer-files"
+            "test-files"
           )
           .upload(
             path,
@@ -613,15 +760,19 @@ async function processFile(
             {
               contentType:
                 "image/png",
+
+              cacheControl:
+                "3600",
+
               upsert:
                 false
             }
           );
 
 
-      if (uploadError) {
+      if (error) {
 
-        throw uploadError;
+        throw error;
 
       }
 
@@ -632,7 +783,8 @@ async function processFile(
 
 
       const {
-        error:pageError
+        error:
+          pageError
       } =
         await DB
           .from(
@@ -641,7 +793,7 @@ async function processFile(
           .insert({
 
             answer_sheet_id:
-              answerId,
+              answer.id,
 
             page_no:
               pageNo,
@@ -649,20 +801,23 @@ async function processFile(
             file_path:
               path,
 
-            width_px:
-              page.width ||
-              null,
-
-            height_px:
-              page.height ||
-              null,
-
             file_type:
               "image/png",
 
             original_name:
-              page.name ||
-              file.name
+              file.name,
+
+            width_px:
+              Number(
+                page.width
+              ) ||
+              null,
+
+            height_px:
+              Number(
+                page.height
+              ) ||
+              null
 
           });
 
@@ -677,63 +832,36 @@ async function processFile(
 
 
     /*
-     * QRを読み取れる場合は
-     * 生徒を自動紐付け。
+     * QRは読めた場合のみ自動紐付け。
+     * 読めなくても答案自体は残す。
      */
 
-    const qrValue =
-      await detectQrFromPages(
-        pages
+    const qr =
+      await detectQr(
+        parsed
       );
 
 
-    if (qrValue) {
+    if (qr) {
 
-      await matchByQr(
-        answerId,
-        qrValue
+      await matchStudent(
+        answer.id,
+        qr
       );
-
-    } else {
-
-      await DB
-        .from(
-          "answer_sheets"
-        )
-        .update({
-
-          status:
-            "unmatched"
-
-        })
-        .eq(
-          "id",
-          answerId
-        );
 
     }
 
 
   } catch (error) {
 
-    /*
-     * 失敗した答案を残さない。
-     */
-
-    if (
-      uploadedPaths.length
-    ) {
-
-      await DB
-        .storage
-        .from(
-          "answer-files"
-        )
-        .remove(
-          uploadedPaths
-        );
-
-    }
+    await DB
+      .storage
+      .from(
+        "test-files"
+      )
+      .remove(
+        uploadedPaths
+      );
 
 
     await DB
@@ -743,7 +871,7 @@ async function processFile(
       .delete()
       .eq(
         "answer_sheet_id",
-        answerId
+        answer.id
       );
 
 
@@ -754,7 +882,7 @@ async function processFile(
       .delete()
       .eq(
         "id",
-        answerId
+        answer.id
       );
 
 
@@ -766,17 +894,39 @@ async function processFile(
 
 
 /* =========================================================
+   PARSER
+========================================================= */
+
+async function parseFile(
+  file
+) {
+
+  if (
+    window.TEST_SCORE_FILES?.parseFile
+  ) {
+
+    return await window.TEST_SCORE_FILES
+      .parseFile(
+        file
+      );
+
+  }
+
+
+  throw new Error(
+    "ファイル解析ライブラリが読み込まれていません。"
+  );
+
+}
+
+
+/* =========================================================
    QR
 ========================================================= */
 
-async function detectQrFromPages(
+async function detectQr(
   pages
 ) {
-
-  /*
-   * QRライブラリが無い環境では
-   * QR未読取として扱う。
-   */
 
   if (
     typeof jsQR !==
@@ -793,190 +943,53 @@ async function detectQrFromPages(
     of pages
   ) {
 
-    try {
-
-      const image =
-        await blobToImage(
-          page.blob
-        );
-
-
-      const canvas =
-        document.createElement(
-          "canvas"
-        );
-
-
-      canvas.width =
-        image.naturalWidth;
-
-
-      canvas.height =
-        image.naturalHeight;
-
-
-      const context =
-        canvas.getContext(
-          "2d",
-          {
-            willReadFrequently:
-              true
-          }
-        );
-
-
-      context.drawImage(
-        image,
-        0,
-        0
+    const image =
+      await blobToImage(
+        page.blob
       );
 
 
-      /*
-       * 原寸を直接読ませる。
-       *
-       * QRが小さい場合は
-       * 左上・右上・左下・右下を
-       * 順に拡大して試す。
-       */
-
-      const result =
-        scanCanvas(
-          canvas
-        );
-
-
-      if (
-        result
-      ) {
-
-        return normalizeQrValue(
-          result
-        );
-
-      }
-
-    } catch (error) {
-
-      console.warn(
-        "QR scan:",
-        error
+    const canvas =
+      document.createElement(
+        "canvas"
       );
 
-    }
 
-  }
-
-
-  return null;
-
-}
+    canvas.width =
+      image.naturalWidth;
 
 
-/* =========================================================
-   QR SCAN
-========================================================= */
-
-function scanCanvas(
-  canvas
-) {
-
-  const context =
-    canvas.getContext(
-      "2d",
-      {
-        willReadFrequently:
-          true
-      }
-    );
+    canvas.height =
+      image.naturalHeight;
 
 
-  const imageData =
-    context.getImageData(
+    const context =
+      canvas.getContext(
+        "2d",
+        {
+          willReadFrequently:
+            true
+        }
+      );
+
+
+    context.drawImage(
+      image,
       0,
-      0,
-      canvas.width,
-      canvas.height
-    );
-
-
-  const result =
-    jsQR(
-      imageData.data,
-      imageData.width,
-      imageData.height,
-      {
-        inversionAttempts:
-          "attemptBoth"
-      }
-    );
-
-
-  if (
-    result?.data
-  ) {
-
-    return result.data;
-
-  }
-
-
-  /*
-   * 画像全体で取れない場合、
-   * 四隅を走査。
-   */
-
-  const size =
-    Math.min(
-      canvas.width,
-      canvas.height
-    );
-
-
-  const areas = [
-
-    [0, 0],
-
-    [
-      canvas.width -
-        size,
       0
-    ],
+    );
 
-    [
-      0,
-      canvas.height -
-        size
-    ],
-
-    [
-      canvas.width -
-        size,
-      canvas.height -
-        size
-    ]
-
-  ];
-
-
-  for (
-    const [
-      left,
-      top
-    ]
-    of areas
-  ) {
 
     const data =
       context.getImageData(
-        left,
-        top,
-        size,
-        size
+        0,
+        0,
+        canvas.width,
+        canvas.height
       );
 
 
-    const found =
+    const result =
       jsQR(
         data.data,
         data.width,
@@ -989,10 +1002,10 @@ function scanCanvas(
 
 
     if (
-      found?.data
+      result?.data
     ) {
 
-      return found.data;
+      return result.data.trim();
 
     }
 
@@ -1005,43 +1018,27 @@ function scanCanvas(
 
 
 /* =========================================================
-   MATCH QR
+   MATCH STUDENT
 ========================================================= */
 
-async function matchByQr(
+async function matchStudent(
   answerId,
   qrValue
 ) {
 
-  const normalized =
-    normalizeQrValue(
-      qrValue
-    );
-
-
-  if (!normalized) {
-
-    return;
-
-  }
-
-
-  /*
-   * STUDENT:123456
-   * または
-   * 123456
-   */
-
-  const studentNo =
-    normalized
+  const value =
+    String(
+      qrValue ||
+      ""
+    )
+      .trim()
       .replace(
         /^STUDENT:/i,
         ""
-      )
-      .trim();
+      );
 
 
-  if (!studentNo) {
+  if (!value) {
 
     return;
 
@@ -1065,7 +1062,7 @@ async function matchByQr(
       )
       .eq(
         "student_no",
-        studentNo
+        value
       )
       .eq(
         "active",
@@ -1090,7 +1087,7 @@ async function matchByQr(
       .update({
 
         qr_value:
-          normalized,
+          value,
 
         status:
           "unmatched"
@@ -1100,7 +1097,6 @@ async function matchByQr(
         "id",
         answerId
       );
-
 
     return;
 
@@ -1117,7 +1113,7 @@ async function matchByQr(
         student.id,
 
       qr_value:
-        normalized,
+        value,
 
       status:
         "uploaded"
@@ -1132,33 +1128,179 @@ async function matchByQr(
 
 
 /* =========================================================
-   UTIL
+   PROCESS UI
 ========================================================= */
 
-function normalizeQrValue(
-  value
-) {
+function showProcessing() {
 
-  return String(
-    value ||
-    ""
-  )
-    .trim();
+  processingArea.hidden =
+    false;
+
+
+  processingTitle.textContent =
+    "処理中";
+
+
+  processingLog.innerHTML =
+    "";
+
+
+  setProgress(
+    0,
+    1,
+    "開始しています..."
+  );
 
 }
 
 
-function sanitizeFileName(
-  value
+function setProgress(
+  current,
+  total,
+  text
 ) {
 
-  return String(
-    value ||
-    ""
-  )
-    .replace(
-      /[^a-zA-Z0-9._-]/g,
-      "_"
+  const percent =
+    total > 0
+      ? Math.round(
+          current /
+          total *
+          100
+        )
+      : 0;
+
+
+  progressBar.style.width =
+    `${percent}%`;
+
+
+  progressText.textContent =
+    text;
+
+}
+
+
+function addLog(
+  text,
+  error = false
+) {
+
+  const element =
+    document.createElement(
+      "div"
+    );
+
+
+  element.textContent =
+    text;
+
+
+  if (error) {
+
+    element.style.color =
+      "#b42318";
+
+  }
+
+
+  processingLog.appendChild(
+    element
+  );
+
+
+  processingLog.scrollTop =
+    processingLog.scrollHeight;
+
+}
+
+
+/* =========================================================
+   CLEAR
+========================================================= */
+
+function clearFiles() {
+
+  if (fileInput) {
+
+    fileInput.value =
+      "";
+
+  }
+
+
+  if (fileList) {
+
+    fileList.hidden =
+      true;
+
+    fileList.innerHTML =
+      "";
+
+  }
+
+
+  if (processingArea) {
+
+    processingArea.hidden =
+      true;
+
+  }
+
+
+  clearMessage();
+
+
+  updateState();
+
+}
+
+
+/* =========================================================
+   MESSAGE
+========================================================= */
+
+function showMessage(
+  text,
+  error = false
+) {
+
+  messageElement.textContent =
+    text;
+
+
+  messageElement.style.color =
+    error
+      ? "#b42318"
+      : "#16834b";
+
+}
+
+
+function clearMessage() {
+
+  messageElement.textContent =
+    "";
+
+}
+
+
+/* =========================================================
+   UTIL
+========================================================= */
+
+function formatTestName(
+  test
+) {
+
+  return [
+    test.name,
+    test.subject,
+    test.grade,
+    test.class_name
+  ]
+    .filter(Boolean)
+    .join(
+      " / "
     );
 
 }
@@ -1225,140 +1367,7 @@ function blobToImage(
 }
 
 
-function updateUploadButton() {
-
-  if (!uploadButton) {
-
-    return;
-
-  }
-
-
-  uploadButton.disabled =
-    !selectedTestId ||
-    uploading;
-
-}
-
-
-function setControlsDisabled(
-  disabled
-) {
-
-  if (testSelect) {
-
-    testSelect.disabled =
-      disabled;
-
-  }
-
-
-  if (fileInput) {
-
-    fileInput.disabled =
-      disabled;
-
-  }
-
-
-  if (uploadButton) {
-
-    uploadButton.disabled =
-      disabled;
-
-
-    uploadButton.textContent =
-      disabled
-        ? "処理中..."
-        : "答案をアップロード";
-
-  }
-
-}
-
-
-function showProgress(
-  current,
-  total
-) {
-
-  if (!progressElement) {
-
-    return;
-
-  }
-
-
-  progressElement.style.display =
-    "block";
-
-
-  updateProgress(
-    current,
-    total
-  );
-
-}
-
-
-function updateProgress(
-  current,
-  total
-) {
-
-  const percent =
-    total > 0
-      ? Math.round(
-          current /
-          total *
-          100
-        )
-      : 0;
-
-
-  if (progressBar) {
-
-    progressBar.style.width =
-      `${percent}%`;
-
-  }
-
-
-  if (progressText) {
-
-    progressText.textContent =
-      `${current} / ${total} (${percent}%)`;
-
-  }
-
-}
-
-
-function setStatus(
-  text,
-  error = false
-) {
-
-  if (!statusElement) {
-
-    return;
-
-  }
-
-
-  statusElement.textContent =
-    text;
-
-
-  statusElement.className =
-    error
-      ? "status error"
-      : "status";
-
-}
-
-
-function yieldBrowser() {
+function nextFrame() {
 
   return new Promise(
     resolve =>
@@ -1367,5 +1376,37 @@ function yieldBrowser() {
         0
       )
   );
+
+}
+
+
+function escapeHtml(
+  value
+) {
+
+  return String(
+    value ??
+    ""
+  )
+    .replaceAll(
+      "&",
+      "&amp;"
+    )
+    .replaceAll(
+      "<",
+      "&lt;"
+    )
+    .replaceAll(
+      ">",
+      "&gt;"
+    )
+    .replaceAll(
+      '"',
+      "&quot;"
+    )
+    .replaceAll(
+      "'",
+      "&#039;"
+    );
 
 }

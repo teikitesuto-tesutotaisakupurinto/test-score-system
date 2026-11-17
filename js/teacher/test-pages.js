@@ -4542,3 +4542,2300 @@ async function acceptCandidate(
   initialize();
 
 })();
+      `${(
+        width /
+        pageWidth
+      ) * 100}%`;
+
+
+    element.style.height =
+      `${(
+        height /
+        pageHeight
+      ) * 100}%`;
+
+  }
+
+
+  /* =======================================================
+     ROLE STYLE
+  ======================================================= */
+
+  function applyRoleStyle(
+    element,
+    role
+  ) {
+
+    element.style.border =
+      "";
+
+
+    element.style.background =
+      "";
+
+
+    switch (
+      role
+    ) {
+
+      case "major":
+
+        element.style.border =
+          "3px solid #2468a8";
+
+        element.style.background =
+          "rgba(36,104,168,.07)";
+
+        break;
+
+
+      case "minor":
+
+        element.style.border =
+          "2px solid #d00000";
+
+        element.style.background =
+          "rgba(208,0,0,.06)";
+
+        break;
+
+
+      case "qr":
+
+        element.style.border =
+          "3px dashed #333";
+
+        element.style.background =
+          "rgba(0,0,0,.06)";
+
+        break;
+
+
+      case "subtotal":
+
+        element.style.border =
+          "2px dashed #555";
+
+        element.style.background =
+          "rgba(0,0,0,.04)";
+
+        break;
+
+
+      case "total":
+
+        element.style.border =
+          "3px double #333";
+
+        element.style.background =
+          "rgba(0,0,0,.05)";
+
+        break;
+
+
+      default:
+
+        element.style.border =
+          "2px solid #666";
+
+        element.style.background =
+          "rgba(0,0,0,.03)";
+
+        break;
+
+    }
+
+  }
+
+
+  /* =======================================================
+     BOX INTERACTION
+  ======================================================= */
+
+  function setupBoxInteraction(
+    element,
+    resizeHandle,
+    page,
+    box
+  ) {
+
+    element.addEventListener(
+      "pointerdown",
+      event => {
+
+        event.preventDefault();
+
+        event.stopPropagation();
+
+
+        selectBox(
+          box.id
+        );
+
+
+        dragMode =
+          event.target ===
+          resizeHandle
+            ? "resize"
+            : "move";
+
+
+        dragPointerId =
+          event.pointerId;
+
+
+        dragBoxId =
+          box.id;
+
+
+        const canvas =
+          element.parentElement
+            ?.parentElement
+            ?.querySelector(
+              "canvas"
+            );
+
+
+        if (!canvas) {
+
+          return;
+
+        }
+
+
+        const rect =
+          canvas.getBoundingClientRect();
+
+
+        dragStart = {
+
+          x:
+            event.clientX,
+
+          y:
+            event.clientY,
+
+          scaleX:
+            canvas.width /
+            rect.width,
+
+          scaleY:
+            canvas.height /
+            rect.height
+
+        };
+
+
+        dragOriginal = {
+
+          x:
+            Number(
+              box.x
+            ),
+
+          y:
+            Number(
+              box.y
+            ),
+
+          width:
+            Number(
+              box.width
+            ),
+
+          height:
+            Number(
+              box.height
+            )
+
+        };
+
+
+        try {
+
+          element.setPointerCapture(
+            event.pointerId
+          );
+
+        } catch (_) {}
+
+      }
+    );
+
+
+    element.addEventListener(
+      "pointermove",
+      event => {
+
+        if (
+          dragBoxId !==
+            box.id ||
+          dragPointerId !==
+            event.pointerId ||
+          !dragStart ||
+          !dragOriginal
+        ) {
+
+          return;
+
+        }
+
+
+        event.preventDefault();
+
+
+        const dx =
+          (
+            event.clientX -
+            dragStart.x
+          ) *
+          dragStart.scaleX;
+
+
+        const dy =
+          (
+            event.clientY -
+            dragStart.y
+          ) *
+          dragStart.scaleY;
+
+
+        if (
+          dragMode ===
+          "move"
+        ) {
+
+          box.x =
+            Math.max(
+              0,
+              dragOriginal.x +
+              dx
+            );
+
+
+          box.y =
+            Math.max(
+              0,
+              dragOriginal.y +
+              dy
+            );
+
+        }
+
+
+        if (
+          dragMode ===
+          "resize"
+        ) {
+
+          box.width =
+            Math.max(
+              8,
+              dragOriginal.width +
+              dx
+            );
+
+
+          box.height =
+            Math.max(
+              8,
+              dragOriginal.height +
+              dy
+            );
+
+        }
+
+
+        if (
+          box.box_role ===
+            "minor" ||
+          box.box_role ===
+            "subtotal"
+        ) {
+
+          updateParent(
+            box
+          );
+
+        }
+
+
+        updateBoxElement(
+          element,
+          page,
+          box
+        );
+
+
+        updateAllLabels();
+
+      }
+    );
+
+
+    element.addEventListener(
+      "pointerup",
+      event => {
+
+        if (
+          event.pointerId !==
+          dragPointerId
+        ) {
+
+          return;
+
+        }
+
+
+        finishBoxDrag(
+          box
+        );
+
+      }
+    );
+
+
+    element.addEventListener(
+      "pointercancel",
+      event => {
+
+        if (
+          event.pointerId !==
+          dragPointerId
+        ) {
+
+          return;
+
+        }
+
+
+        finishBoxDrag(
+          box
+        );
+
+      }
+    );
+
+  }
+
+
+  /* =======================================================
+     FINISH BOX DRAG
+  ======================================================= */
+
+  function finishBoxDrag(
+    box
+  ) {
+
+    if (
+      box.box_role ===
+        "minor" ||
+      box.box_role ===
+        "subtotal"
+    ) {
+
+      updateParent(
+        box
+      );
+
+    }
+
+
+    renumberAll();
+
+
+    dragMode =
+      null;
+
+
+    dragPointerId =
+      null;
+
+
+    dragBoxId =
+      null;
+
+
+    dragStart =
+      null;
+
+
+    dragOriginal =
+      null;
+
+
+    updateAllLabels();
+
+    updateRoleHelp();
+
+  }
+
+
+  /* =======================================================
+     SELECT
+  ======================================================= */
+
+  function selectBox(
+    boxId
+  ) {
+
+    selectedBoxId =
+      boxId;
+
+
+    document
+      .querySelectorAll(
+        ".layout-box"
+      )
+      .forEach(
+        element => {
+
+          const box =
+            boxes.find(
+              item =>
+                item.id ===
+                element.dataset.boxId
+            );
+
+
+          applyRoleStyle(
+            element,
+            box?.box_role ||
+            "other"
+          );
+
+
+          element.classList.toggle(
+            "selected",
+            element.dataset.boxId ===
+            boxId
+          );
+
+        }
+      );
+
+
+    openBoxPanel();
+
+
+    const box =
+      getSelectedBox();
+
+
+    if (
+      boxRole &&
+      box
+    ) {
+
+      boxRole.value =
+        box.box_role;
+
+    }
+
+
+    updateRoleHelp();
+
+  }
+
+
+  /* =======================================================
+     APPLY SELECTED
+  ======================================================= */
+
+  function applySelectedBox() {
+
+    const box =
+      getSelectedBox();
+
+
+    if (!box) {
+
+      setStatus(
+        "選択されている枠がありません。"
+      );
+
+      return;
+
+    }
+
+
+    const role =
+      boxRole?.value ||
+      box.box_role ||
+      "other";
+
+
+    const roleInfo =
+      ROLE_INFO[
+        role
+      ];
+
+
+    if (!roleInfo) {
+
+      return;
+
+    }
+
+
+    box.box_role =
+      role;
+
+
+    box.box_type =
+      roleInfo.boxType;
+
+
+    box.points =
+      roleInfo.boxType ===
+        "answer"
+        ? 0
+        : null;
+
+
+    box.question_id =
+      null;
+
+
+    if (
+      role ===
+      "major"
+    ) {
+
+      clearParent(
+        box
+      );
+
+    }
+
+    else if (
+      role ===
+        "minor" ||
+      role ===
+        "subtotal"
+    ) {
+
+      updateParent(
+        box
+      );
+
+    }
+
+    else {
+
+      clearParent(
+        box
+      );
+
+    }
+
+
+    renumberAll();
+
+
+    updateAllLabels();
+
+
+    renderAllPages();
+
+
+    updateRoleHelp();
+
+
+    setStatus(
+      `${automaticLabel(
+        role,
+        box
+      )}として設定しました。`
+    );
+
+  }
+
+
+  /* =======================================================
+     DELETE
+  ======================================================= */
+
+  function deleteSelectedBox() {
+
+    if (!selectedBoxId) {
+
+      return;
+
+    }
+
+
+    const targetId =
+      selectedBoxId;
+
+
+    boxes
+      .filter(
+        box =>
+          box.parent_box_id ===
+          targetId
+      )
+      .forEach(
+        child => {
+
+          clearParent(
+            child
+          );
+
+        }
+      );
+
+
+    boxes =
+      boxes.filter(
+        box =>
+          box.id !==
+          targetId
+      );
+
+
+    selectedBoxId =
+      null;
+
+
+    renumberAll();
+
+
+    renderAllPages();
+
+
+    setStatus(
+      "選択した枠を削除しました。保存するとDBにも反映されます。"
+    );
+
+  }
+
+
+  /* =======================================================
+     CLEAR PARENT
+  ======================================================= */
+
+  function clearParent(
+    box
+  ) {
+
+    box.parent_box_id =
+      null;
+
+
+    box.major_no =
+      null;
+
+
+    box.minor_no =
+      null;
+
+
+    box.subtotal_group =
+      null;
+
+  }
+
+
+  /* =======================================================
+     UPDATE PARENT
+  ======================================================= */
+
+  function updateParent(
+    box
+  ) {
+
+    const parent =
+      findContainingMajor(
+        box
+      );
+
+
+    if (!parent) {
+
+      clearParent(
+        box
+      );
+
+      return;
+
+    }
+
+
+    box.parent_box_id =
+      parent.id;
+
+
+    box.major_no =
+      parent.major_no;
+
+
+    if (
+      box.box_role ===
+      "minor"
+    ) {
+
+      box.minor_no =
+        null;
+
+      box.subtotal_group =
+        null;
+
+    }
+
+
+    if (
+      box.box_role ===
+      "subtotal"
+    ) {
+
+      box.minor_no =
+        null;
+
+      box.subtotal_group =
+        parent.major_no;
+
+    }
+
+  }
+
+
+  /* =======================================================
+     FIND PARENT
+  ======================================================= */
+
+  function findContainingMajor(
+    box
+  ) {
+
+    const center =
+      getCenter(
+        box
+      );
+
+
+    const candidates =
+      boxes
+        .filter(
+          candidate =>
+
+            candidate.id !==
+            box.id &&
+
+            candidate.box_role ===
+            "major" &&
+
+            Number(
+              candidate.page_no
+            ) ===
+            Number(
+              box.page_no
+            ) &&
+
+            pointInside(
+              center,
+              candidate
+            )
+        );
+
+
+    if (
+      !candidates.length
+    ) {
+
+      return null;
+
+    }
+
+
+    candidates.sort(
+      (
+        a,
+        b
+      ) => {
+
+        const areaA =
+          Number(a.width) *
+          Number(a.height);
+
+
+        const areaB =
+          Number(b.width) *
+          Number(b.height);
+
+
+        return areaA -
+          areaB;
+
+      }
+    );
+
+
+    return candidates[0];
+
+  }
+
+
+  /* =======================================================
+     RENUMBER
+  ======================================================= */
+
+  function renumberAll() {
+
+    const majors =
+      boxes
+        .filter(
+          box =>
+            box.box_role ===
+            "major"
+        )
+        .sort(
+          compareBoxes
+        );
+
+
+    majors.forEach(
+      (
+        major,
+        index
+      ) => {
+
+        major.major_no =
+          index + 1;
+
+        major.parent_box_id =
+          null;
+
+        major.minor_no =
+          null;
+
+        major.subtotal_group =
+          null;
+
+      }
+    );
+
+
+    majors.forEach(
+      major => {
+
+        const children =
+          boxes
+            .filter(
+              box =>
+                box.box_role ===
+                  "minor" &&
+                box.parent_box_id ===
+                  major.id
+            )
+            .sort(
+              compareBoxes
+            );
+
+
+        children.forEach(
+          (
+            child,
+            index
+          ) => {
+
+            child.major_no =
+              major.major_no;
+
+            child.minor_no =
+              index + 1;
+
+          }
+        );
+
+      }
+    );
+
+
+    boxes
+      .filter(
+        box =>
+          box.box_role ===
+          "minor" &&
+          !box.parent_box_id
+      )
+      .forEach(
+        box => {
+
+          box.major_no =
+            null;
+
+          box.minor_no =
+            null;
+
+        }
+      );
+
+
+    boxes
+      .filter(
+        box =>
+          box.box_role ===
+          "subtotal"
+      )
+      .forEach(
+        subtotal => {
+
+          const parent =
+            findContainingMajor(
+              subtotal
+            );
+
+
+          if (parent) {
+
+            subtotal.parent_box_id =
+              parent.id;
+
+            subtotal.major_no =
+              parent.major_no;
+
+            subtotal.subtotal_group =
+              parent.major_no;
+
+          }
+
+          else {
+
+            clearParent(
+              subtotal
+            );
+
+          }
+
+        }
+      );
+
+
+    boxes
+      .filter(
+        box =>
+          [
+            "total",
+            "qr",
+            "name",
+            "student_no",
+            "instruction",
+            "other"
+          ].includes(
+            box.box_role
+          )
+      )
+      .forEach(
+        box => {
+
+          clearParent(
+            box
+          );
+
+        }
+      );
+
+  }
+
+
+  /* =======================================================
+     LABEL
+  ======================================================= */
+
+  function automaticLabel(
+    role,
+    box
+  ) {
+
+    switch (
+      role
+    ) {
+
+      case "major":
+
+        return `大問${
+          box?.major_no ||
+          "?"
+        }`;
+
+
+      case "minor":
+
+        return box?.major_no &&
+          box?.minor_no
+          ? `問${box.major_no}-${box.minor_no}`
+          : "小問";
+
+
+      case "qr":
+
+        return "QR";
+
+
+      case "subtotal":
+
+        return box?.major_no
+          ? `大問${box.major_no} 小計`
+          : "小計";
+
+
+      case "total":
+
+        return "合計";
+
+
+      case "name":
+
+        return "氏名";
+
+
+      case "student_no":
+
+        return "生徒番号";
+
+
+      case "instruction":
+
+        return "説明";
+
+
+      default:
+
+        return "その他";
+
+    }
+
+  }
+
+
+  /* =======================================================
+     UPDATE LABELS
+  ======================================================= */
+
+  function updateAllLabels() {
+
+    document
+      .querySelectorAll(
+        ".layout-box"
+      )
+      .forEach(
+        element => {
+
+          const box =
+            boxes.find(
+              item =>
+                item.id ===
+                element.dataset.boxId
+            );
+
+
+          if (!box) {
+
+            return;
+
+          }
+
+
+          const label =
+            element.querySelector(
+              ".layout-box-label"
+            );
+
+
+          if (label) {
+
+            label.textContent =
+              automaticLabel(
+                box.box_role,
+                box
+              );
+
+          }
+
+
+          applyRoleStyle(
+            element,
+            box.box_role
+          );
+
+
+          element.classList.toggle(
+            "selected",
+            selectedBoxId ===
+            box.id
+          );
+
+        }
+      );
+
+  }
+
+
+  /* =======================================================
+     KEYBOARD
+  ======================================================= */
+
+  function handleKeyboard(
+    event
+  ) {
+
+    const target =
+      event.target;
+
+
+    if (
+      target instanceof
+        HTMLInputElement ||
+      target instanceof
+        HTMLTextAreaElement ||
+      target instanceof
+        HTMLSelectElement
+    ) {
+
+      return;
+
+    }
+
+
+    if (
+      event.key ===
+      "Escape"
+    ) {
+
+      cancelDrawing();
+
+
+      dragMode =
+        null;
+
+
+      dragPointerId =
+        null;
+
+
+      dragBoxId =
+        null;
+
+
+      selectedBoxId =
+        null;
+
+
+      renderAllPages();
+
+
+      return;
+
+    }
+
+
+    if (
+      event.key ===
+      "Delete"
+    ) {
+
+      if (
+        selectedBoxId
+      ) {
+
+        event.preventDefault();
+
+
+        deleteSelectedBox();
+
+      }
+
+    }
+
+  }
+
+
+  /* =======================================================
+     PANEL
+  ======================================================= */
+
+  function openBoxPanel() {
+
+    if (!boxPanel) {
+
+      return;
+
+    }
+
+
+    boxPanel.classList.add(
+      "open"
+    );
+
+
+    boxPanel.style.display =
+      "block";
+
+  }
+
+
+  function closeBoxPanel() {
+
+    /*
+      ツール自体は消さない。
+      「閉じる」は選択解除。
+    */
+
+    selectedBoxId =
+      null;
+
+
+    updateAllLabels();
+
+  }
+
+
+  /* =======================================================
+     BACK
+  ======================================================= */
+
+  function goBack() {
+
+    if (
+      selectedTestId
+    ) {
+
+      window.location.href =
+        `/teacher/tests/edit?id=${encodeURIComponent(
+          selectedTestId
+        )}`;
+
+      return;
+
+    }
+
+
+    window.location.href =
+      "/teacher/tests";
+
+  }
+
+
+  /* =======================================================
+     STATUS
+  ======================================================= */
+
+  function setStatus(
+    message
+  ) {
+
+    if (
+      statusElement
+    ) {
+
+      statusElement.textContent =
+        message;
+
+    }
+
+  }
+
+
+  function showError(
+    message
+  ) {
+
+    setStatus(
+      message
+    );
+
+  }
+
+
+  /* =======================================================
+     GEOMETRY
+  ======================================================= */
+
+  function getPoint(
+    event,
+    rect
+  ) {
+
+    return {
+
+      x:
+        Math.max(
+          0,
+          Math.min(
+            rect.width,
+            event.clientX -
+            rect.left
+          )
+        ),
+
+      y:
+        Math.max(
+          0,
+          Math.min(
+            rect.height,
+            event.clientY -
+            rect.top
+          )
+        )
+
+    };
+
+  }
+
+
+  function getCenter(
+    box
+  ) {
+
+    return {
+
+      x:
+        Number(
+          box.x
+        ) +
+        Number(
+          box.width
+        ) /
+        2,
+
+      y:
+        Number(
+          box.y
+        ) +
+        Number(
+          box.height
+        ) /
+        2
+
+    };
+
+  }
+
+
+  function pointInside(
+    point,
+    box
+  ) {
+
+    return (
+
+      point.x >=
+      Number(
+        box.x
+      ) &&
+
+      point.y >=
+      Number(
+        box.y
+      ) &&
+
+      point.x <=
+      Number(
+        box.x
+      ) +
+      Number(
+        box.width
+      ) &&
+
+      point.y <=
+      Number(
+        box.y
+      ) +
+      Number(
+        box.height
+      )
+
+    );
+
+  }
+
+
+  function clamp(
+    value,
+    min,
+    max
+  ) {
+
+    return Math.max(
+      min,
+      Math.min(
+        max,
+        value
+      )
+    );
+
+  }
+
+
+  /* =======================================================
+     UTIL
+  ======================================================= */
+
+  function compareBoxes(
+    a,
+    b
+  ) {
+
+    const pageDiff =
+      Number(
+        a.page_no
+      ) -
+      Number(
+        b.page_no
+      );
+
+
+    if (
+      pageDiff !==
+      0
+    ) {
+
+      return pageDiff;
+
+    }
+
+
+    const yDiff =
+      Number(
+        a.y
+      ) -
+      Number(
+        b.y
+      );
+
+
+    if (
+      yDiff !==
+      0
+    ) {
+
+      return yDiff;
+
+    }
+
+
+    return (
+      Number(
+        a.x
+      ) -
+      Number(
+        b.x
+      )
+    );
+
+  }
+
+
+  function normalizeBoxType(
+    value
+  ) {
+
+    const type =
+      String(
+        value ||
+        ""
+      )
+        .trim()
+        .toLowerCase();
+
+
+    return ALLOWED_BOX_TYPES.includes(
+      type
+    )
+      ? type
+      : "other";
+
+  }
+
+
+  function isUuid(
+    value
+  ) {
+
+    return (
+      typeof value ===
+        "string" &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+        .test(
+          value
+        )
+    );
+
+  }
+        showError(
+          "解答用紙を選択してください。"
+        );
+
+        return;
+
+    }
+
+
+    const extension =
+      getExtension(
+        file.name
+      );
+
+
+    if (
+      ![
+        "pdf",
+        "jpg",
+        "jpeg",
+        "png",
+        "webp"
+      ].includes(
+        extension
+      )
+    ) {
+
+      showError(
+        "PDF、JPG、JPEG、PNG、WEBPのみ対応しています。"
+      );
+
+      return;
+
+    }
+
+
+    try {
+
+      uploadButton.disabled =
+        true;
+
+
+      setStatus(
+        "解答用紙を読み込んでいます..."
+      );
+
+
+      const pageImages =
+        await fileToPages(
+          file
+        );
+
+
+      if (
+        !pageImages.length
+      ) {
+
+        throw new Error(
+          "解答用紙のページを作成できませんでした。"
+        );
+
+      }
+
+
+      /*
+       * 既存ページ番号の続きから登録。
+       */
+
+      const nextPageNo =
+        pages.length
+          ? Math.max(
+              ...pages.map(
+                page =>
+                  Number(
+                    page.page_no
+                  ) || 0
+              )
+            ) + 1
+          : 1;
+
+
+      const uploaded =
+        [];
+
+
+      for (
+        let index = 0;
+        index <
+        pageImages.length;
+        index++
+      ) {
+
+        const page =
+          pageImages[index];
+
+
+        const pageNo =
+          nextPageNo +
+          index;
+
+
+        const path =
+          [
+            selectedTestId,
+            "answer-sheet",
+            crypto.randomUUID(),
+            `page-${String(
+              pageNo
+            ).padStart(
+              3,
+              "0"
+            )}.png`
+          ].join(
+            "/"
+          );
+
+
+        const blob =
+          await canvasToBlob(
+            page.canvas,
+            "image/png"
+          );
+
+
+        if (!blob) {
+
+          throw new Error(
+            `ページ${pageNo}のPNG変換に失敗しました。`
+          );
+
+        }
+
+
+        setStatus(
+          `解答用紙を保存しています... ${
+            index + 1
+          } / ${
+            pageImages.length
+          }`
+        );
+
+
+        const {
+          error:
+            uploadError
+        } =
+          await supabaseClient
+            .storage
+            .from(
+              "test-files"
+            )
+            .upload(
+              path,
+              blob,
+              {
+                contentType:
+                  "image/png",
+
+                cacheControl:
+                  "3600",
+
+                upsert:
+                  false
+              }
+            );
+
+
+        if (uploadError) {
+
+          throw new Error(
+            `ページ${pageNo}のStorage保存に失敗しました: ${
+              uploadError.message
+            }`
+          );
+
+        }
+
+
+        uploaded.push({
+
+          pageNo,
+
+          path,
+
+          width:
+            page.width,
+
+          height:
+            page.height,
+
+          originalName:
+            file.name
+
+        });
+
+      }
+
+
+      /*
+       * DB登録。
+       */
+
+      const rows =
+        uploaded.map(
+          item => ({
+
+            test_id:
+              selectedTestId,
+
+            page_no:
+              item.pageNo,
+
+            image_path:
+              item.path,
+
+            width_px:
+              item.width,
+
+            height_px:
+              item.height,
+
+            original_name:
+              item.originalName
+
+          })
+        );
+
+
+      const {
+        data:
+          insertedPages,
+        error:
+          insertError
+      } =
+        await supabaseClient
+          .from(
+            "test_pages"
+          )
+          .insert(
+            rows
+          )
+          .select(
+            `
+            id,
+            test_id,
+            page_no,
+            image_path,
+            width_px,
+            height_px,
+            original_name
+            `
+          );
+
+
+      if (insertError) {
+
+        /*
+         * DB登録に失敗したら、
+         * 今回アップロードしたStorageだけ削除。
+         */
+
+        await supabaseClient
+          .storage
+          .from(
+            "test-files"
+          )
+          .remove(
+            uploaded.map(
+              item =>
+                item.path
+            )
+          );
+
+
+        throw new Error(
+          `解答用紙ページの登録に失敗しました: ${
+            insertError.message
+          }`
+        );
+
+      }
+
+
+      /*
+       * 画面へ反映。
+       */
+
+      pages =
+        [
+          ...pages,
+          ...(
+            insertedPages ||
+            []
+          )
+        ]
+          .sort(
+            (
+              a,
+              b
+            ) =>
+              Number(
+                a.page_no
+              ) -
+              Number(
+                b.page_no
+              )
+          );
+
+
+      answerFile.value =
+        "";
+
+
+      /*
+       * 既存の候補を消す。
+       */
+
+      candidates =
+        [];
+
+
+      await renderAllPages();
+
+
+      /*
+       * アップロード直後に
+       * 自動枠検出。
+       */
+
+      setStatus(
+        "解答用紙を登録しました。枠を自動検出しています..."
+      );
+
+
+      await detectAllPages();
+
+
+    } catch (error) {
+
+      console.error(
+        "uploadAnswerSheet:",
+        error
+      );
+
+
+      showError(
+        error.message ||
+        "解答用紙の登録に失敗しました。"
+      );
+
+    } finally {
+
+      uploadButton.disabled =
+        false;
+
+    }
+
+  }
+
+
+  /* =======================================================
+     AUTO CANDIDATE HELPERS
+  ======================================================= */
+
+  function deduplicateCandidates(
+    list
+  ) {
+
+    const result =
+      [];
+
+
+    for (
+      const candidate
+      of list
+    ) {
+
+      const duplicate =
+        result.some(
+          existing =>
+            Number(
+              existing.pageNo
+            ) ===
+            Number(
+              candidate.pageNo
+            ) &&
+            overlapRatio(
+              existing,
+              candidate
+            ) >
+            0.70
+        );
+
+
+      if (!duplicate) {
+
+        result.push(
+          candidate
+        );
+
+      }
+
+    }
+
+
+    return result;
+
+  }
+
+
+  function overlapRatio(
+    a,
+    b
+  ) {
+
+    const left =
+      Math.max(
+        Number(a.x),
+        Number(b.x)
+      );
+
+
+    const top =
+      Math.max(
+        Number(a.y),
+        Number(b.y)
+      );
+
+
+    const right =
+      Math.min(
+        Number(a.x) +
+        Number(a.width),
+        Number(b.x) +
+        Number(b.width)
+      );
+
+
+    const bottom =
+      Math.min(
+        Number(a.y) +
+        Number(a.height),
+        Number(b.y) +
+        Number(b.height)
+      );
+
+
+    if (
+      right <=
+      left ||
+      bottom <=
+      top
+    ) {
+
+      return 0;
+
+    }
+
+
+    const intersection =
+      (
+        right -
+        left
+      ) *
+      (
+        bottom -
+        top
+      );
+
+
+    const areaA =
+      Number(a.width) *
+      Number(a.height);
+
+
+    const areaB =
+      Number(b.width) *
+      Number(b.height);
+
+
+    if (
+      areaA <=
+      0 ||
+      areaB <=
+      0
+    ) {
+
+      return 0;
+
+    }
+
+
+    return (
+      intersection /
+      Math.min(
+        areaA,
+        areaB
+      )
+    );
+
+  }
+
+
+  /* =======================================================
+     CANDIDATE RENDER
+  ======================================================= */
+
+  function renderCandidate(
+    layer,
+    page,
+    candidate
+  ) {
+
+    const element =
+      document.createElement(
+        "div"
+      );
+
+
+    element.className =
+      "auto-box-candidate";
+
+
+    element.dataset.candidateId =
+      candidate.id;
+
+
+    const pageWidth =
+      Number(
+        page.width_px
+      );
+
+
+    const pageHeight =
+      Number(
+        page.height_px
+      );
+
+
+    if (
+      !pageWidth ||
+      !pageHeight
+    ) {
+
+      return;
+
+    }
+
+
+    element.style.left =
+      `${
+        Number(
+          candidate.x
+        ) /
+        pageWidth *
+        100
+      }%`;
+
+
+    element.style.top =
+      `${
+        Number(
+          candidate.y
+        ) /
+        pageHeight *
+        100
+      }%`;
+
+
+    element.style.width =
+      `${
+        Number(
+          candidate.width
+        ) /
+        pageWidth *
+        100
+      }%`;
+
+
+    element.style.height =
+      `${
+        Number(
+          candidate.height
+        ) /
+        pageHeight *
+        100
+      }%`;
+
+
+    element.title =
+      "クリックして正式な枠として登録";
+
+
+    element.addEventListener(
+      "pointerdown",
+      event => {
+
+        event.preventDefault();
+
+        event.stopPropagation();
+
+
+        acceptCandidate(
+          candidate
+        );
+
+      }
+    );
+
+
+    layer.appendChild(
+      element
+    );
+
+  }
+
+
+  /* =======================================================
+     ACCEPT CANDIDATE
+  ======================================================= */
+
+  async function acceptCandidate(
+    candidate
+  ) {
+
+    if (!candidate) {
+
+      return;
+
+    }
+
+
+    const role =
+      boxRole?.value ||
+      "answer";
+
+
+    const roleInfo =
+      ROLE_INFO[
+        role
+      ] ||
+      ROLE_INFO.answer;
+
+
+    const box = {
+
+      id:
+        crypto.randomUUID(),
+
+      test_id:
+        selectedTestId,
+
+      page_no:
+        Number(
+          candidate.pageNo
+        ),
+
+      box_type:
+        roleInfo.boxType,
+
+      label:
+        "",
+
+      x:
+        Number(
+          candidate.x
+        ),
+
+      y:
+        Number(
+          candidate.y
+        ),
+
+      width:
+        Number(
+          candidate.width
+        ),
+
+      height:
+        Number(
+          candidate.height
+        ),
+
+      question_id:
+        null,
+
+      points:
+        roleInfo.boxType ===
+          "answer"
+          ? 0
+          : null,
+
+      parent_box_id:
+        null,
+
+      major_no:
+        null,
+
+      minor_no:
+        null,
+
+      box_role:
+        role,
+
+      sort_order:
+        boxes.length,
+
+      subtotal_group:
+        null
+
+    };
+
+
+    boxes.push(
+      box
+    );
+
+
+    selectedBoxId =
+      box.id;
+
+
+    candidates =
+      candidates.filter(
+        item =>
+          item.id !==
+          candidate.id
+      );
+
+
+    if (
+      role ===
+        "minor" ||
+      role ===
+        "subtotal"
+    ) {
+
+      updateParent(
+        box
+      );
+
+    }
+
+
+    renumberAll();
+
+
+    box.label =
+      automaticLabel(
+        box.box_role,
+        box
+      );
+
+
+    await renderAllPages();
+
+
+    selectBox(
+      box.id
+    );
+
+
+    setStatus(
+      `${box.label}を作成しました。`
+    );
+
+  }
+
+
+  /* =======================================================
+     START
+  ======================================================= */
+
+  initialize();
+
+})();

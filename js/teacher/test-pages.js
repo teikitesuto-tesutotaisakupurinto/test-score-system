@@ -1,2440 +1,489 @@
-"use strict";
-
 /* =========================================================
    テスト成績システム
    js/teacher/test-pages.js
 
-   解答用紙登録 + 枠設定エディタ
+   解答用紙登録 + 枠設定
+   ---------------------------------------------------------
+   ・PDF / 画像アップロード
+   ・test-files Storage
+   ・test_pages
+   ・layout_boxes
+   ・大問 / 小問 / 解答欄 / QR / 小計 / 合計
+   ・氏名 / 生徒番号 / 説明 / その他
+   ・手動ドラッグ
+   ・移動
+   ・リサイズ
+   ・削除
+   ・自動枠検出
+   ・検出候補クリック
 ========================================================= */
 
-let selectedTestId = null;
+(function () {
 
-let pages = [];
+  "use strict";
 
-let boxes = [];
 
-let candidates = [];
+  /* =======================================================
+     STATE
+  ======================================================= */
 
-let selectedBoxId = null;
+  let selectedTestId = null;
 
-let drawing = false;
+  let pages = [];
 
-let drawingPointerId = null;
+  let boxes = [];
 
-let drawStart = null;
+  let candidates = [];
 
-let drawPage = null;
+  let selectedBoxId = null;
 
-let drawLayer = null;
+  let drawing = false;
 
-let drawPreview = null;
+  let drawingPointerId = null;
 
-let dragMode = null;
+  let drawStart = null;
 
-let dragPointerId = null;
+  let drawPage = null;
 
-let dragBoxId = null;
+  let drawLayer = null;
 
-let dragStart = null;
+  let drawPreview = null;
 
-let dragOriginal = null;
+  let dragMode = null;
 
-let pdfPromise = null;
+  let dragPointerId = null;
 
+  let dragBoxId = null;
 
-/* =======================================================
-   DOM
-======================================================= */
+  let dragStart = null;
 
-const viewer =
-  document.getElementById("viewer");
+  let dragOriginal = null;
 
-const statusElement =
-  document.getElementById("status");
+  let pdfPromise = null;
 
-const answerFile =
-  document.getElementById("answerFile");
 
-const uploadButton =
-  document.getElementById("uploadButton");
+  /* =======================================================
+     DOM
+  ======================================================= */
 
-const saveButton =
-  document.getElementById("saveButton");
+  const viewer =
+    document.getElementById("viewer");
 
-const backButton =
-  document.getElementById("backButton");
+  const statusElement =
+    document.getElementById("status");
 
-const boxPanel =
-  document.getElementById("boxPanel");
+  const answerFile =
+    document.getElementById("answerFile");
 
-const boxRole =
-  document.getElementById("boxRole");
+  const uploadButton =
+    document.getElementById("uploadButton");
 
-const parentInfo =
-  document.getElementById("parentInfo");
+  const saveButton =
+    document.getElementById("saveButton");
 
-const applyButton =
-  document.getElementById("applyButton");
+  const backButton =
+    document.getElementById("backButton");
 
-const deleteSelectedButton =
-  document.getElementById("deleteSelectedButton");
+  const boxPanel =
+    document.getElementById("boxPanel");
 
-const closePanelButton =
-  document.getElementById("closePanelButton");
+  const boxRole =
+    document.getElementById("boxRole");
 
+  const parentInfo =
+    document.getElementById("parentInfo");
 
-/* =======================================================
-   DB ALLOWED TYPES
-======================================================= */
+  const applyButton =
+    document.getElementById("applyButton");
 
-const ALLOWED_BOX_TYPES = [
-  "answer",
-  "qr",
-  "student_no",
-  "name",
-  "other"
-];
+  const deleteSelectedButton =
+    document.getElementById(
+      "deleteSelectedButton"
+    );
 
+  const closePanelButton =
+    document.getElementById(
+      "closePanelButton"
+    );
 
-/* =======================================================
-   ROLES
-======================================================= */
+  const detectButton =
+    document.getElementById(
+      "detectButton"
+    );
 
-const ROLE_INFO = {
-
-  major: {
-    label: "大問",
-    boxType: "answer"
-  },
-
-  minor: {
-    label: "小問",
-    boxType: "answer"
-  },
-
-  qr: {
-    label: "QR",
-    boxType: "qr"
-  },
-
-  subtotal: {
-    label: "小計",
-    boxType: "answer"
-  },
-
-  total: {
-    label: "合計",
-    boxType: "answer"
-  },
-
-  name: {
-    label: "氏名",
-    boxType: "name"
-  },
-
-  student_no: {
-    label: "生徒番号",
-    boxType: "student_no"
-  },
-
-  instruction: {
-    label: "説明",
-    boxType: "other"
-  },
-
-  other: {
-    label: "その他",
-    boxType: "other"
-  }
-
-};
-
-
-/* =======================================================
-   INITIALIZE
-======================================================= */
-
-async function initialize() {
-
-  try {
-
-    const auth =
-      await requireRole("teacher");
-
-
-    if (!auth) {
-      return;
-    }
-
-
-    const profile =
-      auth.profile;
-
-
-    const teacherName =
-      document.getElementById(
-        "teacherName"
-      );
-
-
-    if (teacherName) {
-
-      teacherName.textContent =
-        profile.name ||
-        "先生";
-
-    }
-
-
-    selectedTestId =
-      new URLSearchParams(
-        window.location.search
-      ).get("test") ||
-      window.__TEST_ID__ ||
-      null;
-
-
-    setupEvents();
-
-
-    /*
-      枠設定を最初から表示
-    */
-
-    openBoxPanel();
-
-
-    updateRoleHelp();
-
-
-    if (!selectedTestId) {
-
-      setStatus(
-        "テストIDが指定されていません。"
-      );
-
-      return;
-
-    }
-
-
-    await loadLayout();
-
-
-  } catch (error) {
-
-    console.error(
-      "test-pages initialize:",
-      error
+  const detectButtonTop =
+    document.getElementById(
+      "detectButtonTop"
     );
 
 
-    showError(
-      error.message ||
-      "解答用紙・枠設定画面を読み込めませんでした。"
-    );
+  /* =======================================================
+     DB TYPES
+  ======================================================= */
 
-  }
-
-}
-
-
-/* =======================================================
-   EVENTS
-======================================================= */
-
-function setupEvents() {
-
-  uploadButton?.addEventListener(
-    "click",
-    uploadAnswerSheet
-  );
+  const ALLOWED_BOX_TYPES = [
+    "answer",
+    "qr",
+    "student_no",
+    "name",
+    "other"
+  ];
 
 
-  saveButton?.addEventListener(
-    "click",
-    saveBoxes
-  );
+  /* =======================================================
+     ROLES
+  ======================================================= */
+
+  const ROLE_INFO = {
+
+    major: {
+      label: "大問",
+      boxType: "answer"
+    },
+
+    minor: {
+      label: "小問",
+      boxType: "answer"
+    },
+
+    answer: {
+      label: "解答欄",
+      boxType: "answer"
+    },
+
+    qr: {
+      label: "QR",
+      boxType: "qr"
+    },
+
+    subtotal: {
+      label: "小計",
+      boxType: "answer"
+    },
+
+    total: {
+      label: "合計",
+      boxType: "answer"
+    },
+
+    name: {
+      label: "氏名",
+      boxType: "name"
+    },
+
+    student_no: {
+      label: "生徒番号",
+      boxType: "student_no"
+    },
+
+    instruction: {
+      label: "説明",
+      boxType: "other"
+    },
+
+    other: {
+      label: "その他",
+      boxType: "other"
+    }
+
+  };
 
 
-  backButton?.addEventListener(
-    "click",
-    goBack
-  );
-
-
-  applyButton?.addEventListener(
-    "click",
-    applySelectedBox
-  );
-
-
-  deleteSelectedButton?.addEventListener(
-    "click",
-    deleteSelectedBox
-  );
-
-
-  closePanelButton?.addEventListener(
-    "click",
-    closeBoxPanel
-  );
-
-
-  boxRole?.addEventListener(
-    "change",
-    updateRoleHelp
-  );
-
-
-  document
-    .getElementById(
-      "logoutButton"
-    )
-    ?.addEventListener(
-      "click",
-      logout
-    );
-
+  /* =======================================================
+     INIT
+  ======================================================= */
 
   document.addEventListener(
-    "keydown",
-    handleKeyboard
-  );
-
-}
-
-
-/* =======================================================
-   LOAD
-======================================================= */
-
-async function loadLayout() {
-
-  setStatus(
-    "解答用紙を読み込んでいます..."
+    "DOMContentLoaded",
+    initialize
   );
 
 
-  /*
-    test_pages
-  */
+  async function initialize() {
 
-  const {
-    data: pageData,
-    error: pageError
-  } =
-    await supabaseClient
-      .from("test_pages")
-      .select(`
-        id,
-        test_id,
-        page_no,
-        image_path,
-        width_px,
-        height_px,
-        original_name
-      `)
-      .eq(
-        "test_id",
-        selectedTestId
-      )
-      .order(
-        "page_no",
-        {
-          ascending: true
-        }
-      );
+    try {
+
+      const auth =
+        await requireRole("teacher");
 
 
-  if (pageError) {
-    throw pageError;
-  }
+      if (!auth) {
 
-
-  pages =
-    pageData || [];
-
-
-  /*
-    layout_boxes
-  */
-
-  const {
-    data: boxData,
-    error: boxError
-  } =
-    await supabaseClient
-      .from("layout_boxes")
-      .select(`
-        id,
-        test_id,
-        page_no,
-        box_type,
-        label,
-        x,
-        y,
-        width,
-        height,
-        question_id,
-        points,
-        parent_box_id,
-        major_no,
-        minor_no,
-        box_role,
-        sort_order,
-        subtotal_group
-      `)
-      .eq(
-        "test_id",
-        selectedTestId
-      )
-      .order(
-        "sort_order",
-        {
-          ascending: true
-        }
-      );
-
-
-  if (boxError) {
-    throw boxError;
-  }
-
-
-  boxes =
-    boxData || [];
-
-
-  normalizeBoxes();
-
-  rebuildHierarchy();
-
-  await renderAllPages();
-
-
-  if (!pages.length) {
-
-    setStatus(
-      "解答用紙を登録してください。"
-    );
-
-    return;
-
-  }
-
-
-  setStatus(
-    "枠種類を選択して、解答用紙上をドラッグしてください。"
-  );
-
-}
-
-
-/* =======================================================
-   NORMALIZE
-======================================================= */
-
-function normalizeBoxes() {
-
-  boxes.forEach(
-    box => {
-
-      if (
-        !ROLE_INFO[
-          box.box_role
-        ]
-      ) {
-
-        box.box_role =
-          inferRole(box);
+        return;
 
       }
 
 
-      box.box_type =
-        ROLE_INFO[
-          box.box_role
-        ]?.boxType ||
-        "other";
+      const teacherName =
+        document.getElementById(
+          "teacherName"
+        );
 
 
-      /*
-        配点は後で設定
-      */
+      if (teacherName) {
 
-      box.points =
-        0;
+        teacherName.textContent =
+          auth.profile?.name ||
+          "先生";
+
+      }
 
 
-      /*
-        設問IDはこの画面では使用しない
-      */
+      const params =
+        new URLSearchParams(
+          window.location.search
+        );
 
-      box.question_id =
+
+      selectedTestId =
+        params.get("test") ||
+        window.__TEST_ID__ ||
         null;
 
-    }
-  );
 
-}
+      setupEvents();
 
+      openBoxPanel();
 
-/* =======================================================
-   REBUILD HIERARCHY
-======================================================= */
+      updateRoleHelp();
 
-function rebuildHierarchy() {
 
-  /*
-    大問番号
-  */
+      if (!selectedTestId) {
 
-  const majors =
-    boxes
-      .filter(
-        box =>
-          box.box_role ===
-          "major"
-      )
-      .sort(
-        compareBoxes
-      );
-
-
-  majors.forEach(
-    (
-      major,
-      index
-    ) => {
-
-      major.major_no =
-        index + 1;
-
-      major.parent_box_id =
-        null;
-
-      major.minor_no =
-        null;
-
-      major.subtotal_group =
-        null;
-
-    }
-  );
-
-
-  /*
-    小問
-  */
-
-  boxes
-    .filter(
-      box =>
-        box.box_role ===
-        "minor"
-    )
-    .forEach(
-      box => {
-
-        updateParent(box);
-
-      }
-    );
-
-
-  /*
-    小計
-  */
-
-  boxes
-    .filter(
-      box =>
-        box.box_role ===
-        "subtotal"
-    )
-    .forEach(
-      box => {
-
-        updateParent(box);
-
-      }
-    );
-
-
-  renumberAll();
-
-}
-
-
-/* =======================================================
-   RENDER ALL
-======================================================= */
-
-async function renderAllPages() {
-
-  if (!viewer) {
-    return;
-  }
-
-
-  viewer.innerHTML =
-    "";
-
-
-  if (!pages.length) {
-
-    viewer.innerHTML = `
-
-      <div class="empty-view">
-
-        <strong>
-          解答用紙がありません
-        </strong>
-
-        PDFまたは画像を登録してください。
-
-      </div>
-
-    `;
-
-    return;
-
-  }
-
-
-  for (
-    const page of pages
-  ) {
-
-    await renderPage(page);
-
-  }
-
-}
-
-
-/* =======================================================
-   RENDER PAGE
-======================================================= */
-
-async function renderPage(
-  page
-) {
-
-  const wrapper =
-    document.createElement(
-      "div"
-    );
-
-
-  wrapper.className =
-    "page";
-
-
-  const canvas =
-    document.createElement(
-      "canvas"
-    );
-
-
-  const layer =
-    document.createElement(
-      "div"
-    );
-
-
-  layer.className =
-    "page-layer";
-
-
-  wrapper.appendChild(
-    canvas
-  );
-
-
-  wrapper.appendChild(
-    layer
-  );
-
-
-  viewer.appendChild(
-    wrapper
-  );
-
-
-  if (!page.image_path) {
-
-    throw new Error(
-      `ページ${page.page_no}のimage_pathがありません。`
-    );
-
-  }
-
-
-  const {
-    data,
-    error
-  } =
-    await supabaseClient
-      .storage
-      .from("test-files")
-      .createSignedUrl(
-        page.image_path,
-        3600
-      );
-
-
-  if (error) {
-    throw error;
-  }
-
-
-  if (
-    !data?.signedUrl
-  ) {
-
-    throw new Error(
-      `ページ${page.page_no}の画像URLを取得できません。`
-    );
-
-  }
-
-
-  const image =
-    await loadImage(
-      data.signedUrl
-    );
-
-
-  canvas.width =
-    image.naturalWidth;
-
-
-  canvas.height =
-    image.naturalHeight;
-
-
-  canvas
-    .getContext("2d")
-    .drawImage(
-      image,
-      0,
-      0
-    );
-
-
-  /*
-    新規枠
-  */
-
-  setupDrawing(
-    layer,
-    page
-  );
-
-
-  /*
-    既存枠
-  */
-
-  boxes
-    .filter(
-      box =>
-        Number(
-          box.page_no
-        ) ===
-        Number(
-          page.page_no
-        )
-    )
-    .sort(
-      compareBoxes
-    )
-    .forEach(
-      box => {
-
-        renderBox(
-          layer,
-          page,
-          box
-        );
-
-      }
-    );
-
-}
-
-
-/* =======================================================
-   DRAWING
-======================================================= */
-
-function setupDrawing(
-  layer,
-  page
-) {
-
-  layer.addEventListener(
-    "pointerdown",
-    event => {
-
-      if (
-        event.target !==
-        layer
-      ) {
-
-        return;
-
-      }
-
-
-      if (
-        event.button !== 0 &&
-        event.pointerType !==
-        "touch"
-      ) {
-
-        return;
-
-      }
-
-
-      event.preventDefault();
-
-
-      drawing =
-        true;
-
-
-      drawingPointerId =
-        event.pointerId;
-
-
-      drawPage =
-        page;
-
-
-      drawLayer =
-        layer;
-
-
-      const rect =
-        layer.getBoundingClientRect();
-
-
-      drawStart =
-        getPoint(
-          event,
-          rect
-        );
-
-
-      try {
-
-        layer.setPointerCapture(
-          event.pointerId
-        );
-
-      } catch (_) {}
-
-
-      /*
-        ドラッグ開始直後から
-        仮枠を表示
-      */
-
-      drawPreview =
-        document.createElement(
-          "div"
-        );
-
-
-      drawPreview.className =
-        "drag-preview";
-
-
-      layer.appendChild(
-        drawPreview
-      );
-
-
-      updateDrawPreview(
-        event
-      );
-
-    }
-  );
-
-
-  layer.addEventListener(
-    "pointermove",
-    event => {
-
-      if (
-        !drawing ||
-        event.pointerId !==
-        drawingPointerId
-      ) {
-
-        return;
-
-      }
-
-
-      event.preventDefault();
-
-
-      updateDrawPreview(
-        event
-      );
-
-    }
-  );
-
-
-  layer.addEventListener(
-    "pointerup",
-    event => {
-
-      if (
-        !drawing ||
-        event.pointerId !==
-        drawingPointerId
-      ) {
-
-        return;
-
-      }
-
-
-      event.preventDefault();
-
-
-      finishDrawing(
-        event
-      );
-
-    }
-  );
-
-
-  layer.addEventListener(
-    "pointercancel",
-    event => {
-
-      if (
-        event.pointerId !==
-        drawingPointerId
-      ) {
-
-        return;
-
-      }
-
-
-      cancelDrawing();
-
-    }
-  );
-
-}
-
-
-/* =======================================================
-   DRAW PREVIEW
-======================================================= */
-
-function updateDrawPreview(
-  event
-) {
-
-  if (
-    !drawPreview ||
-    !drawLayer ||
-    !drawStart
-  ) {
-
-    return;
-
-  }
-
-
-  const rect =
-    drawLayer.getBoundingClientRect();
-
-
-  const current =
-    getPoint(
-      event,
-      rect
-    );
-
-
-  const x =
-    Math.min(
-      drawStart.x,
-      current.x
-    );
-
-
-  const y =
-    Math.min(
-      drawStart.y,
-      current.y
-    );
-
-
-  const width =
-    Math.abs(
-      current.x -
-      drawStart.x
-    );
-
-
-  const height =
-    Math.abs(
-      current.y -
-      drawStart.y
-    );
-
-
-  drawPreview.style.left =
-    `${x}px`;
-
-
-  drawPreview.style.top =
-    `${y}px`;
-
-
-  drawPreview.style.width =
-    `${width}px`;
-
-
-  drawPreview.style.height =
-    `${height}px`;
-
-}
-/* =======================================================
-   FINISH DRAWING
-======================================================= */
-
-async function finishDrawing(
-  event
-) {
-
-  /*
-    finishDrawing() の中で
-    drawPage / drawLayer を消す前に
-   ローカルへ退避する。
-  */
-
-  const layer =
-    drawLayer;
-
-
-  const page =
-    drawPage;
-
-
-  const start =
-    drawStart;
-
-
-  if (
-    !layer ||
-    !page ||
-    !start
-  ) {
-
-    cancelDrawing();
-
-    return;
-
-  }
-
-
-  const rect =
-    layer.getBoundingClientRect();
-
-
-  const end =
-    getPoint(
-      event,
-      rect
-    );
-
-
-  const left =
-    Math.min(
-      start.x,
-      end.x
-    );
-
-
-  const top =
-    Math.min(
-      start.y,
-      end.y
-    );
-
-
-  const width =
-    Math.abs(
-      end.x -
-      start.x
-    );
-
-
-  const height =
-    Math.abs(
-      end.y -
-      start.y
-    );
-
-
-  /*
-    先に描画状態を解除。
-    必要な値は上で退避済み。
-  */
-
-  cancelDrawing();
-
-
-  if (
-    width <
-    8 ||
-    height <
-    8
-  ) {
-
-    return;
-
-  }
-
-
-  const scale =
-    getPageScale(
-      layer,
-      page
-    );
-
-
-  const role =
-    boxRole?.value ||
-    "answer";
-
-
-  const info =
-    ROLE_INFO[
-      role
-    ] ||
-    ROLE_INFO.answer;
-
-
-  const box = {
-
-    id:
-      crypto.randomUUID(),
-
-    test_id:
-      selectedTestId,
-
-    page_no:
-      Number(
-        page.page_no
-      ),
-
-    box_type:
-      info.boxType,
-
-    label:
-      info.label,
-
-    x:
-      left /
-      scale,
-
-    y:
-      top /
-      scale,
-
-    width:
-      width /
-      scale,
-
-    height:
-      height /
-      scale,
-
-    question_id:
-      null,
-
-    points:
-      info.boxType ===
-      "answer"
-        ? 0
-        : null,
-
-    sort_order:
-      boxes.length
-
-  };
-
-
-  boxes.push(
-    box
-  );
-
-
-  selectedBoxId =
-    box.id;
-
-
-  await renderAllPages();
-
-
-  setStatus(
-    `${box.label}を追加しました。`
-  );
-
-}
-
-
-/* =======================================================
-   CANCEL DRAWING
-======================================================= */
-
-function cancelDrawing() {
-
-  drawing =
-    false;
-
-
-  drawingPointerId =
-    null;
-
-
-  drawStart =
-    null;
-
-
-  drawPage =
-    null;
-
-
-  drawLayer =
-    null;
-
-
-  drawPreview?.remove();
-
-
-  drawPreview =
-    null;
-
-}
-
-
-/* =======================================================
-   AUTO DETECTION
-======================================================= */
-
-async function detectAllPages() {
-
-  if (!pages.length) {
-
-    setStatus(
-      "先に解答用紙を登録してください。",
-      true
-    );
-
-    return;
-
-  }
-
-
-  candidates =
-    [];
-
-
-  setStatus(
-    "解答用紙の枠を自動検出しています..."
-  );
-
-
-  try {
-
-    for (
-      const page
-      of pages
-    ) {
-
-      const detected =
-        await detectPageCandidates(
-          page
-        );
-
-
-      candidates.push(
-        ...detected
-      );
-
-    }
-
-
-    await renderAllPages();
-
-
-    if (
-      candidates.length
-    ) {
-
-      setStatus(
-        `自動検出 ${candidates.length}個。赤い点線の候補をクリックしてください。`
-      );
-
-    } else {
-
-      setStatus(
-        "自動検出できる枠がありません。手動ドラッグで設定できます。"
-      );
-
-    }
-
-
-  } catch (error) {
-
-    console.error(
-      "detectAllPages:",
-      error
-    );
-
-
-    setStatus(
-      error.message ||
-      "枠の自動検出に失敗しました。",
-      true
-    );
-
-  }
-
-}
-
-
-/* =======================================================
-   PAGE DETECTION
-======================================================= */
-
-async function detectPageCandidates(
-  page
-) {
-
-  const {
-    data,
-    error
-  } =
-    await supabaseClient
-      .storage
-      .from(
-        "test-files"
-      )
-      .createSignedUrl(
-        page.image_path,
-        600
-      );
-
-
-  if (
-    error ||
-    !data?.signedUrl
-  ) {
-
-    throw new Error(
-      `ページ${page.page_no}の画像を取得できません。`
-    );
-
-  }
-
-
-  const image =
-    await loadImage(
-      data.signedUrl
-    );
-
-
-  /*
-    検出用画像は大きすぎると
-    ブラウザ負荷が高くなるため縮小。
-  */
-
-  const maxWidth =
-    1800;
-
-
-  const scale =
-    Math.min(
-      1,
-      maxWidth /
-      image.naturalWidth
-    );
-
-
-  const canvas =
-    document.createElement(
-      "canvas"
-    );
-
-
-  canvas.width =
-    Math.max(
-      1,
-      Math.round(
-        image.naturalWidth *
-        scale
-      )
-    );
-
-
-  canvas.height =
-    Math.max(
-      1,
-      Math.round(
-        image.naturalHeight *
-        scale
-      )
-    );
-
-
-  const context =
-    canvas.getContext(
-      "2d",
-      {
-        willReadFrequently:
-          true
-      }
-    );
-
-
-  context.drawImage(
-    image,
-    0,
-    0,
-    canvas.width,
-    canvas.height
-  );
-
-
-  /*
-    OpenCV.js が読み込まれている場合
-    輪郭検出を使用。
-  */
-
-  if (
-    window.cv &&
-    typeof window.cv.Mat ===
-      "function"
-  ) {
-
-    return detectWithOpenCV(
-      canvas,
-      page,
-      scale
-    );
-
-  }
-
-
-  /*
-    OpenCVが使えない場合は
-    簡易検出。
-  */
-
-  return detectWithProjection(
-    canvas,
-    page,
-    scale
-  );
-
-}
-
-
-/* =======================================================
-   OPENCV DETECTION
-======================================================= */
-
-function detectWithOpenCV(
-  canvas,
-  page,
-  scale
-) {
-
-  const src =
-    cv.imread(
-      canvas
-    );
-
-
-  const gray =
-    new cv.Mat();
-
-
-  const binary =
-    new cv.Mat();
-
-
-  const contours =
-    new cv.MatVector();
-
-
-  const hierarchy =
-    new cv.Mat();
-
-
-  const result =
-    [];
-
-
-  try {
-
-    cv.cvtColor(
-      src,
-      gray,
-      cv.COLOR_RGBA2GRAY
-    );
-
-
-    cv.threshold(
-      gray,
-      binary,
-      200,
-      255,
-      cv.THRESH_BINARY_INV
-    );
-
-
-    cv.findContours(
-      binary,
-      contours,
-      hierarchy,
-      cv.RETR_LIST,
-      cv.CHAIN_APPROX_SIMPLE
-    );
-
-
-    const imageArea =
-      canvas.width *
-      canvas.height;
-
-
-    for (
-      let i = 0;
-      i <
-      contours.size();
-      i++
-    ) {
-
-      const contour =
-        contours.get(
-          i
-        );
-
-
-      const perimeter =
-        cv.arcLength(
-          contour,
+        setStatus(
+          "テストIDが指定されていません。",
           true
         );
 
-
-      const approximation =
-        new cv.Mat();
-
-
-      try {
-
-        cv.approxPolyDP(
-          contour,
-          approximation,
-          perimeter *
-            0.02,
-          true
-        );
-
-
-        const rect =
-          cv.boundingRect(
-            contour
-          );
-
-
-        const area =
-          rect.width *
-          rect.height;
-
-
-        const ratio =
-          rect.width /
-          Math.max(
-            1,
-            rect.height
-          );
-
-
-        /*
-          極端に小さいもの、
-          ページ全体、
-          細長すぎるものを除外。
-        */
-
-        if (
-          approximation.rows <
-            4 ||
-          approximation.rows >
-            6
-        ) {
-
-          continue;
-
-        }
-
-
-        if (
-          area <
-          imageArea *
-          0.00015
-        ) {
-
-          continue;
-
-        }
-
-
-        if (
-          area >
-          imageArea *
-          0.40
-        ) {
-
-          continue;
-
-        }
-
-
-        if (
-          ratio <
-          0.12 ||
-          ratio >
-          8
-        ) {
-
-          continue;
-
-        }
-
-
-        const candidate = {
-
-          id:
-            crypto.randomUUID(),
-
-          pageNo:
-            Number(
-              page.page_no
-            ),
-
-          x:
-            rect.x /
-            scale,
-
-          y:
-            rect.y /
-            scale,
-
-          width:
-            rect.width /
-            scale,
-
-          height:
-            rect.height /
-            scale
-
-        };
-
-
-        /*
-          同じ枠の輪郭が
-          複数検出されるので重複除去。
-        */
-
-        const duplicate =
-          result.some(
-            existing =>
-              overlapRatio(
-                candidate,
-                existing
-              ) >
-              0.75
-          );
-
-
-        if (
-          !duplicate
-        ) {
-
-          result.push(
-            candidate
-          );
-
-        }
-
-      } finally {
-
-        approximation.delete();
+        return;
 
       }
 
 
-      contour.delete();
+      await loadLayout();
 
-    }
+    } catch (error) {
 
-
-    return result
-      .sort(
-        (
-          a,
-          b
-        ) =>
-          a.pageNo -
-          b.pageNo ||
-          a.y -
-          b.y ||
-          a.x -
-          b.x
-      )
-      .slice(
-        0,
-        300
+      console.error(
+        "test-pages initialize:",
+        error
       );
 
-  } finally {
 
-    src.delete();
-
-    gray.delete();
-
-    binary.delete();
-
-    contours.delete();
-
-    hierarchy.delete();
-
-  }
-
-}
-
-
-/* =======================================================
-   SIMPLE DETECTION
-======================================================= */
-
-function detectWithProjection(
-  canvas,
-  page,
-  scale
-) {
-
-  const context =
-    canvas.getContext(
-      "2d",
-      {
-        willReadFrequently:
-          true
-      }
-    );
-
-
-  const imageData =
-    context.getImageData(
-      0,
-      0,
-      canvas.width,
-      canvas.height
-    );
-
-
-  const rowCount =
-    new Uint32Array(
-      canvas.height
-    );
-
-
-  const columnCount =
-    new Uint32Array(
-      canvas.width
-    );
-
-
-  for (
-    let y = 0;
-    y <
-    canvas.height;
-    y++
-  ) {
-
-    for (
-      let x = 0;
-      x <
-      canvas.width;
-      x++
-    ) {
-
-      const index =
-        (
-          y *
-          canvas.width +
-          x
-        ) *
-        4;
-
-
-      const brightness =
-        (
-          imageData.data[index] +
-          imageData.data[index + 1] +
-          imageData.data[index + 2]
-        ) /
-        3;
-
-
-      if (
-        brightness <
-        145
-      ) {
-
-        rowCount[y]++;
-
-        columnCount[x]++;
-
-      }
+      showError(
+        error.message ||
+        "解答用紙・枠設定画面を読み込めませんでした。"
+      );
 
     }
 
   }
 
 
-  const horizontal =
-    findProjectionRuns(
-      rowCount,
-      canvas.width *
-      0.15
+  /* =======================================================
+     EVENTS
+  ======================================================= */
+
+  function setupEvents() {
+
+    uploadButton?.addEventListener(
+      "click",
+      uploadAnswerSheet
     );
 
 
-  const vertical =
-    findProjectionRuns(
-      columnCount,
-      canvas.height *
-      0.15
+    saveButton?.addEventListener(
+      "click",
+      saveBoxes
     );
 
 
-  const result =
-    [];
+    backButton?.addEventListener(
+      "click",
+      goBack
+    );
 
 
-  /*
-    横線と縦線の交点から
-    矩形候補を作る。
-  */
-
-  for (
-    let yi = 0;
-    yi <
-    horizontal.length;
-    yi++
-  ) {
-
-    for (
-      let yj = yi + 1;
-      yj <
-      Math.min(
-        horizontal.length,
-        yi + 10
-      );
-      yj++
-    ) {
-
-      const top =
-        horizontal[yi];
+    applyButton?.addEventListener(
+      "click",
+      applySelectedBox
+    );
 
 
-      const bottom =
-        horizontal[yj];
+    deleteSelectedButton?.addEventListener(
+      "click",
+      deleteSelectedBox
+    );
 
 
-      const height =
-        bottom -
-        top;
+    closePanelButton?.addEventListener(
+      "click",
+      closeBoxPanel
+    );
 
 
-      if (
-        height <
-        20
-      ) {
-
-        continue;
-
-      }
+    boxRole?.addEventListener(
+      "change",
+      updateRoleHelp
+    );
 
 
-      if (
-        height >
-        canvas.height *
-        0.4
-      ) {
-
-        continue;
-
-      }
+    detectButton?.addEventListener(
+      "click",
+      detectAllPages
+    );
 
 
-      for (
-        let xi = 0;
-        xi <
-        vertical.length;
-        xi++
-      ) {
-
-        for (
-          let xj = xi + 1;
-          xj <
-          Math.min(
-            vertical.length,
-            xi + 10
-          );
-          xj++
-        ) {
-
-          const left =
-            vertical[xi];
+    detectButtonTop?.addEventListener(
+      "click",
+      detectAllPages
+    );
 
 
-          const right =
-            vertical[xj];
+    document
+      .getElementById("logoutButton")
+      ?.addEventListener(
+        "click",
+        async () => {
 
-
-          const width =
-            right -
-            left;
-
-
-          if (
-            width <
-            30
-          ) {
-
-            continue;
-
-          }
-
-
-          if (
-            width >
-            canvas.width *
-            0.8
-          ) {
-
-            continue;
-
-          }
-
-
-          const candidate = {
-
-            id:
-              crypto.randomUUID(),
-
-            pageNo:
-              Number(
-                page.page_no
-              ),
-
-            x:
-              left /
-              scale,
-
-            y:
-              top /
-              scale,
-
-            width:
-              width /
-              scale,
-
-            height:
-              height /
-              scale
-
-          };
-
-
-          result.push(
-            candidate
-          );
+          await logout();
 
         }
-
-      }
-
-    }
-
-  }
-
-
-  return deduplicateCandidates(
-    result
-  )
-    .sort(
-      (
-        a,
-        b
-      ) =>
-        a.pageNo -
-        b.pageNo ||
-        a.y -
-        b.y ||
-        a.x -
-        b.x
-    )
-    .slice(
-      0,
-      200
-    );
-
-}
-
-
-/* =======================================================
-   PROJECTION RUNS
-======================================================= */
-
-function findProjectionRuns(
-  values,
-  threshold
-) {
-
-  const result =
-    [];
-
-
-  let start =
-    -1;
-
-
-  for (
-    let index = 0;
-    index <
-    values.length;
-    index++
-  ) {
-
-    if (
-      values[index] >=
-      threshold
-    ) {
-
-      if (
-        start <
-        0
-      ) {
-
-        start =
-          index;
-
-      }
-
-      continue;
-
-    }
-
-
-    if (
-      start >=
-      0
-    ) {
-
-      if (
-        index -
-        start >=
-        2
-      ) {
-
-        result.push(
-          Math.round(
-            (
-              start +
-              index
-            ) /
-            2
-          )
-        );
-
-      }
-
-
-      start =
-        -1;
-
-    }
-
-  }
-
-
-  if (
-    start >=
-    0
-  ) {
-
-    result.push(
-      Math.round(
-        (
-          start +
-          values.length
-        ) /
-        2
-      )
-    );
-
-  }
-
-
-  return result;
-
-}
-
-
-/* =======================================================
-   CANDIDATE RENDER
-======================================================= */
-
-function renderCandidate(
-  layer,
-  page,
-  candidate
-) {
-
-  const element =
-    document.createElement(
-      "div"
-    );
-
-
-  element.className =
-    "auto-box-candidate";
-
-
-  const scale =
-    getPageScale(
-      layer,
-      page
-    );
-
-
-  element.style.left =
-    `${candidate.x * scale}px`;
-
-
-  element.style.top =
-    `${candidate.y * scale}px`;
-
-
-  element.style.width =
-    `${candidate.width * scale}px`;
-
-
-  element.style.height =
-    `${candidate.height * scale}px`;
-
-
-  element.title =
-    "クリックして枠として登録";
-
-
-  element.addEventListener(
-    "pointerdown",
-    event => {
-
-      event.preventDefault();
-
-      event.stopPropagation();
-
-
-      acceptCandidate(
-        candidate
-      );
-
-    }
-  );
-
-
-  layer.appendChild(
-    element
-  );
-
-}
-
-
-/* =======================================================
-   ACCEPT CANDIDATE
-======================================================= */
-
-async function acceptCandidate(
-  candidate
-) {
-
-  const role =
-    boxRole?.value ||
-    "answer";
-
-
-  const info =
-    ROLE_INFO[
-      role
-    ] ||
-    ROLE_INFO.answer;
-
-
-  const box = {
-
-    id:
-      crypto.randomUUID(),
-
-    test_id:
-      selectedTestId,
-
-    page_no:
-      Number(
-        candidate.pageNo
-      ),
-
-    box_type:
-      info.boxType,
-
-    label:
-      info.label,
-
-    x:
-      Number(
-        candidate.x
-      ),
-
-    y:
-      Number(
-        candidate.y
-      ),
-
-    width:
-      Number(
-        candidate.width
-      ),
-
-    height:
-      Number(
-        candidate.height
-      ),
-
-    question_id:
-      null,
-
-    points:
-      info.boxType ===
-      "answer"
-        ? 0
-        : null,
-
-    sort_order:
-      boxes.length
-
-  };
-
-
-  boxes.push(
-    box
-  );
-
-
-  selectedBoxId =
-    box.id;
-
-
-  candidates =
-    candidates.filter(
-      item =>
-        item.id !==
-        candidate.id
-    );
-
-
-  await renderAllPages();
-
-
-  setStatus(
-    `${box.label}として枠を作成しました。`
-  );
-
-}
-  function applySelectedBox() {
-
-    const box =
-      getSelectedBox();
-
-
-    if (!box) {
-
-      setStatus(
-        "選択されている枠がありません。"
-      );
-
-      return;
-
-    }
-
-
-    const role =
-      boxRole?.value ||
-      "other";
-
-
-    const roleInfo =
-      ROLE_INFO[
-        role
-      ] ||
-      ROLE_INFO.other;
-
-
-    box.box_role =
-      role;
-
-
-    box.box_type =
-      roleInfo.boxType;
-
-
-    box.label =
-      automaticLabel(
-        role,
-        box
       );
 
 
-    if (
-      roleInfo.boxType ===
-      "answer"
-    ) {
-
-      if (
-        box.points ===
-        null ||
-        box.points ===
-        undefined
-      ) {
-
-        box.points =
-          0;
-
-      }
-
-    } else {
-
-      box.points =
-        null;
-
-    }
-
-
-    if (
-      role ===
-        "minor" ||
-      role ===
-        "subtotal"
-    ) {
-
-      updateParent(
-        box
-      );
-
-    }
-
-
-    if (
-      role ===
-      "major"
-    ) {
-
-      box.parent_box_id =
-        null;
-
-      box.minor_no =
-        null;
-
-      box.subtotal_group =
-        null;
-
-    }
-
-
-    if (
-      role ===
-        "total" ||
-      role ===
-        "qr" ||
-      role ===
-        "name" ||
-      role ===
-        "student_no" ||
-      role ===
-        "instruction" ||
-      role ===
-        "other"
-    ) {
-
-      box.parent_box_id =
-        null;
-
-      box.minor_no =
-        null;
-
-      box.subtotal_group =
-        null;
-
-    }
-
-
-    renumberAll();
-
-
-    renderAllPages();
-
-
-    setStatus(
-      `${box.label}として設定しました。`
+    document.addEventListener(
+      "keydown",
+      handleKeyboard
     );
 
   }
 
 
   /* =======================================================
-     DELETE SELECTED
+     LOAD
   ======================================================= */
 
-  function deleteSelectedBox() {
+  async function loadLayout() {
 
-    if (!selectedBoxId) {
+    setStatus(
+      "解答用紙と枠設定を読み込んでいます..."
+    );
+
+
+    const {
+      data: pageData,
+      error: pageError
+    } =
+      await supabaseClient
+        .from("test_pages")
+        .select(`
+          id,
+          test_id,
+          page_no,
+          image_path,
+          width_px,
+          height_px,
+          original_name
+        `)
+        .eq(
+          "test_id",
+          selectedTestId
+        )
+        .order(
+          "page_no",
+          {
+            ascending: true
+          }
+        );
+
+
+    if (pageError) {
+
+      throw new Error(
+        `解答用紙の取得に失敗しました: ${pageError.message}`
+      );
+
+    }
+
+
+    pages =
+      pageData || [];
+
+
+    /*
+     * layout_boxes
+     *
+     * 階層用カラムが存在する環境に対応。
+     */
+
+    const {
+      data: boxData,
+      error: boxError
+    } =
+      await supabaseClient
+        .from("layout_boxes")
+        .select(`
+          id,
+          test_id,
+          page_no,
+          box_type,
+          label,
+          x,
+          y,
+          width,
+          height,
+          question_id,
+          points,
+          parent_box_id,
+          major_no,
+          minor_no,
+          box_role,
+          sort_order,
+          subtotal_group
+        `)
+        .eq(
+          "test_id",
+          selectedTestId
+        )
+        .order(
+          "page_no",
+          {
+            ascending: true
+          }
+        )
+        .order(
+          "sort_order",
+          {
+            ascending: true
+          }
+        );
+
+
+    if (boxError) {
+
+      throw new Error(
+        `枠設定の取得に失敗しました: ${boxError.message}`
+      );
+
+    }
+
+
+    boxes =
+      boxData || [];
+
+
+    normalizeBoxes();
+
+    rebuildHierarchy();
+
+    await renderAllPages();
+
+
+    if (!pages.length) {
 
       setStatus(
-        "削除する枠を選択してください。"
+        "解答用紙を登録してください。"
       );
 
       return;
@@ -2442,82 +491,663 @@ async function acceptCandidate(
     }
 
 
-    const targetId =
-      selectedBoxId;
+    setStatus(
+      `解答用紙 ${pages.length}ページ、枠 ${boxes.length}個を読み込みました。`
+    );
+
+  }
 
 
-    boxes =
-      boxes.filter(
-        box =>
-          box.id !==
-          targetId
-      );
+  /* =======================================================
+     NORMALIZE
+  ======================================================= */
 
-
-    /*
-      削除した大問に所属していた
-      小問・小計の親を解除。
-    */
+  function normalizeBoxes() {
 
     boxes.forEach(
       box => {
 
         if (
-          box.parent_box_id ===
-          targetId
+          !ROLE_INFO[
+            box.box_role
+          ]
         ) {
 
-          box.parent_box_id =
-            null;
-
-          box.minor_no =
-            null;
-
-          box.subtotal_group =
-            null;
+          box.box_role =
+            inferRole(box);
 
         }
 
+
+        const info =
+          ROLE_INFO[
+            box.box_role
+          ] ||
+          ROLE_INFO.other;
+
+
+        box.box_type =
+          info.boxType;
+
+
+        box.x =
+          Number(box.x) || 0;
+
+
+        box.y =
+          Number(box.y) || 0;
+
+
+        box.width =
+          Number(box.width) || 10;
+
+
+        box.height =
+          Number(box.height) || 10;
+
+
+        box.points =
+          info.boxType === "answer"
+            ? Number(box.points) || 0
+            : null;
+
+
+        box.question_id =
+          null;
+
       }
-    );
-
-
-    selectedBoxId =
-      null;
-
-
-    renumberAll();
-
-
-    renderAllPages();
-
-
-    setStatus(
-      "選択した枠を削除しました。保存するとDBにも反映されます。"
     );
 
   }
 
 
   /* =======================================================
-     ROLE HELP
+     SELECTED BOX
   ======================================================= */
 
-  function updateRoleHelp() {
+  function getSelectedBox() {
 
-    if (!parentInfo) {
+    if (!selectedBoxId) {
+
+      return null;
+
+    }
+
+
+    return (
+      boxes.find(
+        box =>
+          box.id ===
+          selectedBoxId
+      ) ||
+      null
+    );
+
+  }
+
+
+  function selectBox(
+    id
+  ) {
+
+    selectedBoxId =
+      id;
+
+
+    const box =
+      getSelectedBox();
+
+
+    if (
+      box &&
+      boxRole
+    ) {
+
+      boxRole.value =
+        box.box_role;
+
+    }
+
+
+    updateAllLabels();
+
+    updateRoleHelp();
+
+    openBoxPanel();
+
+  }
+
+
+  /* =======================================================
+     RENDER ALL
+  ======================================================= */
+
+  async function renderAllPages() {
+
+    if (!viewer) {
 
       return;
 
     }
 
 
-    const selected =
-      getSelectedBox();
+    viewer.innerHTML =
+      "";
+
+
+    if (!pages.length) {
+
+      viewer.innerHTML = `
+
+        <div class="empty-view">
+
+          <strong>
+            解答用紙がありません
+          </strong>
+
+          <br><br>
+
+          PDFまたは画像を登録してください。
+
+        </div>
+
+      `;
+
+      return;
+
+    }
+
+
+    for (
+      const page of pages
+    ) {
+
+      await renderPage(
+        page
+      );
+
+    }
+
+  }
+
+
+  /* =======================================================
+     RENDER PAGE
+  ======================================================= */
+
+  async function renderPage(
+    page
+  ) {
+
+    const wrapper =
+      document.createElement(
+        "div"
+      );
+
+
+    wrapper.className =
+      "page";
+
+
+    wrapper.dataset.pageNo =
+      String(
+        page.page_no
+      );
+
+
+    const image =
+      await createPageImage(
+        page
+      );
+
+
+    wrapper.appendChild(
+      image
+    );
+
+
+    const layer =
+      document.createElement(
+        "div"
+      );
+
+
+    layer.className =
+      "page-layer";
+
+
+    layer.dataset.pageNo =
+      String(
+        page.page_no
+      );
+
+
+    wrapper.appendChild(
+      layer
+    );
+
+
+    viewer.appendChild(
+      wrapper
+    );
+
+
+    setupDrawing(
+      layer,
+      page
+    );
+
+
+    boxes
+      .filter(
+        box =>
+          Number(
+            box.page_no
+          ) ===
+          Number(
+            page.page_no
+          )
+      )
+      .sort(
+        compareBoxes
+      )
+      .forEach(
+        box => {
+
+          renderBox(
+            layer,
+            page,
+            box
+          );
+
+        }
+      );
+
+
+    candidates
+      .filter(
+        candidate =>
+          Number(
+            candidate.pageNo
+          ) ===
+          Number(
+            page.page_no
+          )
+      )
+      .forEach(
+        candidate => {
+
+          renderCandidate(
+            layer,
+            page,
+            candidate
+          );
+
+        }
+      );
+
+  }
+
+
+  /* =======================================================
+     IMAGE
+  ======================================================= */
+
+  async function createPageImage(
+    page
+  ) {
+
+    const {
+      data,
+      error
+    } =
+      await supabaseClient
+        .storage
+        .from("test-files")
+        .createSignedUrl(
+          page.image_path,
+          3600
+        );
+
+
+    if (
+      error ||
+      !data?.signedUrl
+    ) {
+
+      throw new Error(
+        `ページ${page.page_no}の画像を取得できませんでした。`
+      );
+
+    }
+
+
+    const image =
+      await loadImage(
+        data.signedUrl
+      );
+
+
+    image.alt =
+      `解答用紙 ${page.page_no}ページ`;
+
+
+    image.style.display =
+      "block";
+
+
+    image.style.width =
+      "100%";
+
+
+    image.style.height =
+      "auto";
+
+
+    image.draggable =
+      false;
+
+
+    return image;
+
+  }
+
+
+  /* =======================================================
+     MANUAL DRAW
+  ======================================================= */
+
+  function setupDrawing(
+    layer,
+    page
+  ) {
+
+    layer.addEventListener(
+      "pointerdown",
+      event => {
+
+        if (
+          event.target !==
+          layer
+        ) {
+
+          return;
+
+        }
+
+
+        if (
+          event.button !== 0 &&
+          event.pointerType !== "touch"
+        ) {
+
+          return;
+
+        }
+
+
+        event.preventDefault();
+
+
+        drawing =
+          true;
+
+
+        drawingPointerId =
+          event.pointerId;
+
+
+        drawPage =
+          page;
+
+
+        drawLayer =
+          layer;
+
+
+        const rect =
+          layer.getBoundingClientRect();
+
+
+        drawStart =
+          getPoint(
+            event,
+            rect
+          );
+
+
+        drawPreview =
+          document.createElement(
+            "div"
+          );
+
+
+        drawPreview.className =
+          "drag-preview";
+
+
+        layer.appendChild(
+          drawPreview
+        );
+
+
+        try {
+
+          layer.setPointerCapture(
+            event.pointerId
+          );
+
+        } catch (_) {}
+
+      }
+    );
+
+
+    layer.addEventListener(
+      "pointermove",
+      event => {
+
+        if (
+          !drawing ||
+          event.pointerId !==
+          drawingPointerId
+        ) {
+
+          return;
+
+        }
+
+
+        updateDrawPreview(
+          event
+        );
+
+      }
+    );
+
+
+    layer.addEventListener(
+      "pointerup",
+      event => {
+
+        if (
+          !drawing ||
+          event.pointerId !==
+          drawingPointerId
+        ) {
+
+          return;
+
+        }
+
+
+        finishDrawing(
+          event
+        );
+
+      }
+    );
+
+
+    layer.addEventListener(
+      "pointercancel",
+      cancelDrawing
+    );
+
+  }
+
+
+  function updateDrawPreview(
+    event
+  ) {
+
+    if (
+      !drawPreview ||
+      !drawLayer ||
+      !drawStart
+    ) {
+
+      return;
+
+    }
+
+
+    const rect =
+      drawLayer.getBoundingClientRect();
+
+
+    const current =
+      getPoint(
+        event,
+        rect
+      );
+
+
+    const left =
+      Math.min(
+        drawStart.x,
+        current.x
+      );
+
+
+    const top =
+      Math.min(
+        drawStart.y,
+        current.y
+      );
+
+
+    drawPreview.style.left =
+      `${left}px`;
+
+
+    drawPreview.style.top =
+      `${top}px`;
+
+
+    drawPreview.style.width =
+      `${Math.abs(
+        current.x -
+        drawStart.x
+      )}px`;
+
+
+    drawPreview.style.height =
+      `${Math.abs(
+        current.y -
+        drawStart.y
+      )}px`;
+
+  }
+
+
+  async function finishDrawing(
+    event
+  ) {
+
+    const layer =
+      drawLayer;
+
+    const page =
+      drawPage;
+
+    const start =
+      drawStart;
+
+
+    if (
+      !layer ||
+      !page ||
+      !start
+    ) {
+
+      cancelDrawing();
+
+      return;
+
+    }
+
+
+    const rect =
+      layer.getBoundingClientRect();
+
+
+    const end =
+      getPoint(
+        event,
+        rect
+      );
+
+
+    const left =
+      Math.min(
+        start.x,
+        end.x
+      );
+
+
+    const top =
+      Math.min(
+        start.y,
+        end.y
+      );
+
+
+    const width =
+      Math.abs(
+        end.x -
+        start.x
+      );
+
+
+    const height =
+      Math.abs(
+        end.y -
+        start.y
+      );
+
+
+    cancelDrawing();
+
+
+    if (
+      width < 8 ||
+      height < 8
+    ) {
+
+      return;
+
+    }
+
+
+    const scale =
+      getPageScale(
+        layer,
+        page
+      );
 
 
     const role =
-      selected?.box_role ||
       boxRole?.value ||
       "answer";
 
@@ -2529,2135 +1159,232 @@ async function acceptCandidate(
       ROLE_INFO.answer;
 
 
-    switch (
-      role
-    ) {
+    const box = {
 
-      case "major":
+      id:
+        crypto.randomUUID(),
 
-        parentInfo.textContent =
-          "大問の範囲を作成します。";
+      test_id:
+        selectedTestId,
 
-        break;
-
-
-      case "minor":
-
-        parentInfo.textContent =
-          "小問の範囲を作成します。大問の内側なら自動的にその大問へ所属します。";
-
-        break;
-
-
-      case "subtotal":
-
-        parentInfo.textContent =
-          "小計範囲を作成します。大問の内側ならその大問へ所属します。";
-
-        break;
-
-
-      case "total":
-
-        parentInfo.textContent =
-          "テスト全体の合計範囲です。";
-
-        break;
-
-
-      case "qr":
-
-        parentInfo.textContent =
-          "QR読み取り範囲です。答案アップロード時はこの範囲だけをQR解析します。";
-
-        break;
-
-
-      case "name":
-
-        parentInfo.textContent =
-          "氏名欄の範囲です。";
-
-        break;
-
-
-      case "student_no":
-
-        parentInfo.textContent =
-          "生徒番号欄の範囲です。";
-
-        break;
-
-
-      case "instruction":
-
-        parentInfo.textContent =
-          "説明・指示の範囲です。";
-
-        break;
-
-
-      default:
-
-        parentInfo.textContent =
-          `${info.label}の範囲を作成します。`;
-
-        break;
-
-    }
-
-  }
-
-
-  /* =======================================================
-     PARENT
-  ======================================================= */
-
-  function updateParent(
-    box
-  ) {
-
-    if (
-      !box ||
-      (
-        box.box_role !==
-          "minor" &&
-        box.box_role !==
-          "subtotal"
-      )
-    ) {
-
-      return;
-
-    }
-
-
-    const majors =
-      boxes
-        .filter(
-          candidate =>
-            candidate.box_role ===
-            "major" &&
-            Number(
-              candidate.page_no
-            ) ===
-            Number(
-              box.page_no
-            )
-        )
-        .sort(
-          compareBoxes
-        );
-
-
-    const parent =
-      majors.find(
-        major =>
-          isInside(
-            box,
-            major
-          )
-      );
-
-
-    if (parent) {
-
-      box.parent_box_id =
-        parent.id;
-
-      box.major_no =
-        parent.major_no;
-
-    } else {
-
-      box.parent_box_id =
-        null;
-
-      box.major_no =
-        null;
-
-    }
-
-
-    if (
-      box.box_role ===
-      "subtotal"
-    ) {
-
-      box.subtotal_group =
-        parent
-          ? parent.id
-          : null;
-
-    }
-
-  }
-
-
-  function findContainingMajor(
-    box
-  ) {
-
-    if (!box) {
-
-      return null;
-
-    }
-
-
-    return (
-      boxes
-        .filter(
-          candidate =>
-            candidate.box_role ===
-            "major" &&
-            Number(
-              candidate.page_no
-            ) ===
-            Number(
-              box.page_no
-            )
-        )
-        .sort(
-          compareBoxes
-        )
-        .find(
-          major =>
-            isInside(
-              box,
-              major
-            )
-        ) ||
-      null
-    );
-
-  }
-
-
-  function isInside(
-    child,
-    parent
-  ) {
-
-    const childLeft =
-      Number(
-        child.x
-      );
-
-
-    const childTop =
-      Number(
-        child.y
-      );
-
-
-    const childRight =
-      childLeft +
-      Number(
-        child.width
-      );
-
-
-    const childBottom =
-      childTop +
-      Number(
-        child.height
-      );
-
-
-    const parentLeft =
-      Number(
-        parent.x
-      );
-
-
-    const parentTop =
-      Number(
-        parent.y
-      );
-
-
-    const parentRight =
-      parentLeft +
-      Number(
-        parent.width
-      );
-
-
-    const parentBottom =
-      parentTop +
-      Number(
-        parent.height
-      );
-
-
-    return (
-      childLeft >=
-        parentLeft &&
-      childTop >=
-        parentTop &&
-      childRight <=
-        parentRight &&
-      childBottom <=
-        parentBottom
-    );
-
-  }
-
-
-  /* =======================================================
-     NUMBERING
-  ======================================================= */
-
-  function renumberAll() {
-
-    const majors =
-      boxes
-        .filter(
-          box =>
-            box.box_role ===
-            "major"
-        )
-        .sort(
-          compareBoxes
-        );
-
-
-    majors.forEach(
-      (
-        major,
-        index
-      ) => {
-
-        major.major_no =
-          index + 1;
-
-      }
-    );
-
-
-    majors.forEach(
-      major => {
-
-        const children =
-          boxes
-            .filter(
-              box =>
-                box.box_role ===
-                  "minor" &&
-                box.parent_box_id ===
-                  major.id
-            )
-            .sort(
-              compareBoxes
-            );
-
-
-        children.forEach(
-          (
-            child,
-            index
-          ) => {
-
-            child.minor_no =
-              index + 1;
-
-            child.major_no =
-              major.major_no;
-
-          }
-        );
-
-      }
-    );
-
-
-    boxes
-      .filter(
-        box =>
-          box.box_role ===
-          "subtotal"
-      )
-      .forEach(
-        box => {
-
-          const parent =
-            findContainingMajor(
-              box
-            );
-
-
-          if (parent) {
-
-            box.major_no =
-              parent.major_no;
-
-            box.subtotal_group =
-              parent.id;
-
-          }
-
-        }
-      );
-
-  }
-
-
-  /* =======================================================
-     LABEL
-  ======================================================= */
-
-  function automaticLabel(
-    role,
-    box
-  ) {
-
-    switch (
-      role
-    ) {
-
-      case "major":
-
-        return `大問${box.major_no || ""}`;
-
-
-      case "minor":
-
-        if (
-          box.major_no &&
-          box.minor_no
-        ) {
-
-          return `${box.major_no}-${box.minor_no}`;
-
-        }
-
-
-        return "小問";
-
-
-      case "subtotal":
-
-        return box.major_no
-          ? `大問${box.major_no} 小計`
-          : "小計";
-
-
-      case "total":
-
-        return "合計";
-
-
-      case "qr":
-
-        return "QR";
-
-
-      case "name":
-
-        return "氏名";
-
-
-      case "student_no":
-
-        return "生徒番号";
-
-
-      case "instruction":
-
-        return "説明";
-
-
-      default:
-
-        return "その他";
-
-    }
-
-  }
-
-
-  function updateAllLabels() {
-
-    document
-      .querySelectorAll(
-        ".layout-box"
-      )
-      .forEach(
-        element => {
-
-          const id =
-            element.dataset.boxId;
-
-
-          const box =
-            boxes.find(
-              item =>
-                item.id ===
-                id
-            );
-
-
-          if (!box) {
-
-            return;
-
-          }
-
-
-          const label =
-            element.querySelector(
-              ".layout-box-label"
-            );
-
-
-          if (label) {
-
-            label.textContent =
-              automaticLabel(
-                box.box_role,
-                box
-              );
-
-          }
-
-
-          applyRoleStyle(
-            element,
-            box.box_role
-          );
-
-        }
-      );
-
-  }
-
-
-  /* =======================================================
-     PANEL
-  ======================================================= */
-
-  function openBoxPanel() {
-
-    if (!boxPanel) {
-
-      return;
-
-    }
-
-
-    boxPanel.classList.add(
-      "open"
-    );
-
-
-    boxPanel.style.display =
-      "block";
-
-  }
-
-
-  function closeBoxPanel() {
-
-    if (!boxPanel) {
-
-      return;
-
-    }
-
-
-    boxPanel.classList.remove(
-      "open"
-    );
-
-
-    /*
-      ツール自体は消さない。
-      次に選択すると再表示できる。
-    */
-
-  }
-
-
-  /* =======================================================
-     SAVE
-  ======================================================= */
-
-  async function saveBoxes() {
-
-    if (!selectedTestId) {
-
-      setStatus(
-        "テストIDがありません。",
-        true
-      );
-
-      return;
-
-    }
-
-
-    try {
-
-      saveButton.disabled =
-        true;
-
-
-      setStatus(
-        "枠設定を保存しています..."
-      );
-
-
-      rebuildHierarchy();
-
-
-      const {
-        data: existing,
-        error: existingError
-      } =
-        await supabaseClient
-          .from(
-            "layout_boxes"
-          )
-          .select(
-            "id"
-          )
-          .eq(
-            "test_id",
-            selectedTestId
-          );
-
-
-      if (existingError) {
-
-        throw existingError;
-
-      }
-
-
-      const currentIds =
-        new Set(
-          boxes
-            .filter(
-              box =>
-                isUuid(
-                  box.id
-                )
-            )
-            .map(
-              box =>
-                box.id
-            )
-        );
-
-
-      /*
-        DBにあって画面から削除された枠を削除。
-      */
-
-      for (
-        const oldBox
-        of (
-          existing ||
-          []
-        )
-      ) {
-
-        if (
-          !currentIds.has(
-            oldBox.id
-          )
-        ) {
-
-          const {
-            error
-          } =
-            await supabaseClient
-              .from(
-                "layout_boxes"
-              )
-              .delete()
-              .eq(
-                "id",
-                oldBox.id
-              );
-
-
-          if (error) {
-
-            throw error;
-
-          }
-
-        }
-
-      }
-
-
-      /*
-        現在の枠を保存。
-      */
-
-      for (
-        let index = 0;
-        index <
-        boxes.length;
-        index++
-      ) {
-
-        const box =
-          boxes[index];
-
-
-        const role =
-          ROLE_INFO[
-            box.box_role
-          ] ||
-          ROLE_INFO.other;
-
-
-        const payload = {
-
-          test_id:
-            selectedTestId,
-
-          page_no:
-            Number(
-              box.page_no
-            ) || 1,
-
-          box_type:
-            role.boxType,
-
-          label:
-            automaticLabel(
-              box.box_role,
-              box
-            ),
-
-          x:
-            Number(
-              box.x
-            ) || 0,
-
-          y:
-            Number(
-              box.y
-            ) || 0,
-
-          width:
-            Number(
-              box.width
-            ) || 0,
-
-          height:
-            Number(
-              box.height
-            ) || 0,
-
-          question_id:
-            null,
-
-          points:
-            role.boxType ===
-              "answer"
-              ? Number(
-                  box.points
-                ) || 0
-              : null,
-
-          sort_order:
-            index
-
-        };
-
-
-        /*
-          既存UUID
-        */
-
-        if (
-          isUuid(
-            box.id
-          )
-        ) {
-
-          const {
-            error
-          } =
-            await supabaseClient
-              .from(
-                "layout_boxes"
-              )
-              .update(
-                payload
-              )
-              .eq(
-                "id",
-                box.id
-              );
-
-
-          if (error) {
-
-            throw error;
-
-          }
-
-        } else {
-
-          const {
-            data,
-            error
-          } =
-            await supabaseClient
-              .from(
-                "layout_boxes"
-              )
-              .insert(
-                payload
-              )
-              .select(
-                "id"
-              )
-              .single();
-
-
-          if (error) {
-
-            throw error;
-
-          }
-
-
-          box.id =
-            data.id;
-
-        }
-
-      }
-
-
-      await loadLayout();
-
-
-      setStatus(
-        "枠設定を保存しました。"
-      );
-
-
-    } catch (error) {
-
-      console.error(
-        "saveBoxes:",
-        error
-      );
-
-
-      setStatus(
-        error.message ||
-        "枠設定を保存できませんでした。",
-        true
-      );
-
-    } finally {
-
-      saveButton.disabled =
-        false;
-
-    }
-
-  }
-
-
-  /* =======================================================
-     KEYBOARD
-  ======================================================= */
-
-  function handleKeyboard(
-    event
-  ) {
-
-    const target =
-      event.target;
-
-
-    if (
-      target instanceof
-        HTMLInputElement ||
-      target instanceof
-        HTMLTextAreaElement ||
-      target instanceof
-        HTMLSelectElement
-    ) {
-
-      return;
-
-    }
-
-
-    if (
-      event.key ===
-      "Escape"
-    ) {
-
-      cancelDrawing();
-
-
-      dragMode =
-        null;
-
-
-      selectedBoxId =
-        null;
-
-
-      renderAllPages();
-
-
-      return;
-
-    }
-
-
-    if (
-      event.key ===
-      "Delete"
-    ) {
-
-      if (
-        selectedBoxId
-      ) {
-
-        event.preventDefault();
-
-
-        deleteSelectedBox();
-
-      }
-
-    }
-
-  }
-
-
-  /* =======================================================
-     BACK
-  ======================================================= */
-
-  function goBack() {
-
-    if (
-      selectedTestId
-    ) {
-
-      window.location.href =
-        `/teacher/tests/edit?id=${encodeURIComponent(
-          selectedTestId
-        )}`;
-
-      return;
-
-    }
-
-
-    window.location.href =
-      "/teacher/tests";
-
-  }
-
-
-  /* =======================================================
-     IMAGE
-  ======================================================= */
-
-  function loadImage(
-    src
-  ) {
-
-    return new Promise(
-      (
-        resolve,
-        reject
-      ) => {
-
-        const image =
-          new Image();
-
-
-        image.onload =
-          () =>
-            resolve(
-              image
-            );
-
-
-        image.onerror =
-          () =>
-            reject(
-              new Error(
-                "画像を読み込めませんでした。"
-              )
-            );
-
-
-        image.src =
-          src;
-
-      }
-    );
-
-  }
-
-
-  /* =======================================================
-     GEOMETRY
-  ======================================================= */
-
-  function getPoint(
-    event,
-    rect
-  ) {
-
-    return {
-
-      x:
-        Math.max(
-          0,
-          Math.min(
-            rect.width,
-            event.clientX -
-            rect.left
-          )
+      page_no:
+        Number(
+          page.page_no
         ),
 
+      box_type:
+        info.boxType,
+
+      label:
+        info.label,
+
+      x:
+        left /
+        scale,
+
       y:
-        Math.max(
-          0,
-          Math.min(
-            rect.height,
-            event.clientY -
-            rect.top
-          )
-        )
+        top /
+        scale,
+
+      width:
+        width /
+        scale,
+
+      height:
+        height /
+        scale,
+
+      question_id:
+        null,
+
+      points:
+        info.boxType === "answer"
+          ? 0
+          : null,
+
+      parent_box_id:
+        null,
+
+      major_no:
+        null,
+
+      minor_no:
+        null,
+
+      box_role:
+        role,
+
+      sort_order:
+        boxes.length,
+
+      subtotal_group:
+        null
 
     };
 
-  }
+
+    boxes.push(
+      box
+    );
 
 
-  function getPageScale(
-    layer,
-    page
-  ) {
+    if (
+      role === "minor" ||
+      role === "subtotal"
+    ) {
 
-    const pageWidth =
-      Number(
-        page.width_px
+      updateParent(
+        box
       );
 
-
-    if (
-      !pageWidth
-    ) {
-
-      return 1;
-
     }
 
 
-    const canvas =
-      layer.parentElement
-        ?.querySelector(
-          "canvas"
-        );
+    rebuildHierarchy();
 
-
-    if (!canvas) {
-
-      return 1;
-
-    }
-
-
-    const rect =
-      canvas.getBoundingClientRect();
-
-
-    if (
-      !rect.width
-    ) {
-
-      return 1;
-
-    }
-
-
-    return (
-      canvas.width /
-      rect.width
-    );
-
-  }
-
-
-  /* =======================================================
-     UTIL
-  ======================================================= */
-
-  function compareBoxes(
-    a,
-    b
-  ) {
-
-    const pageDiff =
-      Number(
-        a.page_no
-      ) -
-      Number(
-        b.page_no
-      );
-
-
-    if (
-      pageDiff !==
-      0
-    ) {
-
-      return pageDiff;
-
-    }
-
-
-    const yDiff =
-      Number(
-        a.y
-      ) -
-      Number(
-        b.y
-      );
-
-
-    if (
-      yDiff !==
-      0
-    ) {
-
-      return yDiff;
-
-    }
-
-
-    return (
-      Number(
-        a.x
-      ) -
-      Number(
-        b.x
-      )
-    );
-
-  }
-
-
-  function inferRole(
-    box
-  ) {
-
-    switch (
-      box.box_type
-    ) {
-
-      case "qr":
-        return "qr";
-
-      case "name":
-        return "name";
-
-      case "student_no":
-        return "student_no";
-
-      case "answer":
-        return "answer";
-
-      default:
-        return "other";
-
-    }
-
-  }
-
-
-  function normalizeBoxType(
-    value
-  ) {
-
-    const type =
-      String(
-        value ||
-        ""
-      )
-        .trim()
-        .toLowerCase();
-
-
-    return ALLOWED_BOX_TYPES.includes(
-      type
-    )
-      ? type
-      : "other";
-
-  }
-
-
-  function isUuid(
-    value
-  ) {
-
-    return (
-      typeof value ===
-        "string" &&
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-        .test(
-          value
-        )
-    );
-
-  }
-
-
-  function setStatus(
-    message
-  ) {
-
-    if (!statusElement) {
-
-      return;
-
-    }
-
-
-    statusElement.textContent =
-      message;
-
-  }
-
-
-  function showError(
-    message
-  ) {
-
-    setStatus(
-      message
-    );
-
-  }
-
-
-  /* =======================================================
-     START
-  ======================================================= */
-
-  initialize();
-          throw new Error(
-            `box_type「${roleInfo.boxType}」はDB制約で使用できません。`
-          );
-
-        }
-
-
-        /*
-          親枠が指定されている場合
-        */
-
-        if (
-          box.parent_box_id
-        ) {
-
-          const parent =
-            boxes.find(
-              candidate =>
-                candidate.id ===
-                box.parent_box_id
-            );
-
-
-          if (!parent) {
-
-            throw new Error(
-              "親大問が存在しません。"
-            );
-
-          }
-
-
-          if (
-            parent.box_role !==
-            "major"
-          ) {
-
-            throw new Error(
-              "親枠は大問でなければなりません。"
-            );
-
-          }
-
-
-          if (
-            Number(
-              parent.page_no
-            ) !==
-            Number(
-              box.page_no
-            )
-          ) {
-
-            throw new Error(
-              "親大問と子枠のページが違います。"
-            );
-
-          }
-
-        }
-
-
-        /*
-          QRは独立
-        */
-
-        if (
-          box.box_role ===
-          "qr" &&
-          box.parent_box_id
-        ) {
-
-          throw new Error(
-            "QR枠は大問に所属できません。"
-          );
-
-        }
-
-
-        /*
-          合計は独立
-        */
-
-        if (
-          box.box_role ===
-          "total" &&
-          box.parent_box_id
-        ) {
-
-          throw new Error(
-            "合計枠は大問に所属できません。"
-          );
-
-        }
-
-      }
-    );
-
-  }
-
-
-  /* =======================================================
-     BOX STYLE
-  ======================================================= */
-
-  function applyRoleStyle(
-    element,
-    role
-  ) {
-
-    if (!element) {
-
-      return;
-
-    }
-
-
-    element.style.border =
-      "";
-
-
-    element.style.background =
-      "";
-
-
-    switch (
-      role
-    ) {
-
-      case "major":
-
-        element.style.border =
-          "3px solid #2468a8";
-
-        element.style.background =
-          "rgba(36,104,168,.07)";
-
-        break;
-
-
-      case "minor":
-
-        element.style.border =
-          "2px solid #d00000";
-
-        element.style.background =
-          "rgba(208,0,0,.06)";
-
-        break;
-
-
-      case "qr":
-
-        element.style.border =
-          "3px dashed #333";
-
-        element.style.background =
-          "rgba(0,0,0,.06)";
-
-        break;
-
-
-      case "subtotal":
-
-        element.style.border =
-          "2px dashed #555";
-
-        element.style.background =
-          "rgba(0,0,0,.04)";
-
-        break;
-
-
-      case "total":
-
-        element.style.border =
-          "3px double #333";
-
-        element.style.background =
-          "rgba(0,0,0,.05)";
-
-        break;
-
-
-      case "name":
-
-        element.style.border =
-          "2px solid #26734d";
-
-        element.style.background =
-          "rgba(38,115,77,.06)";
-
-        break;
-
-
-      case "student_no":
-
-        element.style.border =
-          "2px solid #26734d";
-
-        element.style.background =
-          "rgba(38,115,77,.06)";
-
-        break;
-
-
-      default:
-
-        element.style.border =
-          "2px solid #666";
-
-        element.style.background =
-          "rgba(0,0,0,.03)";
-
-        break;
-
-    }
-
-
-    if (
-      selectedBoxId ===
-      element.dataset.boxId
-    ) {
-
-      element.style.outline =
-        "3px solid #111";
-
-      element.style.outlineOffset =
-        "1px";
-
-    } else {
-
-      element.style.outline =
-        "";
-
-      element.style.outlineOffset =
-        "";
-
-    }
-
-  }
-
-
-  /* =======================================================
-     PANEL
-  ======================================================= */
-
-  function openBoxPanel() {
-
-    if (!boxPanel) {
-
-      return;
-
-    }
-
-
-    boxPanel.classList.add(
-      "open"
-    );
-
-
-    boxPanel.style.display =
-      "block";
-
-  }
-
-
-  function closeBoxPanel() {
-
-    if (!boxPanel) {
-
-      return;
-
-    }
-
-
-    /*
-      「閉じる」は選択解除だけ。
-      ツール自体は消さない。
-    */
 
     selectedBoxId =
+      box.id;
+
+
+    await renderAllPages();
+
+
+    setStatus(
+      `${automaticLabel(
+        role,
+        box
+      )}を追加しました。`
+    );
+
+  }
+
+
+  function cancelDrawing() {
+
+    drawPreview?.remove();
+
+
+    drawing =
+      false;
+
+
+    drawingPointerId =
       null;
 
 
-    document
-      .querySelectorAll(
-        ".layout-box"
-      )
-      .forEach(
-        element => {
-
-          applyRoleStyle(
-            element,
-            getBoxRoleFromElement(
-              element
-            )
-          );
-
-        }
-      );
-
-  }
+    drawStart =
+      null;
 
 
-  function getBoxRoleFromElement(
-    element
-  ) {
-
-    const box =
-      boxes.find(
-        item =>
-          item.id ===
-          element.dataset.boxId
-      );
+    drawPage =
+      null;
 
 
-    return (
-      box?.box_role ||
-      "other"
-    );
+    drawLayer =
+      null;
+
+
+    drawPreview =
+      null;
 
   }
 
 
   /* =======================================================
-     KEYBOARD
+     RENDER BOX
   ======================================================= */
 
-  function handleKeyboard(
-    event
-  ) {
-
-    const target =
-      event.target;
-
-
-    if (
-      target instanceof
-        HTMLInputElement ||
-      target instanceof
-        HTMLTextAreaElement ||
-      target instanceof
-        HTMLSelectElement
-    ) {
-
-      return;
-
-    }
-
-
-    if (
-      event.key ===
-      "Escape"
-    ) {
-
-      cancelDrawing();
-
-
-      dragMode =
-        null;
-
-
-      dragPointerId =
-        null;
-
-
-      dragBoxId =
-        null;
-
-
-      selectedBoxId =
-        null;
-
-
-      renderAllPages();
-
-      return;
-
-    }
-
-
-    if (
-      event.key ===
-      "Delete"
-    ) {
-
-      if (
-        selectedBoxId
-      ) {
-
-        event.preventDefault();
-
-        deleteSelectedBox();
-
-      }
-
-    }
-
-  }
-
-
-  /* =======================================================
-     BACK
-  ======================================================= */
-
-  function goBack() {
-
-    if (
-      selectedTestId
-    ) {
-
-      window.location.href =
-        `/teacher/tests/edit?id=${encodeURIComponent(
-          selectedTestId
-        )}`;
-
-      return;
-
-    }
-
-
-    window.location.href =
-      "/teacher/tests";
-
-  }
-
-
-  /* =======================================================
-     IMAGE
-  ======================================================= */
-
-  function loadImage(
-    src
-  ) {
-
-    return new Promise(
-      (
-        resolve,
-        reject
-      ) => {
-
-        const image =
-          new Image();
-
-
-        image.onload =
-          () =>
-            resolve(
-              image
-            );
-
-
-        image.onerror =
-          () =>
-            reject(
-              new Error(
-                "画像を読み込めませんでした。"
-              )
-            );
-
-
-        image.src =
-          src;
-
-      }
-    );
-
-  }
-
-
-  /* =======================================================
-     GEOMETRY
-  ======================================================= */
-
-  function getPoint(
-    event,
-    rect
-  ) {
-
-    return {
-
-      x:
-        Math.max(
-          0,
-          Math.min(
-            rect.width,
-            event.clientX -
-            rect.left
-          )
-        ),
-
-      y:
-        Math.max(
-          0,
-          Math.min(
-            rect.height,
-            event.clientY -
-            rect.top
-          )
-        )
-
-    };
-
-  }
-
-
-  function getCenter(
-    box
-  ) {
-
-    return {
-
-      x:
-        Number(
-          box.x
-        ) +
-        Number(
-          box.width
-        ) /
-        2,
-
-      y:
-        Number(
-          box.y
-        ) +
-        Number(
-          box.height
-        ) /
-        2
-
-    };
-
-  }
-
-
-  function pointInside(
-    point,
-    box
-  ) {
-
-    return (
-
-      point.x >=
-      Number(
-        box.x
-      ) &&
-
-      point.y >=
-      Number(
-        box.y
-      ) &&
-
-      point.x <=
-      Number(
-        box.x
-      ) +
-      Number(
-        box.width
-      ) &&
-
-      point.y <=
-      Number(
-        box.y
-      ) +
-      Number(
-        box.height
-      )
-
-    );
-
-  }
-
-
-  function getPageScale(
+  function renderBox(
     layer,
-    page
-  ) {
-
-    const canvas =
-      layer
-        ?.parentElement
-        ?.querySelector(
-          "canvas"
-        );
-
-
-    if (!canvas) {
-
-      return 1;
-
-    }
-
-
-    const rect =
-      canvas.getBoundingClientRect();
-
-
-    if (
-      !rect.width
-    ) {
-
-      return 1;
-
-    }
-
-
-    return (
-      canvas.width /
-      rect.width
-    );
-
-  }
-
-
-  /* =======================================================
-     UTIL
-  ======================================================= */
-
-  function compareBoxes(
-    a,
-    b
-  ) {
-
-    const page =
-      Number(
-        a.page_no
-      ) -
-      Number(
-        b.page_no
-      );
-
-
-    if (
-      page !==
-      0
-    ) {
-
-      return page;
-
-    }
-
-
-    const y =
-      Number(
-        a.y
-      ) -
-      Number(
-        b.y
-      );
-
-
-    if (
-      y !==
-      0
-    ) {
-
-      return y;
-
-    }
-
-
-    return (
-      Number(
-        a.x
-      ) -
-      Number(
-        b.x
-      )
-    );
-
-  }
-
-
-  function inferRole(
-    box
-  ) {
-
-    switch (
-      box.box_type
-    ) {
-
-      case "qr":
-
-        return "qr";
-
-
-      case "name":
-
-        return "name";
-
-
-      case "student_no":
-
-        return "student_no";
-
-
-      case "answer":
-
-        return "answer";
-
-
-      default:
-
-        return "other";
-
-    }
-
-  }
-
-
-  function normalizeBoxType(
-    value
-  ) {
-
-    const type =
-      String(
-        value ||
-        ""
-      )
-        .trim()
-        .toLowerCase();
-
-
-    return ALLOWED_BOX_TYPES.includes(
-      type
-    )
-      ? type
-      : "other";
-
-  }
-
-
-  function isUuid(
-    value
-  ) {
-
-    return (
-      typeof value ===
-        "string" &&
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-        .test(
-          value
-        )
-    );
-
-  }
-
-
-  function setStatus(
-    message
-  ) {
-
-    if (
-      statusElement
-    ) {
-
-      statusElement.textContent =
-        message;
-
-    }
-
-  }
-
-
-  function showError(
-    message
-  ) {
-
-    setStatus(
-      message
-    );
-
-  }
-
-
-  /* =======================================================
-     START
-  ======================================================= */
-
-  initialize();
-
-})();
-      `${(
-        width /
-        pageWidth
-      ) * 100}%`;
-
-
-    element.style.height =
-      `${(
-        height /
-        pageHeight
-      ) * 100}%`;
-
-  }
-
-
-  /* =======================================================
-     ROLE STYLE
-  ======================================================= */
-
-  function applyRoleStyle(
-    element,
-    role
-  ) {
-
-    element.style.border =
-      "";
-
-
-    element.style.background =
-      "";
-
-
-    switch (
-      role
-    ) {
-
-      case "major":
-
-        element.style.border =
-          "3px solid #2468a8";
-
-        element.style.background =
-          "rgba(36,104,168,.07)";
-
-        break;
-
-
-      case "minor":
-
-        element.style.border =
-          "2px solid #d00000";
-
-        element.style.background =
-          "rgba(208,0,0,.06)";
-
-        break;
-
-
-      case "qr":
-
-        element.style.border =
-          "3px dashed #333";
-
-        element.style.background =
-          "rgba(0,0,0,.06)";
-
-        break;
-
-
-      case "subtotal":
-
-        element.style.border =
-          "2px dashed #555";
-
-        element.style.background =
-          "rgba(0,0,0,.04)";
-
-        break;
-
-
-      case "total":
-
-        element.style.border =
-          "3px double #333";
-
-        element.style.background =
-          "rgba(0,0,0,.05)";
-
-        break;
-
-
-      default:
-
-        element.style.border =
-          "2px solid #666";
-
-        element.style.background =
-          "rgba(0,0,0,.03)";
-
-        break;
-
-    }
-
-  }
-
-
-  /* =======================================================
-     BOX INTERACTION
-  ======================================================= */
-
-  function setupBoxInteraction(
-    element,
-    resizeHandle,
     page,
     box
   ) {
+
+    const element =
+      document.createElement(
+        "div"
+      );
+
+
+    element.className =
+      "layout-box";
+
+
+    element.dataset.boxId =
+      box.id;
+
+
+    const scale =
+      getPageScale(
+        layer,
+        page
+      );
+
+
+    element.style.left =
+      `${Number(box.x) * scale}px`;
+
+
+    element.style.top =
+      `${Number(box.y) * scale}px`;
+
+
+    element.style.width =
+      `${Number(box.width) * scale}px`;
+
+
+    element.style.height =
+      `${Number(box.height) * scale}px`;
+
+
+    applyRoleStyle(
+      element,
+      box.box_role
+    );
+
+
+    const label =
+      document.createElement(
+        "div"
+      );
+
+
+    label.className =
+      "layout-box-label";
+
+
+    label.textContent =
+      automaticLabel(
+        box.box_role,
+        box
+      );
+
+
+    element.appendChild(
+      label
+    );
+
+
+    const resize =
+      document.createElement(
+        "div"
+      );
+
+
+    resize.className =
+      "resize-handle";
+
+
+    element.appendChild(
+      resize
+    );
+
+
+    layer.appendChild(
+      element
+    );
+
 
     element.addEventListener(
       "pointerdown",
@@ -4674,8 +1401,7 @@ async function acceptCandidate(
 
 
         dragMode =
-          event.target ===
-          resizeHandle
+          event.target === resize
             ? "resize"
             : "move";
 
@@ -4688,40 +1414,13 @@ async function acceptCandidate(
           box.id;
 
 
-        const canvas =
-          element.parentElement
-            ?.parentElement
-            ?.querySelector(
-              "canvas"
-            );
-
-
-        if (!canvas) {
-
-          return;
-
-        }
-
-
-        const rect =
-          canvas.getBoundingClientRect();
-
-
         dragStart = {
 
           x:
             event.clientX,
 
           y:
-            event.clientY,
-
-          scaleX:
-            canvas.width /
-            rect.width,
-
-          scaleY:
-            canvas.height /
-            rect.height
+            event.clientY
 
         };
 
@@ -4729,24 +1428,16 @@ async function acceptCandidate(
         dragOriginal = {
 
           x:
-            Number(
-              box.x
-            ),
+            Number(box.x),
 
           y:
-            Number(
-              box.y
-            ),
+            Number(box.y),
 
           width:
-            Number(
-              box.width
-            ),
+            Number(box.width),
 
           height:
-            Number(
-              box.height
-            )
+            Number(box.height)
 
         };
 
@@ -4768,12 +1459,9 @@ async function acceptCandidate(
       event => {
 
         if (
-          dragBoxId !==
-            box.id ||
+          dragBoxId !== box.id ||
           dragPointerId !==
-            event.pointerId ||
-          !dragStart ||
-          !dragOriginal
+          event.pointerId
         ) {
 
           return;
@@ -4781,23 +1469,27 @@ async function acceptCandidate(
         }
 
 
-        event.preventDefault();
+        const scale =
+          getPageScale(
+            layer,
+            page
+          );
 
 
         const dx =
           (
             event.clientX -
             dragStart.x
-          ) *
-          dragStart.scaleX;
+          ) /
+          scale;
 
 
         const dy =
           (
             event.clientY -
             dragStart.y
-          ) *
-          dragStart.scaleY;
+          ) /
+          scale;
 
 
         if (
@@ -4846,28 +1538,11 @@ async function acceptCandidate(
         }
 
 
-        if (
-          box.box_role ===
-            "minor" ||
-          box.box_role ===
-            "subtotal"
-        ) {
-
-          updateParent(
-            box
-          );
-
-        }
-
-
         updateBoxElement(
           element,
           page,
           box
         );
-
-
-        updateAllLabels();
 
       }
     );
@@ -4875,171 +1550,784 @@ async function acceptCandidate(
 
     element.addEventListener(
       "pointerup",
-      event => {
-
-        if (
-          event.pointerId !==
-          dragPointerId
-        ) {
-
-          return;
-
-        }
-
-
-        finishBoxDrag(
-          box
-        );
-
-      }
+      finishDrag
     );
 
 
     element.addEventListener(
       "pointercancel",
-      event => {
+      finishDrag
+    );
 
-        if (
-          event.pointerId !==
-          dragPointerId
-        ) {
 
-          return;
+    function finishDrag(
+      event
+    ) {
+
+      if (
+        event.pointerId !==
+        dragPointerId
+      ) {
+
+        return;
+
+      }
+
+
+      dragMode =
+        null;
+
+      dragPointerId =
+        null;
+
+      dragBoxId =
+        null;
+
+      dragStart =
+        null;
+
+      dragOriginal =
+        null;
+
+
+      rebuildHierarchy();
+
+      updateAllLabels();
+
+    }
+
+  }
+
+
+  function updateBoxElement(
+    element,
+    page,
+    box
+  ) {
+
+    const scale =
+      getPageScale(
+        element.parentElement,
+        page
+      );
+
+
+    element.style.left =
+      `${Number(box.x) * scale}px`;
+
+
+    element.style.top =
+      `${Number(box.y) * scale}px`;
+
+
+    element.style.width =
+      `${Number(box.width) * scale}px`;
+
+
+    element.style.height =
+      `${Number(box.height) * scale}px`;
+
+  }
+
+
+  /* =======================================================
+     AUTO DETECTION
+  ======================================================= */
+
+  async function detectAllPages() {
+
+    if (!pages.length) {
+
+      setStatus(
+        "先に解答用紙を登録してください。",
+        true
+      );
+
+      return;
+
+    }
+
+
+    candidates =
+      [];
+
+
+    setStatus(
+      "枠を自動検出しています..."
+    );
+
+
+    for (
+      const page of pages
+    ) {
+
+      try {
+
+        const detected =
+          await detectPage(
+            page
+          );
+
+
+        candidates.push(
+          ...detected
+        );
+
+      } catch (error) {
+
+        console.warn(
+          "detect page:",
+          error
+        );
+
+      }
+
+    }
+
+
+    await renderAllPages();
+
+
+    setStatus(
+      candidates.length
+        ? `自動検出 ${candidates.length}個。赤い候補をクリックしてください。`
+        : "自動検出できる枠がありません。手動ドラッグで設定してください。"
+    );
+
+  }
+
+
+  async function detectPage(
+    page
+  ) {
+
+    const {
+      data,
+      error
+    } =
+      await supabaseClient
+        .storage
+        .from("test-files")
+        .createSignedUrl(
+          page.image_path,
+          600
+        );
+
+
+    if (
+      error ||
+      !data?.signedUrl
+    ) {
+
+      throw new Error(
+        `P${page.page_no}画像を取得できません。`
+      );
+
+    }
+
+
+    const image =
+      await loadImage(
+        data.signedUrl
+      );
+
+
+    const maxWidth =
+      1800;
+
+
+    const scale =
+      Math.min(
+        1,
+        maxWidth /
+        image.naturalWidth
+      );
+
+
+    const canvas =
+      document.createElement(
+        "canvas"
+      );
+
+
+    canvas.width =
+      Math.round(
+        image.naturalWidth *
+        scale
+      );
+
+
+    canvas.height =
+      Math.round(
+        image.naturalHeight *
+        scale
+      );
+
+
+    const context =
+      canvas.getContext(
+        "2d",
+        {
+          willReadFrequently:
+            true
+        }
+      );
+
+
+    context.drawImage(
+      image,
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
+
+
+    if (
+      window.cv &&
+      typeof window.cv.Mat ===
+      "function"
+    ) {
+
+      return detectWithOpenCV(
+        canvas,
+        page,
+        scale
+      );
+
+    }
+
+
+    return [];
+
+  }
+
+
+  function detectWithOpenCV(
+    canvas,
+    page,
+    scale
+  ) {
+
+    const src =
+      cv.imread(
+        canvas
+      );
+
+
+    const gray =
+      new cv.Mat();
+
+
+    const binary =
+      new cv.Mat();
+
+
+    const contours =
+      new cv.MatVector();
+
+
+    const hierarchy =
+      new cv.Mat();
+
+
+    const result =
+      [];
+
+
+    try {
+
+      cv.cvtColor(
+        src,
+        gray,
+        cv.COLOR_RGBA2GRAY
+      );
+
+
+      cv.threshold(
+        gray,
+        binary,
+        200,
+        255,
+        cv.THRESH_BINARY_INV
+      );
+
+
+      cv.findContours(
+        binary,
+        contours,
+        hierarchy,
+        cv.RETR_LIST,
+        cv.CHAIN_APPROX_SIMPLE
+      );
+
+
+      const imageArea =
+        canvas.width *
+        canvas.height;
+
+
+      for (
+        let i = 0;
+        i <
+        contours.size();
+        i++
+      ) {
+
+        const contour =
+          contours.get(i);
+
+
+        const perimeter =
+          cv.arcLength(
+            contour,
+            true
+          );
+
+
+        const approx =
+          new cv.Mat();
+
+
+        try {
+
+          cv.approxPolyDP(
+            contour,
+            approx,
+            perimeter *
+            0.025,
+            true
+          );
+
+
+          const rect =
+            cv.boundingRect(
+              contour
+            );
+
+
+          const area =
+            rect.width *
+            rect.height;
+
+
+          const ratio =
+            rect.width /
+            Math.max(
+              1,
+              rect.height
+            );
+
+
+          if (
+            approx.rows < 4 ||
+            approx.rows > 6
+          ) {
+
+            continue;
+
+          }
+
+
+          if (
+            area <
+            imageArea *
+            0.0002
+          ) {
+
+            continue;
+
+          }
+
+
+          if (
+            area >
+            imageArea *
+            0.35
+          ) {
+
+            continue;
+
+          }
+
+
+          if (
+            ratio < 0.15 ||
+            ratio > 8
+          ) {
+
+            continue;
+
+          }
+
+
+          result.push({
+
+            id:
+              crypto.randomUUID(),
+
+            pageNo:
+              Number(
+                page.page_no
+              ),
+
+            x:
+              rect.x /
+              scale,
+
+            y:
+              rect.y /
+              scale,
+
+            width:
+              rect.width /
+              scale,
+
+            height:
+              rect.height /
+              scale
+
+          });
+
+        } finally {
+
+          approx.delete();
 
         }
 
 
-        finishBoxDrag(
-          box
+        contour.delete();
+
+      }
+
+
+    } finally {
+
+      src.delete();
+
+      gray.delete();
+
+      binary.delete();
+
+      contours.delete();
+
+      hierarchy.delete();
+
+    }
+
+
+    return deduplicate(
+      result
+    ).slice(
+      0,
+      300
+    );
+
+  }
+
+
+  function deduplicate(
+    list
+  ) {
+
+    const result =
+      [];
+
+
+    for (
+      const item of list
+    ) {
+
+      const duplicate =
+        result.some(
+          existing =>
+            existing.pageNo ===
+            item.pageNo &&
+            overlap(
+              existing,
+              item
+            ) > 0.7
+        );
+
+
+      if (!duplicate) {
+
+        result.push(
+          item
         );
 
       }
+
+    }
+
+
+    return result;
+
+  }
+
+
+  function overlap(
+    a,
+    b
+  ) {
+
+    const left =
+      Math.max(
+        a.x,
+        b.x
+      );
+
+
+    const top =
+      Math.max(
+        a.y,
+        b.y
+      );
+
+
+    const right =
+      Math.min(
+        a.x + a.width,
+        b.x + b.width
+      );
+
+
+    const bottom =
+      Math.min(
+        a.y + a.height,
+        b.y + b.height
+      );
+
+
+    if (
+      right <= left ||
+      bottom <= top
+    ) {
+
+      return 0;
+
+    }
+
+
+    const intersection =
+      (
+        right - left
+      ) *
+      (
+        bottom - top
+      );
+
+
+    return (
+      intersection /
+      Math.min(
+        a.width * a.height,
+        b.width * b.height
+      )
+    );
+
+  }
+
+
+  function renderCandidate(
+    layer,
+    page,
+    candidate
+  ) {
+
+    const element =
+      document.createElement(
+        "div"
+      );
+
+
+    element.className =
+      "auto-box-candidate";
+
+
+    const pageWidth =
+      Number(
+        page.width_px
+      ) ||
+      1;
+
+
+    const pageHeight =
+      Number(
+        page.height_px
+      ) ||
+      1;
+
+
+    element.style.left =
+      `${
+        candidate.x /
+        pageWidth *
+        100
+      }%`;
+
+
+    element.style.top =
+      `${
+        candidate.y /
+        pageHeight *
+        100
+      }%`;
+
+
+    element.style.width =
+      `${
+        candidate.width /
+        pageWidth *
+        100
+      }%`;
+
+
+    element.style.height =
+      `${
+        candidate.height /
+        pageHeight *
+        100
+      }%`;
+
+
+    element.title =
+      "クリックして枠として登録";
+
+
+    element.addEventListener(
+      "pointerdown",
+      event => {
+
+        event.preventDefault();
+
+        event.stopPropagation();
+
+
+        acceptCandidate(
+          candidate
+        );
+
+      }
+    );
+
+
+    layer.appendChild(
+      element
+    );
+
+  }
+
+
+  async function acceptCandidate(
+    candidate
+  ) {
+
+    const role =
+      boxRole?.value ||
+      "answer";
+
+
+    const info =
+      ROLE_INFO[
+        role
+      ] ||
+      ROLE_INFO.answer;
+
+
+    const box = {
+
+      id:
+        crypto.randomUUID(),
+
+      test_id:
+        selectedTestId,
+
+      page_no:
+        candidate.pageNo,
+
+      box_type:
+        info.boxType,
+
+      label:
+        info.label,
+
+      x:
+        candidate.x,
+
+      y:
+        candidate.y,
+
+      width:
+        candidate.width,
+
+      height:
+        candidate.height,
+
+      question_id:
+        null,
+
+      points:
+        info.boxType === "answer"
+          ? 0
+          : null,
+
+      parent_box_id:
+        null,
+
+      major_no:
+        null,
+
+      minor_no:
+        null,
+
+      box_role:
+        role,
+
+      sort_order:
+        boxes.length,
+
+      subtotal_group:
+        null
+
+    };
+
+
+    boxes.push(
+      box
+    );
+
+
+    candidates =
+      candidates.filter(
+        item =>
+          item.id !==
+          candidate.id
+      );
+
+
+    rebuildHierarchy();
+
+
+    selectedBoxId =
+      box.id;
+
+
+    await renderAllPages();
+
+
+    setStatus(
+      `${automaticLabel(
+        box.box_role,
+        box
+      )}として枠を作成しました。`
     );
 
   }
 
 
   /* =======================================================
-     FINISH BOX DRAG
-  ======================================================= */
-
-  function finishBoxDrag(
-    box
-  ) {
-
-    if (
-      box.box_role ===
-        "minor" ||
-      box.box_role ===
-        "subtotal"
-    ) {
-
-      updateParent(
-        box
-      );
-
-    }
-
-
-    renumberAll();
-
-
-    dragMode =
-      null;
-
-
-    dragPointerId =
-      null;
-
-
-    dragBoxId =
-      null;
-
-
-    dragStart =
-      null;
-
-
-    dragOriginal =
-      null;
-
-
-    updateAllLabels();
-
-    updateRoleHelp();
-
-  }
-
-
-  /* =======================================================
-     SELECT
-  ======================================================= */
-
-  function selectBox(
-    boxId
-  ) {
-
-    selectedBoxId =
-      boxId;
-
-
-    document
-      .querySelectorAll(
-        ".layout-box"
-      )
-      .forEach(
-        element => {
-
-          const box =
-            boxes.find(
-              item =>
-                item.id ===
-                element.dataset.boxId
-            );
-
-
-          applyRoleStyle(
-            element,
-            box?.box_role ||
-            "other"
-          );
-
-
-          element.classList.toggle(
-            "selected",
-            element.dataset.boxId ===
-            boxId
-          );
-
-        }
-      );
-
-
-    openBoxPanel();
-
-
-    const box =
-      getSelectedBox();
-
-
-    if (
-      boxRole &&
-      box
-    ) {
-
-      boxRole.value =
-        box.box_role;
-
-    }
-
-
-    updateRoleHelp();
-
-  }
-
-
-  /* =======================================================
-     APPLY SELECTED
+     APPLY
   ======================================================= */
 
   function applySelectedBox() {
@@ -5051,7 +2339,8 @@ async function acceptCandidate(
     if (!box) {
 
       setStatus(
-        "選択されている枠がありません。"
+        "選択されている枠がありません。",
+        true
       );
 
       return;
@@ -5061,21 +2350,14 @@ async function acceptCandidate(
 
     const role =
       boxRole?.value ||
-      box.box_role ||
-      "other";
+      "answer";
 
 
-    const roleInfo =
+    const info =
       ROLE_INFO[
         role
-      ];
-
-
-    if (!roleInfo) {
-
-      return;
-
-    }
+      ] ||
+      ROLE_INFO.answer;
 
 
     box.box_role =
@@ -5083,12 +2365,15 @@ async function acceptCandidate(
 
 
     box.box_type =
-      roleInfo.boxType;
+      info.boxType;
+
+
+    box.label =
+      info.label;
 
 
     box.points =
-      roleInfo.boxType ===
-        "answer"
+      info.boxType === "answer"
         ? 0
         : null;
 
@@ -5098,30 +2383,15 @@ async function acceptCandidate(
 
 
     if (
-      role ===
-      "major"
-    ) {
-
-      clearParent(
-        box
-      );
-
-    }
-
-    else if (
-      role ===
-        "minor" ||
-      role ===
-        "subtotal"
+      role === "minor" ||
+      role === "subtotal"
     ) {
 
       updateParent(
         box
       );
 
-    }
-
-    else {
+    } else {
 
       clearParent(
         box
@@ -5130,16 +2400,10 @@ async function acceptCandidate(
     }
 
 
-    renumberAll();
-
-
-    updateAllLabels();
+    rebuildHierarchy();
 
 
     renderAllPages();
-
-
-    updateRoleHelp();
 
 
     setStatus(
@@ -5165,54 +2429,52 @@ async function acceptCandidate(
     }
 
 
-    const targetId =
+    const id =
       selectedBoxId;
-
-
-    boxes
-      .filter(
-        box =>
-          box.parent_box_id ===
-          targetId
-      )
-      .forEach(
-        child => {
-
-          clearParent(
-            child
-          );
-
-        }
-      );
 
 
     boxes =
       boxes.filter(
         box =>
-          box.id !==
-          targetId
+          box.id !== id
       );
+
+
+    boxes.forEach(
+      box => {
+
+        if (
+          box.parent_box_id === id
+        ) {
+
+          clearParent(
+            box
+          );
+
+        }
+
+      }
+    );
 
 
     selectedBoxId =
       null;
 
 
-    renumberAll();
-
+    rebuildHierarchy();
 
     renderAllPages();
 
 
     setStatus(
-      "選択した枠を削除しました。保存するとDBにも反映されます。"
+      "選択枠を削除しました。保存するとDBにも反映されます。"
     );
 
   }
 
 
   /* =======================================================
-     CLEAR PARENT
+     HIERARCHY
   ======================================================= */
 
   function clearParent(
@@ -5222,24 +2484,17 @@ async function acceptCandidate(
     box.parent_box_id =
       null;
 
-
     box.major_no =
       null;
 
-
     box.minor_no =
       null;
-
 
     box.subtotal_group =
       null;
 
   }
 
-
-  /* =======================================================
-     UPDATE PARENT
-  ======================================================= */
 
   function updateParent(
     box
@@ -5300,10 +2555,6 @@ async function acceptCandidate(
   }
 
 
-  /* =======================================================
-     FIND PARENT
-  ======================================================= */
-
   function findContainingMajor(
     box
   ) {
@@ -5314,73 +2565,46 @@ async function acceptCandidate(
       );
 
 
-    const candidates =
+    return (
       boxes
         .filter(
           candidate =>
-
             candidate.id !==
-            box.id &&
-
+              box.id &&
             candidate.box_role ===
-            "major" &&
-
+              "major" &&
             Number(
               candidate.page_no
             ) ===
             Number(
               box.page_no
             ) &&
-
             pointInside(
               center,
               candidate
             )
-        );
-
-
-    if (
-      !candidates.length
-    ) {
-
-      return null;
-
-    }
-
-
-    candidates.sort(
-      (
-        a,
-        b
-      ) => {
-
-        const areaA =
-          Number(a.width) *
-          Number(a.height);
-
-
-        const areaB =
-          Number(b.width) *
-          Number(b.height);
-
-
-        return areaA -
-          areaB;
-
-      }
+        )
+        .sort(
+          (
+            a,
+            b
+          ) =>
+            (
+              Number(a.width) *
+              Number(a.height)
+            ) -
+            (
+              Number(b.width) *
+              Number(b.height)
+            )
+        )[0] ||
+      null
     );
-
-
-    return candidates[0];
 
   }
 
 
-  /* =======================================================
-     RENUMBER
-  ======================================================= */
-
-  function renumberAll() {
+  function rebuildHierarchy() {
 
     const majors =
       boxes
@@ -5403,17 +2627,31 @@ async function acceptCandidate(
         major.major_no =
           index + 1;
 
-        major.parent_box_id =
-          null;
-
-        major.minor_no =
-          null;
-
-        major.subtotal_group =
-          null;
+        clearParent(
+          major
+        );
 
       }
     );
+
+
+    boxes
+      .filter(
+        box =>
+          box.box_role ===
+            "minor" ||
+          box.box_role ===
+            "subtotal"
+      )
+      .forEach(
+        box => {
+
+          updateParent(
+            box
+          );
+
+        }
+      );
 
 
     majors.forEach(
@@ -5455,66 +2693,6 @@ async function acceptCandidate(
     boxes
       .filter(
         box =>
-          box.box_role ===
-          "minor" &&
-          !box.parent_box_id
-      )
-      .forEach(
-        box => {
-
-          box.major_no =
-            null;
-
-          box.minor_no =
-            null;
-
-        }
-      );
-
-
-    boxes
-      .filter(
-        box =>
-          box.box_role ===
-          "subtotal"
-      )
-      .forEach(
-        subtotal => {
-
-          const parent =
-            findContainingMajor(
-              subtotal
-            );
-
-
-          if (parent) {
-
-            subtotal.parent_box_id =
-              parent.id;
-
-            subtotal.major_no =
-              parent.major_no;
-
-            subtotal.subtotal_group =
-              parent.major_no;
-
-          }
-
-          else {
-
-            clearParent(
-              subtotal
-            );
-
-          }
-
-        }
-      );
-
-
-    boxes
-      .filter(
-        box =>
           [
             "total",
             "qr",
@@ -5527,13 +2705,7 @@ async function acceptCandidate(
           )
       )
       .forEach(
-        box => {
-
-          clearParent(
-            box
-          );
-
-        }
+        clearParent
       );
 
   }
@@ -5548,24 +2720,24 @@ async function acceptCandidate(
     box
   ) {
 
-    switch (
-      role
-    ) {
+    switch (role) {
 
       case "major":
 
-        return `大問${
-          box?.major_no ||
-          "?"
-        }`;
+        return `大問${box.major_no || "?"}`;
 
 
       case "minor":
 
-        return box?.major_no &&
-          box?.minor_no
+        return box.major_no &&
+          box.minor_no
           ? `問${box.major_no}-${box.minor_no}`
           : "小問";
+
+
+      case "answer":
+
+        return "解答欄";
 
 
       case "qr":
@@ -5575,7 +2747,7 @@ async function acceptCandidate(
 
       case "subtotal":
 
-        return box?.major_no
+        return box.major_no
           ? `大問${box.major_no} 小計`
           : "小計";
 
@@ -5608,10 +2780,6 @@ async function acceptCandidate(
 
   }
 
-
-  /* =======================================================
-     UPDATE LABELS
-  ======================================================= */
 
   function updateAllLabels() {
 
@@ -5673,80 +2841,383 @@ async function acceptCandidate(
 
 
   /* =======================================================
-     KEYBOARD
+     SAVE
   ======================================================= */
 
-  function handleKeyboard(
-    event
-  ) {
+  async function saveBoxes() {
 
-    const target =
-      event.target;
+    if (!selectedTestId) {
 
-
-    if (
-      target instanceof
-        HTMLInputElement ||
-      target instanceof
-        HTMLTextAreaElement ||
-      target instanceof
-        HTMLSelectElement
-    ) {
+      setStatus(
+        "テストIDがありません。",
+        true
+      );
 
       return;
 
     }
 
 
-    if (
-      event.key ===
-      "Escape"
-    ) {
-
-      cancelDrawing();
+    saveButton.disabled =
+      true;
 
 
-      dragMode =
-        null;
+    try {
+
+      rebuildHierarchy();
 
 
-      dragPointerId =
-        null;
+      /*
+       * DBに存在しない一時UUIDは
+       * idとして送らない。
+       */
+
+      const rows =
+        boxes
+          .sort(
+            compareBoxes
+          )
+          .map(
+            (
+              box,
+              index
+            ) => {
+
+              const info =
+                ROLE_INFO[
+                  box.box_role
+                ] ||
+                ROLE_INFO.other;
 
 
-      dragBoxId =
-        null;
+              return {
+
+                test_id:
+                  selectedTestId,
+
+                page_no:
+                  Number(
+                    box.page_no
+                  ) || 1,
+
+                box_type:
+                  info.boxType,
+
+                label:
+                  automaticLabel(
+                    box.box_role,
+                    box
+                  ),
+
+                x:
+                  Number(
+                    box.x
+                  ) || 0,
+
+                y:
+                  Number(
+                    box.y
+                  ) || 0,
+
+                width:
+                  Number(
+                    box.width
+                  ) || 0,
+
+                height:
+                  Number(
+                    box.height
+                  ) || 0,
+
+                question_id:
+                  null,
+
+                points:
+                  info.boxType ===
+                    "answer"
+                    ? Number(
+                        box.points
+                      ) || 0
+                    : null,
+
+                parent_box_id:
+                  isUuid(
+                    box.parent_box_id
+                  )
+                    ? box.parent_box_id
+                    : null,
+
+                major_no:
+                  box.major_no ||
+                  null,
+
+                minor_no:
+                  box.minor_no ||
+                  null,
+
+                box_role:
+                  box.box_role ||
+                  "other",
+
+                sort_order:
+                  index,
+
+                subtotal_group:
+                  box.subtotal_group ||
+                  null
+
+              };
+
+            }
+          );
 
 
-      selectedBoxId =
-        null;
+      validateBoxes();
 
 
-      renderAllPages();
+      setStatus(
+        "枠設定を保存しています..."
+      );
 
 
-      return;
+      /*
+       * このテストの既存枠を全削除。
+       */
 
-    }
+      const {
+        error:
+          deleteError
+      } =
+        await supabaseClient
+          .from(
+            "layout_boxes"
+          )
+          .delete()
+          .eq(
+            "test_id",
+            selectedTestId
+          );
 
 
-    if (
-      event.key ===
-      "Delete"
-    ) {
+      if (deleteError) {
 
-      if (
-        selectedBoxId
-      ) {
-
-        event.preventDefault();
-
-
-        deleteSelectedBox();
+        throw deleteError;
 
       }
 
+
+      /*
+       * 再登録。
+       */
+
+      if (rows.length) {
+
+        const {
+          error:
+            insertError
+        } =
+          await supabaseClient
+            .from(
+              "layout_boxes"
+            )
+            .insert(
+              rows
+            );
+
+
+        if (insertError) {
+
+          throw insertError;
+
+        }
+
+      }
+
+
+      await loadLayout();
+
+
+      setStatus(
+        `枠設定を保存しました。${rows.length}個の枠を登録しました。`
+      );
+
+
+    } catch (error) {
+
+      console.error(
+        "saveBoxes:",
+        error
+      );
+
+
+      showError(
+        error.message ||
+        "枠設定を保存できませんでした。"
+      );
+
+    } finally {
+
+      saveButton.disabled =
+        false;
+
     }
+
+  }
+
+
+  /* =======================================================
+     VALIDATE
+  ======================================================= */
+
+  function validateBoxes() {
+
+    const ids =
+      new Set();
+
+
+    boxes.forEach(
+      box => {
+
+        if (
+          ids.has(
+            box.id
+          )
+        ) {
+
+          throw new Error(
+            "枠IDが重複しています。"
+          );
+
+        }
+
+
+        ids.add(
+          box.id
+        );
+
+
+        if (
+          Number(
+            box.width
+          ) <= 0 ||
+          Number(
+            box.height
+          ) <= 0
+        ) {
+
+          throw new Error(
+            "枠サイズが不正です。"
+          );
+
+        }
+
+
+        if (
+          !ROLE_INFO[
+            box.box_role
+          ]
+        ) {
+
+          throw new Error(
+            `不明な枠種類です: ${box.box_role}`
+          );
+
+        }
+
+
+        if (
+          box.parent_box_id
+        ) {
+
+          const parent =
+            boxes.find(
+              item =>
+                item.id ===
+                box.parent_box_id
+            );
+
+
+          if (
+            !parent ||
+            parent.box_role !==
+            "major"
+          ) {
+
+            throw new Error(
+              "親大問が不正です。"
+            );
+
+          }
+
+        }
+
+      }
+    );
+
+  }
+
+
+  /* =======================================================
+     ROLE HELP
+  ======================================================= */
+
+  function updateRoleHelp() {
+
+    if (!parentInfo) {
+
+      return;
+
+    }
+
+
+    const box =
+      getSelectedBox();
+
+
+    const role =
+      box?.box_role ||
+      boxRole?.value ||
+      "answer";
+
+
+    const messages = {
+
+      major:
+        "大問の範囲をドラッグしてください。",
+
+      minor:
+        "大問の内側に置くと、その大問の小問になります。",
+
+      answer:
+        "解答欄の範囲をドラッグしてください。",
+
+      qr:
+        "この範囲だけを答案アップロード時のQR読み取りに使用します。",
+
+      subtotal:
+        "大問の内側に置くと、その大問の小計になります。",
+
+      total:
+        "テスト全体の合計です。",
+
+      name:
+        "氏名の読み取り範囲です。",
+
+      student_no:
+        "生徒番号の読み取り範囲です。",
+
+      instruction:
+        "説明・指示の範囲です。",
+
+      other:
+        "その他の範囲です。"
+
+    };
+
+
+    parentInfo.textContent =
+      messages[role] ||
+      messages.other;
 
   }
 
@@ -5777,73 +3248,176 @@ async function acceptCandidate(
 
   function closeBoxPanel() {
 
-    /*
-      ツール自体は消さない。
-      「閉じる」は選択解除。
-    */
-
-    selectedBoxId =
-      null;
-
-
-    updateAllLabels();
-
-  }
-
-
-  /* =======================================================
-     BACK
-  ======================================================= */
-
-  function goBack() {
-
-    if (
-      selectedTestId
-    ) {
-
-      window.location.href =
-        `/teacher/tests/edit?id=${encodeURIComponent(
-          selectedTestId
-        )}`;
+    if (!boxPanel) {
 
       return;
 
     }
 
 
-    window.location.href =
-      "/teacher/tests";
+    boxPanel.classList.remove(
+      "open"
+    );
+
+
+    /*
+     * 「閉じる」でツール自体を消す。
+     * 再び枠を選択したら開く。
+     */
+
+    boxPanel.style.display =
+      "none";
 
   }
 
 
   /* =======================================================
-     STATUS
+     STYLE
   ======================================================= */
 
-  function setStatus(
-    message
+  function applyRoleStyle(
+    element,
+    role
   ) {
 
+    element.style.border =
+      "2px solid #666";
+
+
+    element.style.background =
+      "rgba(0,0,0,.04)";
+
+
     if (
-      statusElement
+      selectedBoxId ===
+      element.dataset.boxId
     ) {
 
-      statusElement.textContent =
-        message;
+      element.style.outline =
+        "3px solid #111";
+
+      element.style.outlineOffset =
+        "1px";
+
+    } else {
+
+      element.style.outline =
+        "";
+
+    }
+
+
+    switch (role) {
+
+      case "major":
+
+        element.style.border =
+          "3px solid #2468a8";
+
+        break;
+
+
+      case "minor":
+
+        element.style.border =
+          "2px solid #d00000";
+
+        break;
+
+
+      case "qr":
+
+        element.style.border =
+          "3px dashed #333";
+
+        break;
+
+
+      case "name":
+
+      case "student_no":
+
+        element.style.border =
+          "2px solid #26734d";
+
+        break;
+
+
+      case "subtotal":
+
+        element.style.border =
+          "2px dashed #555";
+
+        break;
+
+
+      case "total":
+
+        element.style.border =
+          "3px double #333";
+
+        break;
 
     }
 
   }
 
 
-  function showError(
-    message
+  /* =======================================================
+     KEYBOARD
+  ======================================================= */
+
+  function handleKeyboard(
+    event
   ) {
 
-    setStatus(
-      message
-    );
+    const tag =
+      event.target?.tagName;
+
+
+    if (
+      tag === "INPUT" ||
+      tag === "TEXTAREA" ||
+      tag === "SELECT"
+    ) {
+
+      return;
+
+    }
+
+
+    if (
+      event.key ===
+      "Delete"
+    ) {
+
+      if (selectedBoxId) {
+
+        event.preventDefault();
+
+        deleteSelectedBox();
+
+      }
+
+    }
+
+
+    if (
+      event.key ===
+      "Escape"
+    ) {
+
+      cancelDrawing();
+
+      dragMode =
+        null;
+
+      selectedBoxId =
+        null;
+
+      updateAllLabels();
+
+    }
 
   }
 
@@ -5851,6 +3425,39 @@ async function acceptCandidate(
   /* =======================================================
      GEOMETRY
   ======================================================= */
+
+  function getPageScale(
+    layer,
+    page
+  ) {
+
+    const rect =
+      layer.getBoundingClientRect();
+
+
+    const sourceWidth =
+      Number(
+        page.width_px
+      ) ||
+      rect.width;
+
+
+    if (
+      !sourceWidth
+    ) {
+
+      return 1;
+
+    }
+
+
+    return (
+      rect.width /
+      sourceWidth
+    );
+
+  }
+
 
   function getPoint(
     event,
@@ -5860,23 +3467,19 @@ async function acceptCandidate(
     return {
 
       x:
-        Math.max(
+        clamp(
+          event.clientX -
+          rect.left,
           0,
-          Math.min(
-            rect.width,
-            event.clientX -
-            rect.left
-          )
+          rect.width
         ),
 
       y:
-        Math.max(
+        clamp(
+          event.clientY -
+          rect.top,
           0,
-          Math.min(
-            rect.height,
-            event.clientY -
-            rect.top
-          )
+          rect.height
         )
 
     };
@@ -5891,21 +3494,13 @@ async function acceptCandidate(
     return {
 
       x:
-        Number(
-          box.x
-        ) +
-        Number(
-          box.width
-        ) /
+        Number(box.x) +
+        Number(box.width) /
         2,
 
       y:
-        Number(
-          box.y
-        ) +
-        Number(
-          box.height
-        ) /
+        Number(box.y) +
+        Number(box.height) /
         2
 
     };
@@ -5919,33 +3514,14 @@ async function acceptCandidate(
   ) {
 
     return (
-
-      point.x >=
-      Number(
-        box.x
-      ) &&
-
-      point.y >=
-      Number(
-        box.y
-      ) &&
-
+      point.x >= Number(box.x) &&
+      point.y >= Number(box.y) &&
       point.x <=
-      Number(
-        box.x
-      ) +
-      Number(
-        box.width
-      ) &&
-
+        Number(box.x) +
+        Number(box.width) &&
       point.y <=
-      Number(
-        box.y
-      ) +
-      Number(
-        box.height
-      )
-
+        Number(box.y) +
+        Number(box.height)
     );
 
   }
@@ -5968,61 +3544,748 @@ async function acceptCandidate(
   }
 
 
-  /* =======================================================
-     UTIL
-  ======================================================= */
-
   function compareBoxes(
     a,
     b
   ) {
 
-    const pageDiff =
-      Number(
-        a.page_no
-      ) -
-      Number(
-        b.page_no
-      );
+    const page =
+      Number(a.page_no) -
+      Number(b.page_no);
 
 
-    if (
-      pageDiff !==
-      0
-    ) {
+    if (page !== 0) {
 
-      return pageDiff;
+      return page;
 
     }
 
 
-    const yDiff =
-      Number(
-        a.y
-      ) -
-      Number(
-        b.y
-      );
+    const y =
+      Number(a.y) -
+      Number(b.y);
 
 
-    if (
-      yDiff !==
-      0
-    ) {
+    if (y !== 0) {
 
-      return yDiff;
+      return y;
 
     }
 
 
     return (
-      Number(
-        a.x
-      ) -
-      Number(
-        b.x
-      )
+      Number(a.x) -
+      Number(b.x)
     );
+
+  }
+
+
+  /* =======================================================
+     IMAGE
+  ======================================================= */
+
+  function loadImage(
+    src
+  ) {
+
+    return new Promise(
+      (
+        resolve,
+        reject
+      ) => {
+
+        const image =
+          new Image();
+
+
+        image.onload =
+          () =>
+            resolve(
+              image
+            );
+
+
+        image.onerror =
+          () =>
+            reject(
+              new Error(
+                "画像を読み込めませんでした。"
+              )
+            );
+
+
+        image.src =
+          src;
+
+      }
+    );
+
+  }
+
+
+  /* =======================================================
+     PDF
+  ======================================================= */
+
+  function loadPdfJs() {
+
+    if (pdfPromise) {
+
+      return pdfPromise;
+
+    }
+
+
+    pdfPromise =
+      new Promise(
+        (
+          resolve,
+          reject
+        ) => {
+
+          if (
+            window.pdfjsLib
+          ) {
+
+            resolve(
+              window.pdfjsLib
+            );
+
+            return;
+
+          }
+
+
+          const script =
+            document.createElement(
+              "script"
+            );
+
+
+          script.src =
+            "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+
+
+          script.onload =
+            () => {
+
+              if (
+                !window.pdfjsLib
+              ) {
+
+                reject(
+                  new Error(
+                    "PDF.jsを読み込めませんでした。"
+                  )
+                );
+
+                return;
+
+              }
+
+
+              window.pdfjsLib
+                .GlobalWorkerOptions
+                .workerSrc =
+                "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+
+              resolve(
+                window.pdfjsLib
+              );
+
+            };
+
+
+          script.onerror =
+            () =>
+              reject(
+                new Error(
+                  "PDF.jsの読み込みに失敗しました。"
+                )
+              );
+
+
+          document.head.appendChild(
+            script
+          );
+
+        }
+      );
+
+
+    return pdfPromise;
+
+  }
+
+
+  /* =======================================================
+     FILE PARSER
+  ======================================================= */
+
+  async function fileToPages(
+    file
+  ) {
+
+    const ext =
+      getExtension(
+        file.name
+      );
+
+
+    if (
+      ext === "pdf"
+    ) {
+
+      return convertPdf(
+        file
+      );
+
+    }
+
+
+    if (
+      [
+        "jpg",
+        "jpeg",
+        "png",
+        "webp"
+      ].includes(
+        ext
+      )
+    ) {
+
+      return [
+        await convertImage(
+          file
+        )
+      ];
+
+    }
+
+
+    throw new Error(
+      "PDF、JPG、JPEG、PNG、WEBPのみ対応しています。"
+    );
+
+  }
+
+
+  async function convertPdf(
+    file
+  ) {
+
+    const pdfjs =
+      await loadPdfJs();
+
+
+    const buffer =
+      await file.arrayBuffer();
+
+
+    const pdf =
+      await pdfjs
+        .getDocument({
+          data:
+            buffer
+        })
+        .promise;
+
+
+    const result =
+      [];
+
+
+    for (
+      let pageNo = 1;
+      pageNo <=
+      pdf.numPages;
+      pageNo++
+    ) {
+
+      const page =
+        await pdf.getPage(
+          pageNo
+        );
+
+
+      const base =
+        page.getViewport({
+          scale: 1
+        });
+
+
+      const scale =
+        Math.min(
+          3,
+          Math.max(
+            1,
+            3500 /
+            Math.max(
+              base.width,
+              base.height
+            )
+          )
+        );
+
+
+      const viewport =
+        page.getViewport({
+          scale
+        });
+
+
+      const canvas =
+        document.createElement(
+          "canvas"
+        );
+
+
+      canvas.width =
+        Math.ceil(
+          viewport.width
+        );
+
+
+      canvas.height =
+        Math.ceil(
+          viewport.height
+        );
+
+
+      await page.render({
+
+        canvasContext:
+          canvas.getContext(
+            "2d"
+          ),
+
+        viewport
+
+      }).promise;
+
+
+      result.push({
+
+        canvas,
+
+        width:
+          canvas.width,
+
+        height:
+          canvas.height
+
+      });
+
+    }
+
+
+    return result;
+
+  }
+
+
+  async function convertImage(
+    file
+  ) {
+
+    const url =
+      URL.createObjectURL(
+        file
+      );
+
+
+    try {
+
+      const image =
+        await loadImage(
+          url
+        );
+
+
+      const canvas =
+        document.createElement(
+          "canvas"
+        );
+
+
+      canvas.width =
+        image.naturalWidth;
+
+
+      canvas.height =
+        image.naturalHeight;
+
+
+      canvas
+        .getContext("2d")
+        .drawImage(
+          image,
+          0,
+          0
+        );
+
+
+      return {
+
+        canvas,
+
+        width:
+          canvas.width,
+
+        height:
+          canvas.height
+
+      };
+
+    } finally {
+
+      URL.revokeObjectURL(
+        url
+      );
+
+    }
+
+  }
+
+
+  /* =======================================================
+     UPLOAD ANSWER SHEET
+  ======================================================= */
+
+  async function uploadAnswerSheet() {
+
+    if (!selectedTestId) {
+
+      setStatus(
+        "テストIDが取得できません。",
+        true
+      );
+
+      return;
+
+    }
+
+
+    const file =
+      answerFile?.files?.[0];
+
+
+    if (!file) {
+
+      setStatus(
+        "解答用紙ファイルを選択してください。",
+        true
+      );
+
+      return;
+
+    }
+
+
+    uploadButton.disabled =
+      true;
+
+
+    try {
+
+      const pageImages =
+        await fileToPages(
+          file
+        );
+
+
+      if (!pageImages.length) {
+
+        throw new Error(
+          "ページを取得できませんでした。"
+        );
+
+      }
+
+
+      /*
+       * 既存ページがある場合でも、
+       * 新しいページ番号から追加。
+       */
+
+      let nextPageNo =
+        pages.length
+          ? Math.max(
+              ...pages.map(
+                page =>
+                  Number(
+                    page.page_no
+                  ) || 0
+              )
+            ) + 1
+          : 1;
+
+
+      const uploaded =
+        [];
+
+
+      for (
+        const page
+        of pageImages
+      ) {
+
+        const pageNo =
+          nextPageNo++;
+
+
+        const blob =
+          await canvasToBlob(
+            page.canvas,
+            "image/png"
+          );
+
+
+        const path =
+          [
+            selectedTestId,
+            "answer-sheet",
+            crypto.randomUUID(),
+            `page-${String(
+              pageNo
+            ).padStart(
+              3,
+              "0"
+            )}.png`
+          ].join(
+            "/"
+          );
+
+
+        setStatus(
+          `解答用紙を保存しています... P${pageNo}`
+        );
+
+
+        const {
+          error
+        } =
+          await supabaseClient
+            .storage
+            .from(
+              "test-files"
+            )
+            .upload(
+              path,
+              blob,
+              {
+                contentType:
+                  "image/png",
+
+                cacheControl:
+                  "3600",
+
+                upsert:
+                  false
+              }
+            );
+
+
+        if (error) {
+
+          throw error;
+
+        }
+
+
+        uploaded.push({
+
+          pageNo,
+
+          path,
+
+          width:
+            page.width,
+
+          height:
+            page.height
+
+        });
+
+      }
+
+
+      const rows =
+        uploaded.map(
+          item => ({
+
+            test_id:
+              selectedTestId,
+
+            page_no:
+              item.pageNo,
+
+            image_path:
+              item.path,
+
+            width_px:
+              item.width,
+
+            height_px:
+              item.height,
+
+            original_name:
+              file.name
+
+          })
+        );
+
+
+      const {
+        data:
+          inserted,
+        error:
+          insertError
+      } =
+        await supabaseClient
+          .from(
+            "test_pages"
+          )
+          .insert(
+            rows
+          )
+          .select();
+
+
+      if (insertError) {
+
+        await supabaseClient
+          .storage
+          .from(
+            "test-files"
+          )
+          .remove(
+            uploaded.map(
+              item =>
+                item.path
+            )
+          );
+
+
+        throw insertError;
+
+      }
+
+
+      pages =
+        [
+          ...pages,
+          ...(inserted || [])
+        ];
+
+
+      answerFile.value =
+        "";
+
+
+      candidates =
+        [];
+
+
+      await renderAllPages();
+
+
+      /*
+       * アップロード直後に自動検出。
+       */
+
+      setStatus(
+        "解答用紙を登録しました。枠を自動検出しています..."
+      );
+
+
+      await detectAllPages();
+
+
+    } catch (error) {
+
+      console.error(
+        "uploadAnswerSheet:",
+        error
+      );
+
+
+      setStatus(
+        error.message ||
+        "解答用紙の登録に失敗しました。",
+        true
+      );
+
+    } finally {
+
+      uploadButton.disabled =
+        false;
+
+    }
+
+  }
+
+
+  /* =======================================================
+     UTIL
+  ======================================================= */
+
+  function getExtension(
+    value
+  ) {
+
+    const clean =
+      String(
+        value || ""
+      )
+        .split("?")[0]
+        .split("#")[0];
+
+
+    const parts =
+      clean.split(".");
+
+
+    return (
+      parts.length > 1
+        ? parts.pop().toLowerCase()
+        : ""
+    );
+
+  }
+
+
+  function inferRole(
+    box
+  ) {
+
+    switch (
+      box.box_type
+    ) {
+
+      case "qr":
+        return "qr";
+
+      case "name":
+        return "name";
+
+      case "student_no":
+        return "student_no";
+
+      case "answer":
+
+        return (
+          box.label === "大問"
+            ? "major"
+            : "answer"
+        );
+
+      default:
+        return "other";
+
+    }
 
   }
 
@@ -6055,778 +4318,11 @@ async function acceptCandidate(
 
     return (
       typeof value ===
-        "string" &&
+      "string" &&
       /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
         .test(
           value
         )
-    );
-
-  }
-        showError(
-          "解答用紙を選択してください。"
-        );
-
-        return;
-
-    }
-
-
-    const extension =
-      getExtension(
-        file.name
-      );
-
-
-    if (
-      ![
-        "pdf",
-        "jpg",
-        "jpeg",
-        "png",
-        "webp"
-      ].includes(
-        extension
-      )
-    ) {
-
-      showError(
-        "PDF、JPG、JPEG、PNG、WEBPのみ対応しています。"
-      );
-
-      return;
-
-    }
-
-
-    try {
-
-      uploadButton.disabled =
-        true;
-
-
-      setStatus(
-        "解答用紙を読み込んでいます..."
-      );
-
-
-      const pageImages =
-        await fileToPages(
-          file
-        );
-
-
-      if (
-        !pageImages.length
-      ) {
-
-        throw new Error(
-          "解答用紙のページを作成できませんでした。"
-        );
-
-      }
-
-
-      /*
-       * 既存ページ番号の続きから登録。
-       */
-
-      const nextPageNo =
-        pages.length
-          ? Math.max(
-              ...pages.map(
-                page =>
-                  Number(
-                    page.page_no
-                  ) || 0
-              )
-            ) + 1
-          : 1;
-
-
-      const uploaded =
-        [];
-
-
-      for (
-        let index = 0;
-        index <
-        pageImages.length;
-        index++
-      ) {
-
-        const page =
-          pageImages[index];
-
-
-        const pageNo =
-          nextPageNo +
-          index;
-
-
-        const path =
-          [
-            selectedTestId,
-            "answer-sheet",
-            crypto.randomUUID(),
-            `page-${String(
-              pageNo
-            ).padStart(
-              3,
-              "0"
-            )}.png`
-          ].join(
-            "/"
-          );
-
-
-        const blob =
-          await canvasToBlob(
-            page.canvas,
-            "image/png"
-          );
-
-
-        if (!blob) {
-
-          throw new Error(
-            `ページ${pageNo}のPNG変換に失敗しました。`
-          );
-
-        }
-
-
-        setStatus(
-          `解答用紙を保存しています... ${
-            index + 1
-          } / ${
-            pageImages.length
-          }`
-        );
-
-
-        const {
-          error:
-            uploadError
-        } =
-          await supabaseClient
-            .storage
-            .from(
-              "test-files"
-            )
-            .upload(
-              path,
-              blob,
-              {
-                contentType:
-                  "image/png",
-
-                cacheControl:
-                  "3600",
-
-                upsert:
-                  false
-              }
-            );
-
-
-        if (uploadError) {
-
-          throw new Error(
-            `ページ${pageNo}のStorage保存に失敗しました: ${
-              uploadError.message
-            }`
-          );
-
-        }
-
-
-        uploaded.push({
-
-          pageNo,
-
-          path,
-
-          width:
-            page.width,
-
-          height:
-            page.height,
-
-          originalName:
-            file.name
-
-        });
-
-      }
-
-
-      /*
-       * DB登録。
-       */
-
-      const rows =
-        uploaded.map(
-          item => ({
-
-            test_id:
-              selectedTestId,
-
-            page_no:
-              item.pageNo,
-
-            image_path:
-              item.path,
-
-            width_px:
-              item.width,
-
-            height_px:
-              item.height,
-
-            original_name:
-              item.originalName
-
-          })
-        );
-
-
-      const {
-        data:
-          insertedPages,
-        error:
-          insertError
-      } =
-        await supabaseClient
-          .from(
-            "test_pages"
-          )
-          .insert(
-            rows
-          )
-          .select(
-            `
-            id,
-            test_id,
-            page_no,
-            image_path,
-            width_px,
-            height_px,
-            original_name
-            `
-          );
-
-
-      if (insertError) {
-
-        /*
-         * DB登録に失敗したら、
-         * 今回アップロードしたStorageだけ削除。
-         */
-
-        await supabaseClient
-          .storage
-          .from(
-            "test-files"
-          )
-          .remove(
-            uploaded.map(
-              item =>
-                item.path
-            )
-          );
-
-
-        throw new Error(
-          `解答用紙ページの登録に失敗しました: ${
-            insertError.message
-          }`
-        );
-
-      }
-
-
-      /*
-       * 画面へ反映。
-       */
-
-      pages =
-        [
-          ...pages,
-          ...(
-            insertedPages ||
-            []
-          )
-        ]
-          .sort(
-            (
-              a,
-              b
-            ) =>
-              Number(
-                a.page_no
-              ) -
-              Number(
-                b.page_no
-              )
-          );
-
-
-      answerFile.value =
-        "";
-
-
-      /*
-       * 既存の候補を消す。
-       */
-
-      candidates =
-        [];
-
-
-      await renderAllPages();
-
-
-      /*
-       * アップロード直後に
-       * 自動枠検出。
-       */
-
-      setStatus(
-        "解答用紙を登録しました。枠を自動検出しています..."
-      );
-
-
-      await detectAllPages();
-
-
-    } catch (error) {
-
-      console.error(
-        "uploadAnswerSheet:",
-        error
-      );
-
-
-      showError(
-        error.message ||
-        "解答用紙の登録に失敗しました。"
-      );
-
-    } finally {
-
-      uploadButton.disabled =
-        false;
-
-    }
-
-  }
-
-
-  /* =======================================================
-     AUTO CANDIDATE HELPERS
-  ======================================================= */
-
-  function deduplicateCandidates(
-    list
-  ) {
-
-    const result =
-      [];
-
-
-    for (
-      const candidate
-      of list
-    ) {
-
-      const duplicate =
-        result.some(
-          existing =>
-            Number(
-              existing.pageNo
-            ) ===
-            Number(
-              candidate.pageNo
-            ) &&
-            overlapRatio(
-              existing,
-              candidate
-            ) >
-            0.70
-        );
-
-
-      if (!duplicate) {
-
-        result.push(
-          candidate
-        );
-
-      }
-
-    }
-
-
-    return result;
-
-  }
-
-
-  function overlapRatio(
-    a,
-    b
-  ) {
-
-    const left =
-      Math.max(
-        Number(a.x),
-        Number(b.x)
-      );
-
-
-    const top =
-      Math.max(
-        Number(a.y),
-        Number(b.y)
-      );
-
-
-    const right =
-      Math.min(
-        Number(a.x) +
-        Number(a.width),
-        Number(b.x) +
-        Number(b.width)
-      );
-
-
-    const bottom =
-      Math.min(
-        Number(a.y) +
-        Number(a.height),
-        Number(b.y) +
-        Number(b.height)
-      );
-
-
-    if (
-      right <=
-      left ||
-      bottom <=
-      top
-    ) {
-
-      return 0;
-
-    }
-
-
-    const intersection =
-      (
-        right -
-        left
-      ) *
-      (
-        bottom -
-        top
-      );
-
-
-    const areaA =
-      Number(a.width) *
-      Number(a.height);
-
-
-    const areaB =
-      Number(b.width) *
-      Number(b.height);
-
-
-    if (
-      areaA <=
-      0 ||
-      areaB <=
-      0
-    ) {
-
-      return 0;
-
-    }
-
-
-    return (
-      intersection /
-      Math.min(
-        areaA,
-        areaB
-      )
-    );
-
-  }
-
-
-  /* =======================================================
-     CANDIDATE RENDER
-  ======================================================= */
-
-  function renderCandidate(
-    layer,
-    page,
-    candidate
-  ) {
-
-    const element =
-      document.createElement(
-        "div"
-      );
-
-
-    element.className =
-      "auto-box-candidate";
-
-
-    element.dataset.candidateId =
-      candidate.id;
-
-
-    const pageWidth =
-      Number(
-        page.width_px
-      );
-
-
-    const pageHeight =
-      Number(
-        page.height_px
-      );
-
-
-    if (
-      !pageWidth ||
-      !pageHeight
-    ) {
-
-      return;
-
-    }
-
-
-    element.style.left =
-      `${
-        Number(
-          candidate.x
-        ) /
-        pageWidth *
-        100
-      }%`;
-
-
-    element.style.top =
-      `${
-        Number(
-          candidate.y
-        ) /
-        pageHeight *
-        100
-      }%`;
-
-
-    element.style.width =
-      `${
-        Number(
-          candidate.width
-        ) /
-        pageWidth *
-        100
-      }%`;
-
-
-    element.style.height =
-      `${
-        Number(
-          candidate.height
-        ) /
-        pageHeight *
-        100
-      }%`;
-
-
-    element.title =
-      "クリックして正式な枠として登録";
-
-
-    element.addEventListener(
-      "pointerdown",
-      event => {
-
-        event.preventDefault();
-
-        event.stopPropagation();
-
-
-        acceptCandidate(
-          candidate
-        );
-
-      }
-    );
-
-
-    layer.appendChild(
-      element
-    );
-
-  }
-
-
-  /* =======================================================
-     ACCEPT CANDIDATE
-  ======================================================= */
-
-  async function acceptCandidate(
-    candidate
-  ) {
-
-    if (!candidate) {
-
-      return;
-
-    }
-
-
-    const role =
-      boxRole?.value ||
-      "answer";
-
-
-    const roleInfo =
-      ROLE_INFO[
-        role
-      ] ||
-      ROLE_INFO.answer;
-
-
-    const box = {
-
-      id:
-        crypto.randomUUID(),
-
-      test_id:
-        selectedTestId,
-
-      page_no:
-        Number(
-          candidate.pageNo
-        ),
-
-      box_type:
-        roleInfo.boxType,
-
-      label:
-        "",
-
-      x:
-        Number(
-          candidate.x
-        ),
-
-      y:
-        Number(
-          candidate.y
-        ),
-
-      width:
-        Number(
-          candidate.width
-        ),
-
-      height:
-        Number(
-          candidate.height
-        ),
-
-      question_id:
-        null,
-
-      points:
-        roleInfo.boxType ===
-          "answer"
-          ? 0
-          : null,
-
-      parent_box_id:
-        null,
-
-      major_no:
-        null,
-
-      minor_no:
-        null,
-
-      box_role:
-        role,
-
-      sort_order:
-        boxes.length,
-
-      subtotal_group:
-        null
-
-    };
-
-
-    boxes.push(
-      box
-    );
-
-
-    selectedBoxId =
-      box.id;
-
-
-    candidates =
-      candidates.filter(
-        item =>
-          item.id !==
-          candidate.id
-      );
-
-
-    if (
-      role ===
-        "minor" ||
-      role ===
-        "subtotal"
-    ) {
-
-      updateParent(
-        box
-      );
-
-    }
-
-
-    renumberAll();
-
-
-    box.label =
-      automaticLabel(
-        box.box_role,
-        box
-      );
-
-
-    await renderAllPages();
-
-
-    selectBox(
-      box.id
-    );
-
-
-    setStatus(
-      `${box.label}を作成しました。`
     );
 
   }

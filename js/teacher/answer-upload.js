@@ -4,14 +4,22 @@
 /* =========================================================
    答案アップロード
 
-   ・先生 / 管理者のみ
-   ・テスト選択
-   ・?test=UUID の自動選択
-   ・複数ファイル
-   ・PDF / 画像 / ZIP
-   ・answer_sheets
-   ・answer_sheet_pages
-   ・QRによる生徒紐付け
+   重要仕様
+   ---------------------------------------------------------
+   1. テストを選択してからアップロード
+   2. ?test=UUID があれば自動選択
+   3. PDF / 画像 / ZIP
+   4. 1ファイル = 1答案
+   5. QRは答案全体を読まない
+   6. layout_boxes の box_type = "qr" の範囲だけ読む
+   7. QRが読めなければ unmatched
+   8. QRが読めれば matched
+   9. 手動紐付けも unmatched → matched
+========================================================= */
+
+
+/* =========================================================
+   STATE
 ========================================================= */
 
 let DB = null;
@@ -92,11 +100,6 @@ const processingLog =
     "processingLog"
   );
 
-const uploadList =
-  document.getElementById(
-    "uploadList"
-  );
-
 
 /* =========================================================
    INIT
@@ -139,9 +142,13 @@ async function initialize() {
     }
 
 
-    teacherName.textContent =
-      auth.profile?.name ||
-      "先生";
+    if (teacherName) {
+
+      teacherName.textContent =
+        auth.profile?.name ||
+        "先生";
+
+    }
 
 
     setupEvents();
@@ -280,6 +287,15 @@ async function loadTests() {
     data || [];
 
 
+  if (!testSelect) {
+
+    throw new Error(
+      "テスト選択欄が見つかりません。"
+    );
+
+  }
+
+
   testSelect.innerHTML = `
 
     <option value="">
@@ -296,13 +312,11 @@ async function loadTests() {
                 test.id
               )}"
             >
-
               ${escapeHtml(
                 formatTestName(
                   test
                 )
               )}
-
             </option>
 
           `
@@ -382,6 +396,15 @@ function renderFileList() {
     ];
 
 
+  if (
+    !fileList
+  ) {
+
+    return;
+
+  }
+
+
   if (!files.length) {
 
     fileList.hidden =
@@ -389,6 +412,8 @@ function renderFileList() {
 
     fileList.innerHTML =
       "";
+
+    updateState();
 
     return;
 
@@ -430,12 +455,10 @@ function renderFileList() {
               ) => `
 
                 <div>
-
                   ${index + 1}.
                   ${escapeHtml(
                     file.name
                   )}
-
                 </div>
 
               `
@@ -449,6 +472,9 @@ function renderFileList() {
 
   `;
 
+
+  updateState();
+
 }
 
 
@@ -457,6 +483,13 @@ function renderFileList() {
 ========================================================= */
 
 function updateState() {
+
+  if (!uploadButton) {
+
+    return;
+
+  }
+
 
   const ready =
     Boolean(
@@ -468,12 +501,8 @@ function updateState() {
     !uploading;
 
 
-  if (uploadButton) {
-
-    uploadButton.disabled =
-      !ready;
-
-  }
+  uploadButton.disabled =
+    !ready;
 
 }
 
@@ -545,7 +574,6 @@ async function uploadFiles() {
 
   showProcessing();
 
-
   clearMessage();
 
 
@@ -596,6 +624,12 @@ async function uploadFiles() {
         failed++;
 
 
+        console.error(
+          file.name,
+          error
+        );
+
+
         addLog(
           `失敗: ${file.name} - ${
             error.message
@@ -618,8 +652,12 @@ async function uploadFiles() {
     );
 
 
-    processingTitle.textContent =
-      "処理完了";
+    if (processingTitle) {
+
+      processingTitle.textContent =
+        "処理完了";
+
+    }
 
 
     if (failed) {
@@ -652,7 +690,7 @@ async function uploadFiles() {
 
 
 /* =========================================================
-   PROCESS ANSWER
+   PROCESS ONE ANSWER
 ========================================================= */
 
 async function processStudentAnswer(
@@ -660,7 +698,7 @@ async function processStudentAnswer(
 ) {
 
   const parsed =
-    await parseFile(
+    await parseInputFile(
       file
     );
 
@@ -670,11 +708,16 @@ async function processStudentAnswer(
   ) {
 
     throw new Error(
-      "ページを取得できませんでした。"
+      "答案ページを取得できませんでした。"
     );
 
   }
 
+
+  /*
+   * まず答案レコードを作る。
+   * QRが読めなくても unmatched として残す。
+   */
 
   const {
     data:answer,
@@ -693,13 +736,19 @@ async function processStudentAnswer(
           "unmatched",
 
         original_file_path:
-          null,
+          file.name,
 
         qr_value:
           null
 
       })
-      .select()
+      .select(
+        `
+        id,
+        test_id,
+        status
+        `
+      )
       .single();
 
 
@@ -715,6 +764,10 @@ async function processStudentAnswer(
 
 
   try {
+
+    /*
+     * ページをStorageへ保存。
+     */
 
     for (
       let index = 0;
@@ -832,36 +885,74 @@ async function processStudentAnswer(
 
 
     /*
-     * QRは読めた場合のみ自動紐付け。
-     * 読めなくても答案自体は残す。
+     * ここが重要。
+     *
+     * 答案全体からQRを探さない。
+     *
+     * layout_boxes の
+     * box_type = qr
+     * の座標だけを取得する。
      */
 
-    const qr =
-      await detectQr(
+    const qrValue =
+      await readQrOnlyFromConfiguredRegions(
         parsed
       );
 
 
-    if (qr) {
+    if (qrValue) {
 
-      await matchStudent(
+      await matchAnswerByQr(
         answer.id,
-        qr
+        qrValue
       );
+
+    } else {
+
+      /*
+       * QRが無い / 読めない
+       *
+       * unmatched のまま。
+       */
+
+      await DB
+        .from(
+          "answer_sheets"
+        )
+        .update({
+
+          status:
+            "unmatched"
+
+        })
+        .eq(
+          "id",
+          answer.id
+        );
 
     }
 
 
   } catch (error) {
 
-    await DB
-      .storage
-      .from(
-        "test-files"
-      )
-      .remove(
-        uploadedPaths
-      );
+    /*
+     * 途中失敗ならStorageとDBを戻す。
+     */
+
+    if (
+      uploadedPaths.length
+    ) {
+
+      await DB
+        .storage
+        .from(
+          "test-files"
+        )
+        .remove(
+          uploadedPaths
+        );
+
+    }
 
 
     await DB
@@ -894,10 +985,635 @@ async function processStudentAnswer(
 
 
 /* =========================================================
-   PARSER
+   QR REGIONS
 ========================================================= */
 
-async function parseFile(
+async function readQrOnlyFromConfiguredRegions(
+  pages
+) {
+
+  /*
+   * QR枠をDBから取得。
+   */
+
+  const {
+    data,
+    error
+  } =
+    await DB
+      .from(
+        "layout_boxes"
+      )
+      .select(
+        `
+        id,
+        page_no,
+        box_type,
+        x,
+        y,
+        width,
+        height
+        `
+      )
+      .eq(
+        "test_id",
+        selectedTestId
+      )
+      .eq(
+        "box_type",
+        "qr"
+      );
+
+
+  if (error) {
+
+    throw error;
+
+  }
+
+
+  const qrBoxes =
+    data || [];
+
+
+  /*
+   * QR枠が設定されていない場合、
+   * QR読み取りそのものを行わない。
+   */
+
+  if (!qrBoxes.length) {
+
+    return null;
+
+  }
+
+
+  for (
+    const page
+    of pages
+  ) {
+
+    const pageNo =
+      pages.indexOf(
+        page
+      ) + 1;
+
+
+    const pageBoxes =
+      qrBoxes.filter(
+        box =>
+          Number(
+            box.page_no
+          ) ===
+          pageNo
+      );
+
+
+    if (
+      !pageBoxes.length
+    ) {
+
+      continue;
+
+    }
+
+
+    for (
+      const box
+      of pageBoxes
+    ) {
+
+      const value =
+        await readQrFromRegion(
+          page,
+          box
+        );
+
+
+      if (value) {
+
+        return value;
+
+      }
+
+    }
+
+  }
+
+
+  return null;
+
+}
+
+
+/* =========================================================
+   QR REGION
+========================================================= */
+
+async function readQrFromRegion(
+  page,
+  box
+) {
+
+  if (
+    typeof jsQR !==
+    "function"
+  ) {
+
+    console.warn(
+      "jsQRが読み込まれていません。"
+    );
+
+    return null;
+
+  }
+
+
+  const image =
+    await blobToImage(
+      page.blob
+    );
+
+
+  const sourceWidth =
+    image.naturalWidth;
+
+
+  const sourceHeight =
+    image.naturalHeight;
+
+
+  /*
+   * layout_boxesは原寸座標。
+   */
+
+  const x =
+    clamp(
+      Number(
+        box.x
+      ),
+      0,
+      sourceWidth
+    );
+
+
+  const y =
+    clamp(
+      Number(
+        box.y
+      ),
+      0,
+      sourceHeight
+    );
+
+
+  const width =
+    clamp(
+      Number(
+        box.width
+      ),
+      1,
+      sourceWidth -
+      x
+    );
+
+
+  const height =
+    clamp(
+      Number(
+        box.height
+      ),
+      1,
+      sourceHeight -
+      y
+    );
+
+
+  /*
+   * 少しだけ余白を追加。
+   * ただしQR枠外を大きく読むことはしない。
+   */
+
+  const padding =
+    Math.round(
+      Math.min(
+        width,
+        height
+      ) *
+      0.05
+    );
+
+
+  const cropX =
+    Math.max(
+      0,
+      x -
+      padding
+    );
+
+
+  const cropY =
+    Math.max(
+      0,
+      y -
+      padding
+    );
+
+
+  const cropRight =
+    Math.min(
+      sourceWidth,
+      x +
+      width +
+      padding
+    );
+
+
+  const cropBottom =
+    Math.min(
+      sourceHeight,
+      y +
+      height +
+      padding
+    );
+
+
+  const cropWidth =
+    cropRight -
+    cropX;
+
+
+  const cropHeight =
+    cropBottom -
+    cropY;
+
+
+  /*
+   * QRが小さい場合に備えて
+   * 最大1600px程度まで拡大。
+   */
+
+  const scale =
+    Math.min(
+      4,
+      Math.max(
+        1,
+        800 /
+        Math.max(
+          cropWidth,
+          cropHeight
+        )
+      )
+    );
+
+
+  const canvas =
+    document.createElement(
+      "canvas"
+    );
+
+
+  canvas.width =
+    Math.round(
+      cropWidth *
+      scale
+    );
+
+
+  canvas.height =
+    Math.round(
+      cropHeight *
+      scale
+    );
+
+
+  const context =
+    canvas.getContext(
+      "2d",
+      {
+        willReadFrequently:
+          true
+      }
+    );
+
+
+  context.imageSmoothingEnabled =
+    false;
+
+
+  context.drawImage(
+    image,
+    cropX,
+    cropY,
+    cropWidth,
+    cropHeight,
+    0,
+    0,
+    canvas.width,
+    canvas.height
+  );
+
+
+  /*
+   * まず通常。
+   */
+
+  let result =
+    scanQrCanvas(
+      canvas
+    );
+
+
+  if (result) {
+
+    return normalizeQr(
+      result
+    );
+
+  }
+
+
+  /*
+   * 反転も試す。
+   */
+
+  result =
+    scanQrCanvas(
+      canvas,
+      true
+    );
+
+
+  if (result) {
+
+    return normalizeQr(
+      result
+    );
+
+  }
+
+
+  return null;
+
+}
+
+
+/* =========================================================
+   QR SCAN
+========================================================= */
+
+function scanQrCanvas(
+  canvas,
+  invert = false
+) {
+
+  const context =
+    canvas.getContext(
+      "2d",
+      {
+        willReadFrequently:
+          true
+      }
+    );
+
+
+  const imageData =
+    context.getImageData(
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
+
+
+  if (!invert) {
+
+    const result =
+      jsQR(
+        imageData.data,
+        imageData.width,
+        imageData.height,
+        {
+          inversionAttempts:
+            "attemptBoth"
+        }
+      );
+
+
+    return result?.data ||
+      null;
+
+  }
+
+
+  /*
+   * 反転画像。
+   */
+
+  const pixels =
+    imageData.data;
+
+
+  for (
+    let i = 0;
+    i <
+    pixels.length;
+    i += 4
+  ) {
+
+    pixels[i] =
+      255 -
+      pixels[i];
+
+    pixels[i + 1] =
+      255 -
+      pixels[i + 1];
+
+    pixels[i + 2] =
+      255 -
+      pixels[i + 2];
+
+  }
+
+
+  const result =
+    jsQR(
+      pixels,
+      imageData.width,
+      imageData.height,
+      {
+        inversionAttempts:
+          "dontInvert"
+      }
+    );
+
+
+  return result?.data ||
+    null;
+
+}
+
+
+/* =========================================================
+   MATCH BY QR
+========================================================= */
+
+async function matchAnswerByQr(
+  answerId,
+  qrValue
+) {
+
+  const value =
+    normalizeQr(
+      qrValue
+    );
+
+
+  if (!value) {
+
+    return;
+
+  }
+
+
+  /*
+   * QR形式:
+   *
+   * STUDENT:123456
+   *
+   * または
+   *
+   * 123456
+   *
+   * または既存シール形式
+   * 26447_2_1
+   */
+
+  const studentNo =
+    value
+      .replace(
+        /^STUDENT:/i,
+        ""
+      )
+      .trim();
+
+
+  /*
+   * まずstudent_no完全一致。
+   */
+
+  let {
+    data:student,
+    error
+  } =
+    await DB
+      .from(
+        "students"
+      )
+      .select(
+        `
+        id,
+        student_no,
+        name,
+        active
+        `
+      )
+      .eq(
+        "student_no",
+        studentNo
+      )
+      .eq(
+        "active",
+        true
+      )
+      .maybeSingle();
+
+
+  if (error) {
+
+    throw error;
+
+  }
+
+
+  /*
+   * 既存QR値を保存している場合に備えて
+   * students側のQR列があれば別処理に拡張可能。
+   */
+
+  if (!student) {
+
+    await DB
+      .from(
+        "answer_sheets"
+      )
+      .update({
+
+        qr_value:
+          value,
+
+        status:
+          "unmatched"
+
+      })
+      .eq(
+        "id",
+        answerId
+      );
+
+
+    return;
+
+  }
+
+
+  /*
+   * QR成功
+   *
+   * uploadedにはしない。
+   * matchedへ統一。
+   */
+
+  const {
+    error:
+      updateError
+  } =
+    await DB
+      .from(
+        "answer_sheets"
+      )
+      .update({
+
+        student_id:
+          student.id,
+
+        qr_value:
+          value,
+
+        status:
+          "matched"
+
+      })
+      .eq(
+        "id",
+        answerId
+      );
+
+
+  if (updateError) {
+
+    throw updateError;
+
+  }
+
+}
+
+
+/* =========================================================
+   FILE PARSER
+========================================================= */
+
+async function parseInputFile(
   file
 ) {
 
@@ -921,228 +1637,38 @@ async function parseFile(
 
 
 /* =========================================================
-   QR
-========================================================= */
-
-async function detectQr(
-  pages
-) {
-
-  if (
-    typeof jsQR !==
-    "function"
-  ) {
-
-    return null;
-
-  }
-
-
-  for (
-    const page
-    of pages
-  ) {
-
-    const image =
-      await blobToImage(
-        page.blob
-      );
-
-
-    const canvas =
-      document.createElement(
-        "canvas"
-      );
-
-
-    canvas.width =
-      image.naturalWidth;
-
-
-    canvas.height =
-      image.naturalHeight;
-
-
-    const context =
-      canvas.getContext(
-        "2d",
-        {
-          willReadFrequently:
-            true
-        }
-      );
-
-
-    context.drawImage(
-      image,
-      0,
-      0
-    );
-
-
-    const data =
-      context.getImageData(
-        0,
-        0,
-        canvas.width,
-        canvas.height
-      );
-
-
-    const result =
-      jsQR(
-        data.data,
-        data.width,
-        data.height,
-        {
-          inversionAttempts:
-            "attemptBoth"
-        }
-      );
-
-
-    if (
-      result?.data
-    ) {
-
-      return result.data.trim();
-
-    }
-
-  }
-
-
-  return null;
-
-}
-
-
-/* =========================================================
-   MATCH STUDENT
-========================================================= */
-
-async function matchStudent(
-  answerId,
-  qrValue
-) {
-
-  const value =
-    String(
-      qrValue ||
-      ""
-    )
-      .trim()
-      .replace(
-        /^STUDENT:/i,
-        ""
-      );
-
-
-  if (!value) {
-
-    return;
-
-  }
-
-
-  const {
-    data:student,
-    error
-  } =
-    await DB
-      .from(
-        "students"
-      )
-      .select(
-        `
-        id,
-        student_no,
-        active
-        `
-      )
-      .eq(
-        "student_no",
-        value
-      )
-      .eq(
-        "active",
-        true
-      )
-      .maybeSingle();
-
-
-  if (error) {
-
-    throw error;
-
-  }
-
-
-  if (!student) {
-
-    await DB
-      .from(
-        "answer_sheets"
-      )
-      .update({
-
-        qr_value:
-          value,
-
-        status:
-          "unmatched"
-
-      })
-      .eq(
-        "id",
-        answerId
-      );
-
-    return;
-
-  }
-
-
-  await DB
-    .from(
-      "answer_sheets"
-    )
-    .update({
-
-      student_id:
-        student.id,
-
-      qr_value:
-        value,
-
-      status:
-        "uploaded"
-
-    })
-    .eq(
-      "id",
-      answerId
-    );
-
-}
-
-
-/* =========================================================
-   PROCESS UI
+   UI
 ========================================================= */
 
 function showProcessing() {
+
+  if (
+    !processingArea
+  ) {
+
+    return;
+
+  }
+
 
   processingArea.hidden =
     false;
 
 
-  processingTitle.textContent =
-    "処理中";
+  if (processingTitle) {
+
+    processingTitle.textContent =
+      "処理中";
+
+  }
 
 
-  processingLog.innerHTML =
-    "";
+  if (processingLog) {
+
+    processingLog.innerHTML =
+      "";
+
+  }
 
 
   setProgress(
@@ -1170,12 +1696,20 @@ function setProgress(
       : 0;
 
 
-  progressBar.style.width =
-    `${percent}%`;
+  if (progressBar) {
+
+    progressBar.style.width =
+      `${percent}%`;
+
+  }
 
 
-  progressText.textContent =
-    text;
+  if (progressText) {
+
+    progressText.textContent =
+      text;
+
+  }
 
 }
 
@@ -1184,6 +1718,15 @@ function addLog(
   text,
   error = false
 ) {
+
+  if (
+    !processingLog
+  ) {
+
+    return;
+
+  }
+
 
   const element =
     document.createElement(
@@ -1264,6 +1807,13 @@ function showMessage(
   error = false
 ) {
 
+  if (!messageElement) {
+
+    return;
+
+  }
+
+
   messageElement.textContent =
     text;
 
@@ -1278,30 +1828,65 @@ function showMessage(
 
 function clearMessage() {
 
-  messageElement.textContent =
-    "";
+  if (
+    messageElement
+  ) {
+
+    messageElement.textContent =
+      "";
+
+  }
 
 }
 
 
 /* =========================================================
-   UTIL
+   HELPERS
 ========================================================= */
 
-function formatTestName(
-  test
+function normalizeQr(
+  value
 ) {
 
-  return [
-    test.name,
-    test.subject,
-    test.grade,
-    test.class_name
-  ]
-    .filter(Boolean)
-    .join(
-      " / "
+  return String(
+    value ||
+    ""
+  )
+    .trim();
+
+}
+
+
+function clamp(
+  value,
+  min,
+  max
+) {
+
+  const number =
+    Number(
+      value
     );
+
+
+  if (
+    !Number.isFinite(
+      number
+    )
+  ) {
+
+    return min;
+
+  }
+
+
+  return Math.max(
+    min,
+    Math.min(
+      max,
+      number
+    )
+  );
 
 }
 
@@ -1363,6 +1948,24 @@ function blobToImage(
 
     }
   );
+
+}
+
+
+function formatTestName(
+  test
+) {
+
+  return [
+    test.name,
+    test.subject,
+    test.grade,
+    test.class_name
+  ]
+    .filter(Boolean)
+    .join(
+      " / "
+    );
 
 }
 

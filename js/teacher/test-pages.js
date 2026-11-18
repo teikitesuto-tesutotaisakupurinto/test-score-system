@@ -1,127 +1,92 @@
 /* =========================================================
-   テスト成績システム
-   js/teacher/test-pages.js
+テスト成績システム js/teacher/test-pages.js
 
-   解答用紙登録 + 枠設定
+解答用紙登録 + 枠設定
 ========================================================= */
 
 (function () {
 
-  "use strict";
+“use strict”;
 
+/* ======================================================= STATE
+======================================================= */
 
-  /* =======================================================
-     STATE
-  ======================================================= */
+let selectedTestId = null;
 
-  let selectedTestId = null;
+let pages = [];
 
-  let pages = [];
+let boxes = [];
 
-  let boxes = [];
+let candidates = [];
 
-  let candidates = [];
+let selectedBoxId = null;
 
-  let selectedBoxId = null;
+let drawing = false;
 
-  let drawing = false;
+let drawingPointerId = null;
 
-  let drawingPointerId = null;
+let drawStart = null;
 
-  let drawStart = null;
+let drawPage = null;
 
-  let drawPage = null;
+let drawLayer = null;
 
-  let drawLayer = null;
+let drawPreview = null;
 
-  let drawPreview = null;
+let dragMode = null;
 
-  let dragMode = null;
+let dragPointerId = null;
 
-  let dragPointerId = null;
+let dragBoxId = null;
 
-  let dragBoxId = null;
+let dragStart = null;
 
-  let dragStart = null;
+let dragOriginal = null;
 
-  let dragOriginal = null;
+let pdfPromise = null;
 
-  let pdfPromise = null;
+/* ======================================================= DOM
+======================================================= */
 
+const viewer = document.getElementById(“viewer”);
 
-  /* =======================================================
-     DOM
-  ======================================================= */
+const statusElement = document.getElementById(“status”);
 
-  const viewer =
-    document.getElementById("viewer");
+const answerFile = document.getElementById(“answerFile”);
 
-  const statusElement =
-    document.getElementById("status");
+const uploadButton = document.getElementById(“uploadButton”);
 
-  const answerFile =
-    document.getElementById("answerFile");
+const saveButton = document.getElementById(“saveButton”);
 
-  const uploadButton =
-    document.getElementById("uploadButton");
+const backButton = document.getElementById(“backButton”);
 
-  const saveButton =
-    document.getElementById("saveButton");
+const boxPanel = document.getElementById(“boxPanel”);
 
-  const backButton =
-    document.getElementById("backButton");
+const boxRole = document.getElementById(“boxRole”);
 
-  const boxPanel =
-    document.getElementById("boxPanel");
+const parentInfo = document.getElementById(“parentInfo”);
 
-  const boxRole =
-    document.getElementById("boxRole");
+const applyButton = document.getElementById(“applyButton”);
 
-  const parentInfo =
-    document.getElementById("parentInfo");
+const deleteSelectedButton = document.getElementById(
+“deleteSelectedButton” );
 
-  const applyButton =
-    document.getElementById("applyButton");
+const closePanelButton = document.getElementById( “closePanelButton” );
 
-  const deleteSelectedButton =
-    document.getElementById(
-      "deleteSelectedButton"
-    );
+const detectButton = document.getElementById( “detectButton” );
 
-  const closePanelButton =
-    document.getElementById(
-      "closePanelButton"
-    );
+const detectButtonTop = document.getElementById( “detectButtonTop” );
 
-  const detectButton =
-    document.getElementById(
-      "detectButton"
-    );
+/* ======================================================= DB TYPES
+======================================================= */
 
-  const detectButtonTop =
-    document.getElementById(
-      "detectButtonTop"
-    );
+const ALLOWED_BOX_TYPES = [ “answer”, “qr”, “student_no”, “name”,
+“other” ];
 
+/* ======================================================= ROLES
+======================================================= */
 
-  /* =======================================================
-     DB TYPES
-  ======================================================= */
-
-  const ALLOWED_BOX_TYPES = [
-    "answer",
-    "qr",
-    "student_no",
-    "name",
-    "other"
-  ];
-
-
-  /* =======================================================
-     ROLES
-  ======================================================= */
-
-  const ROLE_INFO = {
+const ROLE_INFO = {
 
     major: {
       label: "大問",
@@ -173,20 +138,14 @@
       boxType: "other"
     }
 
-  };
+};
 
+/* ======================================================= INIT
+======================================================= */
 
-  /* =======================================================
-     INIT
-  ======================================================= */
+document.addEventListener( “DOMContentLoaded”, initialize );
 
-  document.addEventListener(
-    "DOMContentLoaded",
-    initialize
-  );
-
-
-  async function initialize() {
+async function initialize() {
 
     try {
 
@@ -264,14 +223,12 @@
 
     }
 
-  }
+}
 
+/* ======================================================= EVENTS
+======================================================= */
 
-  /* =======================================================
-     EVENTS
-  ======================================================= */
-
-  function setupEvents() {
+function setupEvents() {
 
     uploadButton?.addEventListener(
       "click",
@@ -344,14 +301,12 @@
       handleKeyboard
     );
 
-  }
+}
 
+/* ======================================================= LOAD LAYOUT
+======================================================= */
 
-  /* =======================================================
-     LOAD LAYOUT
-  ======================================================= */
-
-  async function loadLayout() {
+async function loadLayout() {
 
     setStatus(
       "解答用紙と枠設定を読み込んでいます..."
@@ -476,14 +431,12 @@
       `解答用紙 ${pages.length}ページ、枠 ${boxes.length}個を読み込みました。`
     );
 
-  }
+}
 
+/* ======================================================= NORMALIZE
+======================================================= */
 
-  /* =======================================================
-     NORMALIZE
-  ======================================================= */
-
-  function normalizeBoxes() {
+function normalizeBoxes() {
 
     boxes.forEach(
       box => {
@@ -539,14 +492,12 @@
       }
     );
 
-  }
+}
 
+/* ======================================================= SELECTED BOX
+======================================================= */
 
-  /* =======================================================
-     SELECTED BOX
-  ======================================================= */
-
-  function getSelectedBox() {
+function getSelectedBox() {
 
     if (!selectedBoxId) {
 
@@ -564,12 +515,9 @@
       null
     );
 
-  }
+}
 
-
-  function selectBox(
-    id
-  ) {
+function selectBox( id ) {
 
     selectedBoxId =
       id;
@@ -596,14 +544,12 @@
 
     openBoxPanel();
 
-  }
+}
 
+/* ======================================================= RENDER ALL
+PAGES ======================================================= */
 
-  /* =======================================================
-     RENDER ALL PAGES
-  ======================================================= */
-
-  async function renderAllPages() {
+async function renderAllPages() {
 
     if (!viewer) {
 
@@ -650,16 +596,12 @@
 
     }
 
-  }
+}
 
+/* ======================================================= RENDER PAGE
+======================================================= */
 
-  /* =======================================================
-     RENDER PAGE
-  ======================================================= */
-
-  async function renderPage(
-    page
-  ) {
+async function renderPage( page ) {
 
     const wrapper =
       document.createElement(
@@ -768,16 +710,12 @@
         }
       );
 
-  }
+}
 
+/* ======================================================= CREATE PAGE
+IMAGE ======================================================= */
 
-  /* =======================================================
-     CREATE PAGE IMAGE
-  ======================================================= */
-
-  async function createPageImage(
-    page
-  ) {
+async function createPageImage( page ) {
 
     const {
       data,
@@ -832,17 +770,12 @@
 
     return image;
 
-  }
+}
 
+/* ======================================================= DRAWING
+======================================================= */
 
-  /* =======================================================
-     DRAWING
-  ======================================================= */
-
-  function setupDrawing(
-    layer,
-    page
-  ) {
+function setupDrawing( layer, page ) {
 
     layer.addEventListener(
       "pointerdown",
@@ -976,16 +909,12 @@
       cancelDrawing
     );
 
-  }
+}
 
+/* ======================================================= DRAW PREVIEW
+======================================================= */
 
-  /* =======================================================
-     DRAW PREVIEW
-  ======================================================= */
-
-  function updateDrawPreview(
-    event
-  ) {
+function updateDrawPreview( event ) {
 
     if (
       !drawPreview ||
@@ -1044,16 +973,12 @@
         drawStart.y
       )}px`;
 
-  }
+}
 
+/* ======================================================= FINISH
+DRAWING ======================================================= */
 
-  /* =======================================================
-     FINISH DRAWING
-  ======================================================= */
-
-  async function finishDrawing(
-    event
-  ) {
+async function finishDrawing( event ) {
 
     const layer =
       drawLayer;
@@ -1237,14 +1162,12 @@
       )}を追加しました。`
     );
 
-  }
+}
 
+/* ======================================================= CANCEL
+DRAWING ======================================================= */
 
-  /* =======================================================
-     CANCEL DRAWING
-  ======================================================= */
-
-  function cancelDrawing() {
+function cancelDrawing() {
 
     drawPreview?.remove();
 
@@ -1272,16 +1195,10 @@
     drawPreview =
       null;
 
-  }
-     /* =======================================================
-     RENDER BOX
-  ======================================================= */
+} /* ======================================================= RENDER BOX
+======================================================= */
 
-  function renderBox(
-    layer,
-    page,
-    box
-  ) {
+function renderBox( layer, page, box ) {
 
     const element =
       document.createElement(
@@ -1600,18 +1517,12 @@
 
     }
 
-  }
+}
 
+/* ======================================================= UPDATE BOX
+ELEMENT ======================================================= */
 
-  /* =======================================================
-     UPDATE BOX ELEMENT
-  ======================================================= */
-
-  function updateBoxElement(
-    element,
-    page,
-    box
-  ) {
+function updateBoxElement( element, page, box ) {
 
     const layer =
       element.parentElement;
@@ -1639,14 +1550,12 @@
     element.style.height =
       `${Number(box.height) * scale}px`;
 
-  }
+}
 
+/* ======================================================= AUTO
+DETECTION ======================================================= */
 
-  /* =======================================================
-     AUTO DETECTION
-  ======================================================= */
-
-  async function detectAllPages() {
+async function detectAllPages() {
 
     if (!pages.length) {
 
@@ -1724,16 +1633,12 @@
 
     }
 
-  }
+}
 
+/* ======================================================= DETECT PAGE
+======================================================= */
 
-  /* =======================================================
-     DETECT PAGE
-  ======================================================= */
-
-  async function detectPage(
-    page
-  ) {
+async function detectPage( page ) {
 
     const {
       data,
@@ -1850,18 +1755,12 @@
 
     return [];
 
-  }
+}
 
+/* ======================================================= OPENCV
+======================================================= */
 
-  /* =======================================================
-     OPENCV
-  ======================================================= */
-
-  function detectWithOpenCV(
-    canvas,
-    page,
-    scale
-  ) {
+function detectWithOpenCV( canvas, page, scale ) {
 
     const src =
       cv.imread(
@@ -2109,18 +2008,12 @@
 
     }
 
-  }
+}
 
+/* ======================================================= CANDIDATE
+======================================================= */
 
-  /* =======================================================
-     CANDIDATE
-  ======================================================= */
-
-  function renderCandidate(
-    layer,
-    page,
-    candidate
-  ) {
+function renderCandidate( layer, page, candidate ) {
 
     const element =
       document.createElement(
@@ -2207,16 +2100,12 @@
       element
     );
 
-  }
+}
 
+/* ======================================================= ACCEPT
+CANDIDATE ======================================================= */
 
-  /* =======================================================
-     ACCEPT CANDIDATE
-  ======================================================= */
-
-  async function acceptCandidate(
-    candidate
-  ) {
+async function acceptCandidate( candidate ) {
 
     const role =
       boxRole?.value ||
@@ -2329,14 +2218,12 @@
       )}として枠を作成しました。`
     );
 
-  }
+}
 
+/* ======================================================= APPLY
+======================================================= */
 
-  /* =======================================================
-     APPLY
-  ======================================================= */
-
-  function applySelectedBox() {
+function applySelectedBox() {
 
     const box =
       getSelectedBox();
@@ -2420,14 +2307,12 @@
       )}として設定しました。`
     );
 
-  }
+}
 
+/* ======================================================= DELETE
+======================================================= */
 
-  /* =======================================================
-     DELETE
-  ======================================================= */
-
-  function deleteSelectedBox() {
+function deleteSelectedBox() {
 
     if (!selectedBoxId) {
 
@@ -2479,45 +2364,29 @@
       "選択枠を削除しました。保存するとDBにも反映されます。"
     );
 
-  }
-   /* =======================================================
-   HIERARCHY
+} /* ======================================================= HIERARCHY
 ======================================================= */
 
-function clearParent(
-  box
-) {
+function clearParent( box ) {
 
-  box.parent_box_id =
-    null;
+box.parent_box_id = null;
 
-  box.major_no =
-    null;
+box.major_no = null;
 
-  box.minor_no =
-    null;
+box.minor_no = null;
 
-  box.subtotal_group =
-    null;
+box.subtotal_group = null;
 
 }
 
-
-/* =======================================================
-   UPDATE PARENT
+/* ======================================================= UPDATE PARENT
 ======================================================= */
 
-function updateParent(
-  box
-) {
+function updateParent( box ) {
 
-  const parent =
-    findContainingMajor(
-      box
-    );
+const parent = findContainingMajor( box );
 
-
-  if (!parent) {
+if (!parent) {
 
     clearParent(
       box
@@ -2525,21 +2394,13 @@ function updateParent(
 
     return;
 
-  }
+}
 
+box.parent_box_id = parent.id;
 
-  box.parent_box_id =
-    parent.id;
+box.major_no = parent.major_no;
 
-
-  box.major_no =
-    parent.major_no;
-
-
-  if (
-    box.box_role ===
-    "minor"
-  ) {
+if ( box.box_role === “minor” ) {
 
     box.minor_no =
       null;
@@ -2547,13 +2408,9 @@ function updateParent(
     box.subtotal_group =
       null;
 
-  }
+}
 
-
-  if (
-    box.box_role ===
-    "subtotal"
-  ) {
+if ( box.box_role === “subtotal” ) {
 
     box.minor_no =
       null;
@@ -2561,29 +2418,19 @@ function updateParent(
     box.subtotal_group =
       parent.major_no;
 
-  }
+}
 
 }
 
+/* ======================================================= FIND
+CONTAINING MAJOR =======================================================
+*/
 
-/* =======================================================
-   FIND CONTAINING MAJOR
-======================================================= */
+function findContainingMajor( box ) {
 
-function findContainingMajor(
-  box
-) {
+const center = getCenter( box );
 
-  const center =
-    getCenter(
-      box
-    );
-
-
-  const majors =
-    boxes
-      .filter(
-        candidate =>
+const majors = boxes .filter( candidate =>
 
           candidate.id !==
           box.id &&
@@ -2627,42 +2474,21 @@ function findContainingMajor(
         }
       );
 
-
-  return (
-    majors[0] ||
-    null
-  );
+return ( majors[0] || null );
 
 }
 
-
-/* =======================================================
-   REBUILD HIERARCHY
-======================================================= */
+/* ======================================================= REBUILD
+HIERARCHY ======================================================= */
 
 function rebuildHierarchy() {
 
-  const majors =
-    boxes
-      .filter(
-        box =>
-          box.box_role ===
-          "major"
-      )
-      .sort(
-        compareBoxes
-      );
+const majors = boxes .filter( box => box.box_role === “major” ) .sort(
+compareBoxes );
 
+/ 大問番号 */
 
-  /*
-   * 大問番号
-   */
-
-  majors.forEach(
-    (
-      major,
-      index
-    ) => {
+majors.forEach( ( major, index ) => {
 
       major.major_no =
         index + 1;
@@ -2672,23 +2498,13 @@ function rebuildHierarchy() {
       );
 
     }
-  );
 
+);
 
-  /*
-   * 小問・小計の親を再判定
-   */
+/ 小問・小計の親を再判定 */
 
-  boxes
-    .filter(
-      box =>
-        box.box_role ===
-          "minor" ||
-        box.box_role ===
-          "subtotal"
-    )
-    .forEach(
-      box => {
+boxes .filter( box => box.box_role === “minor” || box.box_role ===
+“subtotal” ) .forEach( box => {
 
         updateParent(
           box
@@ -2697,13 +2513,9 @@ function rebuildHierarchy() {
       }
     );
 
+/ 小問番号 */
 
-  /*
-   * 小問番号
-   */
-
-  majors.forEach(
-    major => {
+majors.forEach( major => {
 
       const children =
         boxes
@@ -2736,22 +2548,13 @@ function rebuildHierarchy() {
       );
 
     }
-  );
 
+);
 
-  /*
-   * 大問外の小問
-   */
+/ 大問外の小問 */
 
-  boxes
-    .filter(
-      box =>
-        box.box_role ===
-          "minor" &&
-        !box.parent_box_id
-    )
-    .forEach(
-      box => {
+boxes .filter( box => box.box_role === “minor” && !box.parent_box_id )
+.forEach( box => {
 
         box.major_no =
           null;
@@ -2762,27 +2565,10 @@ function rebuildHierarchy() {
       }
     );
 
+/ その他の独立枠 */
 
-  /*
-   * その他の独立枠
-   */
-
-  boxes
-    .filter(
-      box =>
-        [
-          "total",
-          "qr",
-          "name",
-          "student_no",
-          "instruction",
-          "other"
-        ].includes(
-          box.box_role
-        )
-    )
-    .forEach(
-      box => {
+boxes .filter( box => [ “total”, “qr”, “name”, “student_no”,
+“instruction”, “other” ].includes( box.box_role ) ) .forEach( box => {
 
         clearParent(
           box
@@ -2793,19 +2579,12 @@ function rebuildHierarchy() {
 
 }
 
-
-/* =======================================================
-   LABEL
+/* ======================================================= LABEL
 ======================================================= */
 
-function automaticLabel(
-  role,
-  box
-) {
+function automaticLabel( role, box ) {
 
-  switch (
-    role
-  ) {
+switch ( role ) {
 
     case "major":
 
@@ -2866,23 +2645,16 @@ function automaticLabel(
 
       return "その他";
 
-  }
+}
 
 }
 
-
-/* =======================================================
-   UPDATE LABELS
+/* ======================================================= UPDATE LABELS
 ======================================================= */
 
 function updateAllLabels() {
 
-  document
-    .querySelectorAll(
-      ".layout-box"
-    )
-    .forEach(
-      element => {
+document .querySelectorAll( “.layout-box” ) .forEach( element => {
 
         const box =
           boxes.find(
@@ -2933,14 +2705,12 @@ function updateAllLabels() {
 
 }
 
-
-/* =======================================================
-   SAVE
+/* ======================================================= SAVE
 ======================================================= */
 
 async function saveBoxes() {
 
-  if (!selectedTestId) {
+if (!selectedTestId) {
 
     setStatus(
       "テストIDがありません。",
@@ -2949,14 +2719,11 @@ async function saveBoxes() {
 
     return;
 
-  }
+}
 
+saveButton.disabled = true;
 
-  saveButton.disabled =
-    true;
-
-
-  try {
+try {
 
     rebuildHierarchy();
 
@@ -3144,8 +2911,7 @@ async function saveBoxes() {
       `枠設定を保存しました。${boxes.length}個の枠を登録しました。`
     );
 
-
-  } catch (error) {
+} catch (error) {
 
     console.error(
       "saveBoxes:",
@@ -3159,28 +2925,23 @@ async function saveBoxes() {
       true
     );
 
-  } finally {
+} finally {
 
     saveButton.disabled =
       false;
 
-  }
+}
 
 }
 
-
-/* =======================================================
-   VALIDATE
+/* ======================================================= VALIDATE
 ======================================================= */
 
 function validateBoxes() {
 
-  const ids =
-    new Set();
+const ids = new Set();
 
-
-  boxes.forEach(
-    box => {
+boxes.forEach( box => {
 
       if (
         ids.has(
@@ -3321,37 +3082,27 @@ function validateBoxes() {
       }
 
     }
-  );
+
+);
 
 }
 
-
-/* =======================================================
-   ROLE HELP
+/* ======================================================= ROLE HELP
 ======================================================= */
 
 function updateRoleHelp() {
 
-  if (!parentInfo) {
+if (!parentInfo) {
 
     return;
 
-  }
+}
 
+const box = getSelectedBox();
 
-  const box =
-    getSelectedBox();
+const role = box?.box_role || boxRole?.value || “answer”;
 
-
-  const role =
-    box?.box_role ||
-    boxRole?.value ||
-    "answer";
-
-
-  switch (
-    role
-  ) {
+switch ( role ) {
 
     case "major":
 
@@ -3432,92 +3183,60 @@ function updateRoleHelp() {
 
       break;
 
-  }
+}
 
 }
 
-
-/* =======================================================
-   PANEL
+/* ======================================================= PANEL
 ======================================================= */
 
 function openBoxPanel() {
 
-  if (!boxPanel) {
+if (!boxPanel) {
 
     return;
 
-  }
-
-
-  boxPanel.classList.add(
-    "open"
-  );
-
-
-  boxPanel.style.display =
-    "block";
-
 }
 
+boxPanel.classList.add( “open” );
+
+boxPanel.style.display = “block”;
+
+}
 
 function closeBoxPanel() {
 
-  if (!boxPanel) {
+if (!boxPanel) {
 
     return;
-
-  }
-
-
-  /*
-   * 枠設定ツール自体は
-   * 画面から消さない。
-   *
-   * 選択だけ解除。
-   */
-
-  selectedBoxId =
-    null;
-
-
-  updateAllLabels();
-
-  updateRoleHelp();
 
 }
 
+/ 枠設定ツール自体は * 画面から消さない。 選択だけ解除。 */
 
-/* =======================================================
-   KEYBOARD
+selectedBoxId = null;
+
+updateAllLabels();
+
+updateRoleHelp();
+
+}
+
+/* ======================================================= KEYBOARD
 ======================================================= */
 
-function handleKeyboard(
-  event
-) {
+function handleKeyboard( event ) {
 
-  const target =
-    event.target;
+const target = event.target;
 
-
-  if (
-    target instanceof
-      HTMLInputElement ||
-    target instanceof
-      HTMLTextAreaElement ||
-    target instanceof
-      HTMLSelectElement
-  ) {
+if ( target instanceof HTMLInputElement || target instanceof
+HTMLTextAreaElement || target instanceof HTMLSelectElement ) {
 
     return;
 
-  }
+}
 
-
-  if (
-    event.key ===
-    "Delete"
-  ) {
+if ( event.key === “Delete” ) {
 
     if (
       selectedBoxId
@@ -3529,13 +3248,9 @@ function handleKeyboard(
 
     }
 
-  }
+}
 
-
-  if (
-    event.key ===
-    "Escape"
-  ) {
+if ( event.key === “Escape” ) {
 
     cancelDrawing();
 
@@ -3558,20 +3273,16 @@ function handleKeyboard(
 
     updateAllLabels();
 
-  }
+}
 
 }
 
-
-/* =======================================================
-   BACK
+/* ======================================================= BACK
 ======================================================= */
 
 function goBack() {
 
-  if (
-    selectedTestId
-  ) {
+if ( selectedTestId ) {
 
     window.location.href =
       `/teacher/tests/edit?id=${encodeURIComponent(
@@ -3580,82 +3291,51 @@ function goBack() {
 
     return;
 
-  }
+}
 
-
-  window.location.href =
-    "/teacher/tests";
+window.location.href = “/teacher/tests”;
 
 }
 
-
-/* =======================================================
-   STATUS
+/* ======================================================= STATUS
 ======================================================= */
 
-function setStatus(
-  message,
-  isError = false
-) {
+function setStatus( message, isError = false ) {
 
-  if (!statusElement) {
+if (!statusElement) {
 
     return;
 
-  }
+}
 
+statusElement.textContent = message;
 
-  statusElement.textContent =
-    message;
-
-
-  statusElement.style.color =
-    isError
-      ? "#b42318"
-      : "";
+statusElement.style.color = isError ? “#b42318” : ““;
 
 }
 
+function showError( message ) {
 
-function showError(
-  message
-) {
-
-  setStatus(
-    message,
-    true
-  );
+setStatus( message, true );
 
 }
 
-
-/* =======================================================
-   STYLE
+/* ======================================================= STYLE
 ======================================================= */
 
-function applyRoleStyle(
-  element,
-  role
-) {
+function applyRoleStyle( element, role ) {
 
-  if (!element) {
+if (!element) {
 
     return;
 
-  }
+}
 
+element.style.border = “2px solid #666”;
 
-  element.style.border =
-    "2px solid #666";
+element.style.background = “rgba(0,0,0,.04)”;
 
-
-  element.style.background =
-    "rgba(0,0,0,.04)";
-
-
-  switch (
-    role
-  ) {
+switch ( role ) {
 
     case "major":
 
@@ -3746,13 +3426,9 @@ function applyRoleStyle(
 
       break;
 
-  }
+}
 
-
-  if (
-    selectedBoxId ===
-    element.dataset.boxId
-  ) {
+if ( selectedBoxId === element.dataset.boxId ) {
 
     element.style.outline =
       "3px solid #111";
@@ -3760,7 +3436,7 @@ function applyRoleStyle(
     element.style.outlineOffset =
       "1px";
 
-  } else {
+} else {
 
     element.style.outline =
       "";
@@ -3768,38 +3444,24 @@ function applyRoleStyle(
     element.style.outlineOffset =
       "";
 
-  }
+}
 
 }
 
-
-/* =======================================================
-   UTIL
+/* ======================================================= UTIL
 ======================================================= */
 
-function isUuid(
-  value
-) {
+function isUuid( value ) {
 
-  return (
-    typeof value ===
-      "string" &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-      .test(
-        value
-      )
-  );
+return ( typeof value === “string” &&
+/[1]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+.test( value ) );
 
 }
 
+function inferRole( box ) {
 
-function inferRole(
-  box
-) {
-
-  switch (
-    box.box_type
-  ) {
+switch ( box.box_type ) {
 
     case "qr":
 
@@ -3825,27 +3487,18 @@ function inferRole(
 
       return "other";
 
-  }
+}
 
 }
 
+/* ======================================================= FILE PARSER /
+UPLOAD ======================================================= */
 
-})();
-/* =======================================================
-   FILE PARSER / UPLOAD
-======================================================= */
+async function parseInputFile( file ) {
 
-async function parseInputFile(
-  file
-) {
+/ 既存の共通ファイル解析エンジンを優先。 */
 
-  /*
-   * 既存の共通ファイル解析エンジンを優先。
-   */
-
-  if (
-    window.TEST_SCORE_FILES?.parseFile
-  ) {
+if ( window.TEST_SCORE_FILES?.parseFile ) {
 
     const result =
       await window.TEST_SCORE_FILES
@@ -3883,37 +3536,19 @@ async function parseInputFile(
       })
     );
 
-  }
+}
 
+const extension = getExtension( file.name );
 
-  const extension =
-    getExtension(
-      file.name
-    );
-
-
-  if (
-    extension ===
-    "pdf"
-  ) {
+if ( extension === “pdf” ) {
 
     return convertPdfToBlobs(
       file
     );
 
-  }
+}
 
-
-  if (
-    [
-      "jpg",
-      "jpeg",
-      "png",
-      "webp"
-    ].includes(
-      extension
-    )
-  ) {
+if ( [ “jpg”, “jpeg”, “png”, “webp” ].includes( extension ) ) {
 
     const image =
       await loadImageFromBlob(
@@ -3949,51 +3584,26 @@ async function parseInputFile(
 
     ];
 
-  }
+}
 
-
-  throw new Error(
-    "PDF、JPG、JPEG、PNG、WEBPのみ登録できます。"
-  );
+throw new Error( “PDF、JPG、JPEG、PNG、WEBPのみ登録できます。” );
 
 }
 
-
-/* =======================================================
-   PDF → BLOBS
+/* ======================================================= PDF → BLOBS
 ======================================================= */
 
-async function convertPdfToBlobs(
-  file
-) {
+async function convertPdfToBlobs( file ) {
 
-  const pdfjs =
-    await loadPdfJs();
+const pdfjs = await loadPdfJs();
 
+const buffer = await file.arrayBuffer();
 
-  const buffer =
-    await file.arrayBuffer();
+const pdf = await pdfjs .getDocument({ data: buffer }) .promise;
 
+const result = [];
 
-  const pdf =
-    await pdfjs
-      .getDocument({
-        data:
-          buffer
-      })
-      .promise;
-
-
-  const result =
-    [];
-
-
-  for (
-    let pageNo = 1;
-    pageNo <=
-    pdf.numPages;
-    pageNo++
-  ) {
+for ( let pageNo = 1; pageNo <= pdf.numPages; pageNo++ ) {
 
     const page =
       await pdf.getPage(
@@ -4091,33 +3701,24 @@ async function convertPdfToBlobs(
 
     });
 
-  }
+}
 
-
-  return result;
+return result;
 
 }
 
-
-/* =======================================================
-   LOAD PDF.JS
+/* ======================================================= LOAD PDF.JS
 ======================================================= */
 
 function loadPdfJs() {
 
-  if (pdfPromise) {
+if (pdfPromise) {
 
     return pdfPromise;
 
-  }
+}
 
-
-  pdfPromise =
-    new Promise(
-      (
-        resolve,
-        reject
-      ) => {
+pdfPromise = new Promise( ( resolve, reject ) => {
 
         if (
           window.pdfjsLib
@@ -4205,25 +3806,16 @@ function loadPdfJs() {
       }
     );
 
-
-  return pdfPromise;
+return pdfPromise;
 
 }
 
+/* ======================================================= IMAGE FROM
+BLOB ======================================================= */
 
-/* =======================================================
-   IMAGE FROM BLOB
-======================================================= */
+function loadImageFromBlob( blob ) {
 
-function loadImageFromBlob(
-  blob
-) {
-
-  return new Promise(
-    (
-      resolve,
-      reject
-    ) => {
+return new Promise( ( resolve, reject ) => {
 
       const url =
         URL.createObjectURL(
@@ -4271,80 +3863,40 @@ function loadImageFromBlob(
         url;
 
     }
-  );
+
+);
 
 }
 
-
-/* =======================================================
-   IMAGE → PNG
+/* ======================================================= IMAGE → PNG
 ======================================================= */
 
-function imageToPng(
-  image
-) {
+function imageToPng( image ) {
 
-  const canvas =
-    document.createElement(
-      "canvas"
-    );
+const canvas = document.createElement( “canvas” );
 
+canvas.width = image.naturalWidth;
 
-  canvas.width =
-    image.naturalWidth;
+canvas.height = image.naturalHeight;
 
+const context = canvas.getContext( “2d” );
 
-  canvas.height =
-    image.naturalHeight;
+context.fillStyle = “#ffffff”;
 
+context.fillRect( 0, 0, canvas.width, canvas.height );
 
-  const context =
-    canvas.getContext(
-      "2d"
-    );
+context.drawImage( image, 0, 0 );
 
-
-  context.fillStyle =
-    "#ffffff";
-
-
-  context.fillRect(
-    0,
-    0,
-    canvas.width,
-    canvas.height
-  );
-
-
-  context.drawImage(
-    image,
-    0,
-    0
-  );
-
-
-  return canvasToBlob(
-    canvas,
-    "image/png"
-  );
+return canvasToBlob( canvas, “image/png” );
 
 }
 
-
-/* =======================================================
-   CANVAS → BLOB
+/* ======================================================= CANVAS → BLOB
 ======================================================= */
 
-function canvasToBlob(
-  canvas,
-  type
-) {
+function canvasToBlob( canvas, type ) {
 
-  return new Promise(
-    (
-      resolve,
-      reject
-    ) => {
+return new Promise( ( resolve, reject ) => {
 
       canvas.toBlob(
         blob => {
@@ -4372,27 +3924,20 @@ function canvasToBlob(
       );
 
     }
-  );
+
+);
 
 }
 
-
-/* =======================================================
-   AUTO DETECTION HELPERS
+/* ======================================================= AUTO
+DETECTION HELPERS
 ======================================================= */
 
-function deduplicateCandidates(
-  list
-) {
+function deduplicateCandidates( list ) {
 
-  const result =
-    [];
+const result = [];
 
-
-  for (
-    const candidate
-    of list
-  ) {
+for ( const candidate of list ) {
 
     const duplicate =
       result.some(
@@ -4419,151 +3964,68 @@ function deduplicateCandidates(
 
     }
 
-  }
+}
 
-
-  return result;
+return result;
 
 }
 
+function overlapRatio( a, b ) {
 
-function overlapRatio(
-  a,
-  b
-) {
+const left = Math.max( Number(a.x), Number(b.x) );
 
-  const left =
-    Math.max(
-      Number(a.x),
-      Number(b.x)
-    );
+const top = Math.max( Number(a.y), Number(b.y) );
 
+const right = Math.min( Number(a.x) + Number(a.width), Number(b.x) +
+Number(b.width) );
 
-  const top =
-    Math.max(
-      Number(a.y),
-      Number(b.y)
-    );
+const bottom = Math.min( Number(a.y) + Number(a.height), Number(b.y) +
+Number(b.height) );
 
-
-  const right =
-    Math.min(
-      Number(a.x) +
-      Number(a.width),
-      Number(b.x) +
-      Number(b.width)
-    );
-
-
-  const bottom =
-    Math.min(
-      Number(a.y) +
-      Number(a.height),
-      Number(b.y) +
-      Number(b.height)
-    );
-
-
-  if (
-    right <=
-    left ||
-    bottom <=
-    top
-  ) {
+if ( right <= left || bottom <= top ) {
 
     return 0;
 
-  }
+}
 
+const intersection = ( right - left ) * ( bottom - top );
 
-  const intersection =
-    (
-      right -
-      left
-    ) *
-    (
-      bottom -
-      top
-    );
+const areaA = Number(a.width) * Number(a.height);
 
+const areaB = Number(b.width) * Number(b.height);
 
-  const areaA =
-    Number(a.width) *
-    Number(a.height);
-
-
-  const areaB =
-    Number(b.width) *
-    Number(b.height);
-
-
-  if (
-    areaA <=
-    0 ||
-    areaB <=
-    0
-  ) {
+if ( areaA <= 0 || areaB <= 0 ) {
 
     return 0;
 
-  }
+}
 
-
-  return (
-    intersection /
-    Math.min(
-      areaA,
-      areaB
-    )
-  );
+return ( intersection / Math.min( areaA, areaB ) );
 
 }
 
-
-/* =======================================================
-   EXTENSION
+/* ======================================================= EXTENSION
 ======================================================= */
 
-function getExtension(
-  value
-) {
+function getExtension( value ) {
 
-  const clean =
-    String(
-      value ||
-      ""
-    )
-      .split("?")[0]
-      .split("#")[0];
+const clean = String( value || “” ) .split(“?”)[0] .split(“#”)[0];
 
+const parts = clean.split(“.”);
 
-  const parts =
-    clean.split(".");
-
-
-  return (
-    parts.length > 1
-      ? parts
-          .pop()
-          .toLowerCase()
-      : ""
-  );
+return ( parts.length > 1 ? parts .pop() .toLowerCase() : “” );
 
 }
 
-
-/* =======================================================
-   END
+/* ======================================================= END
 ======================================================= */
 
-})();
-/* =======================================================
-   UPLOAD ANSWER SHEET
-======================================================= */
+})(); /* ======================================================= UPLOAD
+ANSWER SHEET ======================================================= */
 
 async function uploadAnswerSheet() {
 
-  if (!selectedTestId) {
+if (!selectedTestId) {
 
     showError(
       "テストIDが取得できません。"
@@ -4571,10 +4033,9 @@ async function uploadAnswerSheet() {
 
     return;
 
-  }
+}
 
-
-  if (!answerFile) {
+if (!answerFile) {
 
     showError(
       "解答用紙入力欄が見つかりません。"
@@ -4582,14 +4043,11 @@ async function uploadAnswerSheet() {
 
     return;
 
-  }
+}
 
+const file = answerFile.files?.[0];
 
-  const file =
-    answerFile.files?.[0];
-
-
-  if (!file) {
+if (!file) {
 
     showError(
       "解答用紙を選択してください。"
@@ -4597,26 +4055,11 @@ async function uploadAnswerSheet() {
 
     return;
 
-  }
+}
 
+const extension = getExtension( file.name );
 
-  const extension =
-    getExtension(
-      file.name
-    );
-
-
-  if (
-    ![
-      "pdf",
-      "jpg",
-      "jpeg",
-      "png",
-      "webp"
-    ].includes(
-      extension
-    )
-  ) {
+if ( ![ “pdf”, “jpg”, “jpeg”, “png”, “webp” ].includes( extension ) ) {
 
     showError(
       "PDF、JPG、JPEG、PNG、WEBPのみ対応しています。"
@@ -4624,10 +4067,9 @@ async function uploadAnswerSheet() {
 
     return;
 
-  }
+}
 
-
-  try {
+try {
 
     uploadButton.disabled =
       true;
@@ -4978,8 +4420,7 @@ async function uploadAnswerSheet() {
 
     await detectAllPages();
 
-
-  } catch (error) {
+} catch (error) {
 
     console.error(
       "解答用紙登録エラー:",
@@ -4992,11 +4433,16 @@ async function uploadAnswerSheet() {
       "解答用紙の登録に失敗しました。"
     );
 
-  } finally {
+} finally {
 
     uploadButton.disabled =
       false;
 
-  }
+}
 
 }
+
+/* ======================================================= END
+======================================================= */
+
+})();

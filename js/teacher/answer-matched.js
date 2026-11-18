@@ -1,4 +1,3 @@
-
 "use strict";
 
 /* =========================================================
@@ -404,7 +403,7 @@ async function loadAnswers() {
     answers.filter(
       answer =>
         answer.status ===
-        "uploaded" &&
+        "matched" &&
         answer.student_id
     ).length;
 
@@ -448,14 +447,14 @@ function renderAnswers() {
 
   if (
     selectedStatus ===
-    "uploaded"
+    "matched"
   ) {
 
     visible =
       answers.filter(
         answer =>
           answer.status ===
-            "uploaded" &&
+            "matched" &&
           !!answer.student_id
       );
 
@@ -942,7 +941,7 @@ async function saveStudent(
             studentId,
 
           status:
-            "uploaded"
+            "matched"
 
         })
         .eq(

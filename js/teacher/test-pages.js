@@ -1,92 +1,127 @@
 /* =========================================================
-テスト成績システム js/teacher/test-pages.js
+   テスト成績システム
+   js/teacher/test-pages.js
 
-解答用紙登録 + 枠設定
+   解答用紙登録 + 枠設定
 ========================================================= */
 
 (function () {
 
-“use strict”;
+  "use strict";
 
-/* ======================================================= STATE
-======================================================= */
 
-let selectedTestId = null;
+  /* =======================================================
+     STATE
+  ======================================================= */
 
-let pages = [];
+  let selectedTestId = null;
 
-let boxes = [];
+  let pages = [];
 
-let candidates = [];
+  let boxes = [];
 
-let selectedBoxId = null;
+  let candidates = [];
 
-let drawing = false;
+  let selectedBoxId = null;
 
-let drawingPointerId = null;
+  let drawing = false;
 
-let drawStart = null;
+  let drawingPointerId = null;
 
-let drawPage = null;
+  let drawStart = null;
 
-let drawLayer = null;
+  let drawPage = null;
 
-let drawPreview = null;
+  let drawLayer = null;
 
-let dragMode = null;
+  let drawPreview = null;
 
-let dragPointerId = null;
+  let dragMode = null;
 
-let dragBoxId = null;
+  let dragPointerId = null;
 
-let dragStart = null;
+  let dragBoxId = null;
 
-let dragOriginal = null;
+  let dragStart = null;
 
-let pdfPromise = null;
+  let dragOriginal = null;
 
-/* ======================================================= DOM
-======================================================= */
+  let pdfPromise = null;
 
-const viewer = document.getElementById(“viewer”);
 
-const statusElement = document.getElementById(“status”);
+  /* =======================================================
+     DOM
+  ======================================================= */
 
-const answerFile = document.getElementById(“answerFile”);
+  const viewer =
+    document.getElementById("viewer");
 
-const uploadButton = document.getElementById(“uploadButton”);
+  const statusElement =
+    document.getElementById("status");
 
-const saveButton = document.getElementById(“saveButton”);
+  const answerFile =
+    document.getElementById("answerFile");
 
-const backButton = document.getElementById(“backButton”);
+  const uploadButton =
+    document.getElementById("uploadButton");
 
-const boxPanel = document.getElementById(“boxPanel”);
+  const saveButton =
+    document.getElementById("saveButton");
 
-const boxRole = document.getElementById(“boxRole”);
+  const backButton =
+    document.getElementById("backButton");
 
-const parentInfo = document.getElementById(“parentInfo”);
+  const boxPanel =
+    document.getElementById("boxPanel");
 
-const applyButton = document.getElementById(“applyButton”);
+  const boxRole =
+    document.getElementById("boxRole");
 
-const deleteSelectedButton = document.getElementById(
-“deleteSelectedButton” );
+  const parentInfo =
+    document.getElementById("parentInfo");
 
-const closePanelButton = document.getElementById( “closePanelButton” );
+  const applyButton =
+    document.getElementById("applyButton");
 
-const detectButton = document.getElementById( “detectButton” );
+  const deleteSelectedButton =
+    document.getElementById(
+      "deleteSelectedButton"
+    );
 
-const detectButtonTop = document.getElementById( “detectButtonTop” );
+  const closePanelButton =
+    document.getElementById(
+      "closePanelButton"
+    );
 
-/* ======================================================= DB TYPES
-======================================================= */
+  const detectButton =
+    document.getElementById(
+      "detectButton"
+    );
 
-const ALLOWED_BOX_TYPES = [ “answer”, “qr”, “student_no”, “name”,
-“other” ];
+  const detectButtonTop =
+    document.getElementById(
+      "detectButtonTop"
+    );
 
-/* ======================================================= ROLES
-======================================================= */
 
-const ROLE_INFO = {
+  /* =======================================================
+     DB TYPES
+  ======================================================= */
+
+  const ALLOWED_BOX_TYPES = [
+    "answer",
+    "qr",
+    "student_no",
+    "name",
+    "other"
+  ];
+
+
+  /* =======================================================
+     ROLES
+  ======================================================= */
+
+  const ROLE_INFO = {
 
     major: {
       label: "大問",
@@ -138,14 +173,20 @@ const ROLE_INFO = {
       boxType: "other"
     }
 
-};
+  };
 
-/* ======================================================= INIT
-======================================================= */
 
-document.addEventListener( “DOMContentLoaded”, initialize );
+  /* =======================================================
+     INIT
+  ======================================================= */
 
-async function initialize() {
+  document.addEventListener(
+    "DOMContentLoaded",
+    initialize
+  );
+
+
+  async function initialize() {
 
     try {
 
@@ -223,12 +264,14 @@ async function initialize() {
 
     }
 
-}
+  }
 
-/* ======================================================= EVENTS
-======================================================= */
 
-function setupEvents() {
+  /* =======================================================
+     EVENTS
+  ======================================================= */
+
+  function setupEvents() {
 
     uploadButton?.addEventListener(
       "click",
@@ -301,12 +344,14 @@ function setupEvents() {
       handleKeyboard
     );
 
-}
+  }
 
-/* ======================================================= LOAD LAYOUT
-======================================================= */
 
-async function loadLayout() {
+  /* =======================================================
+     LOAD LAYOUT
+  ======================================================= */
+
+  async function loadLayout() {
 
     setStatus(
       "解答用紙と枠設定を読み込んでいます..."
@@ -431,12 +476,14 @@ async function loadLayout() {
       `解答用紙 ${pages.length}ページ、枠 ${boxes.length}個を読み込みました。`
     );
 
-}
+  }
 
-/* ======================================================= NORMALIZE
-======================================================= */
 
-function normalizeBoxes() {
+  /* =======================================================
+     NORMALIZE
+  ======================================================= */
+
+  function normalizeBoxes() {
 
     boxes.forEach(
       box => {
@@ -492,12 +539,14 @@ function normalizeBoxes() {
       }
     );
 
-}
+  }
 
-/* ======================================================= SELECTED BOX
-======================================================= */
 
-function getSelectedBox() {
+  /* =======================================================
+     SELECTED BOX
+  ======================================================= */
+
+  function getSelectedBox() {
 
     if (!selectedBoxId) {
 
@@ -515,9 +564,12 @@ function getSelectedBox() {
       null
     );
 
-}
+  }
 
-function selectBox( id ) {
+
+  function selectBox(
+    id
+  ) {
 
     selectedBoxId =
       id;
@@ -544,12 +596,14 @@ function selectBox( id ) {
 
     openBoxPanel();
 
-}
+  }
 
-/* ======================================================= RENDER ALL
-PAGES ======================================================= */
 
-async function renderAllPages() {
+  /* =======================================================
+     RENDER ALL PAGES
+  ======================================================= */
+
+  async function renderAllPages() {
 
     if (!viewer) {
 
@@ -596,12 +650,16 @@ async function renderAllPages() {
 
     }
 
-}
+  }
 
-/* ======================================================= RENDER PAGE
-======================================================= */
 
-async function renderPage( page ) {
+  /* =======================================================
+     RENDER PAGE
+  ======================================================= */
+
+  async function renderPage(
+    page
+  ) {
 
     const wrapper =
       document.createElement(
@@ -710,12 +768,16 @@ async function renderPage( page ) {
         }
       );
 
-}
+  }
 
-/* ======================================================= CREATE PAGE
-IMAGE ======================================================= */
 
-async function createPageImage( page ) {
+  /* =======================================================
+     CREATE PAGE IMAGE
+  ======================================================= */
+
+  async function createPageImage(
+    page
+  ) {
 
     const {
       data,
@@ -770,12 +832,17 @@ async function createPageImage( page ) {
 
     return image;
 
-}
+  }
 
-/* ======================================================= DRAWING
-======================================================= */
 
-function setupDrawing( layer, page ) {
+  /* =======================================================
+     DRAWING
+  ======================================================= */
+
+  function setupDrawing(
+    layer,
+    page
+  ) {
 
     layer.addEventListener(
       "pointerdown",
@@ -909,12 +976,16 @@ function setupDrawing( layer, page ) {
       cancelDrawing
     );
 
-}
+  }
 
-/* ======================================================= DRAW PREVIEW
-======================================================= */
 
-function updateDrawPreview( event ) {
+  /* =======================================================
+     DRAW PREVIEW
+  ======================================================= */
+
+  function updateDrawPreview(
+    event
+  ) {
 
     if (
       !drawPreview ||
@@ -973,12 +1044,16 @@ function updateDrawPreview( event ) {
         drawStart.y
       )}px`;
 
-}
+  }
 
-/* ======================================================= FINISH
-DRAWING ======================================================= */
 
-async function finishDrawing( event ) {
+  /* =======================================================
+     FINISH DRAWING
+  ======================================================= */
+
+  async function finishDrawing(
+    event
+  ) {
 
     const layer =
       drawLayer;
@@ -1162,12 +1237,14 @@ async function finishDrawing( event ) {
       )}を追加しました。`
     );
 
-}
+  }
 
-/* ======================================================= CANCEL
-DRAWING ======================================================= */
 
-function cancelDrawing() {
+  /* =======================================================
+     CANCEL DRAWING
+  ======================================================= */
+
+  function cancelDrawing() {
 
     drawPreview?.remove();
 
@@ -1195,227 +1272,8 @@ function cancelDrawing() {
     drawPreview =
       null;
 
-} /* ======================================================= RENDER BOX
-======================================================= */
-
-function renderBox( layer, page, box ) {
-
-    const element =
-      document.createElement(
-        "div"
-      );
-
-
-    element.className =
-      "layout-box";
-
-
-    element.dataset.boxId =
-      box.id;
-
-
-    const scale =
-      getPageScale(
-        layer,
-        page
-      );
-
-
-    element.style.left =
-      `${Number(box.x) * scale}px`;
-
-
-    element.style.top =
-      `${Number(box.y) * scale}px`;
-
-
-    element.style.width =
-      `${Number(box.width) * scale}px`;
-
-
-    element.style.height =
-      `${Number(box.height) * scale}px`;
-
-
-    applyRoleStyle(
-      element,
-      box.box_role
-    );
-
-
-    const label =
-      document.createElement(
-        "div"
-      );
-
-
-    label.className =
-      "layout-box-label";
-
-
-    label.textContent =
-      automaticLabel(
-        box.box_role,
-        box
-      );
-
-
-    element.appendChild(
-      label
-    );
-
-
-    const resize =
-      document.createElement(
-        "div"
-      );
-
-
-    resize.className =
-      "resize-handle";
-
-
-    element.appendChild(
-      resize
-    );
-
-
-    layer.appendChild(
-      element
-    );
-
-
-    element.addEventListener(
-      "pointerdown",
-      event => {
-
-        event.preventDefault();
-
-        event.stopPropagation();
-
-
-        selectBox(
-          box.id
-        );
-
-
-        dragMode =
-          event.target ===
-          resize
-            ? "resize"
-            : "move";
-
-
-        dragPointerId =
-          event.pointerId;
-
-
-        dragBoxId =
-          box.id;
-
-
-        dragStart = {
-
-          x:
-            event.clientX,
-
-          y:
-            event.clientY
-
-        };
-
-
-        dragOriginal = {
-
-          x:
-            Number(box.x),
-
-          y:
-            Number(box.y),
-
-          width:
-            Number(box.width),
-
-          height:
-            Number(box.height)
-
-        };
-
-
-        try {
-
-          element.setPointerCapture(
-            event.pointerId
-          );
-
-        } catch (_) {}
-
-      }
-    );
-
-
-    element.addEventListener(
-      "pointermove",
-      event => {
-
-        if (
-          dragBoxId !== box.id ||
-          dragPointerId !==
-          event.pointerId
-        ) {
-
-          return;
-
-        }
-
-
-        const scale =
-          getPageScale(
-            layer,
-            page
-          );
-
-
-        const dx =
-          (
-            event.clientX -
-            dragStart.x
-          ) /
-          scale;
-
-
-        const dy =
-          (
-            event.clientY -
-            dragStart.y
-          ) /
-          scale;
-
-
-        if (
-          dragMode ===
-          "move"
-        ) {
-
-          box.x =
-            Math.max(
-              0,
-              dragOriginal.x +
-              dx
-            );
-
-
-          box.y =
-            Math.max(
-              0,
-              dragOriginal.y +
-              dy
-            );
-
-        }
-
-
-        else if (
+  }
+            else if (
           dragMode ===
           "resize"
         ) {
@@ -1517,12 +1375,18 @@ function renderBox( layer, page, box ) {
 
     }
 
-}
+  }
 
-/* ======================================================= UPDATE BOX
-ELEMENT ======================================================= */
 
-function updateBoxElement( element, page, box ) {
+  /* =======================================================
+     UPDATE BOX ELEMENT
+  ======================================================= */
+
+  function updateBoxElement(
+    element,
+    page,
+    box
+  ) {
 
     const layer =
       element.parentElement;
@@ -1550,12 +1414,14 @@ function updateBoxElement( element, page, box ) {
     element.style.height =
       `${Number(box.height) * scale}px`;
 
-}
+  }
 
-/* ======================================================= AUTO
-DETECTION ======================================================= */
 
-async function detectAllPages() {
+  /* =======================================================
+     AUTO DETECTION
+  ======================================================= */
+
+  async function detectAllPages() {
 
     if (!pages.length) {
 
@@ -1633,12 +1499,16 @@ async function detectAllPages() {
 
     }
 
-}
+  }
 
-/* ======================================================= DETECT PAGE
-======================================================= */
 
-async function detectPage( page ) {
+  /* =======================================================
+     DETECT PAGE
+  ======================================================= */
+
+  async function detectPage(
+    page
+  ) {
 
     const {
       data,
@@ -1731,11 +1601,11 @@ async function detectPage( page ) {
 
 
     /*
-     * OpenCV.jsが利用できる場合のみ
+     * OpenCV.jsが読み込まれている場合のみ
      * 輪郭検出を使用。
      *
-     * OpenCVが無くても、
-     * 手動ドラッグには影響しない。
+     * OpenCVが無くても
+     * 手動枠設定は使用可能。
      */
 
     if (
@@ -1755,12 +1625,18 @@ async function detectPage( page ) {
 
     return [];
 
-}
+  }
 
-/* ======================================================= OPENCV
-======================================================= */
 
-function detectWithOpenCV( canvas, page, scale ) {
+  /* =======================================================
+     OPENCV
+  ======================================================= */
+
+  function detectWithOpenCV(
+    canvas,
+    page,
+    scale
+  ) {
 
     const src =
       cv.imread(
@@ -1875,8 +1751,10 @@ function detectWithOpenCV( canvas, page, scale ) {
 
 
           if (
-            approx.rows < 4 ||
-            approx.rows > 6
+            approx.rows <
+            4 ||
+            approx.rows >
+            6
           ) {
 
             continue;
@@ -1907,8 +1785,10 @@ function detectWithOpenCV( canvas, page, scale ) {
 
 
           if (
-            ratio < 0.15 ||
-            ratio > 8
+            ratio <
+            0.15 ||
+            ratio >
+            8
           ) {
 
             continue;
@@ -2008,12 +1888,18 @@ function detectWithOpenCV( canvas, page, scale ) {
 
     }
 
-}
+  }
 
-/* ======================================================= CANDIDATE
-======================================================= */
 
-function renderCandidate( layer, page, candidate ) {
+  /* =======================================================
+     CANDIDATE
+  ======================================================= */
+
+  function renderCandidate(
+    layer,
+    page,
+    candidate
+  ) {
 
     const element =
       document.createElement(
@@ -2100,12 +1986,16 @@ function renderCandidate( layer, page, candidate ) {
       element
     );
 
-}
+  }
 
-/* ======================================================= ACCEPT
-CANDIDATE ======================================================= */
 
-async function acceptCandidate( candidate ) {
+  /* =======================================================
+     ACCEPT CANDIDATE
+  ======================================================= */
+
+  async function acceptCandidate(
+    candidate
+  ) {
 
     const role =
       boxRole?.value ||
@@ -2218,12 +2108,14 @@ async function acceptCandidate( candidate ) {
       )}として枠を作成しました。`
     );
 
-}
+  }
 
-/* ======================================================= APPLY
-======================================================= */
 
-function applySelectedBox() {
+  /* =======================================================
+     APPLY
+  ======================================================= */
+
+  function applySelectedBox() {
 
     const box =
       getSelectedBox();
@@ -2307,12 +2199,14 @@ function applySelectedBox() {
       )}として設定しました。`
     );
 
-}
+  }
 
-/* ======================================================= DELETE
-======================================================= */
 
-function deleteSelectedBox() {
+  /* =======================================================
+     DELETE
+  ======================================================= */
+
+  function deleteSelectedBox() {
 
     if (!selectedBoxId) {
 
@@ -2364,410 +2258,7 @@ function deleteSelectedBox() {
       "選択枠を削除しました。保存するとDBにも反映されます。"
     );
 
-} /* ======================================================= HIERARCHY
-======================================================= */
-
-function clearParent( box ) {
-
-box.parent_box_id = null;
-
-box.major_no = null;
-
-box.minor_no = null;
-
-box.subtotal_group = null;
-
-}
-
-/* ======================================================= UPDATE PARENT
-======================================================= */
-
-function updateParent( box ) {
-
-const parent = findContainingMajor( box );
-
-if (!parent) {
-
-    clearParent(
-      box
-    );
-
-    return;
-
-}
-
-box.parent_box_id = parent.id;
-
-box.major_no = parent.major_no;
-
-if ( box.box_role === “minor” ) {
-
-    box.minor_no =
-      null;
-
-    box.subtotal_group =
-      null;
-
-}
-
-if ( box.box_role === “subtotal” ) {
-
-    box.minor_no =
-      null;
-
-    box.subtotal_group =
-      parent.major_no;
-
-}
-
-}
-
-/* ======================================================= FIND
-CONTAINING MAJOR =======================================================
-*/
-
-function findContainingMajor( box ) {
-
-const center = getCenter( box );
-
-const majors = boxes .filter( candidate =>
-
-          candidate.id !==
-          box.id &&
-
-          candidate.box_role ===
-          "major" &&
-
-          Number(
-            candidate.page_no
-          ) ===
-          Number(
-            box.page_no
-          ) &&
-
-          pointInside(
-            center,
-            candidate
-          )
-      )
-      .sort(
-        (
-          a,
-          b
-        ) => {
-
-          const areaA =
-            Number(a.width) *
-            Number(a.height);
-
-
-          const areaB =
-            Number(b.width) *
-            Number(b.height);
-
-
-          return (
-            areaA -
-            areaB
-          );
-
-        }
-      );
-
-return ( majors[0] || null );
-
-}
-
-/* ======================================================= REBUILD
-HIERARCHY ======================================================= */
-
-function rebuildHierarchy() {
-
-const majors = boxes .filter( box => box.box_role === “major” ) .sort(
-compareBoxes );
-
-/ 大問番号 */
-
-majors.forEach( ( major, index ) => {
-
-      major.major_no =
-        index + 1;
-
-      clearParent(
-        major
-      );
-
-    }
-
-);
-
-/ 小問・小計の親を再判定 */
-
-boxes .filter( box => box.box_role === “minor” || box.box_role ===
-“subtotal” ) .forEach( box => {
-
-        updateParent(
-          box
-        );
-
-      }
-    );
-
-/ 小問番号 */
-
-majors.forEach( major => {
-
-      const children =
-        boxes
-          .filter(
-            box =>
-              box.box_role ===
-                "minor" &&
-
-              box.parent_box_id ===
-                major.id
-          )
-          .sort(
-            compareBoxes
-          );
-
-
-      children.forEach(
-        (
-          child,
-          index
-        ) => {
-
-          child.major_no =
-            major.major_no;
-
-          child.minor_no =
-            index + 1;
-
-        }
-      );
-
-    }
-
-);
-
-/ 大問外の小問 */
-
-boxes .filter( box => box.box_role === “minor” && !box.parent_box_id )
-.forEach( box => {
-
-        box.major_no =
-          null;
-
-        box.minor_no =
-          null;
-
-      }
-    );
-
-/ その他の独立枠 */
-
-boxes .filter( box => [ “total”, “qr”, “name”, “student_no”,
-“instruction”, “other” ].includes( box.box_role ) ) .forEach( box => {
-
-        clearParent(
-          box
-        );
-
-      }
-    );
-
-}
-
-/* ======================================================= LABEL
-======================================================= */
-
-function automaticLabel( role, box ) {
-
-switch ( role ) {
-
-    case "major":
-
-      return `大問${
-        box.major_no ||
-        "?"
-      }`;
-
-
-    case "minor":
-
-      return (
-        box.major_no &&
-        box.minor_no
-      )
-        ? `問${box.major_no}-${box.minor_no}`
-        : "小問";
-
-
-    case "answer":
-
-      return "解答欄";
-
-
-    case "qr":
-
-      return "QR";
-
-
-    case "subtotal":
-
-      return box.major_no
-        ? `大問${box.major_no} 小計`
-        : "小計";
-
-
-    case "total":
-
-      return "合計";
-
-
-    case "name":
-
-      return "氏名";
-
-
-    case "student_no":
-
-      return "生徒番号";
-
-
-    case "instruction":
-
-      return "説明";
-
-
-    default:
-
-      return "その他";
-
-}
-
-}
-
-/* ======================================================= UPDATE LABELS
-======================================================= */
-
-function updateAllLabels() {
-
-document .querySelectorAll( “.layout-box” ) .forEach( element => {
-
-        const box =
-          boxes.find(
-            item =>
-              item.id ===
-              element.dataset.boxId
-          );
-
-
-        if (!box) {
-
-          return;
-
-        }
-
-
-        const label =
-          element.querySelector(
-            ".layout-box-label"
-          );
-
-
-        if (label) {
-
-          label.textContent =
-            automaticLabel(
-              box.box_role,
-              box
-            );
-
-        }
-
-
-        applyRoleStyle(
-          element,
-          box.box_role
-        );
-
-
-        element.classList.toggle(
-          "selected",
-          selectedBoxId ===
-          box.id
-        );
-
-      }
-    );
-
-}
-
-/* ======================================================= SAVE
-======================================================= */
-
-async function saveBoxes() {
-
-if (!selectedTestId) {
-
-    setStatus(
-      "テストIDがありません。",
-      true
-    );
-
-    return;
-
-}
-
-saveButton.disabled = true;
-
-try {
-
-    rebuildHierarchy();
-
-
-    boxes.sort(
-      compareBoxes
-    );
-
-
-    validateBoxes();
-
-
-    setStatus(
-      "枠設定を保存しています..."
-    );
-
-
-    /*
-     * 現在のテストの枠を全削除。
-     * test_pages は削除しない。
-     */
-
-    const {
-      error:
-        deleteError
-    } =
-      await supabaseClient
-        .from(
-          "layout_boxes"
-        )
-        .delete()
-        .eq(
-          "test_id",
-          selectedTestId
-        );
-
-
-    if (deleteError) {
-
-      throw deleteError;
-
-    }
-
-
+  }
     /*
      * 再登録。
      *
@@ -2898,10 +2389,6 @@ try {
 
     /*
      * DBから再取得。
-     *
-     * これで「画面では出るが
-     * 再読み込みすると消える」
-     * 問題を防ぐ。
      */
 
     await loadLayout();
@@ -2911,7 +2398,8 @@ try {
       `枠設定を保存しました。${boxes.length}個の枠を登録しました。`
     );
 
-} catch (error) {
+
+  } catch (error) {
 
     console.error(
       "saveBoxes:",
@@ -2925,23 +2413,28 @@ try {
       true
     );
 
-} finally {
+  } finally {
 
     saveButton.disabled =
       false;
 
-}
+  }
 
 }
 
-/* ======================================================= VALIDATE
+
+/* =======================================================
+   VALIDATE
 ======================================================= */
 
 function validateBoxes() {
 
-const ids = new Set();
+  const ids =
+    new Set();
 
-boxes.forEach( box => {
+
+  boxes.forEach(
+    box => {
 
       if (
         ids.has(
@@ -3082,27 +2575,37 @@ boxes.forEach( box => {
       }
 
     }
-
-);
+  );
 
 }
 
-/* ======================================================= ROLE HELP
+
+/* =======================================================
+   ROLE HELP
 ======================================================= */
 
 function updateRoleHelp() {
 
-if (!parentInfo) {
+  if (!parentInfo) {
 
     return;
 
-}
+  }
 
-const box = getSelectedBox();
 
-const role = box?.box_role || boxRole?.value || “answer”;
+  const box =
+    getSelectedBox();
 
-switch ( role ) {
+
+  const role =
+    box?.box_role ||
+    boxRole?.value ||
+    "answer";
+
+
+  switch (
+    role
+  ) {
 
     case "major":
 
@@ -3183,60 +2686,85 @@ switch ( role ) {
 
       break;
 
-}
+  }
 
 }
 
-/* ======================================================= PANEL
+
+/* =======================================================
+   PANEL
 ======================================================= */
 
 function openBoxPanel() {
 
-if (!boxPanel) {
+  if (!boxPanel) {
 
     return;
 
+  }
+
+
+  boxPanel.classList.add(
+    "open"
+  );
+
+
+  boxPanel.style.display =
+    "block";
+
 }
 
-boxPanel.classList.add( “open” );
-
-boxPanel.style.display = “block”;
-
-}
 
 function closeBoxPanel() {
 
-if (!boxPanel) {
+  if (!boxPanel) {
 
     return;
 
+  }
+
+
+  selectedBoxId =
+    null;
+
+
+  updateAllLabels();
+
+  updateRoleHelp();
+
 }
 
-/ 枠設定ツール自体は * 画面から消さない。 選択だけ解除。 */
 
-selectedBoxId = null;
-
-updateAllLabels();
-
-updateRoleHelp();
-
-}
-
-/* ======================================================= KEYBOARD
+/* =======================================================
+   KEYBOARD
 ======================================================= */
 
-function handleKeyboard( event ) {
+function handleKeyboard(
+  event
+) {
 
-const target = event.target;
+  const target =
+    event.target;
 
-if ( target instanceof HTMLInputElement || target instanceof
-HTMLTextAreaElement || target instanceof HTMLSelectElement ) {
+
+  if (
+    target instanceof
+      HTMLInputElement ||
+    target instanceof
+      HTMLTextAreaElement ||
+    target instanceof
+      HTMLSelectElement
+  ) {
 
     return;
 
-}
+  }
 
-if ( event.key === “Delete” ) {
+
+  if (
+    event.key ===
+    "Delete"
+  ) {
 
     if (
       selectedBoxId
@@ -3248,9 +2776,13 @@ if ( event.key === “Delete” ) {
 
     }
 
-}
+  }
 
-if ( event.key === “Escape” ) {
+
+  if (
+    event.key ===
+    "Escape"
+  ) {
 
     cancelDrawing();
 
@@ -3273,16 +2805,20 @@ if ( event.key === “Escape” ) {
 
     updateAllLabels();
 
-}
+  }
 
 }
 
-/* ======================================================= BACK
+
+/* =======================================================
+   BACK
 ======================================================= */
 
 function goBack() {
 
-if ( selectedTestId ) {
+  if (
+    selectedTestId
+  ) {
 
     window.location.href =
       `/teacher/tests/edit?id=${encodeURIComponent(
@@ -3291,51 +2827,82 @@ if ( selectedTestId ) {
 
     return;
 
+  }
+
+
+  window.location.href =
+    "/teacher/tests";
+
 }
 
-window.location.href = “/teacher/tests”;
 
-}
-
-/* ======================================================= STATUS
+/* =======================================================
+   STATUS
 ======================================================= */
 
-function setStatus( message, isError = false ) {
+function setStatus(
+  message,
+  isError = false
+) {
 
-if (!statusElement) {
+  if (!statusElement) {
 
     return;
 
+  }
+
+
+  statusElement.textContent =
+    message;
+
+
+  statusElement.style.color =
+    isError
+      ? "#b42318"
+      : "";
+
 }
 
-statusElement.textContent = message;
 
-statusElement.style.color = isError ? “#b42318” : ““;
+function showError(
+  message
+) {
+
+  setStatus(
+    message,
+    true
+  );
 
 }
 
-function showError( message ) {
 
-setStatus( message, true );
-
-}
-
-/* ======================================================= STYLE
+/* =======================================================
+   STYLE
 ======================================================= */
 
-function applyRoleStyle( element, role ) {
+function applyRoleStyle(
+  element,
+  role
+) {
 
-if (!element) {
+  if (!element) {
 
     return;
 
-}
+  }
 
-element.style.border = “2px solid #666”;
 
-element.style.background = “rgba(0,0,0,.04)”;
+  element.style.border =
+    "2px solid #666";
 
-switch ( role ) {
+
+  element.style.background =
+    "rgba(0,0,0,.04)";
+
+
+  switch (
+    role
+  ) {
 
     case "major":
 
@@ -3426,9 +2993,13 @@ switch ( role ) {
 
       break;
 
-}
+  }
 
-if ( selectedBoxId === element.dataset.boxId ) {
+
+  if (
+    selectedBoxId ===
+    element.dataset.boxId
+  ) {
 
     element.style.outline =
       "3px solid #111";
@@ -3436,7 +3007,7 @@ if ( selectedBoxId === element.dataset.boxId ) {
     element.style.outlineOffset =
       "1px";
 
-} else {
+  } else {
 
     element.style.outline =
       "";
@@ -3444,24 +3015,38 @@ if ( selectedBoxId === element.dataset.boxId ) {
     element.style.outlineOffset =
       "";
 
-}
+  }
 
 }
 
-/* ======================================================= UTIL
+
+/* =======================================================
+   UTIL
 ======================================================= */
 
-function isUuid( value ) {
+function isUuid(
+  value
+) {
 
-return ( typeof value === “string” &&
-/[1]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-.test( value ) );
+  return (
+    typeof value ===
+      "string" &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+      .test(
+        value
+      )
+  );
 
 }
 
-function inferRole( box ) {
 
-switch ( box.box_type ) {
+function inferRole(
+  box
+) {
+
+  switch (
+    box.box_type
+  ) {
 
     case "qr":
 
@@ -3487,18 +3072,22 @@ switch ( box.box_type ) {
 
       return "other";
 
-}
+  }
 
 }
 
-/* ======================================================= FILE PARSER /
-UPLOAD ======================================================= */
 
-async function parseInputFile( file ) {
+/* =======================================================
+   FILE PARSER / UPLOAD
+======================================================= */
 
-/ 既存の共通ファイル解析エンジンを優先。 */
+async function parseInputFile(
+  file
+) {
 
-if ( window.TEST_SCORE_FILES?.parseFile ) {
+  if (
+    window.TEST_SCORE_FILES?.parseFile
+  ) {
 
     const result =
       await window.TEST_SCORE_FILES
@@ -3536,19 +3125,37 @@ if ( window.TEST_SCORE_FILES?.parseFile ) {
       })
     );
 
-}
+  }
 
-const extension = getExtension( file.name );
 
-if ( extension === “pdf” ) {
+  const extension =
+    getExtension(
+      file.name
+    );
+
+
+  if (
+    extension ===
+    "pdf"
+  ) {
 
     return convertPdfToBlobs(
       file
     );
 
-}
+  }
 
-if ( [ “jpg”, “jpeg”, “png”, “webp” ].includes( extension ) ) {
+
+  if (
+    [
+      "jpg",
+      "jpeg",
+      "png",
+      "webp"
+    ].includes(
+      extension
+    )
+  ) {
 
     const image =
       await loadImageFromBlob(
@@ -3584,26 +3191,51 @@ if ( [ “jpg”, “jpeg”, “png”, “webp” ].includes( extension ) ) {
 
     ];
 
+  }
+
+
+  throw new Error(
+    "PDF、JPG、JPEG、PNG、WEBPのみ登録できます。"
+  );
+
 }
 
-throw new Error( “PDF、JPG、JPEG、PNG、WEBPのみ登録できます。” );
 
-}
-
-/* ======================================================= PDF → BLOBS
+/* =======================================================
+   PDF → BLOBS
 ======================================================= */
 
-async function convertPdfToBlobs( file ) {
+async function convertPdfToBlobs(
+  file
+) {
 
-const pdfjs = await loadPdfJs();
+  const pdfjs =
+    await loadPdfJs();
 
-const buffer = await file.arrayBuffer();
 
-const pdf = await pdfjs .getDocument({ data: buffer }) .promise;
+  const buffer =
+    await file.arrayBuffer();
 
-const result = [];
 
-for ( let pageNo = 1; pageNo <= pdf.numPages; pageNo++ ) {
+  const pdf =
+    await pdfjs
+      .getDocument({
+        data:
+          buffer
+      })
+      .promise;
+
+
+  const result =
+    [];
+
+
+  for (
+    let pageNo = 1;
+    pageNo <=
+    pdf.numPages;
+    pageNo++
+  ) {
 
     const page =
       await pdf.getPage(
@@ -3617,11 +3249,6 @@ for ( let pageNo = 1; pageNo <= pdf.numPages; pageNo++ ) {
           1
       });
 
-
-    /*
-     * A4程度の答案を
-     * 十分な解像度で画像化。
-     */
 
     const scale =
       Math.min(
@@ -3701,40 +3328,42 @@ for ( let pageNo = 1; pageNo <= pdf.numPages; pageNo++ ) {
 
     });
 
+  }
+
+
+  return result;
+
 }
 
-return result;
 
-}
-
-/* ======================================================= LOAD PDF.JS
+/* =======================================================
+   LOAD PDF.JS
 ======================================================= */
 
 function loadPdfJs() {
 
-if (pdfPromise) {
+  if (pdfPromise) {
 
     return pdfPromise;
 
-}
+  }
 
-pdfPromise = new Promise( ( resolve, reject ) => {
+
+  pdfPromise =
+    new Promise(
+      (
+        resolve,
+        reject
+      ) => {
 
         if (
           window.pdfjsLib
         ) {
 
-          if (
-            window.pdfjsLib
-              .GlobalWorkerOptions
-          ) {
-
-            window.pdfjsLib
-              .GlobalWorkerOptions
-              .workerSrc =
-              "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-
-          }
+          window.pdfjsLib
+            .GlobalWorkerOptions
+            .workerSrc =
+            "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
 
           resolve(
@@ -3806,16 +3435,25 @@ pdfPromise = new Promise( ( resolve, reject ) => {
       }
     );
 
-return pdfPromise;
+
+  return pdfPromise;
 
 }
 
-/* ======================================================= IMAGE FROM
-BLOB ======================================================= */
 
-function loadImageFromBlob( blob ) {
+/* =======================================================
+   IMAGE FROM BLOB
+======================================================= */
 
-return new Promise( ( resolve, reject ) => {
+function loadImageFromBlob(
+  blob
+) {
+
+  return new Promise(
+    (
+      resolve,
+      reject
+    ) => {
 
       const url =
         URL.createObjectURL(
@@ -3863,40 +3501,80 @@ return new Promise( ( resolve, reject ) => {
         url;
 
     }
-
-);
-
-}
-
-/* ======================================================= IMAGE → PNG
-======================================================= */
-
-function imageToPng( image ) {
-
-const canvas = document.createElement( “canvas” );
-
-canvas.width = image.naturalWidth;
-
-canvas.height = image.naturalHeight;
-
-const context = canvas.getContext( “2d” );
-
-context.fillStyle = “#ffffff”;
-
-context.fillRect( 0, 0, canvas.width, canvas.height );
-
-context.drawImage( image, 0, 0 );
-
-return canvasToBlob( canvas, “image/png” );
+  );
 
 }
 
-/* ======================================================= CANVAS → BLOB
+
+/* =======================================================
+   IMAGE → PNG
 ======================================================= */
 
-function canvasToBlob( canvas, type ) {
+function imageToPng(
+  image
+) {
 
-return new Promise( ( resolve, reject ) => {
+  const canvas =
+    document.createElement(
+      "canvas"
+    );
+
+
+  canvas.width =
+    image.naturalWidth;
+
+
+  canvas.height =
+    image.naturalHeight;
+
+
+  const context =
+    canvas.getContext(
+      "2d"
+    );
+
+
+  context.fillStyle =
+    "#ffffff";
+
+
+  context.fillRect(
+    0,
+    0,
+    canvas.width,
+    canvas.height
+  );
+
+
+  context.drawImage(
+    image,
+    0,
+    0
+  );
+
+
+  return canvasToBlob(
+    canvas,
+    "image/png"
+  );
+
+}
+
+
+/* =======================================================
+   CANVAS → BLOB
+======================================================= */
+
+function canvasToBlob(
+  canvas,
+  type
+) {
+
+  return new Promise(
+    (
+      resolve,
+      reject
+    ) => {
 
       canvas.toBlob(
         blob => {
@@ -3924,525 +3602,50 @@ return new Promise( ( resolve, reject ) => {
       );
 
     }
-
-);
+  );
 
 }
 
-/* ======================================================= AUTO
-DETECTION HELPERS
+
+/* =======================================================
+   FILE EXTENSION
 ======================================================= */
 
-function deduplicateCandidates( list ) {
+function getExtension(
+  value
+) {
 
-const result = [];
-
-for ( const candidate of list ) {
-
-    const duplicate =
-      result.some(
-        existing =>
-          Number(
-            existing.pageNo
-          ) ===
-          Number(
-            candidate.pageNo
-          ) &&
-          overlapRatio(
-            existing,
-            candidate
-          ) >
-          0.70
-      );
+  const clean =
+    String(
+      value ||
+      ""
+    )
+      .split("?")[0]
+      .split("#")[0];
 
 
-    if (!duplicate) {
+  const parts =
+    clean.split(".");
 
-      result.push(
-        candidate
-      );
 
-    }
+  return (
+    parts.length > 1
+      ? parts
+          .pop()
+          .toLowerCase()
+      : ""
+  );
 
 }
+  /* =======================================================
+     START
+  ======================================================= */
 
-return result;
+  initialize();
 
-}
 
-function overlapRatio( a, b ) {
-
-const left = Math.max( Number(a.x), Number(b.x) );
-
-const top = Math.max( Number(a.y), Number(b.y) );
-
-const right = Math.min( Number(a.x) + Number(a.width), Number(b.x) +
-Number(b.width) );
-
-const bottom = Math.min( Number(a.y) + Number(a.height), Number(b.y) +
-Number(b.height) );
-
-if ( right <= left || bottom <= top ) {
-
-    return 0;
-
-}
-
-const intersection = ( right - left ) * ( bottom - top );
-
-const areaA = Number(a.width) * Number(a.height);
-
-const areaB = Number(b.width) * Number(b.height);
-
-if ( areaA <= 0 || areaB <= 0 ) {
-
-    return 0;
-
-}
-
-return ( intersection / Math.min( areaA, areaB ) );
-
-}
-
-/* ======================================================= EXTENSION
-======================================================= */
-
-function getExtension( value ) {
-
-const clean = String( value || “” ) .split(“?”)[0] .split(“#”)[0];
-
-const parts = clean.split(“.”);
-
-return ( parts.length > 1 ? parts .pop() .toLowerCase() : “” );
-
-}
-
-/* ======================================================= END
-======================================================= */
-
-})(); /* ======================================================= UPLOAD
-ANSWER SHEET ======================================================= */
-
-async function uploadAnswerSheet() {
-
-if (!selectedTestId) {
-
-    showError(
-      "テストIDが取得できません。"
-    );
-
-    return;
-
-}
-
-if (!answerFile) {
-
-    showError(
-      "解答用紙入力欄が見つかりません。"
-    );
-
-    return;
-
-}
-
-const file = answerFile.files?.[0];
-
-if (!file) {
-
-    showError(
-      "解答用紙を選択してください。"
-    );
-
-    return;
-
-}
-
-const extension = getExtension( file.name );
-
-if ( ![ “pdf”, “jpg”, “jpeg”, “png”, “webp” ].includes( extension ) ) {
-
-    showError(
-      "PDF、JPG、JPEG、PNG、WEBPのみ対応しています。"
-    );
-
-    return;
-
-}
-
-try {
-
-    uploadButton.disabled =
-      true;
-
-
-    setStatus(
-      "解答用紙を読み込んでいます..."
-    );
-
-
-    /*
-     * 1. ページ化
-     */
-
-    const pageImages =
-      await fileToPages(
-        file
-      );
-
-
-    if (
-      !pageImages.length
-    ) {
-
-      throw new Error(
-        "解答用紙のページを作成できませんでした。"
-      );
-
-    }
-
-
-    /*
-     * 既存の解答用紙を
-     * 新しいファイルで置き換える。
-     *
-     * 既存ページ番号は1から振り直す。
-     */
-
-    const uploaded =
-      [];
-
-
-    for (
-      let i = 0;
-      i <
-      pageImages.length;
-      i++
-    ) {
-
-      const page =
-        pageImages[i];
-
-
-      const pageNo =
-        i + 1;
-
-
-      const blob =
-        await canvasToBlob(
-          page.canvas,
-          "image/png"
-        );
-
-
-      if (!blob) {
-
-        throw new Error(
-          `ページ${pageNo}の画像作成に失敗しました。`
-        );
-
-      }
-
-
-      const path =
-        [
-          selectedTestId,
-          "answer-sheet",
-          crypto.randomUUID(),
-          `page-${String(
-            pageNo
-          ).padStart(
-            3,
-            "0"
-          )}.png`
-        ].join(
-          "/"
-        );
-
-
-      setStatus(
-        `解答用紙をStorageへ保存しています... ${pageNo}/${pageImages.length}`
-      );
-
-
-      const {
-        error:
-          uploadError
-      } =
-        await supabaseClient
-          .storage
-          .from(
-            "test-files"
-          )
-          .upload(
-            path,
-            blob,
-            {
-              contentType:
-                "image/png",
-
-              cacheControl:
-                "3600",
-
-              upsert:
-                false
-            }
-          );
-
-
-      if (uploadError) {
-
-        throw new Error(
-          `ページ${pageNo}のStorage保存に失敗しました: ${
-            uploadError.message
-          }`
-        );
-
-      }
-
-
-      uploaded.push({
-
-        pageNo,
-
-        path,
-
-        width:
-          page.width,
-
-        height:
-          page.height
-
-      });
-
-    }
-
-
-    /*
-     * 2. Storage確認
-     */
-
-    setStatus(
-      "保存した解答用紙を確認しています..."
-    );
-
-
-    for (
-      const item
-      of uploaded
-    ) {
-
-      const {
-        data,
-        error
-      } =
-        await supabaseClient
-          .storage
-          .from(
-            "test-files"
-          )
-          .createSignedUrl(
-            item.path,
-            300
-          );
-
-
-      if (
-        error ||
-        !data?.signedUrl
-      ) {
-
-        throw new Error(
-          `ページ${item.pageNo}のStorage画像を確認できません。`
-        );
-
-      }
-
-    }
-
-
-    /*
-     * 3. 既存test_pagesを削除
-     *
-     * layout_boxesより先に
-     * test_pagesだけを削除する。
-     */
-
-    setStatus(
-      "既存の解答用紙情報を更新しています..."
-    );
-
-
-    const {
-      error:
-        pageDeleteError
-    } =
-      await supabaseClient
-        .from(
-          "test_pages"
-        )
-        .delete()
-        .eq(
-          "test_id",
-          selectedTestId
-        );
-
-
-    if (pageDeleteError) {
-
-      throw new Error(
-        `既存の解答用紙情報を削除できません: ${
-          pageDeleteError.message
-        }`
-      );
-
-    }
-
-
-    /*
-     * 4. test_pages登録
-     */
-
-    const rows =
-      uploaded.map(
-        item => ({
-
-          test_id:
-            selectedTestId,
-
-          page_no:
-            item.pageNo,
-
-          image_path:
-            item.path,
-
-          width_px:
-            item.width,
-
-          height_px:
-            item.height,
-
-          original_name:
-            file.name
-
-        })
-      );
-
-
-    const {
-      data:
-        insertedPages,
-      error:
-        insertError
-    } =
-      await supabaseClient
-        .from(
-          "test_pages"
-        )
-        .insert(
-          rows
-        )
-        .select(`
-          id,
-          test_id,
-          page_no,
-          image_path,
-          width_px,
-          height_px,
-          original_name
-        `);
-
-
-    if (insertError) {
-
-      throw new Error(
-        `解答用紙ページの登録に失敗しました: ${
-          insertError.message
-        }`
-      );
-
-    }
-
-
-    if (
-      !insertedPages ||
-      insertedPages.length !==
-      uploaded.length
-    ) {
-
-      throw new Error(
-        "解答用紙ページの登録件数が一致しません。"
-      );
-
-    }
-
-
-    /*
-     * 5. 画面側をリセット
-     *
-     * ここではlayout_boxesを
-     * 削除しない。
-     *
-     * 新しい解答用紙なので
-     * 枠だけは新しく設定する。
-     */
-
-    answerFile.value =
-      "";
-
-
-    selectedBoxId =
-      null;
-
-
-    boxes =
-      [];
-
-
-    candidates =
-      [];
-
-
-    /*
-     * 6. DBから再読み込み
-     */
-
-    await loadLayout();
-
-
-    /*
-     * 7. 自動枠検出
-     */
-
-    setStatus(
-      `解答用紙を登録しました（${insertedPages.length}ページ）。枠を自動検出しています...`
-    );
-
-
-    await detectAllPages();
-
-} catch (error) {
-
-    console.error(
-      "解答用紙登録エラー:",
-      error
-    );
-
-
-    showError(
-      error.message ||
-      "解答用紙の登録に失敗しました。"
-    );
-
-} finally {
-
-    uploadButton.disabled =
-      false;
-
-}
-
-}
-
-/* ======================================================= END
-======================================================= */
+  /* =======================================================
+     END
+  ======================================================= */
 
 })();

@@ -1,3 +1,4 @@
+
 "use strict";
 
 /* =========================================================
@@ -108,6 +109,10 @@ async function initialize() {
       $("testSelect").value =
         requested;
 
+      selectedStatus =
+        $("statusSelect")?.value ||
+        "all";
+
       await loadAnswers();
 
     }
@@ -142,8 +147,16 @@ function setupEvents() {
       async event => {
 
         selectedTestId =
-          event.target.value ||
+          String(
+            event.target.value ||
+            ""
+          ).trim() ||
           null;
+
+
+        selectedStatus =
+          $("statusSelect")?.value ||
+          "all";
 
 
         await loadAnswers();
@@ -548,7 +561,7 @@ function createAnswerRow(
 
   const matched =
     answer.status ===
-      "uploaded" &&
+      "matched" &&
     !!answer.student_id;
 
 
@@ -881,7 +894,9 @@ async function saveStudent(
 
   if (
     answer.student_id ===
-    studentId
+    studentId &&
+    answer.status ===
+    "matched"
   ) {
 
     setStatus(
@@ -1235,7 +1250,7 @@ async function recropAnswer(
       await DB
         .storage
         .from(
-          "answer-files"
+          "test-files"
         )
         .download(
           answerPage.file_path

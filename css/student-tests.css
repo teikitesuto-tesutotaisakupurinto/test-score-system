@@ -187,3 +187,21 @@
   }
 
 }
+
+/* 参考画像に合わせた生徒用の青い成績閲覧画面 */
+body:has(.student-main){background:#f2f4f7}
+body:has(.student-main) .topbar{background:#fff;color:#263746;min-height:76px;padding-left:72px;border-bottom:1px solid #e5e8ed}
+body:has(.student-main) .system-name{color:#164db5}
+body:has(.student-main) .logout-button{background:#073be8;border-color:#073be8;border-radius:22px}
+.student-main{max-width:1100px;margin:0 auto;padding:34px 22px 60px}
+.student-main .page-header{padding:28px 30px;margin:0 0 24px;border-radius:12px;background:linear-gradient(115deg,#073cb9 0%,#087ee8 58%,#08b7ed 100%);color:#fff;min-height:190px;align-items:flex-start;justify-content:center;flex-direction:column}
+.student-main .page-header h1{font-size:30px;letter-spacing:.04em}
+.student-main .page-description{color:#fff;opacity:.95}
+.student-test-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.student-test-card{border:0;border-radius:9px;padding:22px;box-shadow:0 3px 10px rgba(0,0,0,.12);min-height:170px}
+.student-test-title{font-size:18px;color:#263746}
+.student-test-meta{line-height:1.8}
+.student-test-card .btn-primary{background:#064be0;border-color:#064be0;min-width:150px;font-weight:700;box-shadow:0 2px 4px rgba(0,0,0,.18)}
+.student-test-card .btn{border-radius:5px}
+@media(max-width:700px){.student-main{padding:16px 12px 36px}.student-main .page-header{padding:22px;min-height:150px}.student-main .page-header h1{font-size:24px}.student-test-grid{grid-template-columns:1fr}}
+@media print{.topbar,#appSidebarRoot{display:none!important}.student-main{padding:0}.student-test-card{box-shadow:none;border:1px solid #ddd}}

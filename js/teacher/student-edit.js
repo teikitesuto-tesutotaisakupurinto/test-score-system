@@ -145,7 +145,9 @@ async function loadStudent() {
         name,
         grade,
         class_name,
-        active
+        active,
+        municipality,
+        school_name
         `
       )
       .eq(
@@ -192,11 +194,9 @@ async function loadStudent() {
     "";
 
 
-  document.getElementById(
-    "studentClass"
-  ).value =
-    data.class_name ||
-    "";
+  document.getElementById("studentClass").value = data.class_name || "";
+  document.getElementById("studentMunicipality").value = data.municipality || "";
+  document.getElementById("studentSchool").value = data.school_name || "";
 
 
   document.getElementById(
@@ -251,12 +251,9 @@ async function saveStudent() {
       .trim();
 
 
-  const active =
-    document.getElementById(
-      "studentActive"
-    )
-      .value ===
-      "true";
+  const active = document.getElementById("studentActive").value === "true";
+  const municipality = document.getElementById("studentMunicipality")?.value.trim() || "";
+  const schoolName = document.getElementById("studentSchool")?.value.trim() || "";
 
 
   if (!name) {
@@ -310,6 +307,9 @@ async function saveStudent() {
           class_name:
             className ||
             null,
+
+          municipality: municipality || null,
+          school_name: schoolName || null,
 
           active
 

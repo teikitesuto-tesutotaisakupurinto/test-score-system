@@ -1592,7 +1592,7 @@ async function matchAnswerByQr(
   /*
    * QR成功
    *
-   * uploadedにはしない。
+   * matchedへ統一する。
    * matchedへ統一。
    */
 
@@ -1612,8 +1612,7 @@ async function matchAnswerByQr(
         qr_value:
           value,
 
-        status:
-          "uploaded"
+        status: "matched"
 
       })
       .eq(

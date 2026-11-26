@@ -100,12 +100,26 @@ declare
   ];
 begin
   foreach t in array tables loop
+    execute format('drop policy if exists teacher_only_data_access on public.%I', t);
     execute format(
       'create policy teacher_only_data_access on public.%I for all to authenticated using (public.my_role()::text = ''teacher'') with check (public.my_role()::text = ''teacher'')',
       t
     );
   end loop;
 end $$;
+
+-- Recreate this migration's student policies safely on repeated runs.
+drop policy if exists student_own_published_answer_sheets on public.answer_sheets;
+drop policy if exists student_own_published_answer_pages on public.answer_sheet_pages;
+drop policy if exists student_own_published_answer_regions on public.answer_regions;
+drop policy if exists student_own_published_scores on public.scores;
+drop policy if exists student_own_published_marks on public.mark_objects;
+drop policy if exists student_published_test_layout on public.layout_boxes;
+drop policy if exists student_published_tests on public.tests;
+drop policy if exists student_own_student_record on public.students;
+drop policy if exists student_own_class on public.classes;
+drop policy if exists student_own_published_test_results on public.student_test_results;
+drop policy if exists student_own_published_viewpoint_results on public.viewpoint_results;
 
 -- Students can read only their own published answer sheet.
 create policy student_own_published_answer_sheets
@@ -252,6 +266,10 @@ begin
     execute format('drop policy if exists %I on storage.objects', p.policyname);
   end loop;
 end $$;
+
+-- Recreate this migration's storage policies safely on repeated runs.
+drop policy if exists teacher_only_application_storage on storage.objects;
+drop policy if exists student_own_published_answer_storage on storage.objects;
 
 -- Teachers can operate the application file buckets; administrators cannot.
 create policy teacher_only_application_storage

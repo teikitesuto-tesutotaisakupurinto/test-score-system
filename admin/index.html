@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>システム管理 - テスト成績システム</title><link rel="stylesheet" href="/css/common.css"></head>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>システム管理 - テスト成績システム</title><link rel="stylesheet" href="/css/common.css?v=20261126layout"></head>
 <body>
 <header class="topbar"><div class="system-name">テスト成績システム</div><div class="topbar-space"></div><span id="adminName">管理者</span><button id="logoutButton" class="logout-button" type="button">ログアウト</button></header>
 <main class="main-content" style="max-width:1000px;margin:0 auto;padding:28px">
@@ -13,4 +13,4 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="/js/config.js"></script><script src="/js/auth.js"></script>
 <script>
 (async()=>{try{const auth=await requireRole("admin");if(!auth)return;document.getElementById("adminName").textContent=auth.profile?.name||"管理者";document.getElementById("adminStatus").textContent="管理者として認証されています。";document.getElementById("logoutButton").addEventListener("click",logout);}catch(e){document.getElementById("adminStatus").textContent=e.message||"認証に失敗しました。";}})();
-</script><script src="/js/common-sidebar.js?v=20261126"></script></body></html>
+</script><script src="/js/common-sidebar.js?v=20261126layout"></script></body></html>

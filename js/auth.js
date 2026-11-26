@@ -526,9 +526,7 @@ async function requireRole(
 
     if (
       profile.role !==
-        "teacher" &&
-      profile.role !==
-        "admin"
+      "teacher"
     ) {
 
       redirectByRole(

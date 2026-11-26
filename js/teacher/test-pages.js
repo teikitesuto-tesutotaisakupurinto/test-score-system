@@ -2357,6 +2357,8 @@
       ] ||
       ROLE_INFO.answer;
 
+    const wasAnswerBox =
+      box.box_type === "answer";
 
     box.box_role =
       role;
@@ -2369,8 +2371,6 @@
     box.label =
       info.label;
 
-
-    const wasAnswerBox = box.box_type === "answer";
 
     box.points =
       info.boxType === "answer"

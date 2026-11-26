@@ -1590,7 +1590,7 @@ async function matchAnswerByQr(
           value,
 
         status:
-          "matched"
+          "uploaded"
 
       })
       .eq(

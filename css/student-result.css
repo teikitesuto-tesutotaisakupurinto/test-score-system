@@ -283,3 +283,11 @@
   }
 
 }
+
+.student-result-actions{display:flex;justify-content:flex-end;gap:8px;margin:12px 0 18px}
+.previous-comparison-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.previous-comparison-item{padding:12px;background:#f5f7fa;border:1px solid #dce2e8;border-radius:6px}
+.previous-comparison-label{font-size:12px;color:#68727b}
+.previous-comparison-value{font-size:22px;font-weight:700;margin-top:4px}
+@media(max-width:650px){.previous-comparison-grid{grid-template-columns:1fr}}
+@media print{#appSidebarRoot,.topbar,.student-result-actions,#logoutButton{display:none!important}body{background:#fff!important}.student-main{max-width:none!important;padding:0!important}.student-result-card{break-inside:avoid;box-shadow:none!important;border:1px solid #bbb!important}}

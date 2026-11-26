@@ -1,187 +1,108 @@
-
 services:
-
   - type: web
     name: test-score-system
     env: static
-
     staticPublishPath: .
-
     routes:
-
-      # =====================================================
-      # Login
-      # =====================================================
-
-      - type: rewrite
-        source: /login
-        destination: /login.html
-
-
-      # =====================================================
-      # Teacher Home
-      # =====================================================
-
-      - type: rewrite
-        source: /teacher
-        destination: /teacher/index.html
-
-
-      # =====================================================
-      # Teacher Tests
-      # =====================================================
-
-      - type: rewrite
-        source: /teacher/tests
-        destination: /teacher/tests/index.html
-
-
-      # =====================================================
-      # Teacher Tests / Layout
-      # =====================================================
-
-      - type: rewrite
-        source: /teacher/tests/layout
-        destination: /teacher/tests/layout.html
-
-
-      # =====================================================
-      # Teacher Tests / Points
-      # =====================================================
-
-      - type: rewrite
-        source: /teacher/tests/points
-        destination: /teacher/tests/points.html
-
-
-      # =====================================================
-      # Teacher Students / QR
-      # =====================================================
-
-      - type: rewrite
-        source: /teacher/students/qr
-        destination: /teacher/students/qr.html
-
-
-      # =====================================================
-      # Teacher Answers
-      # =====================================================
-
-      - type: rewrite
-        source: /teacher/answers/upload
-        destination: /teacher/answers/upload.html
-
-
-      - type: rewrite
-        source: /teacher/answers/matched
-        destination: /teacher/answers/matched.html
-
-
-      - type: rewrite
-        source: /teacher/answers/regions
-        destination: /teacher/answers/regions.html
-
-
-      # =====================================================
-      # Teacher Marking
-      # =====================================================
-
-      - type: rewrite
-        source: /teacher/marking
-        destination: /teacher/marking/index.html
-
-
-      - type: rewrite
-        source: /teacher/marking/select
-        destination: /teacher/marking/select.html
-
-      - type: rewrite
-        source: /teacher/marking/mark
-        destination: /teacher/marking/mark.html
-
-
-      # =====================================================
-      # Teacher Results
-      # =====================================================
-
-      - type: rewrite
-        source: /teacher/results/summary
-        destination: /teacher/results/summary.html
-
-      - type: rewrite
-        source: /teacher/dashboard
-        destination: /teacher/dashboard.html
-
-      - type: rewrite
-        source: /teacher/students
-        destination: /teacher/students/index.html
-
-      - type: rewrite
-        source: /teacher/students/new
-        destination: /teacher/students/new.html
-
-      - type: rewrite
-        source: /teacher/students/edit
-        destination: /teacher/students/edit.html
-
-      - type: rewrite
-        source: /teacher/classes
-        destination: /teacher/classes/index.html
-
-      - type: rewrite
-        source: /teacher/classes/new
-        destination: /teacher/classes/new.html
-
-      - type: rewrite
-        source: /teacher/classes/students
-        destination: /teacher/classes/students.html
-
-      - type: rewrite
-        source: /teacher/tests/new
-        destination: /teacher/tests/new.html
-
-      - type: rewrite
-        source: /teacher/tests/edit
-        destination: /teacher/tests/edit.html
-
-      - type: rewrite
-        source: /teacher/tests/preview
-        destination: /teacher/tests/preview.html
-
-      - type: rewrite
-        source: /teacher/tests/publish
-        destination: /teacher/tests/publish.html
-
       - type: rewrite
         source: /teacher/answers/processing
         destination: /teacher/answers/processing.html
-
+      - type: rewrite
+        source: /teacher/tests/model-answer
+        destination: /teacher/tests/model-answer.html
       - type: rewrite
         source: /teacher/answers/unmatched
         destination: /teacher/answers/unmatched.html
-
+      - type: rewrite
+        source: /teacher/classes/students
+        destination: /teacher/classes/students.html
+      - type: rewrite
+        source: /teacher/answers/matched
+        destination: /teacher/answers/matched.html
+      - type: rewrite
+        source: /teacher/answers/regions
+        destination: /teacher/answers/regions.html
+      - type: rewrite
+        source: /teacher/results/summary
+        destination: /teacher/results/summary.html
+      - type: rewrite
+        source: /teacher/students/import
+        destination: /teacher/students/import.html
+      - type: rewrite
+        source: /teacher/answers/upload
+        destination: /teacher/answers/upload.html
+      - type: rewrite
+        source: /teacher/marking/select
+        destination: /teacher/marking/select.html
       - type: rewrite
         source: /teacher/results/return
         destination: /teacher/results/return.html
-
       - type: rewrite
-        source: /student
-        destination: /student/tests/index.html
-
+        source: /teacher/students/edit
+        destination: /teacher/students/edit.html
+      - type: rewrite
+        source: /teacher/tests/preview
+        destination: /teacher/tests/preview.html
+      - type: rewrite
+        source: /teacher/tests/publish
+        destination: /teacher/tests/publish.html
+      - type: rewrite
+        source: /student/tests/answer
+        destination: /student/tests/answer.html
       - type: rewrite
         source: /student/tests/result
         destination: /student/tests/result.html
-
-      # =====================================================
-      # Student
-      # =====================================================
-
+      - type: rewrite
+        source: /teacher/marking/mark
+        destination: /teacher/marking/mark.html
+      - type: rewrite
+        source: /teacher/students/new
+        destination: /teacher/students/new.html
+      - type: rewrite
+        source: /teacher/tests/layout
+        destination: /teacher/tests/layout.html
+      - type: rewrite
+        source: /teacher/tests/points
+        destination: /teacher/tests/points.html
+      - type: rewrite
+        source: /teacher/classes/new
+        destination: /teacher/classes/new.html
+      - type: rewrite
+        source: /teacher/students/qr
+        destination: /teacher/students/qr.html
+      - type: rewrite
+        source: /teacher/tests/pages
+        destination: /teacher/tests/pages.html
+      - type: rewrite
+        source: /teacher/tests/edit
+        destination: /teacher/tests/edit.html
+      - type: rewrite
+        source: /teacher/dashboard
+        destination: /teacher/dashboard.html
+      - type: rewrite
+        source: /teacher/tests/new
+        destination: /teacher/tests/new.html
+      - type: rewrite
+        source: /teacher/students
+        destination: /teacher/students/index.html
+      - type: rewrite
+        source: /teacher/classes
+        destination: /teacher/classes/index.html
+      - type: rewrite
+        source: /teacher/marking
+        destination: /teacher/marking/index.html
       - type: rewrite
         source: /student/tests
         destination: /student/tests/index.html
-
-
       - type: rewrite
-        source: /student/answer
-        destination: /student/answer.html
-
+        source: /teacher/tests
+        destination: /teacher/tests/index.html
+      - type: rewrite
+        source: /teacher
+        destination: /teacher/index.html
+      - type: rewrite
+        source: /student
+        destination: /student/tests/index.html
+      - type: rewrite
+        source: /login
+        destination: /login.html

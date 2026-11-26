@@ -2926,14 +2926,16 @@
       // 採点済みデータが参照する枠は削除しない。
       // 先に全件確認し、途中まで削除される状態を防ぐ。
       if (staleIds.length) {
-        const { data: linkedScores, error: linkedScoreError } = await supabaseClient
-          .from("scores")
-          .select("id")
-          .in("layout_box_id", staleIds)
-          .limit(1);
-        if (linkedScoreError) throw linkedScoreError;
-        if (linkedScores?.length) {
-          throw new Error("削除対象の枠に採点データが紐付いています。採点履歴を保護するため、枠の削除を中止しました。");
+        for (const tableName of ["scores", "mark_objects", "answer_regions"]) {
+          const { data: linkedRows, error: linkedError } = await supabaseClient
+            .from(tableName)
+            .select("id")
+            .in("layout_box_id", staleIds)
+            .limit(1);
+          if (linkedError) throw linkedError;
+          if (linkedRows?.length) {
+            throw new Error("削除対象の枠に採点記号・採点結果・答案領域のデータが紐付いています。既存データを保護するため、枠の削除を中止しました。");
+          }
         }
       }
 

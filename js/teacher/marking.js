@@ -589,62 +589,22 @@ async function loadTest() {
 
 async function loadAnswers() {
 
-  const {
-    data,
-    error
-  } =
-    await DB
-      .from(
-        "answer_sheets"
-      )
-      .select(
-        `
-        id,
-        test_id,
-        student_id,
-        status,
-        created_at
-        `
-      )
-      .eq(
-        "test_id",
-        testId
-      )
-      .eq(
-        "student_id",
-        selectedStudentId
-      )
-      .not(
-        "student_id",
-        "is",
-        null
-      )
-      .in(
-        "status",
-        [
-          "matched",
-          "marking",
-          "marked"
-        ]
-      )
-      .order(
-        "created_at",
-        {
-          ascending:true
-        }
-      );
+  let query = DB
+    .from("answer_sheets")
+    .select("id,test_id,student_id,status,created_at")
+    .eq("test_id", testId)
+    .not("student_id", "is", null)
+    .in("status", ["matched", "marking", "marked"])
+    .order("created_at", { ascending: true });
 
-
-  if (error) {
-
-    throw error;
-
+  // 生徒指定URLではその生徒だけを採点し、生徒未指定URLでは全答案を表示する。
+  if (selectedStudentId) {
+    query = query.eq("student_id", selectedStudentId);
   }
 
-
-  answers =
-    data || [];
-
+  const { data, error } = await query;
+  if (error) throw error;
+  answers = data || [];
 }
 
 

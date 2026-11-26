@@ -37,7 +37,6 @@
     student:[
       ["生徒機能一覧","/student","home"],
       ["成績管理","/student/tests","chart"],
-      ["設定","/student/settings","settings"]
     ],
     admin:[]
   };

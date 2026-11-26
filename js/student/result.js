@@ -41,6 +41,8 @@
 
   let boxes = [];
 
+  let standardStats = null;
+
 
   const params =
     new URLSearchParams(
@@ -110,6 +112,11 @@
     }).join("");
     const studentNumber = student.student_no ? `<span>生徒番号：${safe(student.student_no)}</span>` : "";
     const className = [test.grade, test.class_name].filter(Boolean).join("・");
+    const standardScoreRows = [
+      ["全体偏差値", standardStats?.overall_standard_score],
+      ["市区町村別偏差値", standardStats?.municipality_standard_score],
+      ["学校別偏差値", standardStats?.school_standard_score]
+    ].map(([label, value]) => `<tr><th>${label}</th><td>${value == null ? "—" : fmt(value)}</td></tr>`).join("");
     report.innerHTML = `
       <style>
         .formal-student-report *{box-sizing:border-box}
@@ -146,6 +153,8 @@
         <div class="report-score primary"><div class="report-label">総合得点</div><div class="report-value">${fmt(total)}<small> / ${fmt(max)} 点</small></div></div>
         <div class="report-score"><div class="report-label">得点率</div><div class="report-value">${rate.toFixed(1)}<small> %</small></div></div>
       </div>
+      <h2>偏差値</h2>
+      <table class="report-table"><tbody>${standardScoreRows}</tbody></table>
       <h2>設問別成績</h2>
       <table class="report-table">
         <thead><tr><th>設問</th><th>得点</th><th>配点</th><th>得点率</th></tr></thead>
@@ -229,6 +238,7 @@
 
       await loadAnswer();
       await loadPreviousComparison();
+      await loadStandardScores();
 
 
     } catch (error) {
@@ -747,45 +757,30 @@
 
 
     element.innerHTML = `
-
-      <div>
-
-        <div>
-          合計
-        </div>
-
-        <strong>
-          ${formatNumber(
-            total
-          )}点
-        </strong>
-
-        /
-        ${formatNumber(
-          max
-        )}点
-
+      <div class="result-score-grid">
+        <div class="result-score-card"><div class="result-score-label">総合得点</div><div class="result-score-value">${formatNumber(total)}点</div><div class="result-score-sub">満点 ${formatNumber(max)}点</div></div>
+        <div class="result-score-card"><div class="result-score-label">得点率</div><div class="result-score-value">${percentage.toFixed(1)}%</div></div>
+        <div class="result-score-card"><div class="result-score-label">全体偏差値</div><div class="result-score-value">${standardStats?.overall_standard_score == null ? "—" : formatNumber(standardStats.overall_standard_score)}</div></div>
+        <div class="result-score-card"><div class="result-score-label">市区町村別偏差値</div><div class="result-score-value">${standardStats?.municipality_standard_score == null ? "—" : formatNumber(standardStats.municipality_standard_score)}</div></div>
+        <div class="result-score-card"><div class="result-score-label">学校別偏差値</div><div class="result-score-value">${standardStats?.school_standard_score == null ? "—" : formatNumber(standardStats.school_standard_score)}</div></div>
       </div>
-
-
-      <div>
-
-        <div>
-          得点率
-        </div>
-
-        <strong>
-          ${percentage.toFixed(
-            1
-          )}%
-        </strong>
-
-      </div>
-
     `;
 
   }
 
+
+  async function loadStandardScores() {
+    try {
+      const { data, error } = await supabaseClient.rpc("get_student_test_standard_scores", { p_test_id: testId });
+      if (error) throw error;
+      standardStats = Array.isArray(data) ? (data[0] || null) : data;
+      renderSummary();
+    } catch (error) {
+      standardStats = null;
+      console.warn("standard score RPC:", error);
+      renderSummary();
+    }
+  }
 
   /* =======================================================
      QUESTION RESULTS

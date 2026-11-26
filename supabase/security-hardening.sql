@@ -283,6 +283,86 @@ using (
   )
 );
 
+-- Atomic publication: only a teacher can publish/unpublish after every answer box is marked.
+create or replace function public.set_test_publication(
+  p_test_id uuid,
+  p_publish boolean
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $
+declare
+  v_test_exists boolean;
+  v_sheet_count integer;
+  v_missing_count integer;
+begin
+  if public.my_role() <> 'teacher'::public.user_role then
+    raise exception '先生権限が必要です。';
+  end if;
+
+  select exists(select 1 from public.tests where id = p_test_id)
+    into v_test_exists;
+  if not v_test_exists then
+    raise exception 'テストが見つかりません。';
+  end if;
+
+  if p_publish then
+    select count(*) into v_sheet_count
+    from public.answer_sheets
+    where test_id = p_test_id and student_id is not null;
+
+    if v_sheet_count = 0 then
+      raise exception '答案が登録されていません。';
+    end if;
+
+    select count(*) into v_missing_count
+    from public.answer_sheets a
+    cross join public.layout_boxes b
+    where a.test_id = p_test_id
+      and a.student_id is not null
+      and a.status in ('uploaded','marking','marked','published')
+      and lower(coalesce(b.box_type,'')) = 'answer'
+      and coalesce(trim(b.label),'') not in ('QR','氏名','小計','合計')
+      and not exists (
+        select 1 from public.scores s
+        where s.answer_sheet_id = a.id
+          and s.layout_box_id = b.id
+          and s.status = 'marked'
+      );
+
+    if v_missing_count > 0 then
+      raise exception '未採点の設問があります（%件）。', v_missing_count;
+    end if;
+
+    update public.answer_sheets
+      set status = 'published'
+      where test_id = p_test_id and student_id is not null
+        and status in ('marked','published');
+
+    update public.tests
+      set results_published = true,
+          results_published_at = now(),
+          results_published_by = auth.uid()
+      where id = p_test_id;
+  else
+    update public.tests
+      set results_published = false,
+          results_published_at = null,
+          results_published_by = null
+      where id = p_test_id;
+
+    update public.answer_sheets
+      set status = 'marked'
+      where test_id = p_test_id and status = 'published';
+  end if;
+end;
+$;
+
+revoke all on function public.set_test_publication(uuid, boolean) from public, anon;
+grant execute on function public.set_test_publication(uuid, boolean) to authenticated;
+
 commit;
 
 -- IMPORTANT: Storage policies are intentionally not modified by this script.

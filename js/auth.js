@@ -437,7 +437,7 @@ function redirectByRole(
   ) {
 
     location.replace(
-      "/teacher/index.html"
+      "/admin"
     );
 
     return;

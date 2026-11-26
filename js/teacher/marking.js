@@ -667,6 +667,7 @@ async function loadQuestions() {
         id,
         page_no,
         box_type,
+        box_role,
         label,
         x,
         y,
@@ -719,6 +720,7 @@ async function loadQuestions() {
     (data || [])
       .filter(
         box =>
+          !["major", "minor"].includes(box.box_role) &&
           !excluded.has(
             String(
               box.label ||

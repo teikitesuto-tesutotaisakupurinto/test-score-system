@@ -92,6 +92,10 @@ services:
 
 
       - type: rewrite
+        source: /teacher/marking/select
+        destination: /teacher/marking/select.html
+
+      - type: rewrite
         source: /teacher/marking/mark
         destination: /teacher/marking/mark.html
 

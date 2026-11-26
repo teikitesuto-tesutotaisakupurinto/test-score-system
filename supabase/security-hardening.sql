@@ -7,6 +7,10 @@
 
 begin;
 
+-- Preserve all existing annotations; add a non-destructive font-family attribute.
+alter table public.mark_objects
+  add column if not exists font_family text not null default 'sans-serif';
+
 -- Remove permissive legacy policies that allowed admin to perform teacher work,
 -- and remove student SELECT policies that did not consistently require publication.
 drop policy if exists regions_teacher_all on public.answer_regions;

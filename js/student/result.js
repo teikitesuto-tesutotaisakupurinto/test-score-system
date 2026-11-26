@@ -462,6 +462,7 @@
           text_value,
           color,
           font_size,
+          font_family,
           stroke_width,
           x,
           y,

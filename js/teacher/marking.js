@@ -3373,12 +3373,7 @@ async function saveMarksForAnswerQuestion(
 
   if (deleteError) {
 
-    console.warn(
-      "mark delete:",
-      deleteError
-    );
-
-    return;
+    throw deleteError;
 
   }
 
@@ -3474,10 +3469,7 @@ async function saveMarksForAnswerQuestion(
 
   if (insertError) {
 
-    console.warn(
-      "mark insert:",
-      insertError
-    );
+    throw insertError;
 
   }
 

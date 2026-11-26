@@ -204,6 +204,7 @@ async function initialize() {
     setupMarkToolbar();
 
     setupNavigationLinks();
+    setupStudentNavigation();
 
 
     await loadEverything();
@@ -426,6 +427,35 @@ function setupMarkToolbar() {
 
 }
 
+
+
+function setupStudentNavigation() {
+  const go = async direction => {
+    try {
+      const { data, error } = await DB.from("answer_sheets")
+        .select("student_id,created_at")
+        .eq("test_id", testId)
+        .not("student_id", "is", null)
+        .in("status", ["uploaded","marking","marked"])
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      const ids = [...new Set((data || []).map(row => row.student_id).filter(Boolean))];
+      const index = ids.indexOf(selectedStudentId);
+      const next = ids[index + direction];
+      if (!next) {
+        setStatus(direction > 0 ? "最後の生徒です。" : "最初の生徒です。");
+        return;
+      }
+      location.href = "/teacher/marking/mark?test=" + encodeURIComponent(testId) + "&student=" + encodeURIComponent(next);
+    } catch (error) {
+      setStatus(error.message || "生徒を切り替えられませんでした。", true);
+    }
+  };
+  $("previousStudentButton")?.addEventListener("click", () => go(-1));
+  $("nextStudentButton")?.addEventListener("click", () => go(1));
+  const back = $("studentListButton");
+  if (back) back.href = "/teacher/marking/select?test=" + encodeURIComponent(testId);
+}
 
 /* =========================================================
    LOAD EVERYTHING
@@ -2250,6 +2280,11 @@ function placeMark(
   question,
   type
 ) {
+  const markColor = $("markColor")?.value || "#d00000";
+  const markFontSize = Number($("markFontSize")?.value) || 32;
+  const markStrokeWidth = Number($("markStrokeWidth")?.value) || 3;
+  const markTextValue = $("markTextValue")?.value?.trim() || "文字";
+
 
   const rect =
     target.getBoundingClientRect();
@@ -2294,17 +2329,17 @@ function placeMark(
     text_value:
       type ===
         "text"
-        ? "文字"
+        ? markTextValue
         : null,
 
     color:
-      "#d00000",
+      markColor,
 
     font_size:
-      32,
+      markFontSize,
 
     stroke_width:
-      3,
+      markStrokeWidth,
 
     x,
 

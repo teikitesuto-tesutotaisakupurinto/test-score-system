@@ -28,3 +28,14 @@
   body:has(#appSidebarRoot.is-open) .teacher-layout>.sidebar{display:none!important}
   body:has(#appSidebarRoot.is-open) .main-content{min-width:0}
 }
+
+/* 旧ページ内サイドバーを全画面で共通メニューに置き換える */
+.teacher-layout{display:block!important;grid-template-columns:1fr!important}
+.teacher-layout>.sidebar{display:none!important}
+@media(max-width:1099px){
+  .teacher-layout{margin-left:0!important}
+  .teacher-layout>.main-content{padding:18px}
+}
+@media(max-width:700px){
+  .teacher-layout>.main-content{padding:12px}
+}

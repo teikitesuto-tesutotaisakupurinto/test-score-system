@@ -931,6 +931,7 @@ async function loadMarks() {
           text_value,
           color,
           font_size,
+          font_family,
           stroke_width,
           x,
           y,
@@ -2161,6 +2162,8 @@ function createMarkElement(
   element.style.fontSize =
     `${fontSize}px`;
 
+  element.style.fontFamily = mark.font_family || "sans-serif";
+
 
   element.style.color =
     mark.color ||
@@ -2283,6 +2286,7 @@ function placeMark(
   const markColor = $("markColor")?.value || "#d00000";
   const markFontSize = Number($("markFontSize")?.value) || 32;
   const markStrokeWidth = Number($("markStrokeWidth")?.value) || 3;
+  const markFontFamily = $("markFontFamily")?.value || "sans-serif";
   const markTextValue = $("markTextValue")?.value?.trim() || "文字";
 
 
@@ -2337,6 +2341,9 @@ function placeMark(
 
     font_size:
       markFontSize,
+
+    font_family:
+      markFontFamily,
 
     stroke_width:
       markStrokeWidth,
@@ -2454,6 +2461,9 @@ async function saveMarkObject(
 
             font_size:
               mark.font_size,
+
+            font_family:
+              mark.font_family || "sans-serif",
 
             stroke_width:
               mark.stroke_width,
@@ -3403,6 +3413,9 @@ async function saveMarksForAnswerQuestion(
           Number(
             mark.font_size
           ) || 32,
+
+        font_family:
+          mark.font_family || "sans-serif",
 
         stroke_width:
           Number(

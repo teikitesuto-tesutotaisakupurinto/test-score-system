@@ -784,6 +784,15 @@ data-mark="pen"
 ペン
 </button>
 
+<label class="toolbar-label" for="markColor">色</label>
+<input id="markColor" type="color" value="#d00000" aria-label="採点記号の色">
+<label class="toolbar-label" for="markFontSize">文字サイズ</label>
+<select id="markFontSize"><option value="20">20</option><option value="28">28</option><option value="32" selected>32</option><option value="40">40</option><option value="48">48</option><option value="56">56</option></select>
+<label class="toolbar-label" for="markStrokeWidth">線幅</label>
+<select id="markStrokeWidth"><option value="2">細</option><option value="3" selected>標準</option><option value="5">太</option><option value="7">極太</option></select>
+<input id="markTextValue" type="text" maxlength="12" placeholder="記入する文字" aria-label="採点文字" style="width:110px">
+
+
 
 <span class="keyboard-help">
 L：○＋満点 ／ K：×＋0点 ／
@@ -842,6 +851,10 @@ type="button"
 >
 次の問題
 </button>
+<a id="studentListButton" class="btn" href="/teacher/marking">生徒一覧</a>
+<button id="previousStudentButton" class="btn" type="button">前の生徒</button>
+<button id="nextStudentButton" class="btn" type="button">次の生徒</button>
+
 
 </div>
 

@@ -622,6 +622,7 @@ async function loadBoxes() {
         points,
         question_id,
         box_type,
+        box_role,
         page_no,
         sort_order
         `
@@ -664,6 +665,7 @@ async function loadBoxes() {
     (data || [])
       .filter(
         box =>
+          !["major", "minor"].includes(box.box_role) &&
           String(
             box.box_type ||
             ""

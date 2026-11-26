@@ -206,8 +206,13 @@ function setupEvents() {
 
 async function downloadTeacherSummaryPdf() {
   const button = document.getElementById("downloadPdfButton");
+  const completedRows = rows.filter(row => ["marked", "published"].includes(row.answer.status));
   if (!rows.length || !currentTest) {
     setStatus("PDFにする集計結果がありません。", true);
+    return;
+  }
+  if (completedRows.length !== rows.length) {
+    setStatus("未採点の答案が残っているため、正式な結果総括表PDFはまだ作成できません。", true);
     return;
   }
   if (typeof window.html2pdf !== "function") {
@@ -245,13 +250,14 @@ async function downloadTeacherSummaryPdf() {
 function buildTeacherSummaryReport() {
   const report = document.createElement("article");
   report.style.cssText = "width:1120px;padding:34px 42px;background:#fff;color:#1f2933;font-family:'Noto Sans JP',Arial,sans-serif;box-sizing:border-box;";
-  const total = rows.reduce((sum, row) => sum + row.total, 0);
-  const average = rows.length ? total / rows.length : 0;
-  const high = rows.length ? Math.max(...rows.map(row => row.total)) : 0;
-  const low = rows.length ? Math.min(...rows.map(row => row.total)) : 0;
-  const variance = rows.length ? rows.reduce((sum, row) => sum + Math.pow(row.total - average, 2), 0) / rows.length : 0;
+  const completedRows = rows.filter(row => ["marked", "published"].includes(row.answer.status));
+  const total = completedRows.reduce((sum, row) => sum + row.total, 0);
+  const average = completedRows.length ? total / completedRows.length : 0;
+  const high = completedRows.length ? Math.max(...completedRows.map(row => row.total)) : 0;
+  const low = completedRows.length ? Math.min(...completedRows.map(row => row.total)) : 0;
+  const variance = completedRows.length ? completedRows.reduce((sum, row) => sum + Math.pow(row.total - average, 2), 0) / completedRows.length : 0;
   const sd = Math.sqrt(variance);
-  const averageRate = rows[0]?.maxScore > 0 ? average / rows[0].maxScore * 100 : 0;
+  const averageRate = completedRows[0]?.maxScore > 0 ? average / completedRows[0].maxScore * 100 : 0;
   const safe = value => escapeHtml(value ?? "—");
   const questionHeads = boxes.map((box, index) => `<th>${safe(box.label || `設問${index + 1}`)}</th>`).join("");
   const standardHeads = "<th>全体偏差値</th><th>市区町村偏差値</th><th>学校偏差値</th>";
@@ -1068,56 +1074,28 @@ function buildRows(
       .filter(Boolean);
 
 
-  rows.sort(
-    (
-      a,
-      b
-    ) =>
-      b.total -
-      a.total
-  );
-
+  const completedRows = rows.filter(row => ["marked", "published"].includes(row.answer.status));
+  rows.sort((a, b) => {
+    const aComplete = ["marked", "published"].includes(a.answer.status);
+    const bComplete = ["marked", "published"].includes(b.answer.status);
+    if (aComplete !== bComplete) return aComplete ? -1 : 1;
+    return b.total - a.total;
+  });
   assignStandardScores();
 
-
-  let previousScore =
-    null;
-
-  let previousRank =
-    0;
-
-
-  rows.forEach(
-    (
-      row,
-      index
-    ) => {
-
-      if (
-        previousScore !== null &&
-        previousScore ===
-          row.total
-      ) {
-
-        row.rank =
-          previousRank;
-
-      } else {
-
-        row.rank =
-          index + 1;
-
-        previousRank =
-          row.rank;
-
-        previousScore =
-          row.total;
-
-      }
-
+  let previousScore = null;
+  let previousRank = 0;
+  completedRows.sort((a, b) => b.total - a.total);
+  completedRows.forEach((row, index) => {
+    if (previousScore !== null && previousScore === row.total) {
+      row.rank = previousRank;
+    } else {
+      row.rank = index + 1;
+      previousRank = row.rank;
+      previousScore = row.total;
     }
-  );
-
+  });
+  rows.filter(row => !["marked", "published"].includes(row.answer.status)).forEach(row => { row.rank = null; });
 }
 
 
@@ -1226,148 +1204,29 @@ function assignStandardScores() {
 ========================================================= */
 
 function renderSummary() {
-
-  if (
-    !summaryCards ||
-    !summaryCardGrid
-  ) {
-
-    return;
-
-  }
-
-
+  if (!summaryCards || !summaryCardGrid) return;
   if (!rows.length) {
-
-    summaryCards.style.display =
-      "none";
-
+    summaryCards.style.display = "none";
     return;
-
   }
-
-
-  const total =
-    rows.reduce(
-      (
-        sum,
-        row
-      ) =>
-        sum +
-        row.total,
-      0
-    );
-
-
-  const average =
-    total /
-    rows.length;
-
-
-  const maxScore =
-    rows[0].maxScore;
-
-
-  const averageRate =
-    maxScore > 0
-      ? average /
-        maxScore *
-        100
-      : 0;
-
-
-  const highest =
-    Math.max(
-      ...rows.map(
-        row =>
-          row.total
-      )
-    );
-
-  const lowest =
-    Math.min(...rows.map(row => row.total));
-
-  const variance =
-    rows.reduce((sum, row) => sum + Math.pow(row.total - average, 2), 0) / rows.length;
-
-  const standardDeviation = Math.sqrt(variance);
-
-
+  const completedRows = rows.filter(row => ["marked", "published"].includes(row.answer.status));
+  const total = completedRows.reduce((sum, row) => sum + row.total, 0);
+  const average = completedRows.length ? total / completedRows.length : null;
+  const maxScore = rows[0].maxScore;
+  const averageRate = average !== null && maxScore > 0 ? average / maxScore * 100 : null;
+  const highest = completedRows.length ? Math.max(...completedRows.map(row => row.total)) : null;
+  const lowest = completedRows.length ? Math.min(...completedRows.map(row => row.total)) : null;
+  const variance = completedRows.length ? completedRows.reduce((sum, row) => sum + Math.pow(row.total - average, 2), 0) / completedRows.length : null;
+  const standardDeviation = variance === null ? null : Math.sqrt(variance);
   summaryCardGrid.innerHTML = `
-
-    <div class="summary-card">
-
-      <div class="summary-label">
-        受験者
-      </div>
-
-      <div class="summary-value">
-        ${rows.length}人
-      </div>
-
-    </div>
-
-
-    <div class="summary-card">
-
-      <div class="summary-label">
-        平均点
-      </div>
-
-      <div class="summary-value">
-        ${formatNumber(
-          average
-        )}点
-      </div>
-
-    </div>
-
-
-    <div class="summary-card">
-
-      <div class="summary-label">
-        最高点
-      </div>
-
-      <div class="summary-value">
-        ${formatNumber(
-          highest
-        )}点
-      </div>
-
-    </div>
-
-
-    <div class="summary-card">
-
-      <div class="summary-label">
-        平均得点率
-      </div>
-
-      <div class="summary-value">
-        ${averageRate.toFixed(
-          1
-        )}%
-      </div>
-
-    </div>
-
-    <div class="summary-card">
-      <div class="summary-label">最低点</div>
-      <div class="summary-value">${formatNumber(lowest)}点</div>
-    </div>
-
-    <div class="summary-card">
-      <div class="summary-label">標準偏差</div>
-      <div class="summary-value">${standardDeviation.toFixed(2)}</div>
-    </div>
-
+    <div class="summary-card"><div class="summary-label">採点完了</div><div class="summary-value">${completedRows.length} / ${rows.length}人</div></div>
+    <div class="summary-card"><div class="summary-label">平均点</div><div class="summary-value">${average === null ? "—" : formatNumber(average) + "点"}</div></div>
+    <div class="summary-card"><div class="summary-label">最高点</div><div class="summary-value">${highest === null ? "—" : formatNumber(highest) + "点"}</div></div>
+    <div class="summary-card"><div class="summary-label">平均得点率</div><div class="summary-value">${averageRate === null ? "—" : averageRate.toFixed(1) + "%"}</div></div>
+    <div class="summary-card"><div class="summary-label">最低点</div><div class="summary-value">${lowest === null ? "—" : formatNumber(lowest) + "点"}</div></div>
+    <div class="summary-card"><div class="summary-label">標準偏差</div><div class="summary-value">${standardDeviation === null ? "—" : standardDeviation.toFixed(2)}</div></div>
   `;
-
-
-  summaryCards.style.display =
-    "block";
-
+  summaryCards.style.display = "block";
 }
 
 

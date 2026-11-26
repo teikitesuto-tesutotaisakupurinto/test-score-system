@@ -429,19 +429,14 @@ function redirectByRole(
   }
 
 
-  if (
-    role ===
-      "teacher" ||
-    role ===
-      "admin"
-  ) {
-
-    location.replace(
-      "/admin"
-    );
-
+  if (role === "teacher") {
+    location.replace("/teacher/index.html");
     return;
+  }
 
+  if (role === "admin") {
+    location.replace("/admin");
+    return;
   }
 
 

@@ -667,21 +667,13 @@
 
     boxes =
       (data || [])
-        .filter(
-          box =>
-            !["major", "minor"].includes(box.box_role) &&
-            ![
-              "QR",
-              "氏名",
-              "小計",
-              "合計"
-            ].includes(
-              String(
-                box.label ||
-                ""
-              ).trim()
-            )
-        );
+        .filter(box => {
+          const role = String(box.box_role || "").trim();
+          const label = String(box.label || "").trim();
+          if (role) return role === "answer";
+          return !["QR", "氏名", "小計", "合計"].includes(label) &&
+            !/^(大問|小問|問[0-9])/.test(label);
+        });
 
   }
 
@@ -1730,14 +1722,19 @@
 
     const { data: previousBoxes, error: boxesError } = await supabaseClient
       .from("layout_boxes")
-      .select("points,label")
+      .select("points,label,box_role")
       .eq("test_id", previous.id)
       .eq("box_type", "answer");
 
     if (boxesError) throw boxesError;
 
     const previousTotal = (previousScores || []).reduce((sum, row) => sum + (Number(row.score) || 0), 0);
-    const previousMax = (previousBoxes || []).filter(row => !["QR","氏名","小計","合計"].includes(String(row.label || "").trim())).reduce((sum, row) => sum + (Number(row.points) || 0), 0);
+    const previousMax = (previousBoxes || []).filter(row => {
+      const role = String(row.box_role || "").trim();
+      const label = String(row.label || "").trim();
+      if (role) return role === "answer";
+      return !["QR","氏名","小計","合計"].includes(label) && !/^(大問|小問|問[0-9])/.test(label);
+    }).reduce((sum, row) => sum + (Number(row.points) || 0), 0);
     const currentTotal = scores.reduce((sum, row) => sum + (Number(row.score) || 0), 0);
     const currentMax = boxes.reduce((sum, row) => sum + (Number(row.points) || 0), 0);
     const difference = currentTotal - previousTotal;

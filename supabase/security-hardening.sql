@@ -235,7 +235,7 @@ drop policy if exists storage_teacher_all on storage.objects;
 drop policy if exists "teachers can upload/read/update/delete answer files" on storage.objects;
 drop policy if exists "teachers can read/upload/update/delete test files" on storage.objects;
 
-do $
+do $$
 declare p record;
 begin
   for p in
@@ -292,7 +292,7 @@ returns void
 language plpgsql
 security definer
 set search_path = public
-as $
+as $$
 declare
   v_test_exists boolean;
   v_sheet_count integer;

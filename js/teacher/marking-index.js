@@ -506,7 +506,7 @@ function startMarking() {
    */
 
   location.href =
-    `/teacher/marking/mark?test=${encodeURIComponent(
+    `/teacher/marking/select?test=${encodeURIComponent(
       selectedTestId
     )}`;
 

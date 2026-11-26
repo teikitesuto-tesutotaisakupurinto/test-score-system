@@ -47,6 +47,8 @@ let DB = null;
 
 let testId = null;
 
+let selectedStudentId = null;
+
 let test = null;
 
 let answers = [];
@@ -159,6 +161,8 @@ async function initialize() {
         "test"
       );
 
+    selectedStudentId = params.get("student");
+
 
     if (!testId) {
 
@@ -200,6 +204,7 @@ async function initialize() {
     setupMarkToolbar();
 
     setupNavigationLinks();
+    setupStudentNavigation();
 
 
     await loadEverything();
@@ -374,6 +379,15 @@ function setupNavigationLinks() {
 ========================================================= */
 
 function setupMarkToolbar() {
+  const applyScoreTypography = () => {
+    const family = $("scoreFontFamily")?.value || "sans-serif";
+    const size = Number($("scoreFontSize")?.value) || 18;
+    document.documentElement.style.setProperty("--score-font-family", family);
+    document.documentElement.style.setProperty("--score-font-size", size + "px");
+  };
+  $("scoreFontFamily")?.addEventListener("change", applyScoreTypography);
+  $("scoreFontSize")?.addEventListener("change", applyScoreTypography);
+  applyScoreTypography();
 
   document
     .querySelectorAll(
@@ -422,6 +436,35 @@ function setupMarkToolbar() {
 
 }
 
+
+
+function setupStudentNavigation() {
+  const go = async direction => {
+    try {
+      const { data, error } = await DB.from("answer_sheets")
+        .select("student_id,created_at")
+        .eq("test_id", testId)
+        .not("student_id", "is", null)
+        .in("status", ["matched","uploaded","marking","marked"])
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      const ids = [...new Set((data || []).map(row => row.student_id).filter(Boolean))];
+      const index = ids.indexOf(selectedStudentId);
+      const next = ids[index + direction];
+      if (!next) {
+        setStatus(direction > 0 ? "最後の生徒です。" : "最初の生徒です。");
+        return;
+      }
+      location.href = "/teacher/marking/mark?test=" + encodeURIComponent(testId) + "&student=" + encodeURIComponent(next);
+    } catch (error) {
+      setStatus(error.message || "生徒を切り替えられませんでした。", true);
+    }
+  };
+  $("previousStudentButton")?.addEventListener("click", () => go(-1));
+  $("nextStudentButton")?.addEventListener("click", () => go(1));
+  const back = $("studentListButton");
+  if (back) back.href = "/teacher/marking/select?test=" + encodeURIComponent(testId);
+}
 
 /* =========================================================
    LOAD EVERYTHING
@@ -566,6 +609,10 @@ async function loadAnswers() {
       .eq(
         "test_id",
         testId
+      )
+      .eq(
+        "student_id",
+        selectedStudentId
       )
       .not(
         "student_id",
@@ -893,6 +940,7 @@ async function loadMarks() {
           text_value,
           color,
           font_size,
+          font_family,
           stroke_width,
           x,
           y,
@@ -1870,7 +1918,7 @@ async function renderAnswerImage(
       await DB
         .storage
         .from(
-          "answer-files"
+          "test-files"
         )
         .createSignedUrl(
           page.file_path,
@@ -2123,6 +2171,8 @@ function createMarkElement(
   element.style.fontSize =
     `${fontSize}px`;
 
+  element.style.fontFamily = mark.font_family || "sans-serif";
+
 
   element.style.color =
     mark.color ||
@@ -2242,6 +2292,12 @@ function placeMark(
   question,
   type
 ) {
+  const markColor = $("markColor")?.value || "#d00000";
+  const markFontSize = Number($("markFontSize")?.value) || 32;
+  const markStrokeWidth = Number($("markStrokeWidth")?.value) || 3;
+  const markFontFamily = $("markFontFamily")?.value || "sans-serif";
+  const markTextValue = $("markTextValue")?.value?.trim() || "文字";
+
 
   const rect =
     target.getBoundingClientRect();
@@ -2286,17 +2342,20 @@ function placeMark(
     text_value:
       type ===
         "text"
-        ? "文字"
+        ? markTextValue
         : null,
 
     color:
-      "#d00000",
+      markColor,
 
     font_size:
-      32,
+      markFontSize,
+
+    font_family:
+      markFontFamily,
 
     stroke_width:
-      3,
+      markStrokeWidth,
 
     x,
 
@@ -2375,86 +2434,39 @@ function placeMark(
 async function saveMarkObject(
   mark
 ) {
-
   try {
+    const { error } = await DB
+      .from("mark_objects")
+      .upsert({
+        id: mark.id,
+        answer_sheet_id: mark.answer_sheet_id,
+        layout_box_id: mark.layout_box_id,
+        question_id: mark.question_id,
+        object_type: mark.object_type,
+        text_value: mark.text_value,
+        color: mark.color,
+        font_size: mark.font_size,
+        font_family: mark.font_family || "sans-serif",
+        stroke_width: mark.stroke_width,
+        x: mark.x,
+        y: mark.y,
+        width: mark.width,
+        height: mark.height,
+        points: mark.points
+      }, { onConflict: "id" });
 
-    const {
-      error
-    } =
-      await DB
-        .from(
-          "mark_objects"
-        )
-        .upsert(
-          {
-
-            id:
-              mark.id,
-
-            answer_sheet_id:
-              mark.answer_sheet_id,
-
-            layout_box_id:
-              mark.layout_box_id,
-
-            question_id:
-              mark.question_id,
-
-            object_type:
-              mark.object_type,
-
-            text_value:
-              mark.text_value,
-
-            color:
-              mark.color,
-
-            font_size:
-              mark.font_size,
-
-            stroke_width:
-              mark.stroke_width,
-
-            x:
-              mark.x,
-
-            y:
-              mark.y,
-
-            width:
-              mark.width,
-
-            height:
-              mark.height,
-
-            points:
-              mark.points
-
-          },
-          {
-            onConflict:
-              "id"
-          }
-        );
-
-
-    if (error) {
-
-      throw error;
-
-    }
-
+    if (error) throw error;
+    setStatus("採点記号を保存しました。");
+    return true;
   } catch (error) {
-
-    console.warn(
-      "mark save:",
-      error
+    console.error("mark save:", error);
+    setStatus(
+      `採点記号を保存できませんでした: ${error.message || "原因不明のエラー"}`,
+      true
     );
-
+    return false;
   }
-
 }
-
 
 /* =========================================================
    DELETE MARK
@@ -3311,12 +3323,7 @@ async function saveMarksForAnswerQuestion(
 
   if (deleteError) {
 
-    console.warn(
-      "mark delete:",
-      deleteError
-    );
-
-    return;
+    throw deleteError;
 
   }
 
@@ -3360,6 +3367,9 @@ async function saveMarksForAnswerQuestion(
           Number(
             mark.font_size
           ) || 32,
+
+        font_family:
+          mark.font_family || "sans-serif",
 
         stroke_width:
           Number(
@@ -3409,10 +3419,7 @@ async function saveMarksForAnswerQuestion(
 
   if (insertError) {
 
-    console.warn(
-      "mark insert:",
-      insertError
-    );
+    throw insertError;
 
   }
 

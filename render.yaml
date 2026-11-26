@@ -98,6 +98,9 @@ services:
         source: /teacher/tests
         destination: /teacher/tests/index.html
       - type: rewrite
+        source: /admin
+        destination: /admin/index.html
+      - type: rewrite
         source: /teacher
         destination: /teacher/index.html
       - type: rewrite

@@ -392,8 +392,16 @@ CSV出力
 
 
 <button
-id="printButton"
+id="downloadPdfButton"
 class="btn btn-primary"
+type="button"
+>
+正式な結果総括表PDF
+</button>
+
+<button
+id="printButton"
+class="btn"
 type="button"
 >
 印刷
@@ -451,8 +459,10 @@ src="/js/auth.js?v=20261126"
 ></script>
 
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
 <script
-src="/js/teacher/results-summary.js?v=20261126"
+src="/js/teacher/results-summary.js?v=20261126formalpdf"
 ></script>
 
 

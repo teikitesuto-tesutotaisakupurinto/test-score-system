@@ -1547,18 +1547,27 @@ async function matchAnswerByQr(
   // 旧形式 STUDENT:<生徒番号> と生徒番号直書きにも対応。
   if (!student) {
     const studentNo = value.replace(/^STUDENT:/i, "").trim();
-    const {
-      data: numberStudent,
-      error: numberError
-    } = await DB
-      .from("students")
-      .select("id,student_no,name,active,qr_token")
-      .eq("active", true)
-      .eq("student_no", studentNo)
-      .maybeSingle();
+    const candidates = [studentNo];
+    const legacyParts = studentNo.match(/^(\d+)_\d+_\d+$/);
+    if (legacyParts && legacyParts[1] !== studentNo) candidates.push(legacyParts[1]);
 
-    if (numberError) throw numberError;
-    student = numberStudent || null;
+    for (const candidateNo of candidates) {
+      const {
+        data: numberStudent,
+        error: numberError
+      } = await DB
+        .from("students")
+        .select("id,student_no,name,active,qr_token")
+        .eq("active", true)
+        .eq("student_no", candidateNo)
+        .maybeSingle();
+
+      if (numberError) throw numberError;
+      if (numberStudent) {
+        student = numberStudent;
+        break;
+      }
+    }
   }
 
 

@@ -389,7 +389,7 @@ async function loadAnswers() {
   const matched =
     answers.filter(
       answer =>
-        ["matched", "uploaded"].includes(answer.status) &&
+        ["matched"].includes(answer.status) &&
         answer.student_id
     ).length;
 
@@ -439,7 +439,7 @@ function renderAnswers() {
     visible =
       answers.filter(
         answer =>
-          ["matched", "uploaded"].includes(answer.status) &&
+          ["matched"].includes(answer.status) &&
           !!answer.student_id
       );
 
@@ -532,7 +532,7 @@ function createAnswerRow(
 
 
   const matched =
-    ["matched", "uploaded"].includes(answer.status) &&
+    ["matched"].includes(answer.status) &&
     !!answer.student_id;
 
 
@@ -953,7 +953,7 @@ async function saveStudent(
 
     const { error: statusError } = await DB
       .from("answer_sheets")
-      .update({ status: "uploaded" })
+      .update({ status: "matched" })
       .eq("id", answer.id);
 
     if (statusError) throw statusError;

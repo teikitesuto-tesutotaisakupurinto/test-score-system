@@ -445,7 +445,7 @@ function setupStudentNavigation() {
         .select("student_id,created_at")
         .eq("test_id", testId)
         .not("student_id", "is", null)
-        .in("status", ["matched","uploaded","marking","marked"])
+        .in("status", ["matched","marking","marked"])
         .order("created_at", { ascending: true });
       if (error) throw error;
       const ids = [...new Set((data || []).map(row => row.student_id).filter(Boolean))];
@@ -622,7 +622,7 @@ async function loadAnswers() {
       .in(
         "status",
         [
-          "uploaded",
+          "matched",
           "marking",
           "marked"
         ]
@@ -718,16 +718,12 @@ async function loadQuestions() {
 
   questions =
     (data || [])
-      .filter(
-        box =>
-          !["major", "minor"].includes(box.box_role) &&
-          !excluded.has(
-            String(
-              box.label ||
-              ""
-            ).trim()
-          )
-      )
+      .filter(box => {
+        const role = String(box.box_role || "").trim();
+        const label = String(box.label || "").trim();
+        if (role) return role === "answer";
+        return !excluded.has(label) && !/^(大問|小問|問[0-9])/.test(label);
+      })
       .map(
         (
           box,

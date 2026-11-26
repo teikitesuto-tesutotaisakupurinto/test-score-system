@@ -9,7 +9,7 @@
    unmatched
      QR未読取 / 生徒未紐付け
 
-   uploaded
+   matched
      生徒紐付け済み・採点待ち
 
    marking
@@ -249,7 +249,7 @@ function renderSummary() {
     answerList.filter(
       answer =>
         answer.status ===
-        "uploaded"
+        "matched"
     ).length;
 
 
@@ -575,7 +575,7 @@ function createRow(
     answer.student_id &&
     (
       answer.status ===
-        "uploaded" ||
+        "matched" ||
       answer.status ===
         "marking" ||
       answer.status ===
@@ -707,7 +707,7 @@ function getStatusHtml(
 
   if (
     status ===
-    "uploaded"
+    "matched"
   ) {
 
     return `

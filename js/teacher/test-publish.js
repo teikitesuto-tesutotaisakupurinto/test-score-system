@@ -470,9 +470,12 @@ async function checkReadiness() {
 
 
   const excludedLabels = new Set(["QR", "氏名", "小計", "合計"]);
-  const answerBoxCount = (boxes || []).filter(
-    box => !["major", "minor"].includes(box.box_role) && !excludedLabels.has(String(box.label || "").trim())
-  ).length;
+  const answerBoxCount = (boxes || []).filter(box => {
+    const role = String(box.box_role || "").trim();
+    const label = String(box.label || "").trim();
+    if (role) return role === "answer";
+    return !excludedLabels.has(label) && !/^(大問|小問|問[0-9])/.test(label);
+  }).length;
 
 
   if (!answerBoxCount) {
@@ -517,7 +520,6 @@ async function checkReadiness() {
         "status",
         [
           "matched",
-          "uploaded",
           "marking",
           "marked",
           "published"

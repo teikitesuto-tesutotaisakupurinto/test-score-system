@@ -552,8 +552,6 @@
             : null;
 
 
-        box.question_id =
-          null;
 
       }
     );
@@ -2359,6 +2357,8 @@
       ] ||
       ROLE_INFO.answer;
 
+    const wasAnswerBox =
+      box.box_type === "answer";
 
     box.box_role =
       role;
@@ -2374,12 +2374,13 @@
 
     box.points =
       info.boxType === "answer"
-        ? 0
+        ? (wasAnswerBox ? (Number(box.points) || 0) : 0)
         : null;
 
-
     box.question_id =
-      null;
+      role === "answer" && info.boxType === "answer"
+        ? (box.question_id || null)
+        : null;
 
 
     if (
@@ -2874,14 +2875,14 @@
             y: Number(box.y) || 0,
             width: Number(box.width) || 0,
             height: Number(box.height) || 0,
-            question_id: null,
+            question_id: box.box_role === 'answer' ? (box.question_id || null) : null,
             points: info.boxType === "answer" ? Number(box.points) || 0 : null,
             parent_box_id: isUuid(box.parent_box_id) ? box.parent_box_id : null,
             major_no: box.major_no || null,
             minor_no: box.minor_no || null,
             box_role: box.box_role || "other",
             sort_order: index,
-            subtotal_group: box.subtotal_group || null
+            subtotal_group: Number.isInteger(Number(box.subtotal_group)) && box.subtotal_group !== null && box.subtotal_group !== '' ? Number(box.subtotal_group) : null
           };
         });
 
@@ -4141,13 +4142,12 @@
       case "student_no":
         return "student_no";
 
-      case "answer":
-
-        return (
-          box.label === "大問"
-            ? "major"
-            : "answer"
-        );
+      case "answer": {
+        const label = String(box.label || "").trim();
+        if (/^大問/.test(label)) return "major";
+        if (/^(?:小問|問)\s*\d/.test(label)) return "minor";
+        return "answer";
+      }
 
       default:
         return "other";

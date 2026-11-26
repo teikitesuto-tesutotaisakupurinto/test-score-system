@@ -980,9 +980,15 @@ async function saveStudent(
       answer.id
     );
 
+    const { error: statusError } = await DB
+      .from("answer_sheets")
+      .update({ status: "uploaded" })
+      .eq("id", answer.id);
+
+    if (statusError) throw statusError;
 
     setStatus(
-      "紐付けとクロップ処理が完了しました。"
+      "紐付け・答案画像の切り出しが完了し、採点待ちに登録しました。"
     );
 
 

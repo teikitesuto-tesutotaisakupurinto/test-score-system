@@ -1093,7 +1093,8 @@ async function readQrOnlyFromConfiguredRegions(
 
 
   if (typeof jsQR !== "function") {
-    throw new Error("QR読み取りライブラリ(jsQR)を読み込めませんでした。通信状態を確認してください。");
+    console.warn("QR読み取りライブラリ(jsQR)が利用できないため、この答案は未紐付けで登録します。");
+    return null;
   }
 
 

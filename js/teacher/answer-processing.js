@@ -9,7 +9,7 @@
    unmatched
      QR未読取 / 生徒未紐付け
 
-   uploaded
+   matched
      生徒紐付け済み・採点待ち
 
    marking

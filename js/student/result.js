@@ -1198,7 +1198,7 @@
 
 
     context.font =
-      `bold ${size}px sans-serif`;
+      `bold ${size}px ${mark.font_family || "sans-serif"}`;
 
 
     context.textBaseline =

@@ -19,7 +19,7 @@
   toggle.addEventListener("click",()=>root.classList.contains("is-open")?close():open());
   backdrop.addEventListener("click",close);
   document.addEventListener("keydown",e=>{if(e.key==="Escape")close();});
-  const current=location.pathname.replace(/\\/$/,"")||"/";
+  const current=location.pathname.replace(/\/$/,"")||"/";
   const menus={
     teacher:[
       ["ダッシュボード","/teacher/dashboard","home"],

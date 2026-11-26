@@ -251,6 +251,8 @@ function buildTeacherSummaryReport() {
   const report = document.createElement("article");
   report.style.cssText = "width:1120px;padding:34px 42px;background:#fff;color:#1f2933;font-family:'Noto Sans JP',Arial,sans-serif;box-sizing:border-box;";
   const completedRows = rows.filter(row => ["marked", "published"].includes(row.answer.status));
+  const pdfButton = document.getElementById("downloadPdfButton");
+  if (pdfButton) pdfButton.disabled = completedRows.length !== rows.length;
   const total = completedRows.reduce((sum, row) => sum + row.total, 0);
   const average = completedRows.length ? total / completedRows.length : 0;
   const high = completedRows.length ? Math.max(...completedRows.map(row => row.total)) : 0;
@@ -1370,7 +1372,7 @@ function renderTable() {
             <td>${formatNumber(row.standardScoreOverall)}</td>
             <td>${row.standardScoreMunicipality == null ? "—" : formatNumber(row.standardScoreMunicipality)}</td>
             <td>${row.standardScoreSchool == null ? "—" : formatNumber(row.standardScoreSchool)}</td>
-            <td>${row.rank}</td>
+            <td>${row.rank == null ? "—" : row.rank}</td>
 
           </tr>
 
@@ -1538,6 +1540,9 @@ function exportCsv() {
 ========================================================= */
 
 function clearResults() {
+
+  const pdfButton = document.getElementById("downloadPdfButton");
+  if (pdfButton) pdfButton.disabled = true;
 
   currentTest =
     null;

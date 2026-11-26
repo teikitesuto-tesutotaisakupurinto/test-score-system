@@ -466,9 +466,9 @@ async function loadStudents(
         "test_id",
         currentTestId
       )
-      .eq(
+      .in(
         "status",
-        "marked"
+        ["marked", "published"]
       )
       .not(
         "student_id",
@@ -650,9 +650,9 @@ async function loadAnswerById(
         "id",
         id
       )
-      .eq(
+      .in(
         "status",
-        "marked"
+        ["marked", "published"]
       )
       .maybeSingle();
 
@@ -741,9 +741,9 @@ async function loadAnswer() {
         "student_id",
         currentStudentId
       )
-      .eq(
+      .in(
         "status",
-        "marked"
+        ["marked", "published"]
       )
       .order(
         "created_at",

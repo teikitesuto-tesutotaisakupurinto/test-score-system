@@ -2923,6 +2923,20 @@
         .map(row => row.id)
         .filter(id => !desiredIds.has(id));
 
+      // 採点済みデータが参照する枠は削除しない。
+      // 先に全件確認し、途中まで削除される状態を防ぐ。
+      if (staleIds.length) {
+        const { data: linkedScores, error: linkedScoreError } = await supabaseClient
+          .from("scores")
+          .select("id")
+          .in("layout_box_id", staleIds)
+          .limit(1);
+        if (linkedScoreError) throw linkedScoreError;
+        if (linkedScores?.length) {
+          throw new Error("削除対象の枠に採点データが紐付いています。採点履歴を保護するため、枠の削除を中止しました。");
+        }
+      }
+
       for (const id of staleIds) {
         const { error: deleteError } = await supabaseClient
           .from("layout_boxes")

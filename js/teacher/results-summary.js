@@ -254,7 +254,8 @@ function buildTeacherSummaryReport() {
   const averageRate = rows[0]?.maxScore > 0 ? average / rows[0].maxScore * 100 : 0;
   const safe = value => escapeHtml(value ?? "—");
   const questionHeads = boxes.map((box, index) => `<th>${safe(box.label || `設問${index + 1}`)}</th>`).join("");
-  const body = rows.map(row => `<tr><td>${safe(row.student.student_no)}</td><td class="name">${safe(row.student.name)}</td>${row.questionScores.map(score => `<td class="num">${formatNumber(score)}</td>`).join("")}<td class="num strong">${formatNumber(row.total)} / ${formatNumber(row.maxScore)}</td><td class="num">${row.percentage.toFixed(1)}%</td><td class="num">${row.rank}</td></tr>`).join("");
+  const standardHeads = "<th>全体偏差値</th><th>市区町村偏差値</th><th>学校偏差値</th>";
+  const body = rows.map(row => `<tr><td>${safe(row.student.student_no)}</td><td class="name">${safe(row.student.name)}</td>${row.questionScores.map(score => `<td class="num">${formatNumber(score)}</td>`).join("")}<td class="num strong">${formatNumber(row.total)} / ${formatNumber(row.maxScore)}</td><td class="num">${row.percentage.toFixed(1)}%</td><td class="num">${row.standardScoreOverall == null ? "—" : formatNumber(row.standardScoreOverall)}</td><td class="num">${row.standardScoreMunicipality == null ? "—" : formatNumber(row.standardScoreMunicipality)}</td><td class="num">${row.standardScoreSchool == null ? "—" : formatNumber(row.standardScoreSchool)}</td><td class="num">${row.rank}</td></tr>`).join("");
   const issued = new Date().toLocaleDateString("ja-JP");
   report.innerHTML = `
     <style>
@@ -288,7 +289,7 @@ function buildTeacherSummaryReport() {
         <div class="stat"><div class="stat-label">標準偏差</div><div class="stat-value">${sd.toFixed(2)}</div></div>
       </div>
       <table class="report-table">
-        <thead><tr><th>生徒番号</th><th>氏名</th>${questionHeads}<th>合計点</th><th>得点率</th><th>順位</th></tr></thead>
+        <thead><tr><th>生徒番号</th><th>氏名</th>${questionHeads}<th>合計点</th><th>得点率</th>${standardHeads}<th>順位</th></tr></thead>
         <tbody>${body}</tbody>
       </table>
       <div class="foot">平均得点率：${averageRate.toFixed(1)}%　／　この総括表は公開操作とは独立して作成された集計資料です。</div>
@@ -1212,11 +1213,12 @@ function assignStandardScores() {
     const deviation = Math.sqrt(variance);
     return new Map(group.map(row => [row, deviation > 0 ? Math.round((50 + 10 * (row.total - mean) / deviation) * 10) / 10 : 50]));
   };
-  const overall = scoreFor(rows);
-  rows.forEach(row => { row.standardScoreOverall = overall.get(row) ?? 50; });
+  const eligibleRows = rows.filter(row => ["marked", "published"].includes(row.answer.status));
+  const overall = scoreFor(eligibleRows);
+  rows.forEach(row => { row.standardScoreOverall = overall.get(row) ?? null; });
   for (const [field, output] of [["municipality", "standardScoreMunicipality"], ["school_name", "standardScoreSchool"]]) {
     const groups = new Map();
-    rows.forEach(row => {
+    eligibleRows.forEach(row => {
       const key = String(row.student[field] || "").trim();
       if (!key) return;
       if (!groups.has(key)) groups.set(key, []);
@@ -1224,7 +1226,8 @@ function assignStandardScores() {
     });
     rows.forEach(row => {
       const key = String(row.student[field] || "").trim();
-      const groupScores = key ? scoreFor(groups.get(key) || []) : null;
+      const isEligible = ["marked", "published"].includes(row.answer.status);
+      const groupScores = key && isEligible ? scoreFor(groups.get(key) || []) : null;
       row[output] = groupScores ? groupScores.get(row) ?? null : null;
     });
   }

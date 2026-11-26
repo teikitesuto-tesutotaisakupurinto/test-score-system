@@ -98,8 +98,22 @@
           }
         );
 
-      document.getElementById("downloadPdfButton")?.addEventListener("click", () => {
-        window.print();
+      document.getElementById("downloadPdfButton")?.addEventListener("click", async () => {
+        const target = document.querySelector(".student-main");
+        if (!target) return;
+        if (typeof window.html2pdf === "function") {
+          const safeName = String(test?.name || "成績表").replace(/[\\/:*?"<>|]/g, "_");
+          await window.html2pdf().set({
+            margin: 8,
+            filename: safeName + "_個人成績表.pdf",
+            image: { type: "jpeg", quality: 0.96 },
+            html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
+            jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+            pagebreak: { mode: ["css", "legacy"] }
+          }).from(target).save();
+        } else {
+          window.print();
+        }
       });
 
 

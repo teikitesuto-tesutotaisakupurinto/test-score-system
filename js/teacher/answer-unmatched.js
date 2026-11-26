@@ -95,12 +95,9 @@ async function loadStudents() {
         `
         id,
         student_no,
-        name
+        name,
+        active
         `
-      )
-      .eq(
-        "active",
-        true
       )
       .order(
         "student_no",
@@ -154,10 +151,7 @@ async function loadUnmatched() {
         )
         `
       )
-      .eq(
-        "status",
-        "unmatched"
-      )
+      .or("status.eq.unmatched,student_id.is.null")
       .order(
         "created_at",
         {
@@ -517,16 +511,13 @@ async function matchAnswer(
           `
           id,
           student_no,
-          name
+          name,
+          active
           `
         )
         .eq(
           "id",
           studentId
-        )
-        .eq(
-          "active",
-          true
         )
         .single();
 
@@ -541,77 +532,34 @@ async function matchAnswer(
     /*
      * 未紐付け → 紐付け済み
      *
-     * uploaded にはしない。
-     * answer_sheets_status_check と
-     * システム全体の状態を
-     * matched に統一。
+     * 採点待ち状態 uploaded へ移行。
      */
 
     const {
+      data: updatedAnswer,
       error
-    } =
-      await supabaseClient
-        .from(
-          "answer_sheets"
-        )
-        .update({
+    } = await supabaseClient
+      .from("answer_sheets")
+      .update({
+        student_id: student.id,
+        qr_value: `MANUAL:${student.student_no}`
+      })
+      .eq("id", answerId)
+      .select("id")
+      .single();
 
-          student_id:
-            student.id,
+    if (error) throw error;
+    if (!updatedAnswer) throw new Error("答案を更新できませんでした。");
 
-          qr_value:
-            `MANUAL:${student.student_no}`,
+    // 生徒との紐付け後、解答欄の切り出しを実際に生成する。
+    await recropAnswer(answerId);
 
-          status:
-            "matched"
+    const { error: statusError } = await supabaseClient
+      .from("answer_sheets")
+      .update({ status: "uploaded" })
+      .eq("id", answerId);
 
-        })
-        .eq(
-          "id",
-          answerId
-        )
-        .eq(
-          "status",
-          "unmatched"
-        );
-
-
-    if (error) {
-
-      throw error;
-
-    }
-
-
-    /*
-     * 答案クロップを再生成できる環境なら
-     * 紐付け後処理を起動。
-     *
-     * 実際のクロップ生成は
-     * answer-processing側で行う。
-     */
-
-    if (
-      typeof window.reprocessAnswer ===
-      "function"
-    ) {
-
-      try {
-
-        await window.reprocessAnswer(
-          answerId
-        );
-
-      } catch (error) {
-
-        console.warn(
-          "answer reprocess:",
-          error
-        );
-
-      }
-
-    }
+    if (statusError) throw statusError;
 
 
     /*
@@ -696,6 +644,128 @@ async function matchAnswer(
 
   }
 
+}
+
+
+/* =========================================================
+   ANSWER RECROP
+========================================================= */
+
+async function recropAnswer(answerSheetId) {
+  const { data: answer, error: answerError } = await supabaseClient
+    .from("answer_sheets")
+    .select("id,test_id")
+    .eq("id", answerSheetId)
+    .single();
+  if (answerError) throw answerError;
+
+  const { data: answerPages, error: pageError } = await supabaseClient
+    .from("answer_sheet_pages")
+    .select("id,page_no,file_path,width_px,height_px")
+    .eq("answer_sheet_id", answerSheetId)
+    .order("page_no", { ascending: true });
+  if (pageError) throw pageError;
+
+  const { data: layoutBoxes, error: boxError } = await supabaseClient
+    .from("layout_boxes")
+    .select("id,page_no,box_type,x,y,width,height")
+    .eq("test_id", answer.test_id)
+    .eq("box_type", "answer");
+  if (boxError) throw boxError;
+
+  if (!answerPages?.length) throw new Error("答案ページ画像がありません。");
+  if (!layoutBoxes?.length) throw new Error("解答用紙の解答欄が設定されていません。");
+
+  const { error: deleteError } = await supabaseClient
+    .from("answer_regions")
+    .delete()
+    .eq("answer_sheet_id", answerSheetId);
+  if (deleteError) throw deleteError;
+
+  let created = 0;
+  for (const answerPage of answerPages) {
+    const pageBoxes = layoutBoxes.filter(box => Number(box.page_no) === Number(answerPage.page_no));
+    if (!pageBoxes.length) continue;
+
+    const { data: downloaded, error: downloadError } = await supabaseClient
+      .storage.from("test-files").download(answerPage.file_path);
+    if (downloadError) throw downloadError;
+
+    const image = await blobToImage(downloaded);
+    const sourceWidth = Number(answerPage.width_px) || image.naturalWidth;
+    const sourceHeight = Number(answerPage.height_px) || image.naturalHeight;
+    const scaleX = image.naturalWidth / sourceWidth;
+    const scaleY = image.naturalHeight / sourceHeight;
+
+    for (const box of pageBoxes) {
+      const rect = {
+        x: (Number(box.x) || 0) * scaleX,
+        y: (Number(box.y) || 0) * scaleY,
+        width: (Number(box.width) || 0) * scaleX,
+        height: (Number(box.height) || 0) * scaleY
+      };
+      const crop = cropImage(image, rect);
+      if (!crop) continue;
+      const blob = await canvasToBlob(crop);
+      const path = [answer.test_id, answerSheetId, `${box.id}.png`].join("/");
+
+      const { error: uploadError } = await supabaseClient
+        .storage.from("student-answers")
+        .upload(path, blob, { contentType: "image/png", upsert: true });
+      if (uploadError) throw uploadError;
+
+      const { error: regionError } = await supabaseClient
+        .from("answer_regions")
+        .upsert({
+          answer_sheet_id: answerSheetId,
+          layout_box_id: box.id,
+          page_no: answerPage.page_no,
+          image_path: path,
+          x: rect.x,
+          y: rect.y,
+          width: rect.width,
+          height: rect.height
+        }, { onConflict: "answer_sheet_id,layout_box_id" });
+      if (regionError) throw regionError;
+      created++;
+    }
+  }
+
+  if (!created) throw new Error("答案の切り出し対象がありません。解答欄の枠設定を確認してください。");
+}
+
+function blobToImage(blob) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(blob);
+    const image = new Image();
+    image.onload = () => { URL.revokeObjectURL(url); resolve(image); };
+    image.onerror = () => { URL.revokeObjectURL(url); reject(new Error("答案画像を読み込めませんでした。")); };
+    image.src = url;
+  });
+}
+
+function cropImage(image, rect) {
+  const x = Math.max(0, Math.floor(rect.x));
+  const y = Math.max(0, Math.floor(rect.y));
+  const width = Math.min(image.naturalWidth - x, Math.floor(rect.width));
+  const height = Math.min(image.naturalHeight - y, Math.floor(rect.height));
+  if (width <= 0 || height <= 0) return null;
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("答案切り出し用Canvasを作成できませんでした。");
+  context.drawImage(image, x, y, width, height, 0, 0, width, height);
+  return canvas;
+}
+
+function canvasToBlob(canvas) {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(blob => {
+      if (blob) resolve(blob);
+      else reject(new Error("答案の切り出し画像を生成できませんでした。"));
+    }, "image/png", 1);
+  });
 }
 
 

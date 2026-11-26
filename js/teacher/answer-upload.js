@@ -984,6 +984,32 @@ async function processStudentAnswer(
 
 
 /* =========================================================
+   FULL PAGE QR FALLBACK
+========================================================= */
+
+async function readQrFromWholePage(page) {
+  const image = await blobToImage(page.blob);
+  const sourceWidth = image.naturalWidth || image.width;
+  const sourceHeight = image.naturalHeight || image.height;
+  if (!sourceWidth || !sourceHeight) return null;
+
+  const scale = Math.min(2, 2200 / Math.max(sourceWidth, sourceHeight));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(sourceWidth * scale));
+  canvas.height = Math.max(1, Math.round(sourceHeight * scale));
+  const context = canvas.getContext("2d", { willReadFrequently: true });
+  if (!context) throw new Error("QR読み取り用Canvasを作成できませんでした。");
+  context.imageSmoothingEnabled = false;
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+  let value = scanQrCanvas(canvas);
+  if (value) return value;
+  value = scanQrCanvas(canvas, true);
+  return value || null;
+}
+
+
+/* =========================================================
    QR REGIONS
 ========================================================= */
 
@@ -1035,15 +1061,8 @@ async function readQrOnlyFromConfiguredRegions(
     data || [];
 
 
-  /*
-   * QR枠が設定されていない場合、
-   * QR読み取りそのものを行わない。
-   */
-
-  if (!qrBoxes.length) {
-
-    return null;
-
+  if (typeof jsQR !== "function") {
+    throw new Error("QR読み取りライブラリ(jsQR)を読み込めませんでした。通信状態を確認してください。");
   }
 
 
@@ -1099,6 +1118,14 @@ async function readQrOnlyFromConfiguredRegions(
 
   }
 
+  /*
+   * QR枠が未設定・座標がずれている場合にも備えて
+   * 全ページをスキャンする。
+   */
+  for (const page of pages) {
+    const value = await readQrFromWholePage(page);
+    if (value) return normalizeQr(value);
+  }
 
   return null;
 
@@ -1501,37 +1528,46 @@ async function matchAnswerByQr(
    * まずstudent_no完全一致。
    */
 
-  let {
-    data:student,
-    error
-  } =
-    await DB
-      .from(
-        "students"
-      )
-      .select(
-        `
-        id,
-        student_no,
-        name,
-        active
-        `
-      )
-      .eq(
-        "student_no",
-        studentNo
-      )
-      .eq(
-        "active",
-        true
-      )
-      .maybeSingle();
+  let student = null;
 
+  // 発行済みQRの実値(qr_token)を優先して照合する。
+  const {
+    data: tokenStudent,
+    error: tokenError
+  } = await DB
+    .from("students")
+    .select("id,student_no,name,active,qr_token")
+    .eq("active", true)
+    .eq("qr_token", value)
+    .maybeSingle();
 
-  if (error) {
+  if (tokenError) throw tokenError;
+  student = tokenStudent || null;
 
-    throw error;
+  // 旧形式 STUDENT:<生徒番号> と生徒番号直書きにも対応。
+  if (!student) {
+    const studentNo = value.replace(/^STUDENT:/i, "").trim();
+    const candidates = [studentNo];
+    const legacyParts = studentNo.match(/^(\d+)_\d+_\d+$/);
+    if (legacyParts && legacyParts[1] !== studentNo) candidates.push(legacyParts[1]);
 
+    for (const candidateNo of candidates) {
+      const {
+        data: numberStudent,
+        error: numberError
+      } = await DB
+        .from("students")
+        .select("id,student_no,name,active,qr_token")
+        .eq("active", true)
+        .eq("student_no", candidateNo)
+        .maybeSingle();
+
+      if (numberError) throw numberError;
+      if (numberStudent) {
+        student = numberStudent;
+        break;
+      }
+    }
   }
 
 
@@ -1542,25 +1578,12 @@ async function matchAnswerByQr(
 
   if (!student) {
 
-    await DB
-      .from(
-        "answer_sheets"
-      )
-      .update({
+    const { error: unmatchedError } = await DB
+      .from("answer_sheets")
+      .update({ qr_value: value, status: "unmatched" })
+      .eq("id", answerId);
 
-        qr_value:
-          value,
-
-        status:
-          "unmatched"
-
-      })
-      .eq(
-        "id",
-        answerId
-      );
-
-
+    if (unmatchedError) throw unmatchedError;
     return;
 
   }
@@ -1590,7 +1613,7 @@ async function matchAnswerByQr(
           value,
 
         status:
-          "matched"
+          "uploaded"
 
       })
       .eq(

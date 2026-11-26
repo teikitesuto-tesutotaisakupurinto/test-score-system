@@ -445,7 +445,7 @@ function setupStudentNavigation() {
         .select("student_id,created_at")
         .eq("test_id", testId)
         .not("student_id", "is", null)
-        .in("status", ["uploaded","marking","marked"])
+        .in("status", ["matched","uploaded","marking","marked"])
         .order("created_at", { ascending: true });
       if (error) throw error;
       const ids = [...new Set((data || []).map(row => row.student_id).filter(Boolean))];
@@ -1918,7 +1918,7 @@ async function renderAnswerImage(
       await DB
         .storage
         .from(
-          "answer-files"
+          "test-files"
         )
         .createSignedUrl(
           page.file_path,
@@ -2434,89 +2434,39 @@ function placeMark(
 async function saveMarkObject(
   mark
 ) {
-
   try {
+    const { error } = await DB
+      .from("mark_objects")
+      .upsert({
+        id: mark.id,
+        answer_sheet_id: mark.answer_sheet_id,
+        layout_box_id: mark.layout_box_id,
+        question_id: mark.question_id,
+        object_type: mark.object_type,
+        text_value: mark.text_value,
+        color: mark.color,
+        font_size: mark.font_size,
+        font_family: mark.font_family || "sans-serif",
+        stroke_width: mark.stroke_width,
+        x: mark.x,
+        y: mark.y,
+        width: mark.width,
+        height: mark.height,
+        points: mark.points
+      }, { onConflict: "id" });
 
-    const {
-      error
-    } =
-      await DB
-        .from(
-          "mark_objects"
-        )
-        .upsert(
-          {
-
-            id:
-              mark.id,
-
-            answer_sheet_id:
-              mark.answer_sheet_id,
-
-            layout_box_id:
-              mark.layout_box_id,
-
-            question_id:
-              mark.question_id,
-
-            object_type:
-              mark.object_type,
-
-            text_value:
-              mark.text_value,
-
-            color:
-              mark.color,
-
-            font_size:
-              mark.font_size,
-
-            font_family:
-              mark.font_family || "sans-serif",
-
-            stroke_width:
-              mark.stroke_width,
-
-            x:
-              mark.x,
-
-            y:
-              mark.y,
-
-            width:
-              mark.width,
-
-            height:
-              mark.height,
-
-            points:
-              mark.points
-
-          },
-          {
-            onConflict:
-              "id"
-          }
-        );
-
-
-    if (error) {
-
-      throw error;
-
-    }
-
+    if (error) throw error;
+    setStatus("採点記号を保存しました。");
+    return true;
   } catch (error) {
-
-    console.warn(
-      "mark save:",
-      error
+    console.error("mark save:", error);
+    setStatus(
+      `採点記号を保存できませんでした: ${error.message || "原因不明のエラー"}`,
+      true
     );
-
+    return false;
   }
-
 }
-
 
 /* =========================================================
    DELETE MARK

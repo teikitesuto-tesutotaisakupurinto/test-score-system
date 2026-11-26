@@ -94,28 +94,14 @@ async function initialize() {
       );
 
 
-    if (
-      requested &&
-      tests.some(
-        test =>
-          test.id ===
-          requested
-      )
-    ) {
+    selectedTestId =
+      requested && tests.some(test => test.id === requested)
+        ? requested
+        : "all";
 
-      selectedTestId =
-        requested;
-
-      $("testSelect").value =
-        requested;
-
-      selectedStatus =
-        $("statusSelect")?.value ||
-        "all";
-
-      await loadAnswers();
-
-    }
+    $("testSelect").value = selectedTestId;
+    selectedStatus = $("statusSelect")?.value || "unmatched";
+    await loadAnswers();
 
   } catch (error) {
 
@@ -246,8 +232,8 @@ async function loadTests() {
 
   $("testSelect").innerHTML = `
 
-    <option value="">
-      テストを選択してください
+    <option value="all">
+      すべてのテスト
     </option>
 
     ${
@@ -312,12 +298,9 @@ async function loadStudents() {
         id,
         student_no,
         name,
-        active
+        active,
+        qr_token
         `
-      )
-      .eq(
-        "active",
-        true
       )
       .order(
         "student_no",
@@ -367,35 +350,26 @@ async function loadAnswers() {
   );
 
 
-  const {
-    data,
-    error
-  } =
-    await DB
-      .from(
-        "answer_sheets"
-      )
-      .select(
-        `
-        id,
-        test_id,
-        student_id,
-        qr_value,
-        status,
-        created_at,
-        uploaded_at
-        `
-      )
-      .eq(
-        "test_id",
-        selectedTestId
-      )
-      .order(
-        "created_at",
-        {
-          ascending:false
-        }
-      );
+  let answerQuery = DB
+    .from("answer_sheets")
+    .select(`
+      id,
+      test_id,
+      student_id,
+      qr_value,
+      status,
+      created_at,
+      uploaded_at
+    `);
+
+  if (selectedTestId && selectedTestId !== "all") {
+    answerQuery = answerQuery.eq("test_id", selectedTestId);
+  }
+
+  const { data, error } = await answerQuery.order(
+    "created_at",
+    { ascending: false }
+  );
 
 
   if (error) {
@@ -415,8 +389,7 @@ async function loadAnswers() {
   const matched =
     answers.filter(
       answer =>
-        answer.status ===
-        "matched" &&
+        ["matched", "uploaded"].includes(answer.status) &&
         answer.student_id
     ).length;
 
@@ -466,8 +439,7 @@ function renderAnswers() {
     visible =
       answers.filter(
         answer =>
-          answer.status ===
-            "matched" &&
+          ["matched", "uploaded"].includes(answer.status) &&
           !!answer.student_id
       );
 
@@ -560,8 +532,7 @@ function createAnswerRow(
 
 
   const matched =
-    answer.status ===
-      "matched" &&
+    ["matched", "uploaded"].includes(answer.status) &&
     !!answer.student_id;
 
 
@@ -850,7 +821,7 @@ function createStudentSelect(
 
 
       option.textContent =
-        `${student.student_no || ""} / ${student.name || ""}`;
+        `${student.student_no || ""} / ${student.name || ""}${student.active === false ? "（在籍外）" : ""}`;
 
 
       option.selected =
@@ -980,9 +951,15 @@ async function saveStudent(
       answer.id
     );
 
+    const { error: statusError } = await DB
+      .from("answer_sheets")
+      .update({ status: "uploaded" })
+      .eq("id", answer.id);
+
+    if (statusError) throw statusError;
 
     setStatus(
-      "紐付けとクロップ処理が完了しました。"
+      "紐付け・答案画像の切り出しが完了し、採点待ちに登録しました。"
     );
 
 

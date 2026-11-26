@@ -450,7 +450,7 @@ async function checkReadiness() {
         "layout_boxes"
       )
       .select(
-        "id"
+        "id,label"
       )
       .eq(
         "test_id",
@@ -469,9 +469,10 @@ async function checkReadiness() {
   }
 
 
-  const answerBoxCount =
-    boxes?.length ||
-    0;
+  const excludedLabels = new Set(["QR", "氏名", "小計", "合計"]);
+  const answerBoxCount = (boxes || []).filter(
+    box => !excludedLabels.has(String(box.label || "").trim())
+  ).length;
 
 
   if (!answerBoxCount) {
@@ -515,6 +516,8 @@ async function checkReadiness() {
       .in(
         "status",
         [
+          "matched",
+          "uploaded",
           "marking",
           "marked",
           "published"

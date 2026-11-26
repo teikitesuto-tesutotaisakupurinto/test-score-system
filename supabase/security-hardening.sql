@@ -101,7 +101,7 @@ declare
 begin
   foreach t in array tables loop
     execute format(
-      'create policy teacher_only_data_access on public.%I for all to authenticated using (public.my_role() = ''teacher''::public.user_role) with check (public.my_role() = ''teacher''::public.user_role)',
+      'create policy teacher_only_data_access on public.%I for all to authenticated using (public.my_role()::text = ''teacher'') with check (public.my_role()::text = ''teacher'')',
       t
     );
   end loop;
@@ -180,7 +180,7 @@ using (
 create policy student_published_test_layout
 on public.layout_boxes for select to authenticated
 using (
-  public.my_role() = 'student'::public.user_role
+  public.my_role()::text = 'student'
   and exists (
     select 1 from public.tests t
     where t.id = layout_boxes.test_id
@@ -191,7 +191,7 @@ using (
 create policy student_published_tests
 on public.tests for select to authenticated
 using (
-  public.my_role() = 'student'::public.user_role
+  public.my_role()::text = 'student'
   and results_published = true
 );
 
@@ -202,7 +202,7 @@ using (auth_user_id = auth.uid());
 create policy student_own_class
 on public.classes for select to authenticated
 using (
-  public.my_role() = 'student'::public.user_role
+  public.my_role()::text = 'student'
   and id in (
     select s.class_id from public.students s
     where s.auth_user_id = auth.uid()
@@ -299,7 +299,7 @@ declare
   v_box_count integer;
   v_missing_count integer;
 begin
-  if public.my_role() <> 'teacher'::public.user_role then
+  if public.my_role()::text <> 'teacher' then
     raise exception '先生権限が必要です。';
   end if;
 
@@ -333,7 +333,8 @@ begin
     cross join public.layout_boxes b
     where a.test_id = p_test_id
       and a.student_id is not null
-      and a.status in ('uploaded','marking','marked','published')
+      and a.status in ('matched','uploaded','marking','marked','published')
+      and b.test_id = p_test_id
       and lower(coalesce(b.box_type,'')) = 'answer'
       and coalesce(trim(b.label),'') not in ('QR','氏名','小計','合計')
       and not exists (

@@ -8,7 +8,7 @@ alter table public.layout_boxes
   add column if not exists major_no integer,
   add column if not exists minor_no integer,
   add column if not exists sort_order integer not null default 0,
-  add column if not exists subtotal_group text;
+  add column if not exists subtotal_group integer;
 
 update public.layout_boxes
 set box_role = case
@@ -56,7 +56,7 @@ language plpgsql
 stable
 security definer
 set search_path = public
-as $
+as $function$
 declare
   v_student_id uuid;
 begin
@@ -161,7 +161,7 @@ begin
   left join municipality_stats on true
   left join school_stats on true;
 end;
-$;
+$function$;
 
 revoke all on function public.get_student_test_standard_scores(uuid) from public, anon;
 grant execute on function public.get_student_test_standard_scores(uuid) to authenticated;

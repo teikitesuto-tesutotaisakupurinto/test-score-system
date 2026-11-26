@@ -585,6 +585,11 @@ async function uploadFiles() {
   uploading =
     true;
 
+  // 処理中に対象テストやファイル選択が変わると、別テストへ混在するため固定する。
+  if (testSelect) testSelect.disabled = true;
+  if (answerType) answerType.disabled = true;
+  if (fileInput) fileInput.disabled = true;
+  if (clearButton) clearButton.disabled = true;
 
   updateState();
 
@@ -695,9 +700,11 @@ async function uploadFiles() {
 
   } finally {
 
-    uploading =
-      false;
-
+    uploading = false;
+    if (testSelect) testSelect.disabled = false;
+    if (answerType) answerType.disabled = false;
+    if (fileInput) fileInput.disabled = false;
+    if (clearButton) clearButton.disabled = false;
 
     updateState();
 

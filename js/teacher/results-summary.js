@@ -823,7 +823,9 @@ async function loadStudents(
         `
         id,
         student_no,
-        name
+        name,
+        municipality,
+        school_name
         `
       )
       .in(
@@ -1086,6 +1088,8 @@ function buildRows(
       a.total
   );
 
+  assignStandardScores();
+
 
   let previousScore =
     null;
@@ -1199,6 +1203,32 @@ function renderInformation() {
 
 }
 
+
+function assignStandardScores() {
+  const scoreFor = group => {
+    if (!group.length) return new Map();
+    const mean = group.reduce((sum, row) => sum + row.total, 0) / group.length;
+    const variance = group.reduce((sum, row) => sum + Math.pow(row.total - mean, 2), 0) / group.length;
+    const deviation = Math.sqrt(variance);
+    return new Map(group.map(row => [row, deviation > 0 ? Math.round((50 + 10 * (row.total - mean) / deviation) * 10) / 10 : 50]));
+  };
+  const overall = scoreFor(rows);
+  rows.forEach(row => { row.standardScoreOverall = overall.get(row) ?? 50; });
+  for (const [field, output] of [["municipality", "standardScoreMunicipality"], ["school_name", "standardScoreSchool"]]) {
+    const groups = new Map();
+    rows.forEach(row => {
+      const key = String(row.student[field] || "").trim();
+      if (!key) return;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(row);
+    });
+    rows.forEach(row => {
+      const key = String(row.student[field] || "").trim();
+      const groupScores = key ? scoreFor(groups.get(key) || []) : null;
+      row[output] = groupScores ? groupScores.get(row) ?? null : null;
+    });
+  }
+}
 
 /* =========================================================
    SUMMARY CARDS
@@ -1422,13 +1452,11 @@ function renderTable() {
         平均
       </th>
 
-      <th>
-        得点率
-      </th>
-
-      <th>
-        順位
-      </th>
+      <th>得点率</th>
+      <th>全体偏差値</th>
+      <th>市区町村偏差値</th>
+      <th>学校偏差値</th>
+      <th>順位</th>
 
     </tr>
 
@@ -1488,15 +1516,11 @@ function renderTable() {
               )}
             </td>
 
-            <td>
-              ${row.percentage.toFixed(
-                1
-              )}%
-            </td>
-
-            <td>
-              ${row.rank}
-            </td>
+            <td>${row.percentage.toFixed(1)}%</td>
+            <td>${formatNumber(row.standardScoreOverall)}</td>
+            <td>${row.standardScoreMunicipality == null ? "—" : formatNumber(row.standardScoreMunicipality)}</td>
+            <td>${row.standardScoreSchool == null ? "—" : formatNumber(row.standardScoreSchool)}</td>
+            <td>${row.rank}</td>
 
           </tr>
 
@@ -1544,7 +1568,9 @@ function exportCsv() {
     "平均",
 
     "得点率",
-
+    "全体偏差値",
+    "市区町村偏差値",
+    "学校偏差値",
     "順位"
 
   ];
@@ -1574,10 +1600,10 @@ function exportCsv() {
           2
         ),
 
-        `${row.percentage.toFixed(
-          1
-        )}%`,
-
+        `${row.percentage.toFixed(1)}%`,
+        row.standardScoreOverall,
+        row.standardScoreMunicipality ?? "",
+        row.standardScoreSchool ?? "",
         row.rank
 
       ]);

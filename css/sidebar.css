@@ -14,3 +14,5 @@
 .app-sidebar-link.active{background:#e3eef8;color:#1265a3;font-weight:700}
 .app-sidebar-note{padding:10px;color:#59636d;font-size:13px;line-height:1.8}
 @media(prefers-reduced-motion:reduce){.app-menu-toggle span,.app-sidebar-backdrop,.app-sidebar-drawer{transition:none}}
+
+.topbar{padding-left:64px}

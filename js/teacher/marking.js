@@ -379,6 +379,15 @@ function setupNavigationLinks() {
 ========================================================= */
 
 function setupMarkToolbar() {
+  const applyScoreTypography = () => {
+    const family = $("scoreFontFamily")?.value || "sans-serif";
+    const size = Number($("scoreFontSize")?.value) || 18;
+    document.documentElement.style.setProperty("--score-font-family", family);
+    document.documentElement.style.setProperty("--score-font-size", size + "px");
+  };
+  $("scoreFontFamily")?.addEventListener("change", applyScoreTypography);
+  $("scoreFontSize")?.addEventListener("change", applyScoreTypography);
+  applyScoreTypography();
 
   document
     .querySelectorAll(

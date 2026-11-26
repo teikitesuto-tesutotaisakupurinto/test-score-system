@@ -56,7 +56,7 @@ language plpgsql
 stable
 security definer
 set search_path = public
-as $
+as $$
 declare
   v_student_id uuid;
 begin
@@ -161,7 +161,7 @@ begin
   left join municipality_stats on true
   left join school_stats on true;
 end;
-$;
+$$;
 
 revoke all on function public.get_student_test_standard_scores(uuid) from public, anon;
 grant execute on function public.get_student_test_standard_scores(uuid) to authenticated;

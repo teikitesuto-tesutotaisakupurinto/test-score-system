@@ -250,7 +250,6 @@ SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $function$
 DECLARE
-    v_test_status text;
     v_answer_sheet_count integer;
     v_unmatched_count integer;
     v_nonfinal_count integer;
@@ -265,14 +264,17 @@ BEGIN
         RAISE EXCEPTION '先生権限が必要です。';
     END IF;
 
-    SELECT t.status
-      INTO v_test_status
+    PERFORM 1
       FROM public.tests AS t
      WHERE t.id = p_test_id
      FOR UPDATE;
 
     IF NOT FOUND THEN
         RAISE EXCEPTION 'テストが見つかりません。';
+    END IF;
+
+    IF p_publish IS NULL THEN
+        RAISE EXCEPTION '公開状態を指定してください。';
     END IF;
 
     IF p_publish THEN

@@ -33,7 +33,7 @@ services:
 
       - type: rewrite
         source: /teacher/tests
-        destination: /teacher/tests.html
+        destination: /teacher/tests/index.html
 
 
       # =====================================================
@@ -104,6 +104,69 @@ services:
         source: /teacher/results/summary
         destination: /teacher/results/summary.html
 
+      - type: rewrite
+        source: /teacher/dashboard
+        destination: /teacher/dashboard.html
+
+      - type: rewrite
+        source: /teacher/students
+        destination: /teacher/students/index.html
+
+      - type: rewrite
+        source: /teacher/students/new
+        destination: /teacher/students/new.html
+
+      - type: rewrite
+        source: /teacher/students/edit
+        destination: /teacher/students/edit.html
+
+      - type: rewrite
+        source: /teacher/classes
+        destination: /teacher/classes/index.html
+
+      - type: rewrite
+        source: /teacher/classes/new
+        destination: /teacher/classes/new.html
+
+      - type: rewrite
+        source: /teacher/classes/students
+        destination: /teacher/classes/students.html
+
+      - type: rewrite
+        source: /teacher/tests/new
+        destination: /teacher/tests/new.html
+
+      - type: rewrite
+        source: /teacher/tests/edit
+        destination: /teacher/tests/edit.html
+
+      - type: rewrite
+        source: /teacher/tests/preview
+        destination: /teacher/tests/preview.html
+
+      - type: rewrite
+        source: /teacher/tests/publish
+        destination: /teacher/tests/publish.html
+
+      - type: rewrite
+        source: /teacher/answers/processing
+        destination: /teacher/answers/processing.html
+
+      - type: rewrite
+        source: /teacher/answers/unmatched
+        destination: /teacher/answers/unmatched.html
+
+      - type: rewrite
+        source: /teacher/results/return
+        destination: /teacher/results/return.html
+
+      - type: rewrite
+        source: /student
+        destination: /student/tests/index.html
+
+      - type: rewrite
+        source: /student/tests/result
+        destination: /student/tests/result.html
 
       # =====================================================
       # Student

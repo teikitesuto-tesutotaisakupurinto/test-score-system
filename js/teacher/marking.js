@@ -2052,6 +2052,8 @@ function renderMarksForCard(
   question
 ) {
 
+  target.querySelectorAll(".mark-object").forEach(element => element.remove());
+
   const list =
     marks.filter(
       mark =>
@@ -2288,10 +2290,14 @@ function placeMark(
     );
 
 
+  const existingMark = type === "pen" ? null : marks.find(item =>
+    item.answer_sheet_id === answer.id && item.layout_box_id === question.id
+  );
+
   const mark = {
 
     id:
-      crypto.randomUUID(),
+      existingMark?.id || crypto.randomUUID(),
 
     answer_sheet_id:
       answer.id,
@@ -2445,61 +2451,25 @@ async function deleteMark(
   answer,
   question
 ) {
-
-  marks =
-    marks.filter(
-      item =>
-        item.id !==
-        mark.id
-    );
-
-
   try {
-
-    await DB
-      .from(
-        "mark_objects"
-      )
+    const { error } = await DB
+      .from("mark_objects")
       .delete()
-      .eq(
-        "id",
-        mark.id
-      );
+      .eq("id", mark.id);
+    if (error) throw error;
 
+    marks = marks.filter(item => item.id !== mark.id);
+
+    const card = document.querySelector(
+      `.answer-card[data-answer-id="${cssEscape(answer.id)}"]`
+    );
+    const area = card?.querySelector(".answer-image-area");
+    if (area) renderMarksForCard(area, answer, question);
+    setStatus("採点記号を削除しました。");
   } catch (error) {
-
-    console.warn(
-      "mark delete:",
-      error
-    );
-
+    console.error("mark delete:", error);
+    setStatus(`採点記号を削除できませんでした: ${error.message || "原因不明のエラー"}`, true);
   }
-
-
-  const card =
-    document.querySelector(
-      `.answer-card[data-answer-id="${cssEscape(
-        answer.id
-      )}"]`
-    );
-
-
-  const area =
-    card?.querySelector(
-      ".answer-image-area"
-    );
-
-
-  if (area) {
-
-    renderMarksForCard(
-      area,
-      answer,
-      question
-    );
-
-  }
-
 }
 
 

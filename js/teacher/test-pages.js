@@ -193,10 +193,21 @@
      INIT
   ======================================================= */
 
-  document.addEventListener(
-    "DOMContentLoaded",
-    initialize
-  );
+  // このスクリプトは body 末尾から読み込まれる場合と
+  // defer / 通常読み込みの両方に対応し、初期化を一度だけ実行する。
+  let initializationStarted = false;
+
+  function startInitialization() {
+    if (initializationStarted) return;
+    initializationStarted = true;
+    initialize();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", startInitialization, { once: true });
+  } else {
+    startInitialization();
+  }
 
 
   async function initialize() {
@@ -4198,7 +4209,5 @@
   /* =======================================================
      START
   ======================================================= */
-
-  initialize();
 
 })();

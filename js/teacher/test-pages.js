@@ -2001,11 +2001,9 @@
         } finally {
 
           approx.delete();
+          contour.delete();
 
         }
-
-
-        contour.delete();
 
       }
 

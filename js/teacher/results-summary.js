@@ -663,26 +663,13 @@ async function loadBoxes() {
 
   boxes =
     (data || [])
-      .filter(
-        box =>
-          !["major", "minor"].includes(box.box_role) &&
-          String(
-            box.box_type ||
-            ""
-          )
-            .trim()
-            .toLowerCase() ===
-          "answer"
-      )
-      .filter(
-        box =>
-          !excluded.has(
-            String(
-              box.label ||
-              ""
-            ).trim()
-          )
-      );
+      .filter(box => {
+        if (String(box.box_type || "").trim().toLowerCase() !== "answer") return false;
+        const role = String(box.box_role || "").trim();
+        const label = String(box.label || "").trim();
+        if (role) return role === "answer";
+        return !excluded.has(label) && !/^(大問|小問|問[0-9])/.test(label);
+      });
 
 }
 

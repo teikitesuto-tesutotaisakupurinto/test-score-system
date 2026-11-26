@@ -251,7 +251,7 @@ begin
   loop
     execute format('drop policy if exists %I on storage.objects', p.policyname);
   end loop;
-end $;
+end $$;
 
 -- Teachers can operate the application file buckets; administrators cannot.
 create policy teacher_only_application_storage

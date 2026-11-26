@@ -389,8 +389,7 @@ async function loadAnswers() {
   const matched =
     answers.filter(
       answer =>
-        answer.status ===
-        "matched" &&
+        ["matched", "uploaded"].includes(answer.status) &&
         answer.student_id
     ).length;
 
@@ -533,8 +532,7 @@ function createAnswerRow(
 
 
   const matched =
-    answer.status ===
-      "matched" &&
+    ["matched", "uploaded"].includes(answer.status) &&
     !!answer.student_id;
 
 

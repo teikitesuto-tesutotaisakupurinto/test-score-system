@@ -126,6 +126,7 @@
 
 
       await loadAnswer();
+      await loadPreviousComparison();
 
 
     } catch (error) {
@@ -167,6 +168,7 @@
           subject,
           grade,
           class_name,
+          test_date,
           max_score,
           results_published,
           results_published_at
@@ -204,9 +206,6 @@
 
     test =
       data;
-
-    await loadPreviousComparison();
-
 
     setText(
       "testName",

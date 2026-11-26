@@ -312,7 +312,7 @@
         >
 
           <a
-            href="/student/tests/result.html?test=${encodeURIComponent(
+            href="/student/tests/result?test=${encodeURIComponent(
               test.id
             )}"
             class="btn btn-primary"
@@ -322,7 +322,7 @@
 
 
           <a
-            href="/student/tests/answer.html?test=${encodeURIComponent(
+            href="/student/tests/answer?test=${encodeURIComponent(
               test.id
             )}"
             class="btn"

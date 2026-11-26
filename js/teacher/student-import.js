@@ -409,7 +409,10 @@ async function importCsv() {
 
             class_name:
               student.className ||
-              null
+              null,
+
+            municipality: student.municipality || null,
+            school_name: student.schoolName || null
 
           })
         );
@@ -656,15 +659,9 @@ function parseCSV(
     );
 
 
-  const classIndex =
-    findHeader(
-      headers,
-      [
-        "クラス",
-        "class",
-        "class_name"
-      ]
-    );
+  const classIndex = findHeader(headers, ["クラス", "class", "class_name"]);
+  const municipalityIndex = findHeader(headers, ["市区町村", "自治体", "municipality"]);
+  const schoolIndex = findHeader(headers, ["学校", "学校名", "school", "school_name"]);
 
 
   if (
@@ -696,12 +693,9 @@ function parseCSV(
               )
             : "",
 
-        className:
-          classIndex >= 0
-            ? cleanCell(
-                values[classIndex]
-              )
-            : ""
+        className: classIndex >= 0 ? cleanCell(values[classIndex]) : "",
+        municipality: municipalityIndex >= 0 ? cleanCell(values[municipalityIndex]) : "",
+        schoolName: schoolIndex >= 0 ? cleanCell(values[schoolIndex]) : ""
 
       })
     )
@@ -944,9 +938,13 @@ function renderPreview() {
             </td>
 
             <td>
-              ${escapeHtml(
-                student.className
-              )}
+              ${escapeHtml(student.className)}
+            </td>
+            <td>
+              ${escapeHtml(student.municipality)}
+            </td>
+            <td>
+              ${escapeHtml(student.schoolName)}
             </td>
 
           </tr>

@@ -185,8 +185,8 @@ type="button"
 
 <select id="testSelect">
 
-<option value="">
-  テストを選択してください
+<option value="all">
+  すべてのテスト
 </option>
 
 </select>
@@ -194,11 +194,15 @@ type="button"
 
 <select id="statusSelect">
 
+<option value="unmatched" selected>
+  未紐付け
+</option>
+
 <option value="all">
   すべて
 </option>
 
-<option value="uploaded">
+<option value="matched">
   紐付け済み
 </option>
 
@@ -321,7 +325,7 @@ src="/js/auth.js?v=20261126"
 ></script>
 
 <script
-src="/js/teacher/answer-matched.js?v=20261116"
+src="/js/teacher/answer-matched.js?v=20261126qrfix"
 ></script>
 
 

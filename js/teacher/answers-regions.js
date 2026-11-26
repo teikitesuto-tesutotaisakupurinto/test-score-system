@@ -679,6 +679,7 @@ async function loadBoxes() {
         id,
         page_no,
         box_type,
+        box_role,
         label,
         points,
         x,
@@ -730,6 +731,7 @@ async function loadBoxes() {
     (data || [])
       .filter(
         box =>
+          !["major", "minor"].includes(box.box_role) &&
           !excluded.has(
             String(
               box.label ||

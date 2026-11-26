@@ -104,10 +104,19 @@ const processingLog =
    INIT
 ========================================================= */
 
-document.addEventListener(
-  "DOMContentLoaded",
-  initialize
-);
+let initializationStarted = false;
+
+function startInitialization() {
+  if (initializationStarted) return;
+  initializationStarted = true;
+  initialize();
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", startInitialization, { once: true });
+} else {
+  startInitialization();
+}
 
 
 async function initialize() {

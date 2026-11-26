@@ -226,6 +226,59 @@ using (
 -- Profiles: users may read only their own profile.
 -- Existing profiles_self_read policy is retained.
 
+-- Storage: remove legacy broad teacher/admin and permissive published-file policies.
+drop policy if exists storage_teacher_all on storage.objects;
+drop policy if exists "teachers can upload/read/update/delete answer files" on storage.objects;
+drop policy if exists "teachers can read/upload/update/delete test files" on storage.objects;
+
+do $
+declare p record;
+begin
+  for p in
+    select policyname
+    from pg_policies
+    where schemaname = 'storage'
+      and tablename = 'objects'
+      and (
+        policyname ilike '%student%published%'
+        or coalesce(qual,'') ilike '%results_published%'
+        or coalesce(with_check,'') ilike '%results_published%'
+      )
+  loop
+    execute format('drop policy if exists %I on storage.objects', p.policyname);
+  end loop;
+end $;
+
+-- Teachers can operate the application file buckets; administrators cannot.
+create policy teacher_only_application_storage
+on storage.objects for all to authenticated
+using (
+  bucket_id in ('answer-files','student-answers','test-files','model-answers')
+  and public.my_role() = 'teacher'::public.user_role
+)
+with check (
+  bucket_id in ('answer-files','student-answers','test-files','model-answers')
+  and public.my_role() = 'teacher'::public.user_role
+);
+
+-- A student can fetch only file objects explicitly referenced by their own
+-- published answer pages. The same path is checked against the database row.
+create policy student_own_published_answer_storage
+on storage.objects for select to authenticated
+using (
+  bucket_id in ('answer-files','student-answers','test-files')
+  and exists (
+    select 1
+    from public.answer_sheet_pages p
+    join public.answer_sheets a on a.id = p.answer_sheet_id
+    join public.tests t on t.id = a.test_id
+    where p.file_path = storage.objects.name
+      and a.student_id = public.my_student_id()
+      and a.status = 'published'
+      and t.results_published = true
+  )
+);
+
 commit;
 
 -- IMPORTANT: Storage policies are intentionally not modified by this script.

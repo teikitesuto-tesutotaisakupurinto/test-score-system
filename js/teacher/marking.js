@@ -47,6 +47,8 @@ let DB = null;
 
 let testId = null;
 
+let selectedStudentId = null;
+
 let test = null;
 
 let answers = [];
@@ -158,6 +160,8 @@ async function initialize() {
       params.get(
         "test"
       );
+
+    selectedStudentId = params.get("student");
 
 
     if (!testId) {
@@ -566,6 +570,10 @@ async function loadAnswers() {
       .eq(
         "test_id",
         testId
+      )
+      .eq(
+        "student_id",
+        selectedStudentId
       )
       .not(
         "student_id",

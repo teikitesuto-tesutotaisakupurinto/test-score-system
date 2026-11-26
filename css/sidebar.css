@@ -16,3 +16,15 @@
 @media(prefers-reduced-motion:reduce){.app-menu-toggle span,.app-sidebar-backdrop,.app-sidebar-drawer{transition:none}}
 
 .topbar{padding-left:64px}
+
+/* デスクトップは左側に常時表示。既存ページ内の個別サイドバーは共通メニューに統一 */
+@media(min-width:1100px){
+  .app-sidebar-backdrop{display:none!important}
+  .app-sidebar-drawer{transform:translateX(0);width:270px;padding-top:68px}
+  #appSidebarRoot:not(.is-open) .app-sidebar-drawer{transform:translateX(-105%)}
+  .app-menu-toggle{left:12px}
+  #appSidebarRoot.is-open .app-menu-toggle{left:282px}
+  body:has(#appSidebarRoot.is-open) .teacher-layout{display:block!important;grid-template-columns:1fr!important;margin-left:270px}
+  body:has(#appSidebarRoot.is-open) .teacher-layout>.sidebar{display:none!important}
+  body:has(#appSidebarRoot.is-open) .main-content{min-width:0}
+}

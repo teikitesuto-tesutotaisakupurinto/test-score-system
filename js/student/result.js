@@ -54,6 +54,110 @@
     );
 
 
+  async function downloadStudentReportPdf() {
+    const button = document.getElementById("downloadPdfButton");
+    if (!test || !student) return;
+    if (typeof window.html2pdf !== "function") {
+      showError("成績表PDFの作成ライブラリを読み込めませんでした。ページを再読み込みしてください。");
+      return;
+    }
+    if (button) {
+      button.disabled = true;
+      button.textContent = "成績表を作成しています...";
+    }
+    const report = buildStudentReportElement();
+    document.body.appendChild(report);
+    try {
+      const safeName = String(test.name || "成績表").replace(/[\\/:*?"<>|]/g, "_");
+      await window.html2pdf().set({
+        margin: [9, 10, 10, 10],
+        filename: safeName + "_成績表.pdf",
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff", logging: false },
+        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+        pagebreak: { mode: ["css", "legacy"], avoid: [".report-summary", ".report-table tr"] }
+      }).from(report).save();
+    } catch (error) {
+      console.error("student report pdf:", error);
+      showError("成績表PDFを作成できませんでした。");
+    } finally {
+      report.remove();
+      if (button) {
+        button.disabled = false;
+        button.textContent = "成績表PDFダウンロード";
+      }
+    }
+  }
+
+  function buildStudentReportElement() {
+    const report = document.createElement("article");
+    report.className = "formal-student-report";
+    report.style.cssText = "width:794px;padding:42px 48px;background:#fff;color:#1f2933;font-family:'Noto Sans JP',Arial,sans-serif;box-sizing:border-box;";
+    const scoreMap = new Map(scores.map(row => [row.layout_box_id, Number(row.score) || 0]));
+    const total = scores.reduce((sum, row) => sum + (Number(row.score) || 0), 0);
+    const max = boxes.reduce((sum, box) => sum + (Number(box.points) || 0), 0);
+    const rate = max > 0 ? total / max * 100 : 0;
+    const date = value => {
+      if (!value) return "—";
+      const d = new Date(value);
+      return Number.isNaN(d.getTime()) ? String(value) : d.toLocaleDateString("ja-JP");
+    };
+    const fmt = value => formatNumber(value);
+    const safe = value => escapeHtml(value ?? "—");
+    const questionRows = boxes.map((box, index) => {
+      const score = scoreMap.get(box.id) ?? 0;
+      return `<tr><td>${safe(box.label || `設問 ${index + 1}`)}</td><td class="num">${fmt(score)} 点</td><td class="num">${fmt(box.points)} 点</td><td class="num">${Number(box.points) > 0 ? (score / Number(box.points) * 100).toFixed(1) + "%" : "—"}</td></tr>`;
+    }).join("");
+    const studentNumber = student.student_no ? `<span>生徒番号：${safe(student.student_no)}</span>` : "";
+    const className = [test.grade, test.class_name].filter(Boolean).join("・");
+    report.innerHTML = `
+      <style>
+        .formal-student-report *{box-sizing:border-box}
+        .formal-student-report .report-kicker{font-size:11px;letter-spacing:2px;color:#5d6b78;margin-bottom:8px}
+        .formal-student-report h1{font-size:27px;letter-spacing:3px;text-align:center;margin:0 0 8px;padding-bottom:15px;border-bottom:3px double #263746}
+        .formal-student-report .report-date{text-align:right;font-size:11px;color:#66717b;margin:12px 0 20px}
+        .formal-student-report .report-meta{width:100%;border-collapse:collapse;margin-bottom:18px}
+        .formal-student-report .report-meta th,.formal-student-report .report-meta td{border:1px solid #cbd3da;padding:9px 11px;font-size:12px}
+        .formal-student-report .report-meta th{width:17%;background:#f1f4f7;text-align:left;font-weight:600}
+        .formal-student-report .report-summary{display:flex;gap:12px;margin:18px 0 24px}
+        .formal-student-report .report-score{flex:1;border:1px solid #aebbc6;padding:15px;text-align:center;background:#f7fafc}
+        .formal-student-report .report-score.primary{background:#edf5fb;border:2px solid #2d6d9f}
+        .formal-student-report .report-label{font-size:11px;color:#52616d}
+        .formal-student-report .report-value{font-size:28px;font-weight:800;margin-top:5px;color:#1e3445}
+        .formal-student-report .report-value small{font-size:12px;font-weight:500}
+        .formal-student-report h2{font-size:15px;margin:22px 0 9px;padding:8px 10px;background:#eaf0f5;border-left:4px solid #476b86}
+        .formal-student-report .report-table{width:100%;border-collapse:collapse}
+        .formal-student-report .report-table th,.formal-student-report .report-table td{border:1px solid #cbd3da;padding:7px 9px;font-size:11px}
+        .formal-student-report .report-table th{background:#f1f4f7}
+        .formal-student-report .report-table .num{text-align:right;white-space:nowrap}
+        .formal-student-report .report-note{font-size:10px;color:#687580;line-height:1.7;margin-top:20px;border-top:1px solid #d7dee4;padding-top:10px}
+        .formal-student-report .report-footer{text-align:center;font-size:10px;color:#77828c;margin-top:25px}
+      </style>
+      <div class="report-kicker">INDIVIDUAL ACADEMIC RECORD</div>
+      <h1>成 績 表</h1>
+      <div class="report-date">発行日：${date(new Date().toISOString())}</div>
+      <table class="report-meta">
+        <tr><th>氏名</th><td>${safe(student.name || "生徒")}</td><th>生徒情報</th><td>${studentNumber || "—"}</td></tr>
+        <tr><th>テスト名</th><td colspan="3">${safe(test.name)}</td></tr>
+        <tr><th>教科</th><td>${safe(test.subject)}</td><th>実施日</th><td>${date(test.test_date)}</td></tr>
+        <tr><th>学年・クラス</th><td colspan="3">${safe(className || "—")}</td></tr>
+      </table>
+      <div class="report-summary">
+        <div class="report-score primary"><div class="report-label">総合得点</div><div class="report-value">${fmt(total)}<small> / ${fmt(max)} 点</small></div></div>
+        <div class="report-score"><div class="report-label">得点率</div><div class="report-value">${rate.toFixed(1)}<small> %</small></div></div>
+      </div>
+      <h2>設問別成績</h2>
+      <table class="report-table">
+        <thead><tr><th>設問</th><th>得点</th><th>配点</th><th>得点率</th></tr></thead>
+        <tbody>${questionRows || '<tr><td colspan="4">設問別データはありません。</td></tr>'}</tbody>
+        <tfoot><tr><th>合計</th><th class="num">${fmt(total)} 点</th><th class="num">${fmt(max)} 点</th><th class="num">${rate.toFixed(1)}%</th></tr></tfoot>
+      </table>
+      <div class="report-note">本成績表は、公開された採点結果に基づいて作成されています。表示内容に不明点がある場合は、担当の先生に確認してください。</div>
+      <div class="report-footer">— END OF REPORT —</div>
+    `;
+    return report;
+  }
+
   /* =======================================================
      INIT
   ======================================================= */
@@ -98,23 +202,7 @@
           }
         );
 
-      document.getElementById("downloadPdfButton")?.addEventListener("click", async () => {
-        const target = document.querySelector(".student-main");
-        if (!target) return;
-        if (typeof window.html2pdf === "function") {
-          const safeName = String(test?.name || "成績表").replace(/[\\/:*?"<>|]/g, "_");
-          await window.html2pdf().set({
-            margin: 8,
-            filename: safeName + "_個人成績表.pdf",
-            image: { type: "jpeg", quality: 0.96 },
-            html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
-            jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-            pagebreak: { mode: ["css", "legacy"] }
-          }).from(target).save();
-        } else {
-          window.print();
-        }
-      });
+      document.getElementById("downloadPdfButton")?.addEventListener("click", downloadStudentReportPdf);
 
 
       if (!testId) {

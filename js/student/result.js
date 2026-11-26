@@ -1630,14 +1630,14 @@
 
     const { data: previousBoxes, error: boxesError } = await supabaseClient
       .from("layout_boxes")
-      .select("points")
+      .select("points,label")
       .eq("test_id", previous.id)
       .eq("box_type", "answer");
 
     if (boxesError) throw boxesError;
 
     const previousTotal = (previousScores || []).reduce((sum, row) => sum + (Number(row.score) || 0), 0);
-    const previousMax = (previousBoxes || []).reduce((sum, row) => sum + (Number(row.points) || 0), 0);
+    const previousMax = (previousBoxes || []).filter(row => !["QR","氏名","小計","合計"].includes(String(row.label || "").trim())).reduce((sum, row) => sum + (Number(row.points) || 0), 0);
     const currentTotal = scores.reduce((sum, row) => sum + (Number(row.score) || 0), 0);
     const currentMax = boxes.reduce((sum, row) => sum + (Number(row.points) || 0), 0);
     const difference = currentTotal - previousTotal;

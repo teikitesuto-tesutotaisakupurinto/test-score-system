@@ -369,7 +369,7 @@ begin
       where test_id = p_test_id and status = 'published';
   end if;
 end;
-$;
+$$;
 
 revoke all on function public.set_test_publication(uuid, boolean) from public, anon;
 grant execute on function public.set_test_publication(uuid, boolean) to authenticated;

@@ -532,7 +532,7 @@ async function matchAnswer(
     /*
      * 未紐付け → 紐付け済み
      *
-     * 採点待ち状態 uploaded へ移行。
+     * 採点待ち状態 matched へ移行。
      */
 
     const {
@@ -556,7 +556,7 @@ async function matchAnswer(
 
     const { error: statusError } = await supabaseClient
       .from("answer_sheets")
-      .update({ status: "uploaded" })
+      .update({ status: "matched" })
       .eq("id", answerId);
 
     if (statusError) throw statusError;

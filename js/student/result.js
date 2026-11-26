@@ -632,6 +632,7 @@
           width,
           height,
           box_type,
+          box_role,
           sort_order
           `
         )
@@ -668,6 +669,7 @@
       (data || [])
         .filter(
           box =>
+            !["major", "minor"].includes(box.box_role) &&
             ![
               "QR",
               "氏名",

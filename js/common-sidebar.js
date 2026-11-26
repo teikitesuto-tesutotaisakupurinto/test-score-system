@@ -38,7 +38,7 @@
       ["生徒機能一覧","/student","home"],
       ["成績管理","/student/tests","chart"],
     ],
-    admin:[]
+    admin:[["システム管理","/admin","settings"]]
   };
   const render=(role)=>{
     const items=menus[role]||[];

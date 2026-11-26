@@ -45,6 +45,8 @@
 
 let DB = null;
 
+let currentUserId = null;
+
 let testId = null;
 
 let selectedStudentId = null;
@@ -183,6 +185,13 @@ async function initialize() {
 
       return;
 
+    }
+
+    const { data: authUserData, error: authUserError } = await DB.auth.getUser();
+    if (authUserError) throw authUserError;
+    currentUserId = authUserData?.user?.id || auth.profile?.id || null;
+    if (!currentUserId) {
+      throw new Error("ログインユーザーを確認できませんでした。再ログインしてください。");
     }
 
 
@@ -2398,6 +2407,7 @@ async function saveMarkObject(
       .upsert({
         id: mark.id,
         answer_sheet_id: mark.answer_sheet_id,
+        created_by: currentUserId,
         layout_box_id: mark.layout_box_id,
         question_id: mark.question_id,
         object_type: mark.object_type,
@@ -3076,6 +3086,9 @@ async function saveCardScore(
               question.questionId ||
               null,
 
+            marked_by:
+              currentUserId,
+
             score:
               value,
 
@@ -3128,6 +3141,9 @@ async function saveCardScore(
               question.questionId ||
               null,
 
+            marked_by:
+              currentUserId,
+
             score:
               value,
 
@@ -3161,18 +3177,12 @@ async function saveCardScore(
      * 全設問完了時にmarkedへ。
      */
 
-    await DB
-      .from(
-        "answer_sheets"
-      )
-      .update({
-        status:
-          "marking"
-      })
-      .eq(
-        "id",
-        answer.id
-      );
+    const { error: answerStatusError } = await DB
+      .from("answer_sheets")
+      .update({ status: "marking" })
+      .eq("id", answer.id);
+
+    if (answerStatusError) throw answerStatusError;
 
 
     await saveMarksForAnswerQuestion(
@@ -3302,6 +3312,9 @@ async function saveMarksForAnswerQuestion(
 
         answer_sheet_id:
           answer.id,
+
+        created_by:
+          currentUserId,
 
         layout_box_id:
           question.id,

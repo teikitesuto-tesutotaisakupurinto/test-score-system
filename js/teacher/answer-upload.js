@@ -1127,15 +1127,8 @@ async function readQrOnlyFromConfiguredRegions(
 
   }
 
-  /*
-   * QR枠が未設定・座標がずれている場合にも備えて
-   * 全ページをスキャンする。
-   */
-  for (const page of pages) {
-    const value = await readQrFromWholePage(page);
-    if (value) return normalizeQr(value);
-  }
-
+  // QR枠が未設定、または枠内で読み取れない場合は
+  // 誤照合を防ぐため自動照合せず、手動紐付けへ回す。
   return null;
 
 }

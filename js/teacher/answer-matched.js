@@ -1161,6 +1161,7 @@ async function recropAnswer(
         id,
         page_no,
         box_type,
+        box_role,
         x,
         y,
         width,
@@ -1202,6 +1203,7 @@ async function recropAnswer(
         []
       ).filter(
         box =>
+          !["major", "minor"].includes(box.box_role) &&
           Number(
             box.page_no
           ) ===

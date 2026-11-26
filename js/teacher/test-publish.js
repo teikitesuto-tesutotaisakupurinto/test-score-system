@@ -450,7 +450,7 @@ async function checkReadiness() {
         "layout_boxes"
       )
       .select(
-        "id,label"
+        "id,label,box_role"
       )
       .eq(
         "test_id",
@@ -471,7 +471,7 @@ async function checkReadiness() {
 
   const excludedLabels = new Set(["QR", "氏名", "小計", "合計"]);
   const answerBoxCount = (boxes || []).filter(
-    box => !excludedLabels.has(String(box.label || "").trim())
+    box => !["major", "minor"].includes(box.box_role) && !excludedLabels.has(String(box.label || "").trim())
   ).length;
 
 

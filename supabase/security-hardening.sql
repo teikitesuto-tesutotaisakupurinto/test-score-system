@@ -296,6 +296,7 @@ as $
 declare
   v_test_exists boolean;
   v_sheet_count integer;
+  v_box_count integer;
   v_missing_count integer;
 begin
   if public.my_role() <> 'teacher'::public.user_role then
@@ -315,6 +316,16 @@ begin
 
     if v_sheet_count = 0 then
       raise exception '答案が登録されていません。';
+    end if;
+
+    select count(*) into v_box_count
+    from public.layout_boxes b
+    where b.test_id = p_test_id
+      and lower(coalesce(b.box_type,'')) = 'answer'
+      and coalesce(trim(b.label),'') not in ('QR','氏名','小計','合計');
+
+    if v_box_count = 0 then
+      raise exception '採点対象の設問が登録されていません。';
     end if;
 
     select count(*) into v_missing_count

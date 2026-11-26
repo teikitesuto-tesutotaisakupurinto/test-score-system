@@ -39,3 +39,5 @@
 @media(max-width:700px){
   .teacher-layout>.main-content{padding:12px}
 }
+
+@media(min-width:1100px){body:has(#appSidebarRoot.is-open) .topbar{padding-left:290px!important}}

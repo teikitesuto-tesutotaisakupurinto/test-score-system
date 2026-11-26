@@ -1484,7 +1484,7 @@ function scanQrCanvas(
    MATCH BY QR
 ========================================================= */
 
-async async function matchAnswerByQr(
+async function matchAnswerByQr(
   answerId,
   qrValue
 ) {

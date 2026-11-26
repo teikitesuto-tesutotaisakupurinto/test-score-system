@@ -23,6 +23,8 @@
 
 let DB = null;
 
+let uploaderId = null;
+
 let tests = [];
 
 let selectedTestId = null;
@@ -147,6 +149,13 @@ async function initialize() {
 
       return;
 
+    }
+
+    const { data: authUserData, error: authUserError } = await DB.auth.getUser();
+    if (authUserError) throw authUserError;
+    uploaderId = authUserData?.user?.id || auth.profile?.id || null;
+    if (!uploaderId) {
+      throw new Error("ログインユーザーを確認できませんでした。再ログインしてください。");
     }
 
 
@@ -745,6 +754,12 @@ async function processStudentAnswer(
 
         original_file_path:
           file.name,
+
+        page_count:
+          parsed.length,
+
+        uploaded_by:
+          uploaderId,
 
         qr_value:
           null

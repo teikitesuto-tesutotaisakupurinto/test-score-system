@@ -28,6 +28,7 @@ let tests = [];
 let selectedTestId = null;
 
 let uploading = false;
+let authUserId = null;
 
 
 /* =========================================================
@@ -140,6 +141,12 @@ async function initialize() {
 
     }
 
+
+    authUserId = auth.user?.id || null;
+
+    if (!authUserId) {
+      throw new Error("ログインユーザーIDを取得できません。再ログインしてください。");
+    }
 
     if (teacherName) {
 
@@ -730,6 +737,15 @@ async function processStudentAnswer(
 
         test_id:
           selectedTestId,
+
+        uploaded_by:
+          authUserId,
+
+        uploaded_at:
+          new Date().toISOString(),
+
+        page_count:
+          parsed.length,
 
         status:
           "unmatched",

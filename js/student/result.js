@@ -98,6 +98,10 @@
           }
         );
 
+      document.getElementById("downloadPdfButton")?.addEventListener("click", () => {
+        window.print();
+      });
+
 
       if (!testId) {
 
@@ -200,6 +204,8 @@
 
     test =
       data;
+
+    await loadPreviousComparison();
 
 
     setText(
@@ -1579,6 +1585,74 @@
 
   }
 
+
+
+  /* =======================================================
+     PREVIOUS TEST COMPARISON
+  ======================================================= */
+  async function loadPreviousComparison() {
+    const container = document.getElementById("previousComparison");
+    if (!container || !test?.test_date || !test?.subject) return;
+
+    const { data: previousTests, error: testsError } = await supabaseClient
+      .from("tests")
+      .select("id,name,test_date,subject,grade")
+      .eq("subject", test.subject)
+      .eq("grade", test.grade)
+      .eq("results_published", true)
+      .lt("test_date", test.test_date)
+      .order("test_date", { ascending: false })
+      .limit(1);
+
+    if (testsError) throw testsError;
+    const previous = previousTests?.[0];
+    if (!previous) return;
+
+    const { data: previousAnswer, error: answerError } = await supabaseClient
+      .from("answer_sheets")
+      .select("id")
+      .eq("test_id", previous.id)
+      .eq("student_id", student.id)
+      .in("status", ["marked", "published"])
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (answerError) throw answerError;
+    if (!previousAnswer) return;
+
+    const { data: previousScores, error: scoresError } = await supabaseClient
+      .from("scores")
+      .select("score,status")
+      .eq("answer_sheet_id", previousAnswer.id)
+      .eq("status", "marked");
+
+    if (scoresError) throw scoresError;
+
+    const { data: previousBoxes, error: boxesError } = await supabaseClient
+      .from("layout_boxes")
+      .select("points")
+      .eq("test_id", previous.id)
+      .eq("box_type", "answer");
+
+    if (boxesError) throw boxesError;
+
+    const previousTotal = (previousScores || []).reduce((sum, row) => sum + (Number(row.score) || 0), 0);
+    const previousMax = (previousBoxes || []).reduce((sum, row) => sum + (Number(row.points) || 0), 0);
+    const currentTotal = scores.reduce((sum, row) => sum + (Number(row.score) || 0), 0);
+    const currentMax = boxes.reduce((sum, row) => sum + (Number(row.points) || 0), 0);
+    const difference = currentTotal - previousTotal;
+    const sign = difference > 0 ? "+" : "";
+    container.style.display = "";
+    container.innerHTML = `
+      <div class="student-result-card-title">前回テストとの比較</div>
+      <p>${escapeHtml(previous.name || "前回テスト")}（${escapeHtml(previous.test_date || "")}）との比較</p>
+      <div class="previous-comparison-grid">
+        <div class="previous-comparison-item"><div class="previous-comparison-label">今回の得点</div><div class="previous-comparison-value">${formatNumber(currentTotal)} / ${formatNumber(currentMax)}点</div></div>
+        <div class="previous-comparison-item"><div class="previous-comparison-label">前回の得点</div><div class="previous-comparison-value">${formatNumber(previousTotal)} / ${formatNumber(previousMax)}点</div></div>
+        <div class="previous-comparison-item"><div class="previous-comparison-label">前回比</div><div class="previous-comparison-value">${sign}${formatNumber(difference)}点</div></div>
+      </div>`;
+  }
 
   initialize();
 

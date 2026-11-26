@@ -26,10 +26,10 @@ drop policy if exists student_own_answer_sheets_select on public.answer_sheets;
 
 drop policy if exists classes_teacher_all on public.classes;
 drop policy if exists teacher_all_classes on public.classes;
-drop policy if exists teachers_can_delete_classes on public.classes;
-drop policy if exists teachers_can_insert_classes on public.classes;
-drop policy if exists teachers_can_read_classes on public.classes;
-drop policy if exists teachers_can_update_classes on public.classes;
+drop policy if exists "teachers can delete classes" on public.classes;
+drop policy if exists "teachers can insert classes" on public.classes;
+drop policy if exists "teachers can read classes" on public.classes;
+drop policy if exists "teachers can update classes" on public.classes;
 drop policy if exists classes_student_read on public.classes;
 
 drop policy if exists comments_teacher_all on public.comment_templates;

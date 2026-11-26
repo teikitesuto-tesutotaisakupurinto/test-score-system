@@ -1178,6 +1178,14 @@ function renderSummary() {
       )
     );
 
+  const lowest =
+    Math.min(...rows.map(row => row.total));
+
+  const variance =
+    rows.reduce((sum, row) => sum + Math.pow(row.total - average, 2), 0) / rows.length;
+
+  const standardDeviation = Math.sqrt(variance);
+
 
   summaryCardGrid.innerHTML = `
 
@@ -1236,6 +1244,16 @@ function renderSummary() {
         )}%
       </div>
 
+    </div>
+
+    <div class="summary-card">
+      <div class="summary-label">最低点</div>
+      <div class="summary-value">${formatNumber(lowest)}点</div>
+    </div>
+
+    <div class="summary-card">
+      <div class="summary-label">標準偏差</div>
+      <div class="summary-value">${standardDeviation.toFixed(2)}</div>
     </div>
 
   `;

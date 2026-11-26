@@ -723,7 +723,6 @@ async function loadAnswerSheets() {
         "status",
         [
           "matched",
-          "uploaded",
           "marking",
           "marked",
           "published"

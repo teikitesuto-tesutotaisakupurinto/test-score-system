@@ -764,6 +764,8 @@
 
 
   async function loadStandardScores() {
+    // 答案が存在しない場合は「未返却」表示を維持し、0点の集計で上書きしない。
+    if (!answer) return;
     try {
       const { data, error } = await supabaseClient.rpc("get_student_test_standard_scores", { p_test_id: testId });
       if (error) throw error;

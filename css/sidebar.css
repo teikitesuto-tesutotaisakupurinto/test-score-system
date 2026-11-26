@@ -47,3 +47,40 @@ body.has-app-sidebar>.admin-main{margin-left:270px!important;min-width:0}
 @media(prefers-reduced-motion:reduce){.app-menu-toggle span,.app-sidebar-backdrop,.app-sidebar-drawer{transition:none}}
 /* 枠設定ツールバーは共通サイドバーの表示領域を避ける */
 @media(min-width:701px){body.has-app-sidebar:not(.app-sidebar-collapsed) .box-panel{left:270px}}
+
+/* 画面本体をサイドバー幅だけ正しくオフセットする */
+@media (min-width:701px) {
+  body.has-app-sidebar:not(.app-sidebar-collapsed) > main,
+  body.has-app-sidebar:not(.app-sidebar-collapsed) > .main-content,
+  body.has-app-sidebar:not(.app-sidebar-collapsed) > .marking-main {
+    margin-left:270px !important;
+    width:calc(100% - 270px) !important;
+    min-width:0;
+  }
+  body.has-app-sidebar.app-sidebar-collapsed > main,
+  body.has-app-sidebar.app-sidebar-collapsed > .main-content,
+  body.has-app-sidebar.app-sidebar-collapsed > .marking-main {
+    margin-left:0 !important;
+    width:100% !important;
+  }
+  body.has-app-sidebar:not(.app-sidebar-collapsed) > .teacher-layout {
+    margin-left:270px !important;
+    width:calc(100% - 270px);
+  }
+  body.has-app-sidebar.app-sidebar-collapsed > .teacher-layout {
+    margin-left:0 !important;
+    width:100%;
+  }
+}
+@media (max-width:700px) {
+  body.has-app-sidebar > main,
+  body.has-app-sidebar > .main-content,
+  body.has-app-sidebar > .marking-main,
+  body.has-app-sidebar > .teacher-layout {
+    margin-left:0 !important;
+    width:100% !important;
+  }
+  body.has-app-sidebar .box-panel {
+    left:0 !important;
+  }
+}

@@ -56,6 +56,7 @@
       render(profile.role);
     }catch(error){console.warn("共通サイドバーの権限取得に失敗しました。",error);}
   };
+  if (window.matchMedia && window.matchMedia("(min-width: 1100px)").matches) open();
   start();
   window.addEventListener("popstate",close);
 })();

@@ -1606,7 +1606,7 @@
   ======================================================= */
   async function loadPreviousComparison() {
     const container = document.getElementById("previousComparison");
-    if (!container || !test?.test_date || !test?.subject) return;
+    if (!container || !answer || !test?.test_date || !test?.subject) return;
 
     const { data: previousTests, error: testsError } = await supabaseClient
       .from("tests")

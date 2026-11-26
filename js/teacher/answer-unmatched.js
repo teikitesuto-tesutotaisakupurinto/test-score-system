@@ -95,12 +95,9 @@ async function loadStudents() {
         `
         id,
         student_no,
-        name
+        name,
+        active
         `
-      )
-      .eq(
-        "active",
-        true
       )
       .order(
         "student_no",
@@ -154,10 +151,7 @@ async function loadUnmatched() {
         )
         `
       )
-      .eq(
-        "status",
-        "unmatched"
-      )
+      .or("status.eq.unmatched,student_id.is.null")
       .order(
         "created_at",
         {
@@ -517,16 +511,13 @@ async function matchAnswer(
           `
           id,
           student_no,
-          name
+          name,
+          active
           `
         )
         .eq(
           "id",
           studentId
-        )
-        .eq(
-          "active",
-          true
         )
         .single();
 
@@ -541,10 +532,7 @@ async function matchAnswer(
     /*
      * 未紐付け → 紐付け済み
      *
-     * uploaded にはしない。
-     * answer_sheets_status_check と
-     * システム全体の状態を
-     * matched に統一。
+     * 採点待ち状態 uploaded へ移行。
      */
 
     const {
@@ -563,7 +551,7 @@ async function matchAnswer(
             `MANUAL:${student.student_no}`,
 
           status:
-            "matched"
+            "uploaded"
 
         })
         .eq(

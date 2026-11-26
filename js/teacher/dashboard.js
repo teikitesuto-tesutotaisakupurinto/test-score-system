@@ -6,7 +6,7 @@
 
    状態
    ---------------------------------------------------------
-   uploaded
+   matched
       採点待ち
 
    marking
@@ -263,7 +263,7 @@ async function loadUnmarkedCount() {
       .in(
         "status",
         [
-          "uploaded",
+          "matched",
           "marking"
         ]
       )

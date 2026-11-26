@@ -712,71 +712,12 @@ async function publishTest() {
 
   try {
 
-    const {
-      error
-    } =
-      await DB
-        .from(
-          "tests"
-        )
-        .update({
+    const { error } = await DB.rpc("set_test_publication", {
+      p_test_id: selectedTestId,
+      p_publish: true
+    });
 
-          results_published:
-            true,
-
-          results_published_at:
-            new Date().toISOString()
-
-        })
-        .eq(
-          "id",
-          selectedTestId
-        );
-
-
-    if (error) {
-
-      throw error;
-
-    }
-
-
-    /*
-     * 答案側もpublishedへ。
-     */
-
-    const {
-      error:
-        answerError
-    } =
-      await DB
-        .from(
-          "answer_sheets"
-        )
-        .update({
-
-          status:
-            "published"
-
-        })
-        .eq(
-          "test_id",
-          selectedTestId
-        )
-        .eq(
-          "status",
-          "marked"
-        );
-
-
-    if (answerError) {
-
-      console.warn(
-        "answer publish:",
-        answerError
-      );
-
-    }
+    if (error) throw error;
 
 
     const test =
@@ -857,58 +798,12 @@ async function unpublishTest() {
 
   try {
 
-    const {
-      error
-    } =
-      await DB
-        .from(
-          "tests"
-        )
-        .update({
+    const { error } = await DB.rpc("set_test_publication", {
+      p_test_id: selectedTestId,
+      p_publish: false
+    });
 
-          results_published:
-            false,
-
-          results_published_at:
-            null
-
-        })
-        .eq(
-          "id",
-          selectedTestId
-        );
-
-
-    if (error) {
-
-      throw error;
-
-    }
-
-
-    /*
-     * 公開解除しても採点済み状態は
-     * markedへ戻す。
-     */
-
-    await DB
-      .from(
-        "answer_sheets"
-      )
-      .update({
-
-        status:
-          "marked"
-
-      })
-      .eq(
-        "test_id",
-        selectedTestId
-      )
-      .eq(
-        "status",
-        "published"
-      );
+    if (error) throw error;
 
 
     const test =

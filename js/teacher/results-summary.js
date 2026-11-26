@@ -188,18 +188,8 @@ function setupEvents() {
     );
 
 
-  document
-    .getElementById(
-      "printButton"
-    )
-    ?.addEventListener(
-      "click",
-      () => {
-
-        window.print();
-
-      }
-    );
+  document.getElementById("printButton")?.addEventListener("click", () => window.print());
+  document.getElementById("downloadPdfButton")?.addEventListener("click", downloadTeacherSummaryPdf);
 
 
   document
@@ -213,6 +203,100 @@ function setupEvents() {
 
 }
 
+
+async function downloadTeacherSummaryPdf() {
+  const button = document.getElementById("downloadPdfButton");
+  if (!rows.length || !currentTest) {
+    setStatus("PDFにする集計結果がありません。", true);
+    return;
+  }
+  if (typeof window.html2pdf !== "function") {
+    setStatus("PDF作成ライブラリを読み込めませんでした。", true);
+    return;
+  }
+  if (button) {
+    button.disabled = true;
+    button.textContent = "PDFを作成しています...";
+  }
+  const report = buildTeacherSummaryReport();
+  document.body.appendChild(report);
+  try {
+    const filename = String(currentTest.name || "結果総括表").replace(/[\\/:*?"<>|]/g, "_") + "_結果総括表.pdf";
+    await window.html2pdf().set({
+      margin: [8, 8, 10, 8],
+      filename,
+      image: { type: "jpeg", quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff", logging: false },
+      jsPDF: { unit: "mm", format: "a4", orientation: "landscape" },
+      pagebreak: { mode: ["css", "legacy"], avoid: [".report-stats", ".report-table tr"] }
+    }).from(report).save();
+  } catch (error) {
+    console.error("teacher summary pdf:", error);
+    setStatus("結果総括表PDFを作成できませんでした。", true);
+  } finally {
+    report.remove();
+    if (button) {
+      button.disabled = false;
+      button.textContent = "正式な結果総括表PDF";
+    }
+  }
+}
+
+function buildTeacherSummaryReport() {
+  const report = document.createElement("article");
+  report.style.cssText = "width:1120px;padding:34px 42px;background:#fff;color:#1f2933;font-family:'Noto Sans JP',Arial,sans-serif;box-sizing:border-box;";
+  const total = rows.reduce((sum, row) => sum + row.total, 0);
+  const average = rows.length ? total / rows.length : 0;
+  const high = rows.length ? Math.max(...rows.map(row => row.total)) : 0;
+  const low = rows.length ? Math.min(...rows.map(row => row.total)) : 0;
+  const variance = rows.length ? rows.reduce((sum, row) => sum + Math.pow(row.total - average, 2), 0) / rows.length : 0;
+  const sd = Math.sqrt(variance);
+  const averageRate = rows[0]?.maxScore > 0 ? average / rows[0].maxScore * 100 : 0;
+  const safe = value => escapeHtml(value ?? "—");
+  const questionHeads = boxes.map((box, index) => `<th>${safe(box.label || `設問${index + 1}`)}</th>`).join("");
+  const standardHeads = "<th>全体偏差値</th><th>市区町村偏差値</th><th>学校偏差値</th>";
+  const body = rows.map(row => `<tr><td>${safe(row.student.student_no)}</td><td class="name">${safe(row.student.name)}</td>${row.questionScores.map(score => `<td class="num">${formatNumber(score)}</td>`).join("")}<td class="num strong">${formatNumber(row.total)} / ${formatNumber(row.maxScore)}</td><td class="num">${row.percentage.toFixed(1)}%</td><td class="num">${row.standardScoreOverall == null ? "—" : formatNumber(row.standardScoreOverall)}</td><td class="num">${row.standardScoreMunicipality == null ? "—" : formatNumber(row.standardScoreMunicipality)}</td><td class="num">${row.standardScoreSchool == null ? "—" : formatNumber(row.standardScoreSchool)}</td><td class="num">${row.rank}</td></tr>`).join("");
+  const issued = new Date().toLocaleDateString("ja-JP");
+  report.innerHTML = `
+    <style>
+      .formal-summary *{box-sizing:border-box}
+      .formal-summary .eyebrow{font-size:10px;letter-spacing:2px;color:#62717e}
+      .formal-summary h1{font-size:25px;text-align:center;margin:4px 0 5px;padding-bottom:12px;border-bottom:3px double #263746}
+      .formal-summary .meta{display:flex;justify-content:space-between;font-size:11px;color:#586672;margin:10px 0 16px}
+      .formal-summary .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:9px;margin:14px 0 18px}
+      .formal-summary .stat{border:1px solid #cbd4dc;padding:10px;text-align:center;background:#f7f9fb}
+      .formal-summary .stat.best{background:#eaf4fc;border:2px solid #2875a8}
+      .formal-summary .stat-label{font-size:10px;color:#5e6b75}
+      .formal-summary .stat-value{font-size:20px;font-weight:800;margin-top:4px}
+      .formal-summary .best-word{font-size:10px;font-weight:900;letter-spacing:2px;color:#1769aa}
+      .formal-summary table{width:100%;border-collapse:collapse}
+      .formal-summary th,.formal-summary td{border:1px solid #cbd4dc;padding:5px 6px;font-size:9px}
+      .formal-summary th{background:#edf1f5;text-align:center}
+      .formal-summary td.num{text-align:right;white-space:nowrap}
+      .formal-summary td.name{text-align:left;white-space:nowrap}
+      .formal-summary td.strong{font-weight:800}
+      .formal-summary .foot{font-size:9px;color:#6b7780;margin-top:12px;text-align:right}
+    </style>
+    <div class="formal-summary">
+      <div class="eyebrow">ACADEMIC PERFORMANCE SUMMARY</div>
+      <h1>テスト結果総括表</h1>
+      <div class="meta"><span>テスト：${safe(currentTest.name)}</span><span>教科：${safe(currentTest.subject)}　学年：${safe(currentTest.grade)}　クラス：${safe(currentTest.class_name)}</span><span>発行日：${issued}</span></div>
+      <div class="stats">
+        <div class="stat best"><div class="best-word">BEST</div><div class="stat-label">平均点</div><div class="stat-value">${formatNumber(average)}点</div></div>
+        <div class="stat"><div class="stat-label">受験者数</div><div class="stat-value">${rows.length}名</div></div>
+        <div class="stat"><div class="stat-label">最高点</div><div class="stat-value">${formatNumber(high)}点</div></div>
+        <div class="stat"><div class="stat-label">最低点</div><div class="stat-value">${formatNumber(low)}点</div></div>
+        <div class="stat"><div class="stat-label">標準偏差</div><div class="stat-value">${sd.toFixed(2)}</div></div>
+      </div>
+      <table class="report-table">
+        <thead><tr><th>生徒番号</th><th>氏名</th>${questionHeads}<th>合計点</th><th>得点率</th>${standardHeads}<th>順位</th></tr></thead>
+        <tbody>${body}</tbody>
+      </table>
+      <div class="foot">平均得点率：${averageRate.toFixed(1)}%　／　この総括表は公開操作とは独立して作成された集計資料です。</div>
+    </div>
+  `;
+  return report;
+}
 
 /* =========================================================
    TESTS
@@ -538,6 +622,7 @@ async function loadBoxes() {
         points,
         question_id,
         box_type,
+        box_role,
         page_no,
         sort_order
         `
@@ -578,25 +663,13 @@ async function loadBoxes() {
 
   boxes =
     (data || [])
-      .filter(
-        box =>
-          String(
-            box.box_type ||
-            ""
-          )
-            .trim()
-            .toLowerCase() ===
-          "answer"
-      )
-      .filter(
-        box =>
-          !excluded.has(
-            String(
-              box.label ||
-              ""
-            ).trim()
-          )
-      );
+      .filter(box => {
+        if (String(box.box_type || "").trim().toLowerCase() !== "answer") return false;
+        const role = String(box.box_role || "").trim();
+        const label = String(box.label || "").trim();
+        if (role) return role === "answer";
+        return !excluded.has(label) && !/^(大問|小問|問[0-9])/.test(label);
+      });
 
 }
 
@@ -637,7 +710,6 @@ async function loadAnswerSheets() {
         "status",
         [
           "matched",
-          "uploaded",
           "marking",
           "marked",
           "published"
@@ -740,7 +812,9 @@ async function loadStudents(
         `
         id,
         student_no,
-        name
+        name,
+        municipality,
+        school_name
         `
       )
       .in(
@@ -1003,6 +1077,8 @@ function buildRows(
       a.total
   );
 
+  assignStandardScores();
+
 
   let previousScore =
     null;
@@ -1116,6 +1192,34 @@ function renderInformation() {
 
 }
 
+
+function assignStandardScores() {
+  const scoreFor = group => {
+    if (!group.length) return new Map();
+    const mean = group.reduce((sum, row) => sum + row.total, 0) / group.length;
+    const variance = group.reduce((sum, row) => sum + Math.pow(row.total - mean, 2), 0) / group.length;
+    const deviation = Math.sqrt(variance);
+    return new Map(group.map(row => [row, deviation > 0 ? Math.round((50 + 10 * (row.total - mean) / deviation) * 10) / 10 : 50]));
+  };
+  const eligibleRows = rows.filter(row => ["marked", "published"].includes(row.answer.status));
+  const overall = scoreFor(eligibleRows);
+  rows.forEach(row => { row.standardScoreOverall = overall.get(row) ?? null; });
+  for (const [field, output] of [["municipality", "standardScoreMunicipality"], ["school_name", "standardScoreSchool"]]) {
+    const groups = new Map();
+    eligibleRows.forEach(row => {
+      const key = String(row.student[field] || "").trim();
+      if (!key) return;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(row);
+    });
+    rows.forEach(row => {
+      const key = String(row.student[field] || "").trim();
+      const isEligible = ["marked", "published"].includes(row.answer.status);
+      const groupScores = key && isEligible ? scoreFor(groups.get(key) || []) : null;
+      row[output] = groupScores ? groupScores.get(row) ?? null : null;
+    });
+  }
+}
 
 /* =========================================================
    SUMMARY CARDS
@@ -1339,13 +1443,11 @@ function renderTable() {
         平均
       </th>
 
-      <th>
-        得点率
-      </th>
-
-      <th>
-        順位
-      </th>
+      <th>得点率</th>
+      <th>全体偏差値</th>
+      <th>市区町村偏差値</th>
+      <th>学校偏差値</th>
+      <th>順位</th>
 
     </tr>
 
@@ -1405,15 +1507,11 @@ function renderTable() {
               )}
             </td>
 
-            <td>
-              ${row.percentage.toFixed(
-                1
-              )}%
-            </td>
-
-            <td>
-              ${row.rank}
-            </td>
+            <td>${row.percentage.toFixed(1)}%</td>
+            <td>${formatNumber(row.standardScoreOverall)}</td>
+            <td>${row.standardScoreMunicipality == null ? "—" : formatNumber(row.standardScoreMunicipality)}</td>
+            <td>${row.standardScoreSchool == null ? "—" : formatNumber(row.standardScoreSchool)}</td>
+            <td>${row.rank}</td>
 
           </tr>
 
@@ -1461,7 +1559,9 @@ function exportCsv() {
     "平均",
 
     "得点率",
-
+    "全体偏差値",
+    "市区町村偏差値",
+    "学校偏差値",
     "順位"
 
   ];
@@ -1491,10 +1591,10 @@ function exportCsv() {
           2
         ),
 
-        `${row.percentage.toFixed(
-          1
-        )}%`,
-
+        `${row.percentage.toFixed(1)}%`,
+        row.standardScoreOverall,
+        row.standardScoreMunicipality ?? "",
+        row.standardScoreSchool ?? "",
         row.rank
 
       ]);

@@ -532,7 +532,7 @@ async function matchAnswer(
     /*
      * 未紐付け → 紐付け済み
      *
-     * 採点待ち状態 uploaded へ移行。
+     * 採点待ち状態 matched へ移行。
      */
 
     const {
@@ -556,7 +556,7 @@ async function matchAnswer(
 
     const { error: statusError } = await supabaseClient
       .from("answer_sheets")
-      .update({ status: "uploaded" })
+      .update({ status: "matched" })
       .eq("id", answerId);
 
     if (statusError) throw statusError;
@@ -668,13 +668,14 @@ async function recropAnswer(answerSheetId) {
 
   const { data: layoutBoxes, error: boxError } = await supabaseClient
     .from("layout_boxes")
-    .select("id,page_no,box_type,x,y,width,height")
+    .select("id,page_no,box_type,box_role,x,y,width,height")
     .eq("test_id", answer.test_id)
     .eq("box_type", "answer");
+  const answerOnlyBoxes = (layoutBoxes || []).filter(box => !["major", "minor"].includes(box.box_role));
   if (boxError) throw boxError;
 
   if (!answerPages?.length) throw new Error("答案ページ画像がありません。");
-  if (!layoutBoxes?.length) throw new Error("解答用紙の解答欄が設定されていません。");
+  if (!answerOnlyBoxes.length) throw new Error("採点対象の解答欄が設定されていません。");
 
   const { error: deleteError } = await supabaseClient
     .from("answer_regions")
@@ -684,7 +685,7 @@ async function recropAnswer(answerSheetId) {
 
   let created = 0;
   for (const answerPage of answerPages) {
-    const pageBoxes = layoutBoxes.filter(box => Number(box.page_no) === Number(answerPage.page_no));
+    const pageBoxes = answerOnlyBoxes.filter(box => Number(box.page_no) === Number(answerPage.page_no));
     if (!pageBoxes.length) continue;
 
     const { data: downloaded, error: downloadError } = await supabaseClient

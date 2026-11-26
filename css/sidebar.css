@@ -1,43 +1,86 @@
-/* 共通オフキャンバスサイドバー */
-.app-menu-toggle{position:fixed;top:10px;left:12px;z-index:1200;width:42px;height:42px;border:1px solid rgba(0,0,0,.12);border-radius:7px;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;box-shadow:0 2px 7px rgba(0,0,0,.12);cursor:pointer}
-.app-menu-toggle span{display:block;width:21px;height:2px;background:#263746;border-radius:2px;transition:transform .28s ease,opacity .2s ease,width .28s ease}
+/* 共通サイドバー・画面レイアウト */
+*{box-sizing:border-box}
+#appSidebarRoot{position:relative;z-index:1300}
+.app-menu-toggle{position:fixed;top:8px;left:12px;z-index:1400;width:42px;height:42px;border:1px solid #d6dde3;border-radius:8px;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;box-shadow:0 2px 8px rgba(0,0,0,.12);cursor:pointer}
+.app-menu-toggle span{display:block;width:21px;height:2px;background:#263746;border-radius:2px;transition:transform .2s ease,opacity .2s ease}
 #appSidebarRoot.is-open .app-menu-toggle span:nth-child(1){transform:translateY(7px) rotate(45deg)}
-#appSidebarRoot.is-open .app-menu-toggle span:nth-child(2){opacity:0;width:4px}
+#appSidebarRoot.is-open .app-menu-toggle span:nth-child(2){opacity:0}
 #appSidebarRoot.is-open .app-menu-toggle span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
-.app-sidebar-backdrop{position:fixed;inset:0;z-index:1100;background:rgba(15,25,35,.38);opacity:0;visibility:hidden;transition:opacity .25s ease,visibility .25s ease}
-.app-sidebar-drawer{position:fixed;inset:0 auto 0 0;z-index:1150;width:min(290px,86vw);padding:68px 14px 24px;background:#fff;box-shadow:5px 0 22px rgba(0,0,0,.16);transform:translateX(-105%);transition:transform .28s cubic-bezier(.2,.75,.25,1);overflow-y:auto}
+.app-sidebar-backdrop{position:fixed;inset:0;z-index:1200;background:rgba(15,25,35,.38);opacity:0;visibility:hidden;transition:opacity .2s ease,visibility .2s ease}
+.app-sidebar-drawer{position:fixed;inset:0 auto 0 0;z-index:1250;width:270px;padding:64px 14px 24px;background:#fff;border-right:1px solid #dce2e7;box-shadow:4px 0 18px rgba(0,0,0,.10);transform:translateX(-105%);transition:transform .22s ease;overflow-y:auto}
 #appSidebarRoot.is-open .app-sidebar-backdrop{opacity:1;visibility:visible}
 #appSidebarRoot.is-open .app-sidebar-drawer{transform:translateX(0)}
-.app-sidebar-brand{padding:0 10px 18px;margin-bottom:10px;border-bottom:1px solid #e4e8ec;font-weight:800;font-size:16px;color:#263746}
-.app-sidebar-link{display:flex;align-items:center;min-height:43px;padding:9px 12px;margin:3px 0;border-radius:6px;color:#303b45;font-size:14px;text-decoration:none}
+.app-sidebar-brand{padding:0 10px 16px;margin-bottom:10px;border-bottom:1px solid #e4e8ec;font-weight:800;font-size:15px;line-height:1.5;color:#263746}
+.app-sidebar-link{display:flex;align-items:center;min-height:42px;padding:9px 12px;margin:3px 0;border-radius:7px;color:#303b45;font-size:14px;text-decoration:none}
 .app-sidebar-link:hover{background:#edf3f8}
 .app-sidebar-link.active{background:#e3eef8;color:#1265a3;font-weight:700}
 .app-sidebar-note{padding:10px;color:#59636d;font-size:13px;line-height:1.8}
-@media(prefers-reduced-motion:reduce){.app-menu-toggle span,.app-sidebar-backdrop,.app-sidebar-drawer{transition:none}}
-
-.topbar{padding-left:64px}
-
-/* デスクトップは左側に常時表示。既存ページ内の個別サイドバーは共通メニューに統一 */
-@media(min-width:1100px){
-  .app-sidebar-backdrop{display:none!important}
-  .app-sidebar-drawer{transform:translateX(0);width:270px;padding-top:68px}
-  #appSidebarRoot:not(.is-open) .app-sidebar-drawer{transform:translateX(-105%)}
-  .app-menu-toggle{left:12px}
-  #appSidebarRoot.is-open .app-menu-toggle{left:282px}
-  body:has(#appSidebarRoot.is-open) .teacher-layout{display:block!important;grid-template-columns:1fr!important;margin-left:270px}
-  body:has(#appSidebarRoot.is-open) .teacher-layout>.sidebar{display:none!important}
-  body:has(#appSidebarRoot.is-open) .main-content{min-width:0}
-}
-
-/* 旧ページ内サイドバーを全画面で共通メニューに置き換える */
-.teacher-layout{display:block!important;grid-template-columns:1fr!important}
-.teacher-layout>.sidebar{display:none!important}
-@media(max-width:1099px){
-  .teacher-layout{margin-left:0!important}
-  .teacher-layout>.main-content{padding:18px}
+body.has-app-sidebar .topbar{padding-left:18px;transition:margin-left .2s ease}
+body.has-app-sidebar .teacher-layout{display:block!important;grid-template-columns:1fr!important;margin-left:270px!important;min-width:0}
+body.has-app-sidebar .teacher-layout>.sidebar{display:none!important}
+body.has-app-sidebar .teacher-layout>.main-content{min-width:0}
+body.has-app-sidebar>main.main,
+body.has-app-sidebar>.main,
+body.has-app-sidebar>.student-main,
+body.has-app-sidebar>.admin-main{margin-left:270px!important;min-width:0}
+@media(min-width:701px){
+ body.has-app-sidebar:not(.app-sidebar-collapsed) .topbar{margin-left:270px}
+ body.has-app-sidebar.app-sidebar-collapsed .topbar{margin-left:0}
+ body.has-app-sidebar.app-sidebar-collapsed .teacher-layout{margin-left:0!important}
+ body.has-app-sidebar.app-sidebar-collapsed>main.main,
+ body.has-app-sidebar.app-sidebar-collapsed>.main,
+ body.has-app-sidebar.app-sidebar-collapsed>.student-main,
+ body.has-app-sidebar.app-sidebar-collapsed>.admin-main{margin-left:0!important}
+ body.has-app-sidebar.app-sidebar-collapsed .app-sidebar-drawer{transform:translateX(-105%)}
+ body.has-app-sidebar.app-sidebar-collapsed .app-sidebar-backdrop{opacity:0;visibility:hidden}
 }
 @media(max-width:700px){
-  .teacher-layout>.main-content{padding:12px}
+ .app-sidebar-drawer{width:min(300px,86vw)}
+ body.has-app-sidebar .topbar{padding-left:64px;min-height:54px}
+ body.has-app-sidebar .teacher-layout{margin-left:0!important}
+ body.has-app-sidebar>main.main,
+ body.has-app-sidebar>.main,
+ body.has-app-sidebar>.student-main,
+ body.has-app-sidebar>.admin-main{margin-left:0!important}
+ body.has-app-sidebar .teacher-layout>.main-content{padding:14px}
 }
+@media(prefers-reduced-motion:reduce){.app-menu-toggle span,.app-sidebar-backdrop,.app-sidebar-drawer{transition:none}}
+/* 枠設定ツールバーは共通サイドバーの表示領域を避ける */
+@media(min-width:701px){body.has-app-sidebar:not(.app-sidebar-collapsed) .box-panel{left:270px}}
 
-@media(min-width:1100px){body:has(#appSidebarRoot.is-open) .topbar{padding-left:290px!important}}
+/* 画面本体をサイドバー幅だけ正しくオフセットする */
+@media (min-width:701px) {
+  body.has-app-sidebar:not(.app-sidebar-collapsed) > main,
+  body.has-app-sidebar:not(.app-sidebar-collapsed) > .main-content,
+  body.has-app-sidebar:not(.app-sidebar-collapsed) > .marking-main {
+    margin-left:270px !important;
+    width:calc(100% - 270px) !important;
+    min-width:0;
+  }
+  body.has-app-sidebar.app-sidebar-collapsed > main,
+  body.has-app-sidebar.app-sidebar-collapsed > .main-content,
+  body.has-app-sidebar.app-sidebar-collapsed > .marking-main {
+    margin-left:0 !important;
+    width:100% !important;
+  }
+  body.has-app-sidebar:not(.app-sidebar-collapsed) > .teacher-layout {
+    margin-left:270px !important;
+    width:calc(100% - 270px);
+  }
+  body.has-app-sidebar.app-sidebar-collapsed > .teacher-layout {
+    margin-left:0 !important;
+    width:100%;
+  }
+}
+@media (max-width:700px) {
+  body.has-app-sidebar > main,
+  body.has-app-sidebar > .main-content,
+  body.has-app-sidebar > .marking-main,
+  body.has-app-sidebar > .teacher-layout {
+    margin-left:0 !important;
+    width:100% !important;
+  }
+  body.has-app-sidebar .box-panel {
+    left:0 !important;
+  }
+}

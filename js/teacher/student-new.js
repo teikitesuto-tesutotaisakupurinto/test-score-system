@@ -135,13 +135,9 @@ async function handleSubmit(
       .trim();
 
 
-  const className =
-    document
-      .getElementById(
-        "studentClass"
-      )
-      .value
-      .trim();
+  const className = document.getElementById("studentClass").value.trim();
+  const municipality = document.getElementById("studentMunicipality")?.value.trim() || "";
+  const schoolName = document.getElementById("studentSchool")?.value.trim() || "";
 
 
   if (!name) {
@@ -202,7 +198,10 @@ async function handleSubmit(
 
           class_name:
             className ||
-            null
+            null,
+
+          municipality: municipality || null,
+          school_name: schoolName || null
 
         })
         .select(

@@ -193,10 +193,21 @@
      INIT
   ======================================================= */
 
-  document.addEventListener(
-    "DOMContentLoaded",
-    initialize
-  );
+  // このスクリプトは body 末尾から読み込まれる場合と
+  // defer / 通常読み込みの両方に対応し、初期化を一度だけ実行する。
+  let initializationStarted = false;
+
+  function startInitialization() {
+    if (initializationStarted) return;
+    initializationStarted = true;
+    initialize();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", startInitialization, { once: true });
+  } else {
+    startInitialization();
+  }
 
 
   async function initialize() {
@@ -552,8 +563,6 @@
             : null;
 
 
-        box.question_id =
-          null;
 
       }
     );
@@ -2359,6 +2368,8 @@
       ] ||
       ROLE_INFO.answer;
 
+    const wasAnswerBox =
+      box.box_type === "answer";
 
     box.box_role =
       role;
@@ -2374,12 +2385,13 @@
 
     box.points =
       info.boxType === "answer"
-        ? 0
+        ? (wasAnswerBox ? (Number(box.points) || 0) : 0)
         : null;
 
-
     box.question_id =
-      null;
+      role === "answer" && info.boxType === "answer"
+        ? (box.question_id || null)
+        : null;
 
 
     if (
@@ -2845,225 +2857,92 @@
   ======================================================= */
 
   async function saveBoxes() {
-
     if (!selectedTestId) {
-
-      setStatus(
-        "テストIDがありません。",
-        true
-      );
-
+      setStatus("テストIDがありません。", true);
       return;
-
     }
-
-
-    saveButton.disabled =
-      true;
-
-
+    if (saveButton) saveButton.disabled = true;
     try {
-
       rebuildHierarchy();
-
-
-      /*
-       * DBに存在しない一時UUIDは
-       * idとして送らない。
-       */
-
-      const rows =
-        boxes
-          .sort(
-            compareBoxes
-          )
-          .map(
-            (
-              box,
-              index
-            ) => {
-
-              const info =
-                ROLE_INFO[
-                  box.box_role
-                ] ||
-                ROLE_INFO.other;
-
-
-              return {
-
-                test_id:
-                  selectedTestId,
-
-                page_no:
-                  Number(
-                    box.page_no
-                  ) || 1,
-
-                box_type:
-                  info.boxType,
-
-                label:
-                  automaticLabel(
-                    box.box_role,
-                    box
-                  ),
-
-                x:
-                  Number(
-                    box.x
-                  ) || 0,
-
-                y:
-                  Number(
-                    box.y
-                  ) || 0,
-
-                width:
-                  Number(
-                    box.width
-                  ) || 0,
-
-                height:
-                  Number(
-                    box.height
-                  ) || 0,
-
-                question_id:
-                  null,
-
-                points:
-                  info.boxType ===
-                    "answer"
-                    ? Number(
-                        box.points
-                      ) || 0
-                    : null,
-
-                parent_box_id:
-                  isUuid(
-                    box.parent_box_id
-                  )
-                    ? box.parent_box_id
-                    : null,
-
-                major_no:
-                  box.major_no ||
-                  null,
-
-                minor_no:
-                  box.minor_no ||
-                  null,
-
-                box_role:
-                  box.box_role ||
-                  "other",
-
-                sort_order:
-                  index,
-
-                subtotal_group:
-                  box.subtotal_group ||
-                  null
-
-              };
-
-            }
-          );
-
-
       validateBoxes();
 
+      // 既存IDを維持してupsertする。親子枠の参照IDも維持され、
+      // 保存失敗時に既存枠を先に消してしまう事故を防ぐ。
+      const rows = boxes
+        .slice()
+        .sort(compareBoxes)
+        .map((box, index) => {
+          const info = ROLE_INFO[box.box_role] || ROLE_INFO.other;
+          if (!isUuid(box.id)) {
+            throw new Error("枠IDが不正です。画面を再読み込みしてからやり直してください。");
+          }
+          return {
+            id: box.id,
+            test_id: selectedTestId,
+            page_no: Number(box.page_no) || 1,
+            box_type: info.boxType,
+            label: automaticLabel(box.box_role, box),
+            x: Number(box.x) || 0,
+            y: Number(box.y) || 0,
+            width: Number(box.width) || 0,
+            height: Number(box.height) || 0,
+            question_id: box.box_role === 'answer' ? (box.question_id || null) : null,
+            points: info.boxType === "answer" ? Number(box.points) || 0 : null,
+            parent_box_id: isUuid(box.parent_box_id) ? box.parent_box_id : null,
+            major_no: box.major_no || null,
+            minor_no: box.minor_no || null,
+            box_role: box.box_role || "other",
+            sort_order: index,
+            subtotal_group: Number.isInteger(Number(box.subtotal_group)) && box.subtotal_group !== null && box.subtotal_group !== '' ? Number(box.subtotal_group) : null
+          };
+        });
 
-      setStatus(
-        "枠設定を保存しています..."
-      );
-
-
-      /*
-       * このテストの既存枠を全削除。
-       */
-
-      const {
-        error:
-          deleteError
-      } =
-        await supabaseClient
-          .from(
-            "layout_boxes"
-          )
-          .delete()
-          .eq(
-            "test_id",
-            selectedTestId
-          );
-
-
-      if (deleteError) {
-
-        throw deleteError;
-
-      }
-
-
-      /*
-       * 再登録。
-       */
-
+      setStatus("枠設定を保存しています...");
       if (rows.length) {
-
-        const {
-          error:
-            insertError
-        } =
-          await supabaseClient
-            .from(
-              "layout_boxes"
-            )
-            .insert(
-              rows
-            );
-
-
-        if (insertError) {
-
-          throw insertError;
-
-        }
-
+        const { error: upsertError } = await supabaseClient
+          .from("layout_boxes")
+          .upsert(rows, { onConflict: "id" });
+        if (upsertError) throw upsertError;
       }
 
+      // 新しい枠の保存がすべて成功してから、画面上で削除された枠だけを削除。
+      const keepIds = new Set(rows.map(row => row.id));
+      const removedIds = boxes
+        .filter(box => isUuid(box.id) && !keepIds.has(box.id))
+        .map(box => box.id);
+
+      // boxes配列には現在の枠しかないため、DB上の既存枠との差分を再取得。
+      const { data: persisted, error: persistedError } = await supabaseClient
+        .from("layout_boxes")
+        .select("id")
+        .eq("test_id", selectedTestId);
+      if (persistedError) throw persistedError;
+
+      const desiredIds = new Set(rows.map(row => row.id));
+      const staleIds = (persisted || [])
+        .map(row => row.id)
+        .filter(id => !desiredIds.has(id));
+
+      for (const id of staleIds) {
+        const { error: deleteError } = await supabaseClient
+          .from("layout_boxes")
+          .delete()
+          .eq("id", id)
+          .eq("test_id", selectedTestId);
+        if (deleteError) {
+          throw new Error("削除対象の枠を整理できませんでした。採点データが紐付いている可能性があります。既存データを保護するため削除を中止しました。");
+        }
+      }
 
       await loadLayout();
-
-
-      setStatus(
-        `枠設定を保存しました。${rows.length}個の枠を登録しました。`
-      );
-
-
+      setStatus(`枠設定を保存しました。${rows.length}個の枠を登録しました。`);
     } catch (error) {
-
-      console.error(
-        "saveBoxes:",
-        error
-      );
-
-
-      showError(
-        error.message ||
-        "枠設定を保存できませんでした。"
-      );
-
+      console.error("saveBoxes:", error);
+      showError(error.message || "枠設定を保存できませんでした。");
     } finally {
-
-      saveButton.disabled =
-        false;
-
+      if (saveButton) saveButton.disabled = false;
     }
-
   }
-
 
   /* =======================================================
      VALIDATE
@@ -4274,13 +4153,12 @@
       case "student_no":
         return "student_no";
 
-      case "answer":
-
-        return (
-          box.label === "大問"
-            ? "major"
-            : "answer"
-        );
+      case "answer": {
+        const label = String(box.label || "").trim();
+        if (/^大問/.test(label)) return "major";
+        if (/^(?:小問|問)\s*\d/.test(label)) return "minor";
+        return "answer";
+      }
 
       default:
         return "other";
@@ -4331,7 +4209,5 @@
   /* =======================================================
      START
   ======================================================= */
-
-  initialize();
 
 })();

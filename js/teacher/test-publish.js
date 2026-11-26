@@ -517,7 +517,6 @@ async function checkReadiness() {
         "status",
         [
           "matched",
-          "uploaded",
           "marking",
           "marked",
           "published"

@@ -432,7 +432,7 @@ async function loadResults() {
     ) {
 
       setStatus(
-        `全${total}名の結果を集計済み。公開は成績確定後に自動で行われます。`
+        `全${total}名の結果を集計済み。採点済みです。公開は先生が公開設定画面で操作してください。`
       );
 
     } else {

@@ -440,100 +440,46 @@ function createAnswerCard(
    MATCH
 ========================================================= */
 
-async function matchAnswer(
-  answerId
-) {
+async function matchAnswer(answerId) {
+  const select = document.querySelector(
+    `[data-student-id="${CSS.escape(answerId)}"]`
+  );
 
-  const select =
-    document.querySelector(
-      `[data-student-id="${CSS.escape(
-        answerId
-      )}"]`
-    );
+  if (!select) return;
 
-
-  if (!select) {
-
-    return;
-
-  }
-
-
-  const studentId =
-    select.value;
-
-
+  const studentId = select.value;
   if (!studentId) {
-
-    alert(
-      "生徒を選択してください。"
-    );
-
+    const message = document.getElementById("message");
+    if (message) {
+      message.textContent = "生徒を選択してください。";
+      message.style.color = "#b42318";
+    }
     return;
-
   }
 
-
-  const button =
-    document.querySelector(
-      `[data-match-id="${CSS.escape(
-        answerId
-      )}"]`
-    );
-
+  const button = document.querySelector(
+    `[data-match-id="${CSS.escape(answerId)}"]`
+  );
 
   if (button) {
-
-    button.disabled =
-      true;
-
-    button.textContent =
-      "紐付け中...";
-
+    button.disabled = true;
+    button.textContent = "紐付け中...";
   }
 
-
   try {
-
-    /*
-     * 生徒確認
-     */
-
     const {
       data: student,
       error: studentError
-    } =
-      await supabaseClient
-        .from(
-          "students"
-        )
-        .select(
-          `
-          id,
-          student_no,
-          name,
-          active
-          `
-        )
-        .eq(
-          "id",
-          studentId
-        )
-        .single();
+    } = await supabaseClient
+      .from("students")
+      .select("id,student_no,name,active")
+      .eq("id", studentId)
+      .single();
 
-
-    if (studentError) {
-
-      throw studentError;
-
+    if (studentError) throw studentError;
+    if (!student?.active) {
+      throw new Error("選択した生徒は無効化されています。");
     }
-
-
-    /*
-     * 未紐付け → 紐付け済み
-     *
-     * 採点待ち状態 matched へ移行。
-     */
 
     const {
       data: updatedAnswer,
@@ -542,108 +488,64 @@ async function matchAnswer(
       .from("answer_sheets")
       .update({
         student_id: student.id,
-        qr_value: `MANUAL:${student.student_no}`
+        qr_value: `MANUAL:${student.student_no}`,
+        status: "matched"
       })
       .eq("id", answerId)
       .select("id")
       .single();
 
     if (error) throw error;
-    if (!updatedAnswer) throw new Error("答案を更新できませんでした。");
+    if (!updatedAnswer) {
+      throw new Error("答案を更新できませんでした。");
+    }
 
-    // 生徒との紐付け後、解答欄の切り出しを実際に生成する。
-    await recropAnswer(answerId);
+    let cropWarning = false;
+    try {
+      await recropAnswer(answerId);
+    } catch (cropError) {
+      cropWarning = true;
+      console.warn("answer crop regeneration:", cropError);
+    }
 
-    const { error: statusError } = await supabaseClient
-      .from("answer_sheets")
-      .update({ status: "matched" })
-      .eq("id", answerId);
+    document.getElementById(`answer-${answerId}`)?.remove();
 
-    if (statusError) throw statusError;
-
-
-    /*
-     * カードを削除
-     */
-
-    const card =
-      document.getElementById(
-        `answer-${answerId}`
-      );
-
-
-    card?.remove();
-
-
-    /*
-     * 残り確認
-     */
-
-    const remaining =
-      document.querySelector(
-        "[id^='answer-']"
-      );
-
-
+    const remaining = document.querySelector("[id^='answer-']");
     if (!remaining) {
-
-      const container =
-        document.getElementById(
-          "answerList"
-        );
-
-
+      const container = document.getElementById("answerList");
       if (container) {
-
         container.innerHTML = `
-
           <div class="card">
-
-            <div
-              style="
-                text-align:center;
-                padding:30px;
-                color:#16834b;
-              "
-            >
+            <div style="text-align:center;padding:30px;color:#16834b;">
               未紐付け答案はありません。
             </div>
-
           </div>
-
         `;
-
       }
-
     }
 
+    const message = document.getElementById("message");
+    if (message) {
+      message.textContent = cropWarning
+        ? "生徒の紐付けは完了しました。クロップ生成は失敗しましたが、元答案画像で採点できます。"
+        : "生徒の紐付けが完了しました。";
+      message.style.color = cropWarning ? "#b42318" : "#16834b";
+    }
 
   } catch (error) {
+    console.error("matchAnswer:", error);
 
-    console.error(
-      "matchAnswer:",
-      error
-    );
-
-
-    alert(
-      error.message ||
-      "紐付けに失敗しました。"
-    );
-
-
-    if (button) {
-
-      button.disabled =
-        false;
-
-      button.textContent =
-        "この生徒に紐付け";
-
+    const message = document.getElementById("message");
+    if (message) {
+      message.textContent = error.message || "紐付けに失敗しました。";
+      message.style.color = "#b42318";
     }
 
+    if (button) {
+      button.disabled = false;
+      button.textContent = "この生徒に紐付け";
+    }
   }
-
 }
 
 

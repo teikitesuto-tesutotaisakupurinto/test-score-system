@@ -914,79 +914,42 @@ async function saveStudent(answer, studentId) {
    UNMATCH
 ========================================================= */
 
-async function unmatchAnswer(
-  answerId
-) {
-
-  const confirmed =
-    window.confirm(
-      "この答案の生徒紐付けを解除しますか？"
-    );
-
-
-  if (!confirmed) {
-
-    return;
-
-  }
-
+async function unmatchAnswer(answerId) {
+  const confirmed = window.confirm("この答案の生徒紐付けを解除しますか？");
+  if (!confirmed) return;
 
   try {
+    const { data: regions, error: readError } = await DB
+      .from("answer_regions")
+      .select("image_path")
+      .eq("answer_sheet_id", answerId);
+    if (readError) throw readError;
 
-    const {
-      error
-    } =
-      await DB
-        .from(
-          "answer_sheets"
-        )
-        .update({
+    const { error: updateError } = await DB
+      .from("answer_sheets")
+      .update({ student_id: null, status: "unmatched" })
+      .eq("id", answerId);
+    if (updateError) throw updateError;
 
-          student_id:
-            null,
+    const { error: deleteError } = await DB
+      .from("answer_regions")
+      .delete()
+      .eq("answer_sheet_id", answerId);
+    if (deleteError) throw deleteError;
 
-          status:
-            "unmatched"
-
-        })
-        .eq(
-          "id",
-          answerId
-        );
-
-
-    if (error) {
-
-      throw error;
-
+    const paths = (regions || []).map(row => row.image_path).filter(Boolean);
+    if (paths.length) {
+      const { error: storageError } = await DB.storage
+        .from("student-answers")
+        .remove(paths);
+      if (storageError) console.warn("答案クロップ画像の削除に失敗しました:", storageError);
     }
 
-
-    await DB
-      .from(
-        "answer_regions"
-      )
-      .delete()
-      .eq(
-        "answer_sheet_id",
-        answerId
-      );
-
-
     await loadAnswers();
-
-
   } catch (error) {
-
-    showError(
-      error.message ||
-      "紐付け解除に失敗しました。"
-    );
-
+    showError(error.message || "紐付け解除に失敗しました。");
   }
-
 }
-
 
 /* =========================================================
    RECROP

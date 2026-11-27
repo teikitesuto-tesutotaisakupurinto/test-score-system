@@ -45,6 +45,8 @@
 
 let DB = null;
 
+let teacherUserId = null;
+
 let testId = null;
 
 let selectedStudentId = null;
@@ -183,6 +185,11 @@ async function initialize() {
 
       return;
 
+    }
+
+    teacherUserId = auth.user?.id || null;
+    if (!teacherUserId) {
+      throw new Error("採点者のユーザーIDを取得できません。再ログインしてください。");
     }
 
 
@@ -3116,6 +3123,9 @@ async function saveCardScore(
               question.questionId ||
               null,
 
+            marked_by:
+              teacherUserId,
+
             score:
               value,
 
@@ -3167,6 +3177,9 @@ async function saveCardScore(
             question_id:
               question.questionId ||
               null,
+
+            marked_by:
+              teacherUserId,
 
             score:
               value,

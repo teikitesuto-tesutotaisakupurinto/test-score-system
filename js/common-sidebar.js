@@ -43,7 +43,7 @@
       ["未紐付け答案","/teacher/answers/unmatched"],
       ["紐付け済み答案","/teacher/answers/matched"],
       ["答案領域・クロップ","/teacher/answers/regions"],
-      ["採点ナビ","/teacher/marking"],
+      ["デジタル採点","/teacher/marking"],
       ["結果総括表","/teacher/results/summary"],
       ["答案返却","/teacher/results/return"],
       ["公開設定","/teacher/tests/publish"]

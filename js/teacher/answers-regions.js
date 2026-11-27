@@ -1364,224 +1364,91 @@ function beginResize(
 async function saveRegions() {
 
   if (!selectedAnswer) {
-
     return;
-
   }
 
+  if (!pages.length || !boxes.length) {
+    setStatus("答案ページまたは解答欄がありません。ページ登録と枠設定を確認してください。", true);
+    return;
+  }
 
-  setStatus(
-    "答案クロップを生成しています..."
-  );
+  setStatus("答案クロップを生成しています...");
+  saveButton.disabled = true;
 
-
-  saveButton.disabled =
-    true;
-
+  const newPaths = [];
+  let oldRegions = [];
+  let oldRowsDeleted = false;
+  let newRowsInserted = false;
 
   try {
-
-    /*
-     * 既存regionsを削除。
-     */
-
+    // 既存データは新しいクロップの生成が完了するまで保持する。
     const {
-      error:
-        deleteError
-    } =
-      await DB
-        .from(
-          "answer_regions"
-        )
-        .delete()
-        .eq(
-          "answer_sheet_id",
-          selectedAnswer.id
-        );
+      data: existingRows,
+      error: existingError
+    } = await DB
+      .from("answer_regions")
+      .select("*")
+      .eq("answer_sheet_id", selectedAnswer.id);
 
+    if (existingError) throw existingError;
+    oldRegions = existingRows || [];
 
-    if (deleteError) {
+    const newRows = [];
 
-      throw deleteError;
+    for (const page of pages) {
+      const pageBoxes = boxes.filter(
+        box => Number(box.page_no) === Number(page.page_no)
+      );
 
-    }
-
-
-    regions =
-      [];
-
-
-    for (
-      const page
-      of pages
-    ) {
-
-      const pageBoxes =
-        boxes.filter(
-          box =>
-            Number(
-              box.page_no
-            ) ===
-            Number(
-              page.page_no
-            )
-        );
-
-
-      if (!pageBoxes.length) {
-
-        continue;
-
-      }
-
+      if (!pageBoxes.length) continue;
 
       const {
-        data:
-          sourceBlob,
-        error:
-          downloadError
-      } =
-        await DB
-          .storage
-          .from(
-            "test-files"
-          )
-          .download(
-            page.file_path
-          );
+        data: sourceBlob,
+        error: downloadError
+      } = await DB
+        .storage
+        .from("test-files")
+        .download(page.file_path);
 
+      if (downloadError) throw downloadError;
 
-      if (downloadError) {
+      const image = await blobToImage(sourceBlob);
+      const sourceWidth = Number(page.width_px) || image.naturalWidth;
+      const sourceHeight = Number(page.height_px) || image.naturalHeight;
 
-        throw downloadError;
-
+      if (!sourceWidth || !sourceHeight || !image.naturalWidth || !image.naturalHeight) {
+        throw new Error(`答案ページ ${page.page_no} の画像サイズを取得できません。`);
       }
 
+      for (const box of pageBoxes) {
+        const x = clamp(Number(box.x) || 0, 0, sourceWidth - 1);
+        const y = clamp(Number(box.y) || 0, 0, sourceHeight - 1);
+        const width = clamp(Number(box.width) || 0, 1, sourceWidth - x);
+        const height = clamp(Number(box.height) || 0, 1, sourceHeight - y);
 
-      const image =
-        await blobToImage(
-          sourceBlob
+        if (width <= 0 || height <= 0) {
+          throw new Error(`「${box.label || "解答欄"}」の枠サイズが不正です。`);
+        }
+
+        const cropCanvas = document.createElement("canvas");
+        cropCanvas.width = Math.max(
+          1,
+          Math.round(width * image.naturalWidth / sourceWidth)
+        );
+        cropCanvas.height = Math.max(
+          1,
+          Math.round(height * image.naturalHeight / sourceHeight)
         );
 
+        const context = cropCanvas.getContext("2d");
+        if (!context) {
+          throw new Error("答案クロップ用Canvasを作成できませんでした。");
+        }
 
-      const sourceWidth =
-        Number(
-          page.width_px
-        ) ||
-        image.naturalWidth;
-
-
-      const sourceHeight =
-        Number(
-          page.height_px
-        ) ||
-        image.naturalHeight;
-
-
-      for (
-        const box
-        of pageBoxes
-      ) {
-
-        const x =
-          clamp(
-            Number(
-              box.x
-            ) || 0,
-            0,
-            sourceWidth
-          );
-
-
-        const y =
-          clamp(
-            Number(
-              box.y
-            ) || 0,
-            0,
-            sourceHeight
-          );
-
-
-        const width =
-          clamp(
-            Number(
-              box.width
-            ) || 0,
-            1,
-            sourceWidth -
-              x
-          );
-
-
-        const height =
-          clamp(
-            Number(
-              box.height
-            ) || 0,
-            1,
-            sourceHeight -
-              y
-          );
-
-
-        const cropCanvas =
-          document.createElement(
-            "canvas"
-          );
-
-
-        cropCanvas.width =
-          Math.max(
-            1,
-            Math.round(
-              width *
-              image.naturalWidth /
-              sourceWidth
-            )
-          );
-
-
-        cropCanvas.height =
-          Math.max(
-            1,
-            Math.round(
-              height *
-              image.naturalHeight /
-              sourceHeight
-            )
-          );
-
-
-        const context =
-          cropCanvas.getContext(
-            "2d"
-          );
-
-
-        const sx =
-          x *
-          image.naturalWidth /
-          sourceWidth;
-
-
-        const sy =
-          y *
-          image.naturalHeight /
-          sourceHeight;
-
-
-        const sw =
-          width *
-          image.naturalWidth /
-          sourceWidth;
-
-
-        const sh =
-          height *
-          image.naturalHeight /
-          sourceHeight;
-
+        const sx = x * image.naturalWidth / sourceWidth;
+        const sy = y * image.naturalHeight / sourceHeight;
+        const sw = width * image.naturalWidth / sourceWidth;
+        const sh = height * image.naturalHeight / sourceHeight;
 
         context.drawImage(
           image,
@@ -1595,135 +1462,124 @@ async function saveRegions() {
           cropCanvas.height
         );
 
-
-        const blob =
-          await canvasToBlob(
-            cropCanvas
-          );
-
-
-        const path =
-          [
-            selectedTestId,
-            selectedAnswer.id,
-            `${box.id}.png`
-          ].join(
-            "/"
-          );
-
-
-        const {
-          error:
-            uploadError
-        } =
-          await DB
-            .storage
-            .from(
-              "student-answers"
-            )
-            .upload(
-              path,
-              blob,
-              {
-                contentType:
-                  "image/png",
-                upsert:
-                  true
-              }
-            );
-
-
-        if (uploadError) {
-
-          throw uploadError;
-
+        const blob = await canvasToBlob(cropCanvas);
+        if (!blob) {
+          throw new Error("答案クロップ画像を生成できませんでした。");
         }
 
+        const token = window.crypto?.randomUUID
+          ? window.crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        const path = [
+          selectedTestId,
+          selectedAnswer.id,
+          `${box.id}-${token}.png`
+        ].join("/");
 
-        const region = {
+        const { error: uploadError } = await DB
+          .storage
+          .from("student-answers")
+          .upload(path, blob, {
+            contentType: "image/png",
+            upsert: false
+          });
 
-          answer_sheet_id:
-            selectedAnswer.id,
+        if (uploadError) throw uploadError;
+        newPaths.push(path);
 
-          layout_box_id:
-            box.id,
-
-          page_no:
-            page.page_no,
-
-          image_path:
-            path,
-
+        newRows.push({
+          answer_sheet_id: selectedAnswer.id,
+          layout_box_id: box.id,
+          page_no: page.page_no,
+          image_path: path,
           x,
-
           y,
-
           width,
-
           height
-
-        };
-
-
-        const {
-          data,
-          error:
-            regionError
-        } =
-          await DB
-            .from(
-              "answer_regions"
-            )
-            .insert(
-              region
-            )
-            .select()
-            .single();
-
-
-        if (regionError) {
-
-          throw regionError;
-
-        }
-
-
-        regions.push(
-          data
-        );
-
+        });
       }
-
     }
 
+    if (!newRows.length) {
+      throw new Error("クロップ対象の解答欄がありません。枠設定を確認してください。");
+    }
 
-    setStatus(
-      `${regions.length}個の答案クロップを保存しました。`
-    );
+    // 新画像をすべて生成してから、旧行を入れ替える。
+    if (oldRegions.length) {
+      const { error: deleteError } = await DB
+        .from("answer_regions")
+        .delete()
+        .eq("answer_sheet_id", selectedAnswer.id);
 
+      if (deleteError) throw deleteError;
+      oldRowsDeleted = true;
+    }
 
+    const {
+      data: insertedRows,
+      error: insertError
+    } = await DB
+      .from("answer_regions")
+      .insert(newRows)
+      .select();
+
+    if (insertError) throw insertError;
+
+    newRowsInserted = true;
+    regions = insertedRows || [];
+
+    // 新しい行が確実に登録された後で旧画像だけを削除する。
+    const oldPaths = oldRegions
+      .map(region => region.image_path)
+      .filter(Boolean);
+
+    if (oldPaths.length) {
+      const { error: cleanupError } = await DB
+        .storage
+        .from("student-answers")
+        .remove(oldPaths);
+
+      if (cleanupError) {
+        console.warn("旧クロップ画像の後片付けに失敗しました。", cleanupError);
+      }
+    }
+
+    setStatus(`${regions.length}個の答案クロップを保存しました。`);
     renderRegionList();
 
-
   } catch (error) {
+    console.error("save regions:", error);
 
-    console.error(
-      "save regions:",
-      error
-    );
+    // 旧行を削除した後に新規登録が失敗した場合は旧行を復元する。
+    if (oldRowsDeleted && !newRowsInserted && oldRegions.length) {
+      const { error: restoreError } = await DB
+        .from("answer_regions")
+        .insert(oldRegions);
 
+      if (restoreError) {
+        console.error("既存クロップ行の復元にも失敗しました。", restoreError);
+      }
+    }
+
+    // 新しい行が確定していない場合に限り、新規アップロード分を削除する。
+    if (!newRowsInserted && newPaths.length) {
+      const { error: cleanupError } = await DB
+        .storage
+        .from("student-answers")
+        .remove(newPaths);
+
+      if (cleanupError) {
+        console.warn("一時クロップ画像の削除に失敗しました。", cleanupError);
+      }
+    }
 
     setStatus(
-      error.message ||
-      "答案クロップの保存に失敗しました。",
+      error.message || "答案クロップの保存に失敗しました。",
       true
     );
 
   } finally {
-
-    saveButton.disabled =
-      false;
-
+    saveButton.disabled = false;
   }
 
 }

@@ -393,6 +393,59 @@ $$;
 revoke all on function public.set_test_publication(uuid, boolean) from public, anon;
 grant execute on function public.set_test_publication(uuid, boolean) to authenticated;
 
+
+-- Restrict student test and layout visibility to the student's own published answer.
+create or replace function public.student_has_published_answer(p_test_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $function$
+  select
+    public.my_role()::text = 'student'
+    and public.my_student_id() is not null
+    and exists (
+      select 1
+      from public.answer_sheets a
+      where a.test_id = p_test_id
+        and a.student_id = public.my_student_id()
+        and a.status = 'published'
+    );
+$function$;
+
+revoke all on function public.student_has_published_answer(uuid) from public, anon;
+grant execute on function public.student_has_published_answer(uuid) to authenticated;
+
+drop policy if exists student_published_tests on public.tests;
+create policy student_published_tests
+on public.tests for select to authenticated
+using (
+  public.my_role()::text = 'student'
+  and results_published = true
+  and public.student_has_published_answer(id)
+);
+
+drop policy if exists student_published_test_layout on public.layout_boxes;
+create policy student_published_test_layout
+on public.layout_boxes for select to authenticated
+using (
+  public.my_role()::text = 'student'
+  and exists (
+    select 1 from public.tests t
+    where t.id = layout_boxes.test_id
+  )
+);
+
+create or replace view public.student_published_tests
+with (security_invoker = true)
+as
+select
+  t.id, t.name, t.subject, t.grade, t.class_name, t.max_score,
+  t.results_published, t.results_published_at
+from public.tests t
+where t.results_published = true;
+
 commit;
 
 -- IMPORTANT: Storage policies are intentionally not modified by this script.

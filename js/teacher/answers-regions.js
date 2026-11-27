@@ -896,7 +896,7 @@ async function createPageImage(
     await DB
       .storage
       .from(
-        "answer-files"
+        "test-files"
       )
       .createSignedUrl(
         page.file_path,
@@ -1444,7 +1444,7 @@ async function saveRegions() {
         await DB
           .storage
           .from(
-            "answer-files"
+            "test-files"
           )
           .download(
             page.file_path

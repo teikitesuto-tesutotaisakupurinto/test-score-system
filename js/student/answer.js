@@ -161,6 +161,10 @@
           "id",
           testId
         )
+        .eq(
+          "results_published",
+          true
+        )
         .maybeSingle();
 
 
@@ -286,10 +290,9 @@
           "student_id",
           student.id
         )
-        .not(
+        .eq(
           "status",
-          "is",
-          null
+          "published"
         )
         .order(
           "created_at",

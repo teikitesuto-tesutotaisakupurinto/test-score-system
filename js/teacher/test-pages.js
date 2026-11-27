@@ -1632,66 +1632,68 @@
      AUTO DETECTION
   ======================================================= */
 
+  async function waitForOpenCV(timeoutMs = 10000) {
+    const startedAt = Date.now();
+
+    while (Date.now() - startedAt < timeoutMs) {
+      const library = window.cv;
+      if (
+        library &&
+        typeof library.Mat === "function" &&
+        typeof library.imread === "function"
+      ) {
+        return library;
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+
+    return null;
+  }
+
+
   async function detectAllPages() {
 
     if (!pages.length) {
-
       setStatus(
         "先に解答用紙を登録してください。",
         true
       );
-
       return;
-
     }
 
+    setStatus("自動検出エンジンを初期化しています...");
+    const cvLibrary = await waitForOpenCV();
 
-    candidates =
-      [];
+    if (!cvLibrary) {
+      candidates = [];
+      await renderAllPages();
+      setStatus(
+        "自動検出エンジンを初期化できませんでした。手動ドラッグで枠を設定してください。",
+        true
+      );
+      return;
+    }
 
+    candidates = [];
+    setStatus("枠を自動検出しています...");
 
-    setStatus(
-      "枠を自動検出しています..."
-    );
-
-
-    for (
-      const page of pages
-    ) {
-
+    for (const page of pages) {
       try {
-
-        const detected =
-          await detectPage(
-            page
-          );
-
-
-        candidates.push(
-          ...detected
-        );
-
+        const detected = await detectPage(page);
+        candidates.push(...detected);
       } catch (error) {
-
-        console.warn(
-          "detect page:",
-          error
-        );
-
+        console.warn("detect page:", error);
       }
-
     }
-
 
     await renderAllPages();
-
 
     setStatus(
       candidates.length
         ? `自動検出 ${candidates.length}個。赤い候補をクリックしてください。`
         : "自動検出できる枠がありません。手動ドラッグで設定してください。"
     );
-
   }
 
 

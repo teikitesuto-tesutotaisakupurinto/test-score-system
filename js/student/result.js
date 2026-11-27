@@ -390,12 +390,9 @@
           "student_id",
           student.id
         )
-        .in(
+        .eq(
           "status",
-          [
-            "marked",
-            "published"
-          ]
+          "published"
         )
         .order(
           "created_at",
@@ -1704,7 +1701,7 @@
       .select("id")
       .eq("test_id", previous.id)
       .eq("student_id", student.id)
-      .in("status", ["marked", "published"])
+      .eq("status", "published")
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();

@@ -20,6 +20,7 @@ body.has-app-sidebar .teacher-layout{display:block!important;grid-template-colum
 body.has-app-sidebar .teacher-layout>.sidebar{display:none!important}
 body.has-app-sidebar .teacher-layout>.main-content{min-width:0}
 body.has-app-sidebar>main.main,
+body.has-app-sidebar>.teacher-home,
 body.has-app-sidebar>.main,
 body.has-app-sidebar>.student-main,
 body.has-app-sidebar>.admin-main{margin-left:270px!important;min-width:0}
@@ -28,6 +29,7 @@ body.has-app-sidebar>.admin-main{margin-left:270px!important;min-width:0}
  body.has-app-sidebar.app-sidebar-collapsed .topbar{margin-left:0}
  body.has-app-sidebar.app-sidebar-collapsed .teacher-layout{margin-left:0!important}
  body.has-app-sidebar.app-sidebar-collapsed>main.main,
+ body.has-app-sidebar.app-sidebar-collapsed>.teacher-home,
  body.has-app-sidebar.app-sidebar-collapsed>.main,
  body.has-app-sidebar.app-sidebar-collapsed>.student-main,
  body.has-app-sidebar.app-sidebar-collapsed>.admin-main{margin-left:0!important}
@@ -51,6 +53,7 @@ body.has-app-sidebar>.admin-main{margin-left:270px!important;min-width:0}
 /* 画面本体をサイドバー幅だけ正しくオフセットする */
 @media (min-width:701px) {
   body.has-app-sidebar:not(.app-sidebar-collapsed) > main,
+  body.has-app-sidebar:not(.app-sidebar-collapsed) > .teacher-home,
   body.has-app-sidebar:not(.app-sidebar-collapsed) > .main-content,
   body.has-app-sidebar:not(.app-sidebar-collapsed) > .marking-main {
     margin-left:270px !important;
@@ -58,6 +61,7 @@ body.has-app-sidebar>.admin-main{margin-left:270px!important;min-width:0}
     min-width:0;
   }
   body.has-app-sidebar.app-sidebar-collapsed > main,
+  body.has-app-sidebar.app-sidebar-collapsed > .teacher-home,
   body.has-app-sidebar.app-sidebar-collapsed > .main-content,
   body.has-app-sidebar.app-sidebar-collapsed > .marking-main {
     margin-left:0 !important;
@@ -74,6 +78,7 @@ body.has-app-sidebar>.admin-main{margin-left:270px!important;min-width:0}
 }
 @media (max-width:700px) {
   body.has-app-sidebar > main,
+  body.has-app-sidebar > .teacher-home,
   body.has-app-sidebar > .main-content,
   body.has-app-sidebar > .marking-main,
   body.has-app-sidebar > .teacher-layout {

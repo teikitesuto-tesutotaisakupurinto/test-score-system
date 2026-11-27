@@ -55,7 +55,9 @@ USING (
         SELECT 1
         FROM public.tests AS t
         WHERE t.id = layout_boxes.test_id
+          AND t.results_published = true
     )
+    AND public.student_has_published_answer(layout_boxes.test_id)
 );
 
 -- Keep the student list view invoker-secured so the tests RLS policy applies.

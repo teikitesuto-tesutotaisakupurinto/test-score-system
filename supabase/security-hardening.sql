@@ -472,10 +472,7 @@ create policy student_published_test_layout
 on public.layout_boxes for select to authenticated
 using (
   public.my_role()::text = 'student'
-  and exists (
-    select 1 from public.tests t
-    where t.id = layout_boxes.test_id
-  )
+  and public.student_has_published_answer(layout_boxes.test_id)
 );
 
 create or replace view public.student_published_tests

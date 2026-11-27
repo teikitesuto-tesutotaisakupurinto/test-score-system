@@ -846,140 +846,67 @@ function createStudentSelect(
    SAVE
 ========================================================= */
 
-async function saveStudent(
-  answer,
-  studentId
-) {
-
+async function saveStudent(answer, studentId) {
   if (!studentId) {
-
-    setStatus(
-      "生徒を選択してください。",
-      true
-    );
-
+    setStatus("生徒を選択してください。", true);
     return;
-
   }
 
-
-  if (
-    answer.student_id ===
-    studentId &&
-    answer.status ===
-    "matched"
-  ) {
-
-    setStatus(
-      "この答案はすでにその生徒へ紐付いています。"
-    );
-
+  if (answer.student_id === studentId && answer.status === "matched") {
+    setStatus("この答案はすでにその生徒へ紐付いています。");
     return;
-
   }
 
-
-  const confirmed =
-    window.confirm(
-      "この答案を選択した生徒へ紐付けますか？"
-    );
-
-
-  if (!confirmed) {
-
+  if (!window.confirm("この答案を選択した生徒へ紐付けますか？")) {
     return;
-
   }
-
 
   try {
-
-    setStatus(
-      "生徒を紐付けています..."
-    );
-
-
-    /*
-     * 既存クロップを先に削除。
-     */
-
-    await DB
-      .from(
-        "answer_regions"
-      )
-      .delete()
-      .eq(
-        "answer_sheet_id",
-        answer.id
-      );
-
+    setStatus("生徒を紐付けています...");
 
     const {
-      error
-    } =
-      await DB
-        .from(
-          "answer_sheets"
-        )
-        .update({
+      data: existingRegions,
+      error: regionsError
+    } = await DB
+      .from("answer_regions")
+      .select("id")
+      .eq("answer_sheet_id", answer.id)
+      .limit(1);
 
-          student_id:
-            studentId,
+    if (regionsError) throw regionsError;
 
-          status:
-            "matched"
-
-        })
-        .eq(
-          "id",
-          answer.id
-        );
-
-
-    if (error) {
-
-      throw error;
-
-    }
-
-
-    /*
-     * 既存クロップを新しい紐付けで再生成。
-     */
-
-    await recropAnswer(
-      answer.id
-    );
-
-    const { error: statusError } = await DB
+    const { error } = await DB
       .from("answer_sheets")
-      .update({ status: "matched" })
+      .update({
+        student_id: studentId,
+        status: "matched"
+      })
       .eq("id", answer.id);
 
-    if (statusError) throw statusError;
+    if (error) throw error;
+
+    let cropWarning = false;
+    if (!existingRegions?.length) {
+      try {
+        await recropAnswer(answer.id);
+      } catch (cropError) {
+        cropWarning = true;
+        console.warn("answer crop regeneration:", cropError);
+      }
+    }
 
     setStatus(
-      "紐付け・答案画像の切り出しが完了し、採点待ちに登録しました。"
+      cropWarning
+        ? "生徒の紐付けは完了しました。クロップ生成は失敗しましたが、元答案画像で採点できます。"
+        : "生徒の紐付けが完了しました。"
     );
-
 
     await loadAnswers();
 
   } catch (error) {
-
-    console.error(
-      "save student:",
-      error
-    );
-
-
-    showError(
-      error.message ||
-      "紐付けに失敗しました。"
-    );
-
+    console.error("save student:", error);
+    showError(error.message || "紐付けに失敗しました。");
   }
-
 }
 
 
@@ -1381,7 +1308,7 @@ async function recropAnswer(
           .from(
             "answer_regions"
           )
-          .upsert(
+          .insert(
             {
 
               answer_sheet_id:
@@ -1408,10 +1335,6 @@ async function recropAnswer(
               height:
                 rect.height
 
-            },
-            {
-              onConflict:
-                "answer_sheet_id,layout_box_id"
             }
           );
 

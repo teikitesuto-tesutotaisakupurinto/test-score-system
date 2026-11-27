@@ -2,6 +2,10 @@
 -- Keep teacher operations unchanged and preserve every existing row.
 BEGIN;
 
+-- Marking UI stores the chosen font with each annotation.
+ALTER TABLE public.mark_objects
+    ADD COLUMN IF NOT EXISTS font_family text NOT NULL DEFAULT 'sans-serif';
+
 CREATE OR REPLACE FUNCTION public.student_has_published_answer(p_test_id uuid)
 RETURNS boolean
 LANGUAGE sql

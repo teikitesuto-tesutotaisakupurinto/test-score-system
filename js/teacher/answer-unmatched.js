@@ -573,53 +573,52 @@ async function recropAnswer(answerSheetId) {
     .select("id,page_no,box_type,box_role,x,y,width,height")
     .eq("test_id", answer.test_id)
     .eq("box_type", "answer");
-  const answerOnlyBoxes = (layoutBoxes || []).filter(box => !["major", "minor"].includes(box.box_role));
   if (boxError) throw boxError;
 
+  const answerOnlyBoxes = (layoutBoxes || []).filter(box => !["major", "minor"].includes(box.box_role));
   if (!answerPages?.length) throw new Error("答案ページ画像がありません。");
   if (!answerOnlyBoxes.length) throw new Error("採点対象の解答欄が設定されていません。");
 
-  const { error: deleteError } = await supabaseClient
+  const { data: oldRegions, error: oldRegionsError } = await supabaseClient
     .from("answer_regions")
-    .delete()
+    .select("*")
     .eq("answer_sheet_id", answerSheetId);
-  if (deleteError) throw deleteError;
+  if (oldRegionsError) throw oldRegionsError;
 
-  let created = 0;
-  for (const answerPage of answerPages) {
-    const pageBoxes = answerOnlyBoxes.filter(box => Number(box.page_no) === Number(answerPage.page_no));
-    if (!pageBoxes.length) continue;
+  const newPaths = [];
+  const newRows = [];
+  try {
+    for (const answerPage of answerPages) {
+      const pageBoxes = answerOnlyBoxes.filter(box => Number(box.page_no) === Number(answerPage.page_no));
+      if (!pageBoxes.length) continue;
 
-    const { data: downloaded, error: downloadError } = await supabaseClient
-      .storage.from("test-files").download(answerPage.file_path);
-    if (downloadError) throw downloadError;
+      const { data: downloaded, error: downloadError } = await supabaseClient
+        .storage.from("test-files").download(answerPage.file_path);
+      if (downloadError) throw downloadError;
 
-    const image = await blobToImage(downloaded);
-    const sourceWidth = Number(answerPage.width_px) || image.naturalWidth;
-    const sourceHeight = Number(answerPage.height_px) || image.naturalHeight;
-    const scaleX = image.naturalWidth / sourceWidth;
-    const scaleY = image.naturalHeight / sourceHeight;
+      const image = await blobToImage(downloaded);
+      const sourceWidth = Number(answerPage.width_px) || image.naturalWidth;
+      const sourceHeight = Number(answerPage.height_px) || image.naturalHeight;
+      const scaleX = image.naturalWidth / sourceWidth;
+      const scaleY = image.naturalHeight / sourceHeight;
 
-    for (const box of pageBoxes) {
-      const rect = {
-        x: (Number(box.x) || 0) * scaleX,
-        y: (Number(box.y) || 0) * scaleY,
-        width: (Number(box.width) || 0) * scaleX,
-        height: (Number(box.height) || 0) * scaleY
-      };
-      const crop = cropImage(image, rect);
-      if (!crop) continue;
-      const blob = await canvasToBlob(crop);
-      const path = [answer.test_id, answerSheetId, `${box.id}.png`].join("/");
-
-      const { error: uploadError } = await supabaseClient
-        .storage.from("student-answers")
-        .upload(path, blob, { contentType: "image/png", upsert: true });
-      if (uploadError) throw uploadError;
-
-      const { error: regionError } = await supabaseClient
-        .from("answer_regions")
-        .insert({
+      for (const box of pageBoxes) {
+        const rect = {
+          x: (Number(box.x) || 0) * scaleX,
+          y: (Number(box.y) || 0) * scaleY,
+          width: (Number(box.width) || 0) * scaleX,
+          height: (Number(box.height) || 0) * scaleY
+        };
+        const crop = cropImage(image, rect);
+        if (!crop) continue;
+        const blob = await canvasToBlob(crop);
+        const path = [answer.test_id, answerSheetId, `${box.id}-${crypto.randomUUID()}.png`].join("/");
+        const { error: uploadError } = await supabaseClient
+          .storage.from("student-answers")
+          .upload(path, blob, { contentType: "image/png", upsert: false });
+        if (uploadError) throw uploadError;
+        newPaths.push(path);
+        newRows.push({
           answer_sheet_id: answerSheetId,
           layout_box_id: box.id,
           page_no: answerPage.page_no,
@@ -629,12 +628,37 @@ async function recropAnswer(answerSheetId) {
           width: rect.width,
           height: rect.height
         });
-      if (regionError) throw regionError;
-      created++;
+      }
     }
-  }
 
-  if (!created) throw new Error("答案の切り出し対象がありません。解答欄の枠設定を確認してください。");
+    if (!newRows.length) throw new Error("答案の切り出し対象がありません。解答欄の枠設定を確認してください。");
+
+    const { error: deleteError } = await supabaseClient
+      .from("answer_regions")
+      .delete()
+      .eq("answer_sheet_id", answerSheetId);
+    if (deleteError) throw deleteError;
+
+    const { error: insertError } = await supabaseClient
+      .from("answer_regions")
+      .insert(newRows);
+    if (insertError) {
+      if (oldRegions?.length) {
+        const { error: restoreError } = await supabaseClient
+          .from("answer_regions")
+          .insert(oldRegions);
+        if (restoreError) console.error("answer_regions restore failed:", restoreError);
+      }
+      throw insertError;
+    }
+  } catch (error) {
+    if (newPaths.length) {
+      const { error: cleanupError } = await supabaseClient
+        .storage.from("student-answers").remove(newPaths);
+      if (cleanupError) console.warn("temporary crop cleanup failed:", cleanupError);
+    }
+    throw error;
+  }
 }
 
 function blobToImage(blob) {

@@ -204,7 +204,7 @@ LEFT JOIN (
     ON sc.answer_sheet_id = a.id
 WHERE
     a.student_id IS NOT NULL
-    AND a.status IN ('matched', 'marking', 'marked', 'published')
+    AND a.status IN ('marked', 'published')
 GROUP BY
     a.test_id,
     a.id,

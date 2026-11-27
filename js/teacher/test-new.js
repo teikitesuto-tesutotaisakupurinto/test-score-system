@@ -212,6 +212,11 @@ async function createTest(
 
   try {
 
+    const currentUser = await getCurrentUser();
+    if (!currentUser?.id) {
+      throw new Error("作成者のユーザーIDを取得できません。再ログインしてください。");
+    }
+
     const {
       data,
       error
@@ -221,6 +226,8 @@ async function createTest(
           "tests"
         )
         .insert({
+
+          created_by: currentUser.id,
 
           name,
 

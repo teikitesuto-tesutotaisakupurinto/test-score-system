@@ -18,7 +18,7 @@
   const {data:test,error:te}=await supabaseClient.from("tests").select("id,name,subject,grade,class_name").eq("id",testId).maybeSingle();
   if(te)throw te;if(!test)throw new Error("テストが見つかりません。");
   document.getElementById("testTitle").textContent=[test.name,test.subject,test.grade,test.class_name].filter(Boolean).join(" / ");
-  const {data:sheets,error:ae}=await supabaseClient.from("answer_sheets").select("id,student_id,status,created_at").eq("test_id",testId).not("student_id","is",null).in("status",["uploaded","marking","marked"]).order("created_at",{ascending:false});
+  const {data:sheets,error:ae}=await supabaseClient.from("answer_sheets").select("id,student_id,status,created_at").eq("test_id",testId).not("student_id","is",null).in("status",["matched","marking","marked"]).order("created_at",{ascending:false});
   if(ae)throw ae;
   const latest=new Map();(sheets||[]).forEach(s=>{if(!latest.has(s.student_id))latest.set(s.student_id,s)});
   const ids=[...latest.keys()];if(!ids.length){list.innerHTML='<div class="empty">採点対象の答案がありません。</div>';return;}

@@ -457,6 +457,7 @@ async function loadAnswers() {
       .in(
         "status",
         [
+          "matched",
           "uploaded",
           "marking",
           "marked"

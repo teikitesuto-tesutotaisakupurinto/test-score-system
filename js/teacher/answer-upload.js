@@ -1135,14 +1135,10 @@ async function readQrOnlyFromConfiguredRegions(
   }
 
   /*
-   * QR枠が未設定・座標がずれている場合にも備えて
-   * 全ページをスキャンする。
+   * QRは事前に登録したQR枠だけを読み取る。
+   * 枠が未設定、または読み取れない場合は
+   * 誤紐付けを避けるため未紐付けとして扱う。
    */
-  for (const page of pages) {
-    const value = await readQrFromWholePage(page);
-    if (value) return normalizeQr(value);
-  }
-
   return null;
 
 }

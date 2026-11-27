@@ -3298,147 +3298,72 @@ async function saveMarksForAnswerQuestion(
   answer,
   question
 ) {
+  const questionMarks = marks.filter(
+    mark =>
+      mark.answer_sheet_id === answer.id &&
+      mark.layout_box_id === question.id
+  );
 
-  const questionMarks =
-    marks.filter(
-      mark =>
-        mark.answer_sheet_id ===
-          answer.id &&
-        mark.layout_box_id ===
-          question.id
-    );
-
-
-  /*
-   * DB側を一度クリア。
-   */
-
+  // 先に既存IDを取得し、新しい記号を保存してから不要分だけ削除する。
+  // 先に全件削除すると、後続のinsert失敗時に採点記号が消失するため。
   const {
-    error:
-      deleteError
-  } =
-    await DB
-      .from(
-        "mark_objects"
-      )
+    data: existingRows,
+    error: readError
+  } = await DB
+    .from("mark_objects")
+    .select("id")
+    .eq("answer_sheet_id", answer.id)
+    .eq("layout_box_id", question.id);
+
+  if (readError) throw readError;
+
+  const rows = questionMarks.map(mark => ({
+    id: mark.id,
+    answer_sheet_id: answer.id,
+    layout_box_id: question.id,
+    question_id: question.questionId || null,
+    object_type: mark.object_type,
+    text_value: mark.text_value || null,
+    color: mark.color || "#d00000",
+    font_size: Number(mark.font_size) || 32,
+    font_family: mark.font_family || "sans-serif",
+    stroke_width: Number(mark.stroke_width) || 3,
+    x: Number(mark.x) || 0,
+    y: Number(mark.y) || 0,
+    width: Number(mark.width) || 40,
+    height: Number(mark.height) || 40,
+    points: mark.points ?? null
+  }));
+
+  if (rows.length) {
+    const { error: upsertError } = await DB
+      .from("mark_objects")
+      .upsert(rows, { onConflict: "id" });
+    if (upsertError) throw upsertError;
+  }
+
+  const keepIds = new Set(rows.map(row => row.id));
+  const staleIds = (existingRows || [])
+    .map(row => row.id)
+    .filter(id => !keepIds.has(id));
+
+  if (staleIds.length) {
+    const { error: deleteError } = await DB
+      .from("mark_objects")
       .delete()
-      .eq(
-        "answer_sheet_id",
-        answer.id
-      )
-      .eq(
-        "layout_box_id",
-        question.id
-      );
-
-
-  if (deleteError) {
-
-    throw deleteError;
-
+      .eq("answer_sheet_id", answer.id)
+      .eq("layout_box_id", question.id)
+      .in("id", staleIds);
+    if (deleteError) throw deleteError;
   }
-
-
-  if (!questionMarks.length) {
-
-    return;
-
-  }
-
-
-  const rows =
-    questionMarks.map(
-      mark => ({
-
-        id:
-          mark.id,
-
-        answer_sheet_id:
-          answer.id,
-
-        layout_box_id:
-          question.id,
-
-        question_id:
-          question.questionId ||
-          null,
-
-        object_type:
-          mark.object_type,
-
-        text_value:
-          mark.text_value ||
-          null,
-
-        color:
-          mark.color ||
-          "#d00000",
-
-        font_size:
-          Number(
-            mark.font_size
-          ) || 32,
-
-        font_family:
-          mark.font_family || "sans-serif",
-
-        stroke_width:
-          Number(
-            mark.stroke_width
-          ) || 3,
-
-        x:
-          Number(
-            mark.x
-          ) || 0,
-
-        y:
-          Number(
-            mark.y
-          ) || 0,
-
-        width:
-          Number(
-            mark.width
-          ) || 40,
-
-        height:
-          Number(
-            mark.height
-          ) || 40,
-
-        points:
-          mark.points ??
-          null
-
-      })
-    );
-
-
-  const {
-    error:
-      insertError
-  } =
-    await DB
-      .from(
-        "mark_objects"
-      )
-      .insert(
-        rows
-      );
-
-
-  if (insertError) {
-
-    throw insertError;
-
-  }
-
 }
 
 
 /* =========================================================
    MOVE NEXT ANSWER
+========================================================= */
+
+
 ========================================================= */
 
 async function moveToNextAnswer() {

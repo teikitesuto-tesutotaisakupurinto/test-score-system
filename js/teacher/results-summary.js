@@ -709,8 +709,6 @@ async function loadAnswerSheets() {
       .in(
         "status",
         [
-          "matched",
-          "marking",
           "marked",
           "published"
         ]

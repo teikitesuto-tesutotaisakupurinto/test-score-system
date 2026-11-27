@@ -12,7 +12,13 @@ FOR SELECT
 TO authenticated
 USING (
     public.my_role()::text = 'student'
-    AND public.student_has_published_answer(test_id)
+    AND EXISTS (
+        SELECT 1
+        FROM public.tests AS t
+        WHERE t.id = layout_boxes.test_id
+          AND t.results_published = true
+    )
+    AND public.student_has_published_answer(layout_boxes.test_id)
 );
 
 COMMIT;

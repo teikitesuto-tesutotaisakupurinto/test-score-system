@@ -3,6 +3,10 @@ services:
     name: test-score-system
     env: static
     staticPublishPath: .
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: no-cache, no-store, must-revalidate
     routes:
       - type: rewrite
         source: /teacher/answers/processing

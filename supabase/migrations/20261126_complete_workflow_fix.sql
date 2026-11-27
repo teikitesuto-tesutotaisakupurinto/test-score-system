@@ -59,21 +59,8 @@ SELECT
     a.student_id,
     s.student_no,
     s.name AS student_name,
-    COALESCE(
-        SUM(
-            CASE
-                WHEN sc.status = 'marked' THEN sc.score
-                ELSE 0::numeric
-            END
-        ),
-        0::numeric
-    ) AS total_score,
-    COUNT(
-        DISTINCT CASE
-            WHEN sc.status = 'marked' THEN sc.layout_box_id
-            ELSE NULL::uuid
-        END
-    ) AS marked_count
+    COALESCE(SUM(sc.score), 0::numeric) AS total_score,
+    COUNT(DISTINCT sc.layout_box_id) AS marked_count
 FROM public.answer_sheets AS a
 JOIN public.students AS s
     ON s.id = a.student_id

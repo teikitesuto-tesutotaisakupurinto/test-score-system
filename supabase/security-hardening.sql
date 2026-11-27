@@ -309,86 +309,127 @@ create or replace function public.set_test_publication(
 returns void
 language plpgsql
 security definer
-set search_path = public
-as $$
+set search_path = public, pg_temp
+as $function$
 declare
-  v_test_exists boolean;
-  v_sheet_count integer;
-  v_box_count integer;
-  v_missing_count integer;
+  v_answer_sheet_count integer;
+  v_unmatched_count integer;
+  v_nonfinal_count integer;
+  v_answer_box_count integer;
+  v_missing_score_count integer;
 begin
-  if public.my_role()::text <> 'teacher' then
+  if auth.uid() is null then
+    raise exception 'ログインが必要です。';
+  end if;
+
+  if public.my_role()::text is distinct from 'teacher' then
     raise exception '先生権限が必要です。';
   end if;
 
-  select exists(select 1 from public.tests where id = p_test_id)
-    into v_test_exists;
-  if not v_test_exists then
+  perform 1
+  from public.tests t
+  where t.id = p_test_id
+  for update;
+
+  if not found then
     raise exception 'テストが見つかりません。';
   end if;
 
-  if p_publish then
-    select count(*) into v_sheet_count
-    from public.answer_sheets
-    where test_id = p_test_id and student_id is not null;
+  if p_publish is null then
+    raise exception '公開状態を指定してください。';
+  end if;
 
-    if v_sheet_count = 0 then
-      raise exception '答案が登録されていません。';
+  if p_publish then
+    select count(*) into v_answer_sheet_count
+    from public.answer_sheets a
+    where a.test_id = p_test_id
+      and a.student_id is not null;
+
+    if v_answer_sheet_count = 0 then
+      raise exception '生徒に紐付いた答案がありません。';
     end if;
 
-    select count(*) into v_box_count
+    select count(*) into v_unmatched_count
+    from public.answer_sheets a
+    where a.test_id = p_test_id
+      and (a.student_id is null or a.status = 'unmatched');
+
+    if v_unmatched_count > 0 then
+      raise exception '未紐付けの答案が % 件あります。先に生徒へ紐付けてください。', v_unmatched_count;
+    end if;
+
+    select count(*) into v_nonfinal_count
+    from public.answer_sheets a
+    where a.test_id = p_test_id
+      and a.student_id is not null
+      and a.status not in ('marked', 'published');
+
+    if v_nonfinal_count > 0 then
+      raise exception '採点が完了していない答案が % 件あります。', v_nonfinal_count;
+    end if;
+
+    select count(*) into v_answer_box_count
     from public.layout_boxes b
     where b.test_id = p_test_id
-      and lower(coalesce(b.box_type,'')) = 'answer'
-      and coalesce(trim(b.label),'') not in ('QR','氏名','小計','合計');
+      and b.box_type = 'answer'
+      and coalesce(b.box_role, 'answer') = 'answer'
+      and coalesce(btrim(b.label), '') not in ('QR', '氏名', '小計', '合計')
+      and coalesce(btrim(b.label), '') !~ '^(大問|小問|問[0-9])';
 
-    if v_box_count = 0 then
-      raise exception '採点対象の設問が登録されていません。';
+    if v_answer_box_count = 0 then
+      raise exception '採点対象の解答欄が登録されていません。';
     end if;
 
-    select count(*) into v_missing_count
+    select count(*) into v_missing_score_count
     from public.answer_sheets a
     cross join public.layout_boxes b
     where a.test_id = p_test_id
       and a.student_id is not null
-      and a.status in ('matched','uploaded','marking','marked','published')
+      and a.status in ('marked', 'published')
       and b.test_id = p_test_id
-      and lower(coalesce(b.box_type,'')) = 'answer'
-      and coalesce(trim(b.label),'') not in ('QR','氏名','小計','合計')
+      and b.box_type = 'answer'
+      and coalesce(b.box_role, 'answer') = 'answer'
+      and coalesce(btrim(b.label), '') not in ('QR', '氏名', '小計', '合計')
+      and coalesce(btrim(b.label), '') !~ '^(大問|小問|問[0-9])'
       and not exists (
-        select 1 from public.scores s
-        where s.answer_sheet_id = a.id
-          and s.layout_box_id = b.id
-          and s.status = 'marked'
+        select 1
+        from public.scores sc
+        where sc.answer_sheet_id = a.id
+          and sc.layout_box_id = b.id
+          and sc.status = 'marked'
       );
 
-    if v_missing_count > 0 then
-      raise exception '未採点の設問があります（%件）。', v_missing_count;
+    if v_missing_score_count > 0 then
+      raise exception '未採点の解答欄が % 件あります。', v_missing_score_count;
     end if;
 
     update public.answer_sheets
-      set status = 'published'
-      where test_id = p_test_id and student_id is not null
-        and status in ('marked','published');
+    set status = 'published'
+    where test_id = p_test_id
+      and student_id is not null
+      and status = 'marked';
 
     update public.tests
-      set results_published = true,
-          results_published_at = now(),
-          results_published_by = auth.uid()
-      where id = p_test_id;
+    set results_published = true,
+        results_published_at = now(),
+        results_published_by = auth.uid(),
+        status = 'published'
+    where id = p_test_id;
   else
     update public.tests
-      set results_published = false,
-          results_published_at = null,
-          results_published_by = null
-      where id = p_test_id;
+    set results_published = false,
+        results_published_at = null,
+        results_published_by = null,
+        status = case when status = 'published' then 'completed' else status end
+    where id = p_test_id;
 
     update public.answer_sheets
-      set status = 'marked'
-      where test_id = p_test_id and status = 'published';
+    set status = 'marked'
+    where test_id = p_test_id
+      and status = 'published';
   end if;
 end;
-$$;
+$function$;
 
 revoke all on function public.set_test_publication(uuid, boolean) from public, anon;
 grant execute on function public.set_test_publication(uuid, boolean) to authenticated;

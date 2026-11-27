@@ -3363,9 +3363,6 @@ async function saveMarksForAnswerQuestion(
    MOVE NEXT ANSWER
 ========================================================= */
 
-
-========================================================= */
-
 async function moveToNextAnswer() {
 
   if (

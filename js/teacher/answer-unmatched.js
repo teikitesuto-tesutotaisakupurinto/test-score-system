@@ -619,7 +619,7 @@ async function recropAnswer(answerSheetId) {
 
       const { error: regionError } = await supabaseClient
         .from("answer_regions")
-        .upsert({
+        .insert({
           answer_sheet_id: answerSheetId,
           layout_box_id: box.id,
           page_no: answerPage.page_no,
@@ -628,7 +628,7 @@ async function recropAnswer(answerSheetId) {
           y: rect.y,
           width: rect.width,
           height: rect.height
-        }, { onConflict: "answer_sheet_id,layout_box_id" });
+        });
       if (regionError) throw regionError;
       created++;
     }

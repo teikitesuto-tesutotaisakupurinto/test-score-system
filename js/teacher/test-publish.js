@@ -569,7 +569,7 @@ async function checkReadiness() {
   } =
     await DB
       .from(
-        "scores"
+        "canonical_answer_scores"
       )
       .select(
         `

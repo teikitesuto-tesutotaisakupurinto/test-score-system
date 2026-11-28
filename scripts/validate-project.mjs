@@ -81,8 +81,9 @@ if (!/original_file_path:\s*originalPath/.test(upload) ||
 }
 
 const publish = fs.readFileSync(path.join(root, "js/teacher/test-publish.js"), "utf8");
-if (!/\.in\(\s*["']layout_box_id["']\s*,\s*answerBoxIds\s*\)/s.test(publish)) {
-  failures.push("Publication readiness must count only registered answer boxes.");
+if (!/\.in\(\s*["']layout_box_id["']\s*,\s*answerBoxIds\s*\)/s.test(publish) ||
+    !/\.from\(\s*["']canonical_answer_scores["']\s*\)/s.test(publish)) {
+  failures.push("Publication readiness must count only registered answer boxes from the canonical score view.");
 }
 
 const security = fs.readFileSync(path.join(root, "supabase/security-hardening.sql"), "utf8");
@@ -104,8 +105,9 @@ if (!marking.includes('DB.rpc("save_answer_marking"')) {
   failures.push("Marking UI must save score, marks, and answer status through the atomic database RPC.");
 }
 if (!teacherSummary.includes('"canonical_answer_scores"') ||
-    !studentResult.includes('"canonical_answer_scores"')) {
-  failures.push("Teacher and student result screens must read from the same canonical score view.");
+    !studentResult.includes('"canonical_answer_scores"') ||
+    !publish.includes('"canonical_answer_scores"')) {
+  failures.push("Teacher summary, publication readiness, and student result screens must read from the same canonical score view.");
 }
 if (!fs.existsSync(atomicMigrationPath)) {
   failures.push("Atomic marking and canonical score migration is missing.");

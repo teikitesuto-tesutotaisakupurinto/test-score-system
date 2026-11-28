@@ -75,7 +75,7 @@ BEGIN
       FROM public.scores AS sc
      WHERE sc.answer_sheet_id = p_answer_sheet_id
        AND sc.layout_box_id = p_layout_box_id
-     ORDER BY sc.marked_at DESC NULLS LAST, sc.created_at DESC NULLS LAST
+     ORDER BY sc.marked_at DESC NULLS LAST, sc.id DESC
      LIMIT 1
      FOR UPDATE;
 

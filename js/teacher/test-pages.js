@@ -631,57 +631,39 @@
 
   async function renderAllPages() {
 
-    if (!viewer) {
-
-      return;
-
-    }
-
-
-    viewer.innerHTML =
-      "";
-
+    if (!viewer) return;
 
     if (!pages.length) {
-
       viewer.innerHTML = `
-
         <div class="empty-view">
-
-          <strong>
-            解答用紙がありません
-          </strong>
-
+          <strong>解答用紙がありません</strong>
           <br><br>
-
           PDFまたは画像を登録してください。
-
         </div>
-
       `;
-
       return;
-
     }
 
+    // 新しいページ表示を裏側で組み立て、全ページの準備ができてから
+    // 一度だけ差し替える。枠操作中に現在のPDFを空白にしない。
+    const staging = document.createElement("div");
+    staging.className = "page-render-staging";
 
-    for (
-      const page of pages
-    ) {
-
+    for (const page of pages) {
       try {
-        await renderPage(page);
+        await renderPage(page, staging);
       } catch (error) {
         console.error("render page failed:", page.page_no, error);
         const warning = document.createElement("div");
         warning.className = "empty-view";
         warning.textContent =
           `ページ${page.page_no}を表示できません。${error.message || "画像の取得に失敗しました。"}`;
-        viewer.appendChild(warning);
+        staging.appendChild(warning);
       }
-
     }
 
+    // 描画中にページが変わっていない場合だけ反映する。
+    viewer.replaceChildren(...Array.from(staging.childNodes));
   }
 
 
@@ -690,7 +672,8 @@
   ======================================================= */
 
   async function renderPage(
-    page
+    page,
+    renderTarget = viewer
   ) {
 
     const wrapper =
@@ -741,7 +724,7 @@
     );
 
 
-    viewer.appendChild(
+    renderTarget.appendChild(
       wrapper
     );
 

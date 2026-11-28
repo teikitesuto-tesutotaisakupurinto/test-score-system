@@ -103,6 +103,7 @@ async function initializeStudentEdit() {
       );
 
 
+    await loadClassOptions();
     await loadStudent();
 
 
@@ -123,6 +124,16 @@ async function initializeStudentEdit() {
 
 }
 
+
+async function loadClassOptions() {
+  const select = document.getElementById("studentClassId");
+  if (!select) return;
+  const { data, error } = await DB.from("classes").select("id,name,grade").order("grade").order("name");
+  if (error) throw error;
+  select.innerHTML = '<option value="">クラス未所属</option>' + (data || []).map(item =>
+    `<option value="${escapeHtml(item.id)}" data-grade="${escapeHtml(item.grade || "")}" data-name="${escapeHtml(item.name || "")}">${escapeHtml(item.grade || "")} ${escapeHtml(item.name || "")}</option>`
+  ).join("");
+}
 
 /* =========================================================
    LOAD
@@ -195,6 +206,18 @@ async function loadStudent() {
 
 
   document.getElementById("studentClass").value = data.class_name || "";
+  const classSelect = document.getElementById("studentClassId");
+  if (classSelect) {
+    let selectedId = data.class_id || "";
+    if (!selectedId) {
+      const match = [...classSelect.options].find(option =>
+        option.value && option.dataset.grade === String(data.grade || "")
+        && option.dataset.name === String(data.class_name || "")
+      );
+      selectedId = match?.value || "";
+    }
+    classSelect.value = selectedId;
+  }
   document.getElementById("studentMunicipality").value = data.municipality || "";
   document.getElementById("studentSchool").value = data.school_name || "";
 
@@ -243,12 +266,11 @@ async function saveStudent() {
       .trim();
 
 
-  const className =
-    document.getElementById(
-      "studentClass"
-    )
-      .value
-      .trim();
+  const classSelect = document.getElementById("studentClassId");
+  const selectedClass = classSelect?.selectedOptions?.[0];
+  const classId = classSelect?.value || null;
+  const className = (selectedClass?.dataset?.name || document.getElementById("studentClass").value).trim();
+  const selectedGrade = (selectedClass?.dataset?.grade || grade).trim();
 
 
   const active = document.getElementById("studentActive").value === "true";
@@ -301,12 +323,15 @@ async function saveStudent() {
           name,
 
           grade:
-            grade ||
+            selectedGrade ||
             null,
 
           class_name:
             className ||
             null,
+
+          class_id:
+            classId,
 
           municipality: municipality || null,
           school_name: schoolName || null,

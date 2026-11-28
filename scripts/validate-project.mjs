@@ -54,13 +54,13 @@ const configSource = fs.readFileSync(path.join(root, "js/config.js"), "utf8");
 const authSource = fs.readFileSync(path.join(root, "js/auth.js"), "utf8");
 const createClientCount = jsFiles.reduce((count, file) => {
   const source = fs.readFileSync(file, "utf8");
-  return count + (source.match(/supabase\\.createClient\\s*\\(/g) || []).length;
+  return count + (source.match(/supabase\.createClient\\s*\\(/g) || []).length;
 }, 0);
-if (createClientCount !== 1 || !/window\\.__APP_SUPABASE_CLIENT__\\s*=\\s*client/.test(configSource)) {
+if (createClientCount !== 1 || !/window\.__APP_SUPABASE_CLIENT__\\s*=\\s*client/.test(configSource)) {
   failures.push("Supabase Client must be created exactly once in js/config.js.");
 }
-if (/supabase\\.createClient\\s*\\(/.test(authSource) ||
-    !/window\\.__APP_SUPABASE_CLIENT__/.test(authSource)) {
+if (/supabase\.createClient\\s*\\(/.test(authSource) ||
+    !/window\.__APP_SUPABASE_CLIENT__/.test(authSource)) {
   failures.push("auth.js must reuse the shared Supabase Client and must not create another one.");
 }
 for (const file of checked.filter(file => file.endsWith(".html"))) {
@@ -92,10 +92,11 @@ if (!/and\s+public\.student_has_published_answer\(id\)/i.test(security)) {
 
 
 const storagePolicy = security.slice(security.indexOf("create policy student_own_published_answer_storage"));
-if (!/answer_regions\\s+r[\\s\\S]*?r\\.image_path\\s*=\\s*storage\\.objects\\.name/i.test(storagePolicy)) {
+if (!/answer_regions\s+r[\s\S]*?r\.image_path\s*=\s*storage\.objects\.name/i.test(storagePolicy)) {
   failures.push("Student Storage policy must permit only the student's own published answer-region crop images.");
 }
-\nif (failures.length) {
+
+if (failures.length) {
   console.error(failures.join("\n\n"));
   console.error(`\nValidation failed: ${failures.length} issue(s).`);
   process.exit(1);

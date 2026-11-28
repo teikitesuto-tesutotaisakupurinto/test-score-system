@@ -922,7 +922,8 @@ async function readQrOnlyFromConfiguredRegions(pages) {
   return null;
 }
 
-QR REGION
+/* =========================================================
+   QR REGION
 ========================================================= */
 
 async function readQrFromRegion(page, box) {
@@ -961,7 +962,8 @@ async function readQrFromRegion(page, box) {
   return normalizeQr(scanQrCanvas(canvas) || scanQrCanvas(canvas, true) || "");
 }
 
-QR SCAN
+/* =========================================================
+   QR SCAN
 ========================================================= */
 
 function scanQrCanvas(canvas, invert = false) {

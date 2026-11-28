@@ -814,34 +814,23 @@ async function processStudentAnswer(
       if (qrReadWarning) console.warn("QR読取エラー:", qrReadWarning.message);
     }
   } catch (error) {
-    const { error: storageCleanupError } = await DB
-      .storage
-      .from("test-files")
-      .remove(uploadedPaths);
-
-    if (storageCleanupError) {
-      console.error("答案Storageのロールバックに失敗しました。", storageCleanupError);
-    }
-
-    const { error: pagesCleanupError } = await DB
-      .from("answer_sheet_pages")
-      .delete()
-      .eq("answer_sheet_id", answer.id);
-
-    if (pagesCleanupError) {
-      console.error("答案ページDBのロールバックに失敗しました。", pagesCleanupError);
-    }
-
-    const { error: answerCleanupError } = await DB
+    // 途中失敗でも答案本体・保存済みページ・Storageファイルは削除しない。
+    // 手動紐付け画面から復旧できるよう、必ず未紐付けとして残す。
+    const { error: keepError } = await DB
       .from("answer_sheets")
-      .delete()
+      .update({ status: "unmatched" })
       .eq("id", answer.id);
 
-    if (answerCleanupError) {
-      console.error("答案レコードのロールバックに失敗しました。", answerCleanupError);
+    if (keepError) {
+      console.error("答案を未紐付け状態に保持できませんでした。", keepError);
     }
 
-    throw error;
+    console.error("答案処理は途中で停止しましたが、既存データは削除していません。", {
+      answerId: answer.id,
+      uploadedPaths,
+      cause: error
+    });
+    throw new Error(`答案は未紐付けとして保存しました。処理を完了できなかったため、手動紐付け画面で確認してください。詳細: ${error.message || error}`);
   }
 }
 
@@ -864,9 +853,9 @@ async function readQrFromWholePage(page) {
   context.imageSmoothingEnabled = false;
   context.drawImage(image, 0, 0, canvas.width, canvas.height);
 
-  let value = scanQrCanvas(canvas);
+  let value = scanQrCanvasEnhanced(canvas);
   if (value) return value;
-  value = scanQrCanvas(canvas, true);
+  value = scanQrCanvasEnhanced(canvas, true);
   return value || null;
 }
 
@@ -959,7 +948,82 @@ async function readQrFromRegion(page, box) {
   if (!context) throw new Error("QR読み取り用Canvasを作成できませんでした。");
   context.imageSmoothingEnabled = false;
   context.drawImage(image, cropX, cropY, actualWidth, actualHeight, 0, 0, canvas.width, canvas.height);
-  return normalizeQr(scanQrCanvas(canvas) || scanQrCanvas(canvas, true) || "");
+  return normalizeQr(scanQrCanvasEnhanced(canvas) || scanQrCanvasEnhanced(canvas, true) || "");
+}
+
+/* =========================================================
+   QR SCAN - MULTI PASS
+========================================================= */
+
+// 通常読取に加えて、拡大・回転・コントラスト補正・二値化を試す。
+function scanQrCanvasEnhanced(sourceCanvas, forceInvert = false) {
+  if (!sourceCanvas || sourceCanvas.width < 1 || sourceCanvas.height < 1) return null;
+  const attempts = [];
+  const add = (canvas) => {
+    if (canvas && canvas.width > 0 && canvas.height > 0) attempts.push(canvas);
+  };
+  add(sourceCanvas);
+
+  // QRが小さい場合に備えて最大2.5倍まで拡大
+  for (const factor of [1.5, 2, 2.5]) {
+    const scaled = document.createElement("canvas");
+    scaled.width = Math.max(1, Math.round(sourceCanvas.width * factor));
+    scaled.height = Math.max(1, Math.round(sourceCanvas.height * factor));
+    const ctx = scaled.getContext("2d", { willReadFrequently: true });
+    if (!ctx) continue;
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(sourceCanvas, 0, 0, scaled.width, scaled.height);
+    add(scaled);
+  }
+
+  // 90度単位の回転。スキャン画像の向きが違っても読み取る。
+  for (const angle of [90, 180, 270]) {
+    const rotated = document.createElement("canvas");
+    const swap = angle === 90 || angle === 270;
+    rotated.width = swap ? sourceCanvas.height : sourceCanvas.width;
+    rotated.height = swap ? sourceCanvas.width : sourceCanvas.height;
+    const ctx = rotated.getContext("2d", { willReadFrequently: true });
+    if (!ctx) continue;
+    ctx.translate(rotated.width / 2, rotated.height / 2);
+    ctx.rotate(angle * Math.PI / 180);
+    ctx.drawImage(sourceCanvas, -sourceCanvas.width / 2, -sourceCanvas.height / 2);
+    add(rotated);
+  }
+
+  for (const canvas of attempts) {
+    let value = scanQrCanvas(canvas, forceInvert);
+    if (value) return value;
+    value = scanQrCanvas(canvas, !forceInvert);
+    if (value) return value;
+
+    // 薄い印刷・グレー背景・コピー機の濃淡に対応する閾値処理
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx) continue;
+    let data;
+    try {
+      data = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    } catch (error) {
+      console.warn("QR画像データを取得できません。", error);
+      continue;
+    }
+    const thresholds = [96, 128, 160, 192, 216];
+    for (const threshold of thresholds) {
+      const copy = new Uint8ClampedArray(data.data);
+      for (let i = 0; i < copy.length; i += 4) {
+        const gray = Math.round(copy[i] * 0.299 + copy[i + 1] * 0.587 + copy[i + 2] * 0.114);
+        const bit = gray < threshold ? 0 : 255;
+        copy[i] = copy[i + 1] = copy[i + 2] = forceInvert ? 255 - bit : bit;
+        copy[i + 3] = 255;
+      }
+      try {
+        const result = jsQR(copy, data.width, data.height, { inversionAttempts: "dontInvert" });
+        if (result?.data) return result.data;
+      } catch (error) {
+        console.warn("QR二値化スキャン失敗", error);
+      }
+    }
+  }
+  return null;
 }
 
 /* =========================================================
@@ -970,7 +1034,13 @@ function scanQrCanvas(canvas, invert = false) {
   if (!canvas || !Number.isFinite(canvas.width) || !Number.isFinite(canvas.height) || canvas.width < 1 || canvas.height < 1) return null;
   const context = canvas.getContext("2d", { willReadFrequently: true });
   if (!context) return null;
-  const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+  let imageData;
+  try {
+    imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+  } catch (error) {
+    console.warn("QR Canvas読取をスキップしました。", error);
+    return null;
+  }
   if (!imageData.width || !imageData.height || !imageData.data?.length) return null;
   const pixels = imageData.data;
   if (invert) {

@@ -201,6 +201,12 @@
 
   async function initialize() {
 
+    // クリックイベントは認証確認より先に必ず登録する。
+    // requireRole が失敗・未完了のときに、ボタンが無反応になる状態を防ぐ。
+    setupEvents();
+
+    setStatus("ログイン状態とテスト情報を確認しています...");
+
     try {
 
       const auth =
@@ -209,6 +215,7 @@
 
       if (!auth) {
 
+        setStatus("先生としてログインできていません。再ログインしてください。", true);
         return;
 
       }
@@ -241,8 +248,6 @@
         null;
 
 
-      setupEvents();
-
       openBoxPanel();
 
       updateRoleHelp();
@@ -251,7 +256,7 @@
       if (!selectedTestId) {
 
         setStatus(
-          "テストIDが指定されていません。",
+          "テストIDがURLにありません。テスト一覧から対象テストの「解答用紙・枠設定」を開き直してください。",
           true
         );
 
@@ -261,6 +266,10 @@
 
 
       await loadLayout();
+
+      if (!pages.length) {
+        setStatus("このテストには解答用紙がまだ登録されていません。PDFまたは画像を選択して「解答用紙を登録」を押してください。");
+      }
 
     } catch (error) {
 

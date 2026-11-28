@@ -6,7 +6,7 @@
 
    QR値
    ---------------------------------------------------------
-   STUDENT:<生徒番号>
+   生徒番号そのもの
 
    答案アップロード時に
    QRを読み取り、生徒番号と完全一致させる。
@@ -319,7 +319,7 @@ function renderQr(students) {
 
         const qrWrap = document.createElement("div");
         qrWrap.className = "qr-print-code";
-        const qrValue = student.qr_token || `STUDENT:${student.student_no}`;
+        const qrValue = String(student.student_no || "").trim();
 
         new QRCode(qrWrap, {
           text: qrValue,

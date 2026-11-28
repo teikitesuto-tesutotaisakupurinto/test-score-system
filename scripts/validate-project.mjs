@@ -113,7 +113,8 @@ if (!fs.existsSync(atomicMigrationPath)) {
   const migration = fs.readFileSync(atomicMigrationPath, "utf8");
   if (!/CREATE OR REPLACE FUNCTION public\.save_answer_marking/i.test(migration) ||
       !/CREATE OR REPLACE VIEW public\.canonical_answer_scores/i.test(migration) ||
-      !/get_student_test_standard_scores[\s\S]*?canonical_answer_scores/i.test(migration)) {
+      !/get_student_test_standard_scores[\s\S]*?canonical_answer_scores/i.test(migration) ||
+      !/set_test_publication[\s\S]*?canonical_answer_scores/i.test(migration)) {
     failures.push("Database migration must define atomic marking and use canonical scores for student standard scores.");
   }
 }

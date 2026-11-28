@@ -3605,53 +3605,34 @@
      FILE PARSER
   ======================================================= */
 
-  async function fileToPages(
-    file
-  ) {
-
-    const ext =
-      getExtension(
-        file.name
-      );
-
-
-    if (
-      ext === "pdf"
-    ) {
-
-      return convertPdf(
-        file
-      );
-
+  async function fileToPages(file) {
+    if (!window.TEST_SCORE_FILES?.parseFile) {
+      throw new Error("共通ファイル変換ライブラリが読み込まれていません。画面を再読み込みしてください。");
     }
 
+    const parsed = await window.TEST_SCORE_FILES.parseFile(file);
+    const result = [];
 
-    if (
-      [
-        "jpg",
-        "jpeg",
-        "png",
-        "webp"
-      ].includes(
-        ext
-      )
-    ) {
-
-      return [
-        await convertImage(
-          file
-        )
-      ];
-
+    for (const page of parsed) {
+      const url = URL.createObjectURL(page.blob);
+      try {
+        const image = await loadImage(url);
+        const canvas = document.createElement("canvas");
+        canvas.width = image.naturalWidth || page.width;
+        canvas.height = image.naturalHeight || page.height;
+        const context = canvas.getContext("2d");
+        if (!context) throw new Error("ページ画像を作成できませんでした。");
+        context.fillStyle = "#ffffff";
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+        result.push({ canvas, width: canvas.width, height: canvas.height });
+      } finally {
+        URL.revokeObjectURL(url);
+      }
     }
 
-
-    throw new Error(
-      "PDF、JPG、JPEG、PNG、WEBPのみ対応しています。"
-    );
-
+    return result;
   }
-
 
   async function convertPdf(
     file

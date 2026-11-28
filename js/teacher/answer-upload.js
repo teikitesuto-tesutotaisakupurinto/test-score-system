@@ -702,302 +702,140 @@ async function uploadFiles() {
 async function processStudentAnswer(
   file
 ) {
-
-  const parsed =
-    await parseInputFile(
-      file
-    );
-
-
-  if (
-    !parsed?.length
-  ) {
-
-    throw new Error(
-      "答案ページを取得できませんでした。"
-    );
-
+  const parsed = await parseInputFile(file);
+  if (!parsed?.length) {
+    throw new Error("答案ページを取得できませんでした。");
   }
 
+  // 元PDF/画像もStorageへ保存し、DBには実在するStorageパスを記録する。
+  const safeName = String(file.name || "answer")
+    .replace(/[^A-Za-z0-9._-]/g, "_")
+    .slice(0, 100) || "answer";
+  const token = window.crypto?.randomUUID
+    ? window.crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const originalPath = [
+    selectedTestId,
+    "originals",
+    `${token}-${safeName}`
+  ].join("/");
 
-  /*
-   * まず答案レコードを作る。
-   * QRが読めなくても unmatched として残す。
-   */
+  const { error: originalUploadError } = await DB
+    .storage
+    .from("test-files")
+    .upload(originalPath, file, {
+      contentType: file.type || "application/octet-stream",
+      cacheControl: "3600",
+      upsert: false
+    });
+
+  if (originalUploadError) throw originalUploadError;
 
   const {
-    data:answer,
-    error:answerError
-  } =
-    await DB
-      .from(
-        "answer_sheets"
-      )
-      .insert({
-
-        test_id:
-          selectedTestId,
-
-        uploaded_by:
-          authUserId,
-
-        uploaded_at:
-          new Date().toISOString(),
-
-        page_count:
-          parsed.length,
-
-        status:
-          "unmatched",
-
-        original_file_path:
-          file.name,
-
-        qr_value:
-          null
-
-      })
-      .select(
-        `
-        id,
-        test_id,
-        status
-        `
-      )
-      .single();
-
+    data: answer,
+    error: answerError
+  } = await DB
+    .from("answer_sheets")
+    .insert({
+      test_id: selectedTestId,
+      uploaded_by: authUserId,
+      uploaded_at: new Date().toISOString(),
+      page_count: parsed.length,
+      status: "unmatched",
+      original_file_path: originalPath,
+      qr_value: null
+    })
+    .select("id,test_id,status")
+    .single();
 
   if (answerError) {
-
+    await DB.storage.from("test-files").remove([originalPath]);
     throw answerError;
-
   }
 
-
-  const uploadedPaths =
-    [];
-
+  // 元ファイルも含め、途中失敗時にアップロード分をすべてロールバックする。
+  const uploadedPaths = [originalPath];
 
   try {
+    for (let index = 0; index < parsed.length; index++) {
+      const page = parsed[index];
+      const pageNo = index + 1;
+      const path = [
+        selectedTestId,
+        answer.id,
+        `page-${String(pageNo).padStart(3, "0")}.png`
+      ].join("/");
 
-    /*
-     * ページをStorageへ保存。
-     */
+      const { error } = await DB
+        .storage
+        .from("test-files")
+        .upload(path, page.blob, {
+          contentType: "image/png",
+          cacheControl: "3600",
+          upsert: false
+        });
 
-    for (
-      let index = 0;
-      index <
-      parsed.length;
-      index++
-    ) {
+      if (error) throw error;
+      uploadedPaths.push(path);
 
-      const page =
-        parsed[index];
+      const { error: pageError } = await DB
+        .from("answer_sheet_pages")
+        .insert({
+          answer_sheet_id: answer.id,
+          page_no: pageNo,
+          file_path: path,
+          file_type: "image/png",
+          original_name: file.name,
+          width_px: Number(page.width) || null,
+          height_px: Number(page.height) || null
+        });
 
-
-      const pageNo =
-        index + 1;
-
-
-      const path =
-        [
-          selectedTestId,
-          answer.id,
-          `page-${String(
-            pageNo
-          ).padStart(
-            3,
-            "0"
-          )}.png`
-        ].join(
-          "/"
-        );
-
-
-      const {
-        error
-      } =
-        await DB
-          .storage
-          .from(
-            "test-files"
-          )
-          .upload(
-            path,
-            page.blob,
-            {
-              contentType:
-                "image/png",
-
-              cacheControl:
-                "3600",
-
-              upsert:
-                false
-            }
-          );
-
-
-      if (error) {
-
-        throw error;
-
-      }
-
-
-      uploadedPaths.push(
-        path
-      );
-
-
-      const {
-        error:
-          pageError
-      } =
-        await DB
-          .from(
-            "answer_sheet_pages"
-          )
-          .insert({
-
-            answer_sheet_id:
-              answer.id,
-
-            page_no:
-              pageNo,
-
-            file_path:
-              path,
-
-            file_type:
-              "image/png",
-
-            original_name:
-              file.name,
-
-            width_px:
-              Number(
-                page.width
-              ) ||
-              null,
-
-            height_px:
-              Number(
-                page.height
-              ) ||
-              null
-
-          });
-
-
-      if (pageError) {
-
-        throw pageError;
-
-      }
-
+      if (pageError) throw pageError;
     }
 
-
-    /*
-     * ここが重要。
-     *
-     * 答案全体からQRを探さない。
-     *
-     * layout_boxes の
-     * box_type = qr
-     * の座標だけを取得する。
-     */
-
-    const qrValue =
-      await readQrOnlyFromConfiguredRegions(
-        parsed
-      );
-
+    const qrValue = await readQrOnlyFromConfiguredRegions(parsed);
 
     if (qrValue) {
-
-      await matchAnswerByQr(
-        answer.id,
-        qrValue
-      );
-
+      await matchAnswerByQr(answer.id, qrValue);
     } else {
+      const { error: unmatchedError } = await DB
+        .from("answer_sheets")
+        .update({ status: "unmatched" })
+        .eq("id", answer.id);
 
-      /*
-       * QRが無い / 読めない
-       *
-       * unmatched のまま。
-       */
-
-      await DB
-        .from(
-          "answer_sheets"
-        )
-        .update({
-
-          status:
-            "unmatched"
-
-        })
-        .eq(
-          "id",
-          answer.id
-        );
-
+      if (unmatchedError) throw unmatchedError;
     }
-
-
   } catch (error) {
+    const { error: storageCleanupError } = await DB
+      .storage
+      .from("test-files")
+      .remove(uploadedPaths);
 
-    /*
-     * 途中失敗ならStorageとDBを戻す。
-     */
-
-    if (
-      uploadedPaths.length
-    ) {
-
-      await DB
-        .storage
-        .from(
-          "test-files"
-        )
-        .remove(
-          uploadedPaths
-        );
-
+    if (storageCleanupError) {
+      console.error("答案Storageのロールバックに失敗しました。", storageCleanupError);
     }
 
-
-    await DB
-      .from(
-        "answer_sheet_pages"
-      )
+    const { error: pagesCleanupError } = await DB
+      .from("answer_sheet_pages")
       .delete()
-      .eq(
-        "answer_sheet_id",
-        answer.id
-      );
+      .eq("answer_sheet_id", answer.id);
 
+    if (pagesCleanupError) {
+      console.error("答案ページDBのロールバックに失敗しました。", pagesCleanupError);
+    }
 
-    await DB
-      .from(
-        "answer_sheets"
-      )
+    const { error: answerCleanupError } = await DB
+      .from("answer_sheets")
       .delete()
-      .eq(
-        "id",
-        answer.id
-      );
+      .eq("id", answer.id);
 
+    if (answerCleanupError) {
+      console.error("答案レコードのロールバックに失敗しました。", answerCleanupError);
+    }
 
     throw error;
-
   }
-
 }
-
 
 /* =========================================================
    FULL PAGE QR FALLBACK

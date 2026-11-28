@@ -889,7 +889,7 @@ async function loadScores(
     } =
       await DB
         .from(
-          "scores"
+          "canonical_answer_scores"
         )
         .select(
           `

@@ -512,11 +512,11 @@
     } =
       await supabaseClient
         .from(
-          "scores"
+          "canonical_answer_scores"
         )
         .select(
           `
-          id,
+          score_id,
           answer_sheet_id,
           layout_box_id,
           question_id,
@@ -1710,7 +1710,7 @@
     if (!previousAnswer) return;
 
     const { data: previousScores, error: scoresError } = await supabaseClient
-      .from("scores")
+      .from("canonical_answer_scores")
       .select("score,status")
       .eq("answer_sheet_id", previousAnswer.id)
       .eq("status", "marked");

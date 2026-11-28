@@ -1654,66 +1654,6 @@
   }
 
 
-  function waitForOpenCV(timeoutMs = 25000) {
-    return new Promise(resolve => {
-      const startedAt = Date.now();
-      const timer = window.setInterval(() => {
-        if (isOpenCVReady()) {
-          window.clearInterval(timer);
-          resolve(window.cv);
-          return;
-        }
-        if (Date.now() - startedAt >= timeoutMs) {
-          window.clearInterval(timer);
-          resolve(null);
-        }
-      }, 100);
-    });
-  }
-
-
-  function loadOpenCVScript(src, timeoutMs = 30000) {
-    return new Promise(resolve => {
-      const script = document.createElement("script");
-      let settled = false;
-      const finish = value => {
-        if (settled) return;
-        settled = true;
-        window.clearTimeout(timeout);
-        script.onload = null;
-        script.onerror = null;
-        resolve(value);
-      };
-      const timeout = window.setTimeout(() => finish(false), timeoutMs);
-      script.async = true;
-      script.src = src;
-      script.onload = () => finish(true);
-      script.onerror = () => finish(false);
-      document.head.appendChild(script);
-    });
-  }
-
-
-  async function initializeOpenCV() {
-    let library = await waitForOpenCV(1200);
-    if (library) return library;
-
-    const sources = [
-      "https://cdn.jsdelivr.net/npm/@techstark/opencv-js@4.10.0-release.1/opencv.js",
-      "https://docs.opencv.org/4.x/opencv.js"
-    ];
-
-    for (const source of sources) {
-      const loaded = await loadOpenCVScript(source);
-      if (!loaded) continue;
-      library = await waitForOpenCV(25000);
-      if (library) return library;
-    }
-
-    return null;
-  }
-
-
   async function detectAllPages() {
     if (!pages.length) {
       setStatus("先に解答用紙を登録してください。", true);
@@ -1722,16 +1662,9 @@
 
     const buttons = [detectButton, detectButtonTop].filter(Boolean);
     buttons.forEach(button => { button.disabled = true; });
-    setStatus("自動検出エンジンを起動しています...");
+    setStatus("解答用紙の画像解析を開始しています...");
 
     try {
-      const cvLibrary = await initializeOpenCV();
-      if (!cvLibrary) {
-        throw new Error(
-          "画像解析ライブラリを読み込めませんでした。ネットワークまたはCDNへの接続を確認してください。"
-        );
-      }
-
       candidates = [];
       const pageErrors = [];
 
@@ -1748,9 +1681,7 @@
       await renderAllPages();
 
       if (pageErrors.length && !candidates.length) {
-        throw new Error(
-          "全ページの解析に失敗しました。 " + pageErrors.join(" / ")
-        );
+        throw new Error("全ページの画像解析に失敗しました。 " + pageErrors.join(" / "));
       }
 
       if (pageErrors.length) {
@@ -1764,127 +1695,164 @@
         );
       } else {
         setStatus(
-          "画像解析は起動しましたが、枠候補を検出できませんでした。解答用紙の画質・罫線を確認してください。",
+          "画像解析は完了しましたが、枠候補を検出できませんでした。解答用紙の罫線が薄い場合は、画像を高解像度で登録してください。",
           true
         );
       }
     } catch (error) {
-      console.error("automatic detection initialization:", error);
-      setStatus(
-        error.message || "自動検出エンジンを起動できませんでした。",
-        true
-      );
+      console.error("automatic detection:", error);
+      setStatus(error.message || "自動検出に失敗しました。", true);
     } finally {
       buttons.forEach(button => { button.disabled = false; });
     }
   }
 
+  async function detectPage(page) {
+    const { data, error } = await supabaseClient
+      .storage
+      .from("test-files")
+      .createSignedUrl(page.image_path, 600);
 
-  async function detectPage(
-    page
-  ) {
-
-    const {
-      data,
-      error
-    } =
-      await supabaseClient
-        .storage
-        .from("test-files")
-        .createSignedUrl(
-          page.image_path,
-          600
-        );
-
-
-    if (
-      error ||
-      !data?.signedUrl
-    ) {
-
-      throw new Error(
-        `P${page.page_no}画像を取得できません。`
-      );
-
+    if (error || !data?.signedUrl) {
+      throw new Error(`P${page.page_no}画像を取得できません。`);
     }
 
+    const image = await loadImage(data.signedUrl);
+    const maxWidth = 1400;
+    const scale = Math.min(1, maxWidth / image.naturalWidth);
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
 
-    const image =
-      await loadImage(
-        data.signedUrl
-      );
+    const context = canvas.getContext("2d", { willReadFrequently: true });
+    if (!context) throw new Error("画像解析用Canvasを初期化できません。");
 
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
 
-    const maxWidth =
-      1800;
-
-
-    const scale =
-      Math.min(
-        1,
-        maxWidth /
-        image.naturalWidth
-      );
-
-
-    const canvas =
-      document.createElement(
-        "canvas"
-      );
-
-
-    canvas.width =
-      Math.round(
-        image.naturalWidth *
-        scale
-      );
-
-
-    canvas.height =
-      Math.round(
-        image.naturalHeight *
-        scale
-      );
-
-
-    const context =
-      canvas.getContext(
-        "2d",
-        {
-          willReadFrequently:
-            true
-        }
-      );
-
-
-    context.drawImage(
-      image,
-      0,
-      0,
-      canvas.width,
-      canvas.height
-    );
-
-
-    if (
-      window.cv &&
-      typeof window.cv.Mat ===
-      "function"
-    ) {
-
-      return detectWithOpenCV(
-        canvas,
-        page,
-        scale
-      );
-
+    // OpenCVが利用可能なら従来方式、利用不可なら内蔵JavaScript解析に切り替える。
+    if (isOpenCVReady()) {
+      try {
+        return detectWithOpenCV(canvas, page, scale);
+      } catch (error) {
+        console.warn("OpenCV解析に失敗したため内蔵解析へ切り替えます。", error);
+      }
     }
 
-
-    return [];
-
+    const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+    return detectWithJavaScript(imageData, page, scale);
   }
 
+
+  function detectWithJavaScript(imageData, page, scale) {
+    const { data, width, height } = imageData;
+    const total = width * height;
+    const visited = new Uint8Array(total);
+    const queue = new Int32Array(total);
+    const threshold = 185;
+    const minPixels = 24;
+    const minBoxArea = total * 0.00018;
+    const maxBoxArea = total * 0.35;
+    const found = [];
+
+    // 4方向の連結成分を抽出。外部の画像解析CDNに依存しない。
+    for (let startIndex = 0; startIndex < total; startIndex++) {
+      if (visited[startIndex]) continue;
+
+      const p = startIndex * 4;
+      const luminance = data[p] * 0.299 + data[p + 1] * 0.587 + data[p + 2] * 0.114;
+      if (luminance >= threshold || data[p + 3] < 16) {
+        visited[startIndex] = 1;
+        continue;
+      }
+
+      let head = 0;
+      let tail = 0;
+      queue[tail++] = startIndex;
+      visited[startIndex] = 1;
+
+      let minX = width, minY = height, maxX = 0, maxY = 0;
+      while (head < tail) {
+        const index = queue[head++];
+        const x = index % width;
+        const y = (index / width) | 0;
+
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+
+        const neighbors = [
+          x > 0 ? index - 1 : -1,
+          x + 1 < width ? index + 1 : -1,
+          y > 0 ? index - width : -1,
+          y + 1 < height ? index + width : -1
+        ];
+
+        for (const next of neighbors) {
+          if (next < 0 || visited[next]) continue;
+          visited[next] = 1;
+          const q = next * 4;
+          const gray = data[q] * 0.299 + data[q + 1] * 0.587 + data[q + 2] * 0.114;
+          if (gray < threshold && data[q + 3] >= 16) {
+            queue[tail++] = next;
+          }
+        }
+      }
+
+      if (tail < minPixels) continue;
+
+      const boxWidth = maxX - minX + 1;
+      const boxHeight = maxY - minY + 1;
+      const area = boxWidth * boxHeight;
+      const ratio = boxWidth / Math.max(1, boxHeight);
+
+      if (
+        area < minBoxArea ||
+        area > maxBoxArea ||
+        boxWidth < 18 ||
+        boxHeight < 12 ||
+        ratio < 0.15 ||
+        ratio > 8
+      ) continue;
+
+      // 長方形の枠線らしさを確認し、文字の塊を候補にしにくくする。
+      const band = Math.max(2, Math.min(4, Math.round(Math.min(boxWidth, boxHeight) * 0.025)));
+      let borderDark = 0;
+      let borderSamples = 0;
+      const x0 = Math.max(0, minX - band);
+      const x1 = Math.min(width - 1, maxX + band);
+      const y0 = Math.max(0, minY - band);
+      const y1 = Math.min(height - 1, maxY + band);
+
+      for (let y = y0; y <= y1; y++) {
+        for (let x = x0; x <= x1; x++) {
+          if (
+            x > minX + band && x < maxX - band &&
+            y > minY + band && y < maxY - band
+          ) continue;
+
+          borderSamples++;
+          const q = (y * width + x) * 4;
+          const gray = data[q] * 0.299 + data[q + 1] * 0.587 + data[q + 2] * 0.114;
+          if (gray < threshold) borderDark++;
+        }
+      }
+
+      const borderRatio = borderDark / Math.max(1, borderSamples);
+      if (borderRatio < 0.025) continue;
+
+      found.push({
+        id: crypto.randomUUID(),
+        pageNo: Number(page.page_no),
+        x: minX / scale,
+        y: minY / scale,
+        width: boxWidth / scale,
+        height: boxHeight / scale
+      });
+    }
+
+    return deduplicate(found).slice(0, 300);
+  }
 
   function detectWithOpenCV(
     canvas,
@@ -3566,6 +3534,9 @@
                 "画像を読み込めませんでした。"
               )
             );
+
+
+        image.crossOrigin = "anonymous";
 
 
         image.src =

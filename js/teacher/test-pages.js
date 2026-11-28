@@ -2422,15 +2422,24 @@
 
     rebuildHierarchy();
 
-
-    renderAllPages();
-
+    // 枠の種類変更で画像を再取得しない。既存レイヤー内の枠だけを差し替える。
+    const page = pages.find(item => Number(item.page_no) === Number(box.page_no));
+    const layer = viewer?.querySelector(`.page-layer[data-page-no="${Number(box.page_no)}"]`);
+    if (layer && page) {
+      const oldElement = Array.from(layer.querySelectorAll(".layout-box"))
+        .find(element => element.dataset.boxId === box.id);
+      oldElement?.remove();
+      renderBox(layer, page, box);
+      selectBox(box.id);
+    } else {
+      renderAllPages().catch(error => {
+        console.error("refresh changed box:", error);
+        setStatus("枠の設定は変更しました。表示を更新できないため、保存後に再読み込みしてください。", true);
+      });
+    }
 
     setStatus(
-      `${automaticLabel(
-        role,
-        box
-      )}として設定しました。`
+      `${automaticLabel(role, box)}として設定しました。`
     );
 
   }
@@ -2477,14 +2486,21 @@
     );
 
 
-    selectedBoxId =
-      null;
-
+    selectedBoxId = null;
 
     rebuildHierarchy();
 
-    renderAllPages();
-
+    // ページ画像を再読込せず、該当枠だけをDOMから除去する。
+    const pageLayer = viewer?.querySelectorAll(".page-layer");
+    if (pageLayer) {
+      pageLayer.forEach(layer => {
+        const element = Array.from(layer.querySelectorAll(".layout-box"))
+          .find(item => item.dataset.boxId === id);
+        element?.remove();
+      });
+    }
+    updateAllLabels();
+    closeBoxPanel();
 
     setStatus(
       "選択枠を削除しました。保存するとDBにも反映されます。"

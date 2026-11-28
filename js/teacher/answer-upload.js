@@ -986,7 +986,8 @@ function scanQrCanvas(canvas, invert = false) {
   return result?.data || null;
 }
 
-MATCH BY QR
+/* =========================================================
+   MATCH BY QR
 ========================================================= */
 
 async function matchAnswerByQr(

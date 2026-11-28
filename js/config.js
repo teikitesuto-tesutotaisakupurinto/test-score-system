@@ -67,15 +67,13 @@
    * 同じClientを使用する。
    */
 
-  if (
-    window.supabaseClient
-  ) {
-
-    window.SB =
-      window.supabaseClient;
-
+  // アプリ全体でSupabase Clientを必ず1つだけ共有する。
+  const existingClient = window.supabaseClient || window.SB || null;
+  if (existingClient) {
+    window.supabaseClient = existingClient;
+    window.SB = existingClient;
+    window.__APP_SUPABASE_CLIENT__ = existingClient;
     return;
-
   }
 
 
@@ -112,11 +110,8 @@
     );
 
 
-  window.supabaseClient =
-    client;
-
-
-  window.SB =
-    client;
+  window.supabaseClient = client;
+  window.SB = client;
+  window.__APP_SUPABASE_CLIENT__ = client;
 
 })();

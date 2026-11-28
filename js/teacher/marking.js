@@ -848,11 +848,11 @@ async function loadScores() {
     } =
       await DB
         .from(
-          "scores"
+          "canonical_answer_scores"
         )
         .select(
           `
-          id,
+          score_id,
           answer_sheet_id,
           layout_box_id,
           question_id,
@@ -875,7 +875,10 @@ async function loadScores() {
 
 
     scores.push(
-      ...(data || [])
+      ...(data || []).map(row => ({
+        ...row,
+        id: row.score_id
+      }))
     );
 
   }

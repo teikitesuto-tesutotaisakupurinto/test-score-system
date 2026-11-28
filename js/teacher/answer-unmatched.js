@@ -533,107 +533,76 @@ async function matchAnswer(answerId) {
 ========================================================= */
 
 async function recropAnswer(answerSheetId) {
-  const { data: answer, error: answerError } = await supabaseClient
-    .from("answer_sheets")
-    .select("id,test_id")
-    .eq("id", answerSheetId)
-    .single();
+  const { data: answer, error: answerError } = await supabaseClient.from("answer_sheets")
+    .select("id,test_id").eq("id", answerSheetId).single();
   if (answerError) throw answerError;
-
-  const { data: answerPages, error: pageError } = await supabaseClient
-    .from("answer_sheet_pages")
-    .select("id,page_no,file_path,width_px,height_px")
-    .eq("answer_sheet_id", answerSheetId)
-    .order("page_no", { ascending: true });
+  const { data: answerPages, error: pageError } = await supabaseClient.from("answer_sheet_pages")
+    .select("id,page_no,file_path,width_px,height_px").eq("answer_sheet_id", answerSheetId).order("page_no", { ascending: true });
   if (pageError) throw pageError;
-
-  const { data: layoutBoxes, error: boxError } = await supabaseClient
-    .from("layout_boxes")
-    .select("id,page_no,box_type,box_role,x,y,width,height")
-    .eq("test_id", answer.test_id)
-    .eq("box_type", "answer");
+  const { data: templatePages, error: templateError } = await supabaseClient.from("test_pages")
+    .select("page_no,width_px,height_px").eq("test_id", answer.test_id);
+  if (templateError) throw templateError;
+  const { data: layoutBoxes, error: boxError } = await supabaseClient.from("layout_boxes")
+    .select("id,page_no,box_type,box_role,x,y,width,height").eq("test_id", answer.test_id).eq("box_type", "answer");
   if (boxError) throw boxError;
 
   const answerOnlyBoxes = (layoutBoxes || []).filter(box => !["major", "minor"].includes(box.box_role));
   if (!answerPages?.length) throw new Error("答案ページ画像がありません。");
   if (!answerOnlyBoxes.length) throw new Error("採点対象の解答欄が設定されていません。");
-
-  const { data: oldRegions, error: oldRegionsError } = await supabaseClient
-    .from("answer_regions")
-    .select("*")
-    .eq("answer_sheet_id", answerSheetId);
+  const { data: oldRegions, error: oldRegionsError } = await supabaseClient.from("answer_regions")
+    .select("*").eq("answer_sheet_id", answerSheetId);
   if (oldRegionsError) throw oldRegionsError;
 
-  const newPaths = [];
-  const newRows = [];
+  const newPaths = [], newRows = [];
   try {
     for (const answerPage of answerPages) {
       const pageBoxes = answerOnlyBoxes.filter(box => Number(box.page_no) === Number(answerPage.page_no));
       if (!pageBoxes.length) continue;
-
-      const { data: downloaded, error: downloadError } = await supabaseClient
-        .storage.from("test-files").download(answerPage.file_path);
+      const { data: downloaded, error: downloadError } = await supabaseClient.storage.from("test-files").download(answerPage.file_path);
       if (downloadError) throw downloadError;
-
       const image = await blobToImage(downloaded);
-      const sourceWidth = Number(answerPage.width_px) || image.naturalWidth;
-      const sourceHeight = Number(answerPage.height_px) || image.naturalHeight;
-      const scaleX = image.naturalWidth / sourceWidth;
-      const scaleY = image.naturalHeight / sourceHeight;
+      const template = (templatePages || []).find(row => Number(row.page_no) === Number(answerPage.page_no));
+      const templateWidth = Number(template?.width_px) || Number(answerPage.width_px) || image.naturalWidth;
+      const templateHeight = Number(template?.height_px) || Number(answerPage.height_px) || image.naturalHeight;
+      if (!templateWidth || !templateHeight) throw new Error("解答用紙の基準画像サイズを取得できません。");
+      const scaleX = image.naturalWidth / templateWidth, scaleY = image.naturalHeight / templateHeight;
 
       for (const box of pageBoxes) {
         const rect = {
-          x: (Number(box.x) || 0) * scaleX,
-          y: (Number(box.y) || 0) * scaleY,
-          width: (Number(box.width) || 0) * scaleX,
-          height: (Number(box.height) || 0) * scaleY
+          x: Number(box.x) * scaleX, y: Number(box.y) * scaleY,
+          width: Number(box.width) * scaleX, height: Number(box.height) * scaleY
         };
         const crop = cropImage(image, rect);
-        if (!crop) continue;
+        if (!crop) {
+          console.warn("空の解答欄クロップをスキップしました。", { pageNo: answerPage.page_no, boxId: box.id, rect });
+          continue;
+        }
         const blob = await canvasToBlob(crop);
-        const path = [answer.test_id, answerSheetId, `${box.id}-${crypto.randomUUID()}.png`].join("/");
-        const { error: uploadError } = await supabaseClient
-          .storage.from("student-answers")
+        const path = [answer.test_id, answerSheetId, box.id + "-" + crypto.randomUUID() + ".png"].join("/");
+        const { error: uploadError } = await supabaseClient.storage.from("student-answers")
           .upload(path, blob, { contentType: "image/png", upsert: false });
         if (uploadError) throw uploadError;
         newPaths.push(path);
         newRows.push({
-          answer_sheet_id: answerSheetId,
-          layout_box_id: box.id,
-          page_no: answerPage.page_no,
-          image_path: path,
-          x: rect.x,
-          y: rect.y,
-          width: rect.width,
-          height: rect.height
+          answer_sheet_id: answerSheetId, layout_box_id: box.id, page_no: answerPage.page_no,
+          image_path: path, x: rect.x, y: rect.y, width: rect.width, height: rect.height
         });
       }
     }
-
-    if (!newRows.length) throw new Error("答案の切り出し対象がありません。解答欄の枠設定を確認してください。");
-
-    const { error: deleteError } = await supabaseClient
-      .from("answer_regions")
-      .delete()
-      .eq("answer_sheet_id", answerSheetId);
+    if (!newRows.length) throw new Error("有効な答案クロップがありません。解答用紙と答案のサイズ・枠位置を確認してください。");
+    const { error: deleteError } = await supabaseClient.from("answer_regions").delete().eq("answer_sheet_id", answerSheetId);
     if (deleteError) throw deleteError;
-
-    const { error: insertError } = await supabaseClient
-      .from("answer_regions")
-      .insert(newRows);
+    const { error: insertError } = await supabaseClient.from("answer_regions").insert(newRows);
     if (insertError) {
       if (oldRegions?.length) {
-        const { error: restoreError } = await supabaseClient
-          .from("answer_regions")
-          .insert(oldRegions);
+        const { error: restoreError } = await supabaseClient.from("answer_regions").insert(oldRegions);
         if (restoreError) console.error("answer_regions restore failed:", restoreError);
       }
       throw insertError;
     }
   } catch (error) {
     if (newPaths.length) {
-      const { error: cleanupError } = await supabaseClient
-        .storage.from("student-answers").remove(newPaths);
+      const { error: cleanupError } = await supabaseClient.storage.from("student-answers").remove(newPaths);
       if (cleanupError) console.warn("temporary crop cleanup failed:", cleanupError);
     }
     throw error;
@@ -641,24 +610,29 @@ async function recropAnswer(answerSheetId) {
 }
 
 function blobToImage(blob) {
+  if (!(blob instanceof Blob) || blob.size === 0) return Promise.reject(new Error("答案画像データが空です。"));
   return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(blob);
-    const image = new Image();
-    image.onload = () => { URL.revokeObjectURL(url); resolve(image); };
+    const url = URL.createObjectURL(blob), image = new Image();
+    image.onload = () => {
+      URL.revokeObjectURL(url);
+      if (!image.naturalWidth || !image.naturalHeight) return reject(new Error("答案画像の幅または高さが0です。"));
+      resolve(image);
+    };
     image.onerror = () => { URL.revokeObjectURL(url); reject(new Error("答案画像を読み込めませんでした。")); };
     image.src = url;
   });
 }
 
 function cropImage(image, rect) {
-  const x = Math.max(0, Math.floor(rect.x));
-  const y = Math.max(0, Math.floor(rect.y));
-  const width = Math.min(image.naturalWidth - x, Math.floor(rect.width));
-  const height = Math.min(image.naturalHeight - y, Math.floor(rect.height));
-  if (width <= 0 || height <= 0) return null;
+  if (!image?.naturalWidth || !image?.naturalHeight) return null;
+  const x = Math.max(0, Math.floor(Number(rect.x) || 0));
+  const y = Math.max(0, Math.floor(Number(rect.y) || 0));
+  if (x >= image.naturalWidth || y >= image.naturalHeight) return null;
+  const width = Math.min(image.naturalWidth - x, Math.floor(Number(rect.width) || 0));
+  const height = Math.min(image.naturalHeight - y, Math.floor(Number(rect.height) || 0));
+  if (width < 1 || height < 1) return null;
   const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
+  canvas.width = width; canvas.height = height;
   const context = canvas.getContext("2d");
   if (!context) throw new Error("答案切り出し用Canvasを作成できませんでした。");
   context.drawImage(image, x, y, width, height, 0, 0, width, height);

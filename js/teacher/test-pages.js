@@ -1643,20 +1643,71 @@
      AUTO DETECTION
   ======================================================= */
 
-  async function waitForOpenCV(timeoutMs = 10000) {
-    const startedAt = Date.now();
+  function isOpenCVReady() {
+    const library = window.cv;
+    return Boolean(
+      library &&
+      typeof library.Mat === "function" &&
+      typeof library.imread === "function" &&
+      typeof library.findContours === "function"
+    );
+  }
 
-    while (Date.now() - startedAt < timeoutMs) {
-      const library = window.cv;
-      if (
-        library &&
-        typeof library.Mat === "function" &&
-        typeof library.imread === "function"
-      ) {
-        return library;
-      }
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+  function waitForOpenCV(timeoutMs = 25000) {
+    return new Promise(resolve => {
+      const startedAt = Date.now();
+      const timer = window.setInterval(() => {
+        if (isOpenCVReady()) {
+          window.clearInterval(timer);
+          resolve(window.cv);
+          return;
+        }
+        if (Date.now() - startedAt >= timeoutMs) {
+          window.clearInterval(timer);
+          resolve(null);
+        }
+      }, 100);
+    });
+  }
+
+
+  function loadOpenCVScript(src, timeoutMs = 30000) {
+    return new Promise(resolve => {
+      const script = document.createElement("script");
+      let settled = false;
+      const finish = value => {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timeout);
+        script.onload = null;
+        script.onerror = null;
+        resolve(value);
+      };
+      const timeout = window.setTimeout(() => finish(false), timeoutMs);
+      script.async = true;
+      script.src = src;
+      script.onload = () => finish(true);
+      script.onerror = () => finish(false);
+      document.head.appendChild(script);
+    });
+  }
+
+
+  async function initializeOpenCV() {
+    let library = await waitForOpenCV(1200);
+    if (library) return library;
+
+    const sources = [
+      "https://cdn.jsdelivr.net/npm/@techstark/opencv-js@4.10.0-release.1/opencv.js",
+      "https://docs.opencv.org/4.x/opencv.js"
+    ];
+
+    for (const source of sources) {
+      const loaded = await loadOpenCVScript(source);
+      if (!loaded) continue;
+      library = await waitForOpenCV(25000);
+      if (library) return library;
     }
 
     return null;
@@ -1664,47 +1715,68 @@
 
 
   async function detectAllPages() {
-
     if (!pages.length) {
-      setStatus(
-        "先に解答用紙を登録してください。",
-        true
-      );
+      setStatus("先に解答用紙を登録してください。", true);
       return;
     }
 
-    setStatus("自動検出エンジンを初期化しています...");
-    const cvLibrary = await waitForOpenCV();
+    const buttons = [detectButton, detectButtonTop].filter(Boolean);
+    buttons.forEach(button => { button.disabled = true; });
+    setStatus("自動検出エンジンを起動しています...");
 
-    if (!cvLibrary) {
-      candidates = [];
-      await renderAllPages();
-      setStatus(
-        "自動検出エンジンを初期化できませんでした。手動ドラッグで枠を設定してください。",
-        true
-      );
-      return;
-    }
-
-    candidates = [];
-    setStatus("枠を自動検出しています...");
-
-    for (const page of pages) {
-      try {
-        const detected = await detectPage(page);
-        candidates.push(...detected);
-      } catch (error) {
-        console.warn("detect page:", error);
+    try {
+      const cvLibrary = await initializeOpenCV();
+      if (!cvLibrary) {
+        throw new Error(
+          "画像解析ライブラリを読み込めませんでした。ネットワークまたはCDNへの接続を確認してください。"
+        );
       }
+
+      candidates = [];
+      const pageErrors = [];
+
+      for (const page of pages) {
+        try {
+          const detected = await detectPage(page);
+          candidates.push(...detected);
+        } catch (error) {
+          console.error("detect page:", page.page_no, error);
+          pageErrors.push(`P${page.page_no}: ${error.message || "解析失敗"}`);
+        }
+      }
+
+      await renderAllPages();
+
+      if (pageErrors.length && !candidates.length) {
+        throw new Error(
+          "全ページの解析に失敗しました。 " + pageErrors.join(" / ")
+        );
+      }
+
+      if (pageErrors.length) {
+        setStatus(
+          `自動検出 ${candidates.length}個。解析できなかったページ: ${pageErrors.join(" / ")}`,
+          true
+        );
+      } else if (candidates.length) {
+        setStatus(
+          `自動検出 ${candidates.length}個。赤い候補をクリックして枠に登録してください。`
+        );
+      } else {
+        setStatus(
+          "画像解析は起動しましたが、枠候補を検出できませんでした。解答用紙の画質・罫線を確認してください。",
+          true
+        );
+      }
+    } catch (error) {
+      console.error("automatic detection initialization:", error);
+      setStatus(
+        error.message || "自動検出エンジンを起動できませんでした。",
+        true
+      );
+    } finally {
+      buttons.forEach(button => { button.disabled = false; });
     }
-
-    await renderAllPages();
-
-    setStatus(
-      candidates.length
-        ? `自動検出 ${candidates.length}個。赤い候補をクリックしてください。`
-        : "自動検出できる枠がありません。手動ドラッグで設定してください。"
-    );
   }
 
 

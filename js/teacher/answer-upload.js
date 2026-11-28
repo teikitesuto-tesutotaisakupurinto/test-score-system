@@ -1484,7 +1484,7 @@ async function matchAnswerByQr(
    FILE PARSER
 ========================================================= */
 
-async function parseInputFile(
+async async function parseInputFile(
   file
 ) {
 

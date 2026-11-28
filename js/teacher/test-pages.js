@@ -660,9 +660,16 @@
       const page of pages
     ) {
 
-      await renderPage(
-        page
-      );
+      try {
+        await renderPage(page);
+      } catch (error) {
+        console.error("render page failed:", page.page_no, error);
+        const warning = document.createElement("div");
+        warning.className = "empty-view";
+        warning.textContent =
+          `ページ${page.page_no}を表示できません。${error.message || "画像の取得に失敗しました。"}`;
+        viewer.appendChild(warning);
+      }
 
     }
 
@@ -794,6 +801,18 @@
   async function createPageImage(
     page
   ) {
+
+    // 登録直後はアップロード元のBlob URLを優先する。
+    // Storageの署名URL発行が遅延・失敗しても、登録直後の枠設定を妨げない。
+    if (page.previewUrl) {
+      const preview = await loadImage(page.previewUrl);
+      preview.alt = `解答用紙 ${page.page_no}ページ`;
+      preview.style.display = "block";
+      preview.style.width = "100%";
+      preview.style.height = "auto";
+      preview.draggable = false;
+      return preview;
+    }
 
     const {
       data,
@@ -3975,7 +3994,10 @@
             page.width,
 
           height:
-            page.height
+            page.height,
+
+          previewUrl:
+            URL.createObjectURL(blob)
 
         });
 
@@ -4047,7 +4069,10 @@
       pages =
         [
           ...pages,
-          ...(inserted || [])
+          ...(inserted || []).map((row, index) => ({
+            ...row,
+            previewUrl: uploaded[index]?.previewUrl || null
+          }))
         ];
 
 

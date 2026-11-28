@@ -3214,19 +3214,12 @@ async function saveCardScore(
      * 全設問完了時にmarkedへ。
      */
 
-    await DB
-      .from(
-        "answer_sheets"
-      )
-      .update({
-        status:
-          "marking"
-      })
-      .eq(
-        "id",
-        answer.id
-      );
+    const { error: answerStatusError } = await DB
+      .from("answer_sheets")
+      .update({ status: "marking" })
+      .eq("id", answer.id);
 
+    if (answerStatusError) throw answerStatusError;
 
     await saveMarksForAnswerQuestion(
       answer,
@@ -3590,72 +3583,36 @@ async function finalizeAnswerStatuses() {
    * ここは何度呼ばれても安全。
    */
 
-  for (
-    const answer
-    of answers
-  ) {
+  let statusUpdateFailed = false;
 
-    const complete =
-      questions.every(
-        question =>
-          findScore(
-            answer.id,
-            question.id
-          )?.status ===
-          "marked"
-      );
+  for (const answer of answers) {
+    const complete = questions.every(
+      question => findScore(answer.id, question.id)?.status === "marked"
+    );
 
+    if (!complete) continue;
 
-    if (!complete) {
-
-      continue;
-
-    }
-
-
-    /*
-     * DB状態をmarkedへ。
-     */
-
-    const {
-      error
-    } =
-      await DB
-        .from(
-          "answer_sheets"
-        )
-        .update({
-          status:
-            "marked"
-        })
-        .eq(
-          "id",
-          answer.id
-        );
-
+    const { error } = await DB
+      .from("answer_sheets")
+      .update({ status: "marked" })
+      .eq("id", answer.id);
 
     if (error) {
-
-      console.warn(
-        "answer status:",
-        error
-      );
-
+      statusUpdateFailed = true;
+      console.error("answer status:", error);
     }
-
   }
-
 
   /*
    * 公開状態はここでは変更しない。
-   *
-   * 成績集計が完了してから
-   * results_published=true にする。
+   * 成績集計が完了してから results_published=true にする。
    */
+  if (statusUpdateFailed) {
+    setStatus("点数は保存されていますが、答案の確定状態を更新できませんでした。再読み込みして状態を確認してください。", true);
+    return;
+  }
 
-  setStatus(
-    "全答案・全設問の採点が完了しました。"
-  );
+  setStatus("全答案・全設問の採点が完了しました。");
 
 }
 

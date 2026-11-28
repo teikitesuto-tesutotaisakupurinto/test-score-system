@@ -233,10 +233,16 @@ async function loadStudents() {
   const { data, error } = await DB
     .from("students")
     .select("id,student_no,name,grade,class_name,class_id,active")
-    .or(`class_id.eq.${classId},and(class_id.is.null,grade.eq."${String(currentClass.grade || "").replace(/"/g, '\\"')}",class_name.eq."${String(currentClass.name || "").replace(/"/g, '\\"')}")`)
     .order("student_no", { ascending: true });
   if (error) throw error;
-  renderStudents(data || []);
+
+  // class_idが未設定の旧データも、学年とクラス名が一致すれば表示する。
+  const rows = (data || []).filter(student => {
+    if (student.class_id) return student.class_id === classId;
+    return String(student.grade || "").trim() === String(currentClass.grade || "").trim()
+      && String(student.class_name || "").trim() === String(currentClass.name || "").trim();
+  });
+  renderStudents(rows);
 }
 
 

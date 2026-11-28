@@ -1,7 +1,147 @@
--- Ensure atomic marking does not depend on an optional scores.created_at column.
+-- Replace the atomic marking RPC without relying on scores.created_at.
 BEGIN;
 
+CREATE OR REPLACE FUNCTION public.save_answer_marking(
+    p_answer_sheet_id uuid,
+    p_layout_box_id uuid,
+    p_question_id uuid,
+    p_score numeric,
+    p_marks jsonb DEFAULT '[]'::jsonb
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $function$
+DECLARE
+    v_test_id uuid;
+    v_answer_status text;
+    v_results_published boolean;
+    v_box_type text;
+    v_box_role text;
+    v_box_label text;
+    v_max_points numeric;
+    v_existing_score_id uuid;
+BEGIN
+    IF auth.uid() IS NULL OR public.my_role()::text <> 'teacher' THEN
+        RAISE EXCEPTION '先生権限が必要です。';
+    END IF;
 
+    IF p_answer_sheet_id IS NULL OR p_layout_box_id IS NULL OR p_score IS NULL THEN
+        RAISE EXCEPTION '答案・解答欄・点数を指定してください。';
+    END IF;
+
+    IF jsonb_typeof(COALESCE(p_marks, '[]'::jsonb)) <> 'array' THEN
+        RAISE EXCEPTION '採点記号データが不正です。';
+    END IF;
+
+    SELECT a.test_id, a.status, t.results_published
+      INTO v_test_id, v_answer_status, v_results_published
+      FROM public.answer_sheets AS a
+      JOIN public.tests AS t ON t.id = a.test_id
+     WHERE a.id = p_answer_sheet_id
+     FOR UPDATE OF a, t;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION '答案が見つかりません。';
+    END IF;
+
+    IF v_answer_status = 'published' OR COALESCE(v_results_published, false) THEN
+        RAISE EXCEPTION '公開済みの答案は採点変更できません。先に公開を解除してください。';
+    END IF;
+
+    SELECT b.box_type, b.box_role, b.label, b.points
+      INTO v_box_type, v_box_role, v_box_label, v_max_points
+      FROM public.layout_boxes AS b
+     WHERE b.id = p_layout_box_id
+       AND b.test_id = v_test_id
+     FOR UPDATE;
+
+    IF NOT FOUND
+       OR v_box_type <> 'answer'
+       OR (COALESCE(v_box_role, 'answer') <> 'answer')
+       OR COALESCE(BTRIM(v_box_label), '') IN ('QR', '氏名', '小計', '合計')
+       OR COALESCE(BTRIM(v_box_label), '') ~ '^(大問|小問|問[0-9])' THEN
+        RAISE EXCEPTION '採点対象の解答欄ではありません。';
+    END IF;
+
+    IF p_score < 0 OR p_score > COALESCE(v_max_points, 0) THEN
+        RAISE EXCEPTION '点数は0点以上、配点以下で入力してください（配点: %）。', COALESCE(v_max_points, 0);
+    END IF;
+
+    SELECT sc.id
+      INTO v_existing_score_id
+      FROM public.scores AS sc
+     WHERE sc.answer_sheet_id = p_answer_sheet_id
+       AND sc.layout_box_id = p_layout_box_id
+     ORDER BY sc.marked_at DESC NULLS LAST, sc.id DESC
+     LIMIT 1
+     FOR UPDATE;
+
+    IF v_existing_score_id IS NULL THEN
+        INSERT INTO public.scores (
+            answer_sheet_id, layout_box_id, question_id,
+            marked_by, score, status, marked_at
+        ) VALUES (
+            p_answer_sheet_id, p_layout_box_id, p_question_id,
+            auth.uid(), p_score, 'marked', now()
+        );
+    ELSE
+        UPDATE public.scores
+           SET question_id = p_question_id,
+               marked_by = auth.uid(),
+               score = p_score,
+               status = 'marked',
+               marked_at = now()
+         WHERE id = v_existing_score_id;
+    END IF;
+
+    DELETE FROM public.mark_objects
+     WHERE answer_sheet_id = p_answer_sheet_id
+       AND layout_box_id = p_layout_box_id;
+
+    INSERT INTO public.mark_objects (
+        id, answer_sheet_id, layout_box_id, question_id,
+        object_type, text_value, color, font_size, font_family,
+        stroke_width, x, y, width, height, points
+    )
+    SELECT
+        COALESCE(m.id, gen_random_uuid()),
+        p_answer_sheet_id,
+        p_layout_box_id,
+        p_question_id,
+        m.object_type,
+        m.text_value,
+        COALESCE(m.color, '#d00000'),
+        COALESCE(m.font_size, 32),
+        COALESCE(m.font_family, 'sans-serif'),
+        COALESCE(m.stroke_width, 3),
+        COALESCE(m.x, 0),
+        COALESCE(m.y, 0),
+        COALESCE(m.width, 40),
+        COALESCE(m.height, 40),
+        m.points
+    FROM jsonb_to_recordset(COALESCE(p_marks, '[]'::jsonb)) AS m(
+        id uuid,
+        object_type text,
+        text_value text,
+        color text,
+        font_size numeric,
+        font_family text,
+        stroke_width numeric,
+        x numeric,
+        y numeric,
+        width numeric,
+        height numeric,
+        points numeric
+    );
+
+    UPDATE public.answer_sheets
+       SET status = 'marking'
+     WHERE id = p_answer_sheet_id
+       AND status <> 'published';
+END;
+$function$;
 
 REVOKE ALL ON FUNCTION public.save_answer_marking(uuid, uuid, uuid, numeric, jsonb)
 FROM PUBLIC, anon;

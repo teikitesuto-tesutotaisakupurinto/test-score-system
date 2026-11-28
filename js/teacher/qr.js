@@ -211,21 +211,7 @@ async function loadStudents() {
 
 async function ensureQRCode() {
   if (typeof window.QRCode === "function") return window.QRCode;
-  for (const src of [
-    "https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js",
-    "https://unpkg.com/qrcodejs@1.0.0/qrcode.min.js"
-  ]) {
-    const loaded = await new Promise(resolve => {
-      const script = document.createElement("script");
-      script.src = src;
-      script.async = true;
-      script.onload = () => resolve(typeof window.QRCode === "function");
-      script.onerror = () => resolve(false);
-      document.head.appendChild(script);
-    });
-    if (loaded) return window.QRCode;
-  }
-  throw new Error("QRコード生成ライブラリを読み込めません。ネットワーク接続を確認してください。");
+  throw new Error("QRコード生成ライブラリが読み込まれていません。ページを再読み込みしてください。");
 }
 
 function waitForQrRender() {

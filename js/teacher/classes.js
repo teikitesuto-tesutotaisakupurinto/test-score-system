@@ -96,126 +96,29 @@ async function initializeClasses() {
 ========================================================= */
 
 async function loadClasses() {
+  const { data: classes, error } = await DB
+    .from("classes")
+    .select("id,name,grade")
+    .order("grade", { ascending: true })
+    .order("name", { ascending: true });
+  if (error) throw error;
 
-  const {
-    data: classes,
-    error
-  } =
-    await DB
-      .from(
-        "classes"
-      )
-      .select(
-        `
-        id,
-        name,
-        grade
-        `
-      )
-      .order(
-        "grade",
-        {
-          ascending:true
-        }
-      )
-      .order(
-        "name",
-        {
-          ascending:true
-        }
-      );
+  const { data: students, error: studentsError } = await DB
+    .from("students")
+    .select("id,class_id,grade,class_name,active");
+  if (studentsError) throw studentsError;
 
-
-  if (error) {
-
-    throw error;
-
-  }
-
-
-  const list =
-    classes || [];
-
-
-  if (!list.length) {
-
-    renderClasses(
-      []
-    );
-
-    return;
-
-  }
-
-
-  /*
-   * 各クラスの生徒数を並列取得。
-   */
-
-  const rows =
-    await Promise.all(
-      list.map(
-        async classItem => {
-
-          const {
-            count,
-            error:
-              countError
-          } =
-            await DB
-              .from(
-                "students"
-              )
-              .select(
-                "id",
-                {
-                  count:"exact",
-                  head:true
-                }
-              )
-              .eq(
-                "class_id",
-                classItem.id
-              )
-              .eq(
-                "active",
-                true
-              );
-
-
-          if (countError) {
-
-            console.warn(
-              `クラス ${classItem.name} の生徒数取得失敗`,
-              countError
-            );
-
-          }
-
-
-          return {
-
-            ...classItem,
-
-            studentCount:
-              countError
-                ? 0
-                : (
-                    count ||
-                    0
-                  )
-
-          };
-
-        }
-      )
-    );
-
-
-  renderClasses(
-    rows
-  );
-
+  const allStudents = students || [];
+  const rows = (classes || []).map(classItem => {
+    // class_idを正とし、旧形式(class_nameのみ)の生徒も同じクラスに含める。
+    const members = allStudents.filter(student => {
+      if (student.class_id) return student.class_id === classItem.id;
+      return String(student.grade || "").trim() === String(classItem.grade || "").trim()
+        && String(student.class_name || "").trim() === String(classItem.name || "").trim();
+    });
+    return { ...classItem, studentCount: members.length };
+  });
+  renderClasses(rows);
 }
 
 

@@ -115,20 +115,14 @@ function setupEvents() {
     )
     ?.addEventListener(
       "click",
-      async () => {
-        const button = document.getElementById("printButton");
-        try {
-          if (!studentsLoaded) throw new Error("生徒一覧の読み込みが完了していません。");
-          await ensureQRCode();
-          await waitForQrRender();
-          if (button) button.disabled = true;
-          window.print();
-        } catch (error) {
-          console.error("QR print:", error);
-          showError(error.message || "QRを印刷できませんでした。");
-        } finally {
-          if (button) button.disabled = false;
+      () => {
+        // 印刷ダイアログはユーザー操作の同期処理として開く。
+        // QR画像の生成・読込待ちは一覧ロード時に完了させておく。
+        if (!studentsLoaded) {
+          showError("QRコードの生成が完了していません。画面の読み込み完了後に印刷してください。");
+          return;
         }
+        window.print();
       }
     );
 
@@ -197,6 +191,7 @@ async function loadStudents() {
 
   await ensureQRCode();
   renderQr(data || []);
+  await waitForQrRender();
   studentsLoaded = true;
 
 

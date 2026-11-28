@@ -793,17 +793,25 @@ async function processStudentAnswer(
       if (pageError) throw pageError;
     }
 
-    const qrValue = await readQrOnlyFromConfiguredRegions(parsed);
+    // QR判定失敗は答案登録全体を取り消さない。未紐付けとして必ず残す。
+    let qrValue = null;
+    let qrReadWarning = null;
+    try {
+      qrValue = await readQrOnlyFromConfiguredRegions(parsed);
+    } catch (qrError) {
+      qrReadWarning = qrError;
+      console.warn("QR読取のみ失敗。答案は未紐付けで保持します。", qrError);
+    }
 
     if (qrValue) {
       await matchAnswerByQr(answer.id, qrValue);
     } else {
       const { error: unmatchedError } = await DB
         .from("answer_sheets")
-        .update({ status: "unmatched" })
+        .update({ status: "unmatched", qr_value: null })
         .eq("id", answer.id);
-
       if (unmatchedError) throw unmatchedError;
+      if (qrReadWarning) console.warn("QR読取エラー:", qrReadWarning.message);
     }
   } catch (error) {
     const { error: storageCleanupError } = await DB
@@ -867,471 +875,116 @@ async function readQrFromWholePage(page) {
    QR REGIONS
 ========================================================= */
 
-async function readQrOnlyFromConfiguredRegions(
-  pages
-) {
+async function readQrOnlyFromConfiguredRegions(pages) {
+  const { data: qrBoxes, error: boxError } = await DB.from("layout_boxes")
+    .select("id,page_no,box_type,x,y,width,height")
+    .eq("test_id", selectedTestId)
+    .eq("box_type", "qr");
+  if (boxError) throw boxError;
+  if (typeof jsQR !== "function") throw new Error("QR読み取りライブラリ(jsQR)を読み込めませんでした。");
 
-  /*
-   * QR枠をDBから取得。
-   */
+  const { data: templatePages, error: templateError } = await DB.from("test_pages")
+    .select("page_no,width_px,height_px")
+    .eq("test_id", selectedTestId);
+  if (templateError) throw templateError;
 
-  const {
-    data,
-    error
-  } =
-    await DB
-      .from(
-        "layout_boxes"
-      )
-      .select(
-        `
-        id,
-        page_no,
-        box_type,
-        x,
-        y,
-        width,
-        height
-        `
-      )
-      .eq(
-        "test_id",
-        selectedTestId
-      )
-      .eq(
-        "box_type",
-        "qr"
-      );
+  for (let index = 0; index < pages.length; index++) {
+    const page = pages[index];
+    const pageNo = index + 1;
+    const image = await blobToImage(page.blob);
+    const sourceWidth = image.naturalWidth;
+    const sourceHeight = image.naturalHeight;
+    if (!sourceWidth || !sourceHeight) continue;
 
+    const template = (templatePages || []).find(row => Number(row.page_no) === pageNo);
+    const templateWidth = Number(template?.width_px) || sourceWidth;
+    const templateHeight = Number(template?.height_px) || sourceHeight;
+    const scaleX = sourceWidth / templateWidth;
+    const scaleY = sourceHeight / templateHeight;
 
-  if (error) {
-
-    throw error;
-
-  }
-
-
-  const qrBoxes =
-    data || [];
-
-
-  if (typeof jsQR !== "function") {
-    throw new Error("QR読み取りライブラリ(jsQR)を読み込めませんでした。通信状態を確認してください。");
-  }
-
-
-  for (
-    const page
-    of pages
-  ) {
-
-    const pageNo =
-      pages.indexOf(
-        page
-      ) + 1;
-
-
-    const pageBoxes =
-      qrBoxes.filter(
-        box =>
-          Number(
-            box.page_no
-          ) ===
-          pageNo
-      );
-
-
-    if (
-      !pageBoxes.length
-    ) {
-
-      continue;
-
+    const pageBoxes = (qrBoxes || []).filter(box => Number(box.page_no) === pageNo);
+    for (const box of pageBoxes) {
+      const scaledBox = {
+        ...box,
+        x: Number(box.x) * scaleX,
+        y: Number(box.y) * scaleY,
+        width: Number(box.width) * scaleX,
+        height: Number(box.height) * scaleY
+      };
+      const value = await readQrFromRegion(page, scaledBox);
+      if (value) return value;
     }
 
+    // 登録枠内で読めない場合も、答案全体を縮小して再走査する。
+    const wholePageValue = await readQrFromWholePage(page);
+    if (wholePageValue) return normalizeQr(wholePageValue);
+  }
+  return null;
+}
 
-    for (
-      const box
-      of pageBoxes
-    ) {
+QR REGION
+========================================================= */
 
-      const value =
-        await readQrFromRegion(
-          page,
-          box
-        );
+async function readQrFromRegion(page, box) {
+  if (typeof jsQR !== "function") return null;
+  const image = await blobToImage(page.blob);
+  const sourceWidth = image.naturalWidth;
+  const sourceHeight = image.naturalHeight;
+  if (!sourceWidth || !sourceHeight) return null;
 
+  const rawX = Number(box.x), rawY = Number(box.y);
+  const rawWidth = Number(box.width), rawHeight = Number(box.height);
+  if (![rawX, rawY, rawWidth, rawHeight].every(Number.isFinite) || rawWidth <= 0 || rawHeight <= 0) return null;
 
-      if (value) {
+  const x = Math.max(0, Math.min(sourceWidth - 1, Math.floor(rawX)));
+  const y = Math.max(0, Math.min(sourceHeight - 1, Math.floor(rawY)));
+  const right = Math.max(x + 1, Math.min(sourceWidth, Math.ceil(rawX + rawWidth)));
+  const bottom = Math.max(y + 1, Math.min(sourceHeight, Math.ceil(rawY + rawHeight)));
+  const cropWidth = right - x, cropHeight = bottom - y;
+  if (cropWidth <= 0 || cropHeight <= 0) return null;
 
-        return value;
+  const padding = Math.round(Math.min(cropWidth, cropHeight) * 0.05);
+  const cropX = Math.max(0, x - padding), cropY = Math.max(0, y - padding);
+  const cropRight = Math.min(sourceWidth, right + padding);
+  const cropBottom = Math.min(sourceHeight, bottom + padding);
+  const actualWidth = cropRight - cropX, actualHeight = cropBottom - cropY;
+  if (actualWidth <= 0 || actualHeight <= 0) return null;
 
-      }
+  const scale = Math.min(4, Math.max(1, 800 / Math.max(actualWidth, actualHeight)));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(actualWidth * scale));
+  canvas.height = Math.max(1, Math.round(actualHeight * scale));
+  const context = canvas.getContext("2d", { willReadFrequently: true });
+  if (!context) throw new Error("QR読み取り用Canvasを作成できませんでした。");
+  context.imageSmoothingEnabled = false;
+  context.drawImage(image, cropX, cropY, actualWidth, actualHeight, 0, 0, canvas.width, canvas.height);
+  return normalizeQr(scanQrCanvas(canvas) || scanQrCanvas(canvas, true) || "");
+}
 
+QR SCAN
+========================================================= */
+
+function scanQrCanvas(canvas, invert = false) {
+  if (!canvas || !Number.isFinite(canvas.width) || !Number.isFinite(canvas.height) || canvas.width < 1 || canvas.height < 1) return null;
+  const context = canvas.getContext("2d", { willReadFrequently: true });
+  if (!context) return null;
+  const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+  if (!imageData.width || !imageData.height || !imageData.data?.length) return null;
+  const pixels = imageData.data;
+  if (invert) {
+    for (let i = 0; i < pixels.length; i += 4) {
+      pixels[i] = 255 - pixels[i];
+      pixels[i + 1] = 255 - pixels[i + 1];
+      pixels[i + 2] = 255 - pixels[i + 2];
     }
-
   }
-
-  /*
-   * QRは事前に登録したQR枠だけを読み取る。
-   * 枠が未設定、または読み取れない場合は
-   * 誤紐付けを避けるため未紐付けとして扱う。
-   */
-  return null;
-
+  const result = jsQR(pixels, imageData.width, imageData.height, {
+    inversionAttempts: invert ? "dontInvert" : "attemptBoth"
+  });
+  return result?.data || null;
 }
 
-
-/* =========================================================
-   QR REGION
-========================================================= */
-
-async function readQrFromRegion(
-  page,
-  box
-) {
-
-  if (
-    typeof jsQR !==
-    "function"
-  ) {
-
-    console.warn(
-      "jsQRが読み込まれていません。"
-    );
-
-    return null;
-
-  }
-
-
-  const image =
-    await blobToImage(
-      page.blob
-    );
-
-
-  const sourceWidth =
-    image.naturalWidth;
-
-
-  const sourceHeight =
-    image.naturalHeight;
-
-
-  /*
-   * layout_boxesは原寸座標。
-   */
-
-  const x =
-    clamp(
-      Number(
-        box.x
-      ),
-      0,
-      sourceWidth
-    );
-
-
-  const y =
-    clamp(
-      Number(
-        box.y
-      ),
-      0,
-      sourceHeight
-    );
-
-
-  const width =
-    clamp(
-      Number(
-        box.width
-      ),
-      1,
-      sourceWidth -
-      x
-    );
-
-
-  const height =
-    clamp(
-      Number(
-        box.height
-      ),
-      1,
-      sourceHeight -
-      y
-    );
-
-
-  /*
-   * 少しだけ余白を追加。
-   * ただしQR枠外を大きく読むことはしない。
-   */
-
-  const padding =
-    Math.round(
-      Math.min(
-        width,
-        height
-      ) *
-      0.05
-    );
-
-
-  const cropX =
-    Math.max(
-      0,
-      x -
-      padding
-    );
-
-
-  const cropY =
-    Math.max(
-      0,
-      y -
-      padding
-    );
-
-
-  const cropRight =
-    Math.min(
-      sourceWidth,
-      x +
-      width +
-      padding
-    );
-
-
-  const cropBottom =
-    Math.min(
-      sourceHeight,
-      y +
-      height +
-      padding
-    );
-
-
-  const cropWidth =
-    cropRight -
-    cropX;
-
-
-  const cropHeight =
-    cropBottom -
-    cropY;
-
-
-  /*
-   * QRが小さい場合に備えて
-   * 最大1600px程度まで拡大。
-   */
-
-  const scale =
-    Math.min(
-      4,
-      Math.max(
-        1,
-        800 /
-        Math.max(
-          cropWidth,
-          cropHeight
-        )
-      )
-    );
-
-
-  const canvas =
-    document.createElement(
-      "canvas"
-    );
-
-
-  canvas.width =
-    Math.round(
-      cropWidth *
-      scale
-    );
-
-
-  canvas.height =
-    Math.round(
-      cropHeight *
-      scale
-    );
-
-
-  const context =
-    canvas.getContext(
-      "2d",
-      {
-        willReadFrequently:
-          true
-      }
-    );
-
-
-  context.imageSmoothingEnabled =
-    false;
-
-
-  context.drawImage(
-    image,
-    cropX,
-    cropY,
-    cropWidth,
-    cropHeight,
-    0,
-    0,
-    canvas.width,
-    canvas.height
-  );
-
-
-  /*
-   * まず通常。
-   */
-
-  let result =
-    scanQrCanvas(
-      canvas
-    );
-
-
-  if (result) {
-
-    return normalizeQr(
-      result
-    );
-
-  }
-
-
-  /*
-   * 反転も試す。
-   */
-
-  result =
-    scanQrCanvas(
-      canvas,
-      true
-    );
-
-
-  if (result) {
-
-    return normalizeQr(
-      result
-    );
-
-  }
-
-
-  return null;
-
-}
-
-
-/* =========================================================
-   QR SCAN
-========================================================= */
-
-function scanQrCanvas(
-  canvas,
-  invert = false
-) {
-
-  const context =
-    canvas.getContext(
-      "2d",
-      {
-        willReadFrequently:
-          true
-      }
-    );
-
-
-  const imageData =
-    context.getImageData(
-      0,
-      0,
-      canvas.width,
-      canvas.height
-    );
-
-
-  if (!invert) {
-
-    const result =
-      jsQR(
-        imageData.data,
-        imageData.width,
-        imageData.height,
-        {
-          inversionAttempts:
-            "attemptBoth"
-        }
-      );
-
-
-    return result?.data ||
-      null;
-
-  }
-
-
-  /*
-   * 反転画像。
-   */
-
-  const pixels =
-    imageData.data;
-
-
-  for (
-    let i = 0;
-    i <
-    pixels.length;
-    i += 4
-  ) {
-
-    pixels[i] =
-      255 -
-      pixels[i];
-
-    pixels[i + 1] =
-      255 -
-      pixels[i + 1];
-
-    pixels[i + 2] =
-      255 -
-      pixels[i + 2];
-
-  }
-
-
-  const result =
-    jsQR(
-      pixels,
-      imageData.width,
-      imageData.height,
-      {
-        inversionAttempts:
-          "dontInvert"
-      }
-    );
-
-
-  return result?.data ||
-    null;
-
-}
-
-
-/* =========================================================
-   MATCH BY QR
+MATCH BY QR
 ========================================================= */
 
 async function matchAnswerByQr(
@@ -1762,66 +1415,26 @@ function clamp(
 }
 
 
-function blobToImage(
-  blob
-) {
-
-  return new Promise(
-    (
-      resolve,
-      reject
-    ) => {
-
-      const url =
-        URL.createObjectURL(
-          blob
-        );
-
-
-      const image =
-        new Image();
-
-
-      image.onload =
-        () => {
-
-          URL.revokeObjectURL(
-            url
-          );
-
-
-          resolve(
-            image
-          );
-
-        };
-
-
-      image.onerror =
-        () => {
-
-          URL.revokeObjectURL(
-            url
-          );
-
-
-          reject(
-            new Error(
-              "画像を読み込めませんでした。"
-            )
-          );
-
-        };
-
-
-      image.src =
-        url;
-
-    }
-  );
-
+function blobToImage(blob) {
+  if (!(blob instanceof Blob) || blob.size === 0) return Promise.reject(new Error("画像データが空です。"));
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(blob);
+    const image = new Image();
+    image.onload = () => {
+      URL.revokeObjectURL(url);
+      if (!image.naturalWidth || !image.naturalHeight) {
+        reject(new Error("画像サイズが0です。ファイルを開ける画像形式か確認してください。"));
+        return;
+      }
+      resolve(image);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("画像を読み込めませんでした。"));
+    };
+    image.src = url;
+  });
 }
-
 
 function formatTestName(
   test

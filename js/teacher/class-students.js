@@ -230,48 +230,13 @@ async function loadClass() {
 ========================================================= */
 
 async function loadStudents() {
-
-  const {
-    data,
-    error
-  } =
-    await DB
-      .from(
-        "students"
-      )
-      .select(
-        `
-        id,
-        student_no,
-        name,
-        grade,
-        class_name,
-        active
-        `
-      )
-      .eq(
-        "class_id",
-        classId
-      )
-      .order(
-        "student_no",
-        {
-          ascending:true
-        }
-      );
-
-
-  if (error) {
-
-    throw error;
-
-  }
-
-
-  renderStudents(
-    data || []
-  );
-
+  const { data, error } = await DB
+    .from("students")
+    .select("id,student_no,name,grade,class_name,class_id,active")
+    .or(`class_id.eq.${classId},and(class_id.is.null,grade.eq."${String(currentClass.grade || "").replace(/"/g, '\\"')}",class_name.eq."${String(currentClass.name || "").replace(/"/g, '\\"')}")`)
+    .order("student_no", { ascending: true });
+  if (error) throw error;
+  renderStudents(data || []);
 }
 
 

@@ -697,6 +697,9 @@
         page
       );
 
+    // 座標系を実画像のピクセル寸法に統一する。
+    page.width_px = image.naturalWidth || Number(page.width_px) || 1;
+    page.height_px = image.naturalHeight || Number(page.height_px) || 1;
 
     wrapper.appendChild(
       image
@@ -2211,6 +2214,7 @@
 
     element.className =
       "auto-box-candidate";
+    element.dataset.candidateId = candidate.id;
 
 
     const pageWidth =
@@ -2263,19 +2267,14 @@
       "クリックして枠として登録";
 
 
+    // 候補クリックでビューア全体を再描画しない。
+    // 画像の署名URL再取得に失敗して候補・登録枠が一緒に消える問題を防ぐ。
     element.addEventListener(
-      "pointerdown",
+      "click",
       event => {
-
         event.preventDefault();
-
         event.stopPropagation();
-
-
-        acceptCandidate(
-          candidate
-        );
-
+        acceptCandidate(candidate, layer, page, element);
       }
     );
 
@@ -2287,110 +2286,60 @@
   }
 
 
-  async function acceptCandidate(
-    candidate
-  ) {
+  function acceptCandidate(candidate, layer, page, candidateElement) {
+    if (!candidate || boxes.some(box => box.id === candidate.id)) return;
 
-    const role =
-      boxRole?.value ||
-      "answer";
-
-
-    const info =
-      ROLE_INFO[
-        role
-      ] ||
-      ROLE_INFO.answer;
-
-
+    const role = boxRole?.value || "answer";
+    const info = ROLE_INFO[role] || ROLE_INFO.answer;
     const box = {
-
-      id:
-        crypto.randomUUID(),
-
-      test_id:
-        selectedTestId,
-
-      page_no:
-        candidate.pageNo,
-
-      box_type:
-        info.boxType,
-
-      label:
-        info.label,
-
-      x:
-        candidate.x,
-
-      y:
-        candidate.y,
-
-      width:
-        candidate.width,
-
-      height:
-        candidate.height,
-
-      question_id:
-        null,
-
-      points:
-        info.boxType === "answer"
-          ? 0
-          : null,
-
-      parent_box_id:
-        null,
-
-      major_no:
-        null,
-
-      minor_no:
-        null,
-
-      box_role:
-        role,
-
-      sort_order:
-        boxes.length,
-
-      subtotal_group:
-        null
-
+      id: crypto.randomUUID(),
+      test_id: selectedTestId,
+      page_no: Number(candidate.pageNo),
+      box_type: info.boxType,
+      label: info.label,
+      x: Number(candidate.x),
+      y: Number(candidate.y),
+      width: Number(candidate.width),
+      height: Number(candidate.height),
+      question_id: null,
+      points: info.boxType === "answer" ? 0 : null,
+      parent_box_id: null,
+      major_no: null,
+      minor_no: null,
+      box_role: role,
+      sort_order: boxes.length,
+      subtotal_group: null
     };
 
+    if (
+      !Number.isFinite(box.x) || !Number.isFinite(box.y) ||
+      !Number.isFinite(box.width) || !Number.isFinite(box.height) ||
+      box.width <= 0 || box.height <= 0
+    ) {
+      setStatus("検出候補の座標が不正なため、枠に登録できません。もう一度自動検出してください。", true);
+      return;
+    }
 
-    boxes.push(
-      box
-    );
-
-
-    candidates =
-      candidates.filter(
-        item =>
-          item.id !==
-          candidate.id
-      );
-
-
+    boxes.push(box);
+    candidates = candidates.filter(item => item.id !== candidate.id);
     rebuildHierarchy();
 
+    // 既存ページ画像の再取得・再描画をせず、同じレイヤー上で即時に枠へ置換する。
+    // これによりSigned URLの期限切れや一時的な通信失敗で追加枠が消えない。
+    if (candidateElement?.isConnected) candidateElement.remove();
+    if (layer?.isConnected && page) {
+      renderBox(layer, page, box);
+    } else {
+      // DOMが更新済みの場合のみ通常の再描画へフォールバックする。
+      renderAllPages().catch(error => {
+        console.error("render accepted candidate:", error);
+        setStatus("枠は画面内に登録しましたが、表示の更新に失敗しました。保存後に再読み込みしてください。", true);
+      });
+    }
 
-    selectedBoxId =
-      box.id;
-
-
-    await renderAllPages();
-
-
-    setStatus(
-      `${automaticLabel(
-        box.box_role,
-        box
-      )}として枠を作成しました。`
-    );
-
+    selectedBoxId = box.id;
+    selectBox(box.id);
+    setStatus(`${automaticLabel(box.box_role, box)}として枠を登録しました。保存ボタンで確定してください。`);
   }
 
 

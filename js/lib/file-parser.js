@@ -91,16 +91,16 @@
     const style = document.createElement("style");
     style.textContent = "*,*::before,*::after{box-sizing:border-box} h1,h2,h3{margin:0 0 24px} p{margin:0 0 14px} table{border-collapse:collapse;width:100%;font-size:16px} td,th{border:1px solid #777;padding:6px;vertical-align:top} img{max-width:100%;height:auto} pre{white-space:pre-wrap;overflow-wrap:anywhere;font-family:monospace;font-size:18px} ul,ol{padding-left:32px}";
     root.appendChild(style);
-    const content = document.createElement("div");
-    content.innerHTML = html;
-    root.appendChild(content);
     document.body.appendChild(root);
 
-    const maxHeight = 1320;
+    const source = document.createElement("div");
+    source.innerHTML = html;
+    const nodes = Array.from(source.childNodes);
     const groups = [];
+    const maxHeight = 1320;
     let current = document.createElement("div");
-    content.replaceChildren(...Array.from(content.childNodes));
-    const nodes = Array.from(content.childNodes);
+    root.appendChild(current);
+
     for (const node of nodes) {
       current.appendChild(node.cloneNode(true));
       if (current.scrollHeight > maxHeight && current.childNodes.length > 1) {
@@ -108,6 +108,7 @@
         current.removeChild(last);
         groups.push(current);
         current = document.createElement("div");
+        root.appendChild(current);
         current.appendChild(last);
       }
     }

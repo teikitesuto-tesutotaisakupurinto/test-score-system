@@ -90,7 +90,12 @@ if (!/and\s+public\.student_has_published_answer\(id\)/i.test(security)) {
   failures.push("Student test RLS must require the student's own published answer.");
 }
 
-if (failures.length) {
+
+const storagePolicy = security.slice(security.indexOf("create policy student_own_published_answer_storage"));
+if (!/answer_regions\\s+r[\\s\\S]*?r\\.image_path\\s*=\\s*storage\\.objects\\.name/i.test(storagePolicy)) {
+  failures.push("Student Storage policy must permit only the student's own published answer-region crop images.");
+}
+\nif (failures.length) {
   console.error(failures.join("\n\n"));
   console.error(`\nValidation failed: ${failures.length} issue(s).`);
   process.exit(1);

@@ -32,28 +32,21 @@
   backdrop.addEventListener("click",close);
   document.addEventListener("keydown",e=>{if(e.key==="Escape")close();});
   const current=location.pathname.replace(/\/$/,"")||"/";
+  // 日常業務の主要入口に絞り、細かな操作は各業務画面に集約する。
   const menus={
     teacher:[
-      ["ダッシュボード","/teacher/dashboard"],
+      ["ダッシュボード","/teacher"],
       ["生徒管理","/teacher/students"],
       ["クラス管理","/teacher/classes"],
       ["テスト管理","/teacher/tests"],
-      ["答案アップロード","/teacher/answers/upload"],
-      ["答案処理状況","/teacher/answers/processing"],
-      ["未紐付け答案","/teacher/answers/unmatched"],
-      ["紐付け済み答案","/teacher/answers/matched"],
-      ["答案領域・クロップ","/teacher/answers/regions"],
+      ["答案登録・照合","/teacher/answers/upload"],
+      ["答案処理・枠設定","/teacher/answers/processing"],
       ["デジタル採点","/teacher/marking"],
-      ["結果総括表","/teacher/results/summary"],
-      ["答案返却","/teacher/results/return"],
-      ["公開設定","/teacher/tests/publish"]
+      ["結果総括・返却","/teacher/results/summary"],
+      ["成績公開","/teacher/tests/publish"]
     ],
-    student:[
-      ["テスト一覧","/student/tests"]
-    ],
-    admin:[
-      ["システム管理","/admin"]
-    ]
+    student:[["テスト・成績","/student/tests"]],
+    admin:[["システム管理","/admin"]]
   };
   const render=role=>{
     if(role==="admin"){

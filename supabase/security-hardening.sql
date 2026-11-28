@@ -302,6 +302,19 @@ using (
       and a.status = 'published'
       and t.results_published = true
   )
+  or (
+    bucket_id = 'student-answers'
+    and exists (
+      select 1
+      from public.answer_regions r
+      join public.answer_sheets a on a.id = r.answer_sheet_id
+      join public.tests t on t.id = a.test_id
+      where r.image_path = storage.objects.name
+        and a.student_id = public.my_student_id()
+        and a.status = 'published'
+        and t.results_published = true
+    )
+  )
 );
 
 -- Atomic publication: only a teacher can publish/unpublish after every answer box is marked.

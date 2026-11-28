@@ -320,9 +320,25 @@
 
   .qr-print-code canvas,
   .qr-print-code img {
-    display:block !important;
     width:17mm !important;
     height:17mm !important;
+    max-width:17mm !important;
+    max-height:17mm !important;
+  }
+
+  body * {
+    visibility:hidden !important;
+  }
+
+  #qrPrintSheets,
+  #qrPrintSheets * {
+    visibility:visible !important;
+  }
+
+  #qrPrintSheets {
+    position:absolute !important;
+    left:0 !important;
+    top:0 !important;
   }
 
 }
@@ -462,8 +478,9 @@
 ></script>
 
 
+<script src="/js/lib/qrcode.js?v=20261128local1"></script>
 <script
-  src="/js/teacher/qr.js?v=20261128printready2"
+  src="/js/teacher/qr.js?v=20261128localqr1"
 ></script>
 
 

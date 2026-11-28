@@ -173,18 +173,15 @@
 
 
           <div class="form-group">
+            <label for="studentClassId">登録済みクラス</label>
+            <select id="studentClassId">
+              <option value="">クラスを選択（任意）</option>
+            </select>
+          </div>
 
-            <label for="studentClass">
-              クラス
-            </label>
-
-            <input
-              id="studentClass"
-              type="text"
-              maxlength="30"
-              placeholder="1組"
-            >
-
+          <div class="form-group">
+            <label for="studentClass">クラス名（手入力・旧データ用）</label>
+            <input id="studentClass" type="text" maxlength="30" placeholder="1組">
           </div>
 
 
@@ -262,7 +259,7 @@
 ></script>
 
 <script
-  src="/js/teacher/student-new.js?v=20261126groups"
+  src="/js/teacher/student-new.js?v=20261128classfix1"
 ></script>
 
 <script src="/js/common-sidebar.js?v=20261126layout"></script>

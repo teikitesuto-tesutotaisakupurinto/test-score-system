@@ -236,9 +236,19 @@ async function loadStudents() {
     .order("student_no", { ascending: true });
   if (error) throw error;
 
-  // class_idが未設定の旧データも、学年とクラス名が一致すれば表示する。
+  const { data: classRows, error: classRowsError } = await DB
+    .from("classes")
+    .select("id");
+  if (classRowsError) throw classRowsError;
+  const validClassIds = new Set((classRows || []).map(item => item.id));
+
+  // 有効なclass_idがある生徒はそのIDで所属判定。削除済みIDだけ名称で救済する。
   const rows = (data || []).filter(student => {
-    if (student.class_id) return student.class_id === classId;
+    if (student.active === false) return false;
+    const linkedClassId = student.class_id || null;
+    if (linkedClassId && validClassIds.has(linkedClassId)) {
+      return linkedClassId === classId;
+    }
     return String(student.grade || "").trim() === String(currentClass.grade || "").trim()
       && String(student.class_name || "").trim() === String(currentClass.name || "").trim();
   });

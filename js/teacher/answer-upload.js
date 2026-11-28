@@ -1036,149 +1036,53 @@ function scanQrCanvas(canvas, invert = false) {
    MATCH BY QR
 ========================================================= */
 
-async function matchAnswerByQr(
-  answerId,
-  qrValue
-) {
+async function matchAnswerByQr(answerId, qrValue) {
+  // QR payload is exactly the student number. Keep legacy STUDENT: prefix
+  // readable for already printed labels, but never query qr_token.
+  const value = normalizeQr(qrValue);
+  const studentNo = value.replace(/^STUDENT:/i, "").trim();
 
-  const value =
-    normalizeQr(
-      qrValue
-    );
-
-
-  if (!value) {
-
-    return;
-
+  if (!studentNo) {
+    throw new Error("QRコードに生徒番号がありません。");
   }
 
-
-  /*
-   * QR形式:
-   *
-   * STUDENT:123456
-   *
-   * または
-   *
-   * 123456
-   *
-   * または既存シール形式
-   * 26447_2_1
-   */
-
-  const studentNo =
-    value
-      .replace(
-        /^STUDENT:/i,
-        ""
-      )
-      .trim();
-
-
-  /*
-   * まずstudent_no完全一致。
-   */
-
-  let student = null;
-
-  // 発行済みQRの実値(qr_token)を優先して照合する。
-  const {
-    data: tokenStudent,
-    error: tokenError
-  } = await DB
+  const { data: matches, error: studentError } = await DB
     .from("students")
-    .select("id,student_no,name,active,qr_token")
+    .select("id,student_no,name,active")
     .eq("active", true)
-    .eq("qr_token", value)
-    .maybeSingle();
+    .eq("student_no", studentNo)
+    .limit(2);
 
-  if (tokenError) throw tokenError;
-  student = tokenStudent || null;
+  if (studentError) throw studentError;
 
-  // 旧形式 STUDENT:<生徒番号> と生徒番号直書きにも対応。
-  if (!student) {
-    const studentNo = value.replace(/^STUDENT:/i, "").trim();
-    const candidates = [studentNo];
-    const legacyParts = studentNo.match(/^(\d+)_\d+_\d+$/);
-    if (legacyParts && legacyParts[1] !== studentNo) candidates.push(legacyParts[1]);
-
-    for (const candidateNo of candidates) {
-      const {
-        data: numberStudent,
-        error: numberError
-      } = await DB
-        .from("students")
-        .select("id,student_no,name,active,qr_token")
-        .eq("active", true)
-        .eq("student_no", candidateNo)
-        .maybeSingle();
-
-      if (numberError) throw numberError;
-      if (numberStudent) {
-        student = numberStudent;
-        break;
-      }
-    }
-  }
-
-
-  /*
-   * 既存QR値を保存している場合に備えて
-   * students側のQR列があれば別処理に拡張可能。
-   */
-
-  if (!student) {
-
-    const { error: unmatchedError } = await DB
+  if (!matches?.length) {
+    const { error } = await DB
       .from("answer_sheets")
-      .update({ qr_value: value, status: "unmatched" })
+      .update({ student_id: null, qr_value: value, status: "unmatched" })
       .eq("id", answerId);
-
-    if (unmatchedError) throw unmatchedError;
-    return;
-
+    if (error) throw error;
+    return false;
   }
 
-
-  /*
-   * QR成功
-   *
-   * matchedへ統一する。
-   * matchedへ統一。
-   */
-
-  const {
-    error:
-      updateError
-  } =
-    await DB
-      .from(
-        "answer_sheets"
-      )
-      .update({
-
-        student_id:
-          student.id,
-
-        qr_value:
-          value,
-
-        status: "matched"
-
-      })
-      .eq(
-        "id",
-        answerId
-      );
-
-
-  if (updateError) {
-
-    throw updateError;
-
+  if (matches.length !== 1) {
+    throw new Error(`生徒番号「${studentNo}」が重複しています。生徒管理で番号を確認してください。`);
   }
 
+  const student = matches[0];
+  const { data: updated, error: updateError } = await DB
+    .from("answer_sheets")
+    .update({
+      student_id: student.id,
+      qr_value: studentNo,
+      status: "matched"
+    })
+    .eq("id", answerId)
+    .select("id")
+    .single();
+
+  if (updateError) throw updateError;
+  if (!updated) throw new Error("答案への生徒紐付けを確認できませんでした。");
+  return true;
 }
 
 

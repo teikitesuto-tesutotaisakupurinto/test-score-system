@@ -648,18 +648,26 @@
     // 一度だけ差し替える。枠操作中に現在のPDFを空白にしない。
     const staging = document.createElement("div");
     staging.className = "page-render-staging";
+    const renderErrors = [];
 
     for (const page of pages) {
       try {
         await renderPage(page, staging);
       } catch (error) {
         console.error("render page failed:", page.page_no, error);
+        renderErrors.push(`P${page.page_no}: ${error.message || "画像取得失敗"}`);
         const warning = document.createElement("div");
         warning.className = "empty-view";
         warning.textContent =
           `ページ${page.page_no}を表示できません。${error.message || "画像の取得に失敗しました。"}`;
         staging.appendChild(warning);
       }
+    }
+
+    // 一時的な署名URL/ネットワーク失敗で既存の枠を消さない。
+    if (renderErrors.length && viewer.querySelector(".page")) {
+      setStatus(`画像の再取得に失敗したため、現在の表示を保持しました。保存内容は失われていません。 ${renderErrors.join(" / ")}`, true);
+      return;
     }
 
     // 描画中にページが変わっていない場合だけ反映する。

@@ -125,54 +125,33 @@ async function loadStudents() {
 ========================================================= */
 
 async function loadUnmatched() {
+  const { data, error } = await supabaseClient
+    .from("answer_sheets")
+    .select("id,test_id,student_id,original_file_path,qr_value,status,created_at,uploaded_at")
+    .or("status.eq.unmatched,student_id.is.null")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
 
-  const {
-    data,
-    error
-  } =
-    await supabaseClient
-      .from(
-        "answer_sheets"
-      )
-      .select(
-        `
-        id,
-        test_id,
-        original_file_path,
-        qr_value,
-        status,
-        created_at,
-        tests(
-          id,
-          name,
-          subject,
-          grade,
-          class_name
-        )
-        `
-      )
-      .or("status.eq.unmatched,student_id.is.null")
-      .order(
-        "created_at",
-        {
-          ascending: false
-        }
-      );
-
-
-  if (error) {
-
-    throw error;
-
+  const answers = data || [];
+  const testIds = [...new Set(answers.map(row => row.test_id).filter(Boolean))];
+  let testsById = new Map();
+  if (testIds.length) {
+    const { data: testRows, error: testsError } = await supabaseClient
+      .from("tests")
+      .select("id,name,subject,grade,class_name")
+      .in("id", testIds);
+    if (testsError) {
+      console.warn("答案一覧のテスト情報を取得できませんでした。答案自体は表示します。", testsError);
+    } else {
+      testsById = new Map((testRows || []).map(row => [row.id, row]));
+    }
   }
 
-
-  renderAnswers(
-    data || []
-  );
-
+  renderAnswers(answers.map(answer => ({
+    ...answer,
+    tests: testsById.get(answer.test_id) || { name: "テスト情報を取得できません" }
+  })));
 }
-
 
 /* =========================================================
    RENDER

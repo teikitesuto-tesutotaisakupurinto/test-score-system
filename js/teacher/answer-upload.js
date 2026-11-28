@@ -835,32 +835,6 @@ async function processStudentAnswer(
 }
 
 /* =========================================================
-   FULL PAGE QR FALLBACK
-========================================================= */
-
-async function readQrFromWholePage(page) {
-  const image = await blobToImage(page.blob);
-  const sourceWidth = image.naturalWidth || image.width;
-  const sourceHeight = image.naturalHeight || image.height;
-  if (!sourceWidth || !sourceHeight) return null;
-
-  const scale = Math.min(2, 2200 / Math.max(sourceWidth, sourceHeight));
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.max(1, Math.round(sourceWidth * scale));
-  canvas.height = Math.max(1, Math.round(sourceHeight * scale));
-  const context = canvas.getContext("2d", { willReadFrequently: true });
-  if (!context) throw new Error("QR読み取り用Canvasを作成できませんでした。");
-  context.imageSmoothingEnabled = false;
-  context.drawImage(image, 0, 0, canvas.width, canvas.height);
-
-  let value = scanQrCanvasEnhanced(canvas);
-  if (value) return value;
-  value = scanQrCanvasEnhanced(canvas, true);
-  return value || null;
-}
-
-
-/* =========================================================
    QR REGIONS
 ========================================================= */
 
@@ -870,6 +844,10 @@ async function readQrOnlyFromConfiguredRegions(pages) {
     .eq("test_id", selectedTestId)
     .eq("box_type", "qr");
   if (boxError) throw boxError;
+  if (!qrBoxes?.length) {
+    console.warn("このテストにはQR読み取り枠が設定されていません。答案は未紐付けで保存します。");
+    return null;
+  }
   if (typeof jsQR !== "function") throw new Error("QR読み取りライブラリ(jsQR)を読み込めませんでした。");
 
   const { data: templatePages, error: templateError } = await DB.from("test_pages")
@@ -904,9 +882,7 @@ async function readQrOnlyFromConfiguredRegions(pages) {
       if (value) return value;
     }
 
-    // 登録枠内で読めない場合も、答案全体を縮小して再走査する。
-    const wholePageValue = await readQrFromWholePage(page);
-    if (wholePageValue) return normalizeQr(wholePageValue);
+    // QR枠として登録された範囲だけを読み取る。ページ全体は走査しない。
   }
   return null;
 }

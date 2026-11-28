@@ -4133,6 +4133,45 @@
 
 
   /* =======================================================
+     STATUS / NAVIGATION
+  ======================================================= */
+
+  function setStatus(message, isError = false) {
+    if (!statusElement) return;
+    statusElement.textContent = String(message || "");
+    statusElement.style.color = isError ? "#b42318" : "#555";
+    statusElement.style.background = isError ? "#fff1f0" : "#f5f6f7";
+    statusElement.setAttribute("role", isError ? "alert" : "status");
+    statusElement.setAttribute("aria-live", "polite");
+  }
+
+  function showError(message) {
+    setStatus(message || "画面の読み込みに失敗しました。", true);
+    if (viewer && !pages.length) {
+      viewer.innerHTML = "";
+      const panel = document.createElement("div");
+      panel.className = "empty-view";
+      const heading = document.createElement("strong");
+      heading.textContent = "読み込みエラー";
+      const detail = document.createElement("p");
+      detail.textContent = String(message || "画面の読み込みに失敗しました。");
+      panel.append(heading, detail);
+      viewer.appendChild(panel);
+    }
+  }
+
+  function goBack() {
+    const params = new URLSearchParams(window.location.search);
+    const testId = params.get("test") || selectedTestId;
+    if (testId) {
+      window.location.href = "/teacher/tests/preview?test=" + encodeURIComponent(testId);
+    } else {
+      window.location.href = "/teacher/tests";
+    }
+  }
+
+
+  /* =======================================================
      UTIL
   ======================================================= */
 

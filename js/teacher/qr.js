@@ -25,10 +25,19 @@ let studentsLoaded = false;
    INIT
 ========================================================= */
 
-document.addEventListener(
-  "DOMContentLoaded",
-  initializeQR
-);
+document.addEventListener("DOMContentLoaded", () => {
+  const printButton = document.getElementById("printButton");
+  if (printButton) {
+    printButton.addEventListener("click", () => {
+      if (!studentsLoaded) {
+        showError("QRコードの準備がまだ完了していません。画面の状態を確認してください。");
+        return;
+      }
+      window.print();
+    });
+  }
+  initializeQR();
+});
 
 
 async function initializeQR() {
@@ -106,24 +115,6 @@ function setupEvents() {
     ?.addEventListener(
       "click",
       loadStudents
-    );
-
-
-  document
-    .getElementById(
-      "printButton"
-    )
-    ?.addEventListener(
-      "click",
-      () => {
-        // 印刷ダイアログはユーザー操作の同期処理として開く。
-        // QR画像の生成・読込待ちは一覧ロード時に完了させておく。
-        if (!studentsLoaded) {
-          showError("QRコードの生成が完了していません。画面の読み込み完了後に印刷してください。");
-          return;
-        }
-        window.print();
-      }
     );
 
 

@@ -470,12 +470,16 @@ async function checkReadiness() {
 
 
   const excludedLabels = new Set(["QR", "氏名", "小計", "合計"]);
-  const answerBoxCount = (boxes || []).filter(box => {
-    const role = String(box.box_role || "").trim();
-    const label = String(box.label || "").trim();
-    if (role) return role === "answer";
-    return !excludedLabels.has(label) && !/^(大問|小問|問[0-9])/.test(label);
-  }).length;
+  const answerBoxIds = (boxes || [])
+    .filter(box => {
+      const role = String(box.box_role || "").trim();
+      const label = String(box.label || "").trim();
+      if (role) return role === "answer";
+      return !excludedLabels.has(label) && !/^(大問|小問|問[0-9])/.test(label);
+    })
+    .map(box => box.id)
+    .filter(Boolean);
+  const answerBoxCount = answerBoxIds.length;
 
 
   if (!answerBoxCount) {
@@ -577,6 +581,10 @@ async function checkReadiness() {
       .in(
         "answer_sheet_id",
         answerIds
+      )
+      .in(
+        "layout_box_id",
+        answerBoxIds
       )
       .eq(
         "status",

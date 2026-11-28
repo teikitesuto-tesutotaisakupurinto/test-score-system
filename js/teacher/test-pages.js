@@ -1781,20 +1781,37 @@
         if (y < minY) minY = y;
         if (y > maxY) maxY = y;
 
-        const neighbors = [
-          x > 0 ? index - 1 : -1,
-          x + 1 < width ? index + 1 : -1,
-          y > 0 ? index - width : -1,
-          y + 1 < height ? index + width : -1
-        ];
-
-        for (const next of neighbors) {
-          if (next < 0 || visited[next]) continue;
-          visited[next] = 1;
-          const q = next * 4;
-          const gray = data[q] * 0.299 + data[q + 1] * 0.587 + data[q + 2] * 0.114;
-          if (gray < threshold && data[q + 3] >= 16) {
-            queue[tail++] = next;
+        // 配列をピクセルごとに生成しないことで大判画像の解析負荷を抑える。
+        if (x > 0) {
+          const next = index - 1;
+          if (!visited[next]) {
+            visited[next] = 1;
+            const q = next * 4;
+            if (data[q] * 0.299 + data[q + 1] * 0.587 + data[q + 2] * 0.114 < threshold && data[q + 3] >= 16) queue[tail++] = next;
+          }
+        }
+        if (x + 1 < width) {
+          const next = index + 1;
+          if (!visited[next]) {
+            visited[next] = 1;
+            const q = next * 4;
+            if (data[q] * 0.299 + data[q + 1] * 0.587 + data[q + 2] * 0.114 < threshold && data[q + 3] >= 16) queue[tail++] = next;
+          }
+        }
+        if (y > 0) {
+          const next = index - width;
+          if (!visited[next]) {
+            visited[next] = 1;
+            const q = next * 4;
+            if (data[q] * 0.299 + data[q + 1] * 0.587 + data[q + 2] * 0.114 < threshold && data[q + 3] >= 16) queue[tail++] = next;
+          }
+        }
+        if (y + 1 < height) {
+          const next = index + width;
+          if (!visited[next]) {
+            visited[next] = 1;
+            const q = next * 4;
+            if (data[q] * 0.299 + data[q + 1] * 0.587 + data[q + 2] * 0.114 < threshold && data[q + 3] >= 16) queue[tail++] = next;
           }
         }
       }

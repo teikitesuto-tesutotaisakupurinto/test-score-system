@@ -379,6 +379,10 @@ async function importCsv() {
 
 
   try {
+    const { data: registeredClasses, error: classLookupError } = await DB
+      .from("classes")
+      .select("id,name,grade");
+    if (classLookupError) throw classLookupError;
 
     for (
       let start = 0;
@@ -410,6 +414,11 @@ async function importCsv() {
             class_name:
               student.className ||
               null,
+
+            class_id: (registeredClasses || []).find(item =>
+              String(item.grade || "").trim() === String(student.grade || "").trim()
+              && String(item.name || "").trim() === String(student.className || "").trim()
+            )?.id || null,
 
             municipality: student.municipality || null,
             school_name: student.schoolName || null

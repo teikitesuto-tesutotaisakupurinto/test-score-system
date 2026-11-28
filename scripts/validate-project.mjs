@@ -96,6 +96,28 @@ if (!/answer_regions\s+r[\s\S]*?r\.image_path\s*=\s*storage\.objects\.name/i.tes
   failures.push("Student Storage policy must permit only the student's own published answer-region crop images.");
 }
 
+const marking = fs.readFileSync(path.join(root, "js/teacher/marking.js"), "utf8");
+const teacherSummary = fs.readFileSync(path.join(root, "js/teacher/results-summary.js"), "utf8");
+const studentResult = fs.readFileSync(path.join(root, "js/student/result.js"), "utf8");
+const atomicMigrationPath = path.join(root, "supabase/migrations/20261128_atomic_marking_and_canonical_scores.sql");
+if (!marking.includes('DB.rpc("save_answer_marking"')) {
+  failures.push("Marking UI must save score, marks, and answer status through the atomic database RPC.");
+}
+if (!teacherSummary.includes('"canonical_answer_scores"') ||
+    !studentResult.includes('"canonical_answer_scores"')) {
+  failures.push("Teacher and student result screens must read from the same canonical score view.");
+}
+if (!fs.existsSync(atomicMigrationPath)) {
+  failures.push("Atomic marking and canonical score migration is missing.");
+} else {
+  const migration = fs.readFileSync(atomicMigrationPath, "utf8");
+  if (!/CREATE OR REPLACE FUNCTION public\.save_answer_marking/i.test(migration) ||
+      !/CREATE OR REPLACE VIEW public\.canonical_answer_scores/i.test(migration) ||
+      !/get_student_test_standard_scores[\s\S]*?canonical_answer_scores/i.test(migration)) {
+    failures.push("Database migration must define atomic marking and use canonical scores for student standard scores.");
+  }
+}
+
 if (failures.length) {
   console.error(failures.join("\n\n"));
   console.error(`\nValidation failed: ${failures.length} issue(s).`);

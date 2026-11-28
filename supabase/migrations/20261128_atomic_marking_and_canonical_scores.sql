@@ -245,4 +245,176 @@ GRANT SELECT ON TABLE
     public.question_score_summary
 TO authenticated;
 
+
+CREATE OR REPLACE FUNCTION public.get_student_test_standard_scores(p_test_id uuid)
+RETURNS TABLE (
+    total_score numeric,
+    max_score numeric,
+    overall_mean numeric,
+    overall_sd numeric,
+    overall_standard_score numeric,
+    municipality_mean numeric,
+    municipality_sd numeric,
+    municipality_standard_score numeric,
+    school_mean numeric,
+    school_sd numeric,
+    school_standard_score numeric
+)
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $function$
+DECLARE
+    v_student_id uuid;
+BEGIN
+    IF public.my_role()::text IS DISTINCT FROM 'student' THEN
+        RAISE EXCEPTION '生徒権限が必要です。';
+    END IF;
+
+    v_student_id := public.my_student_id();
+
+    IF v_student_id IS NULL THEN
+        RAISE EXCEPTION '生徒アカウントが紐付いていません。';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM public.tests AS t
+        WHERE t.id = p_test_id
+          AND t.results_published = true
+    ) THEN
+        RAISE EXCEPTION '公開済みのテストではありません。';
+    END IF;
+
+    RETURN QUERY
+    WITH latest_answers AS (
+        SELECT DISTINCT ON (a.student_id)
+            a.id AS answer_sheet_id,
+            a.student_id
+        FROM public.answer_sheets AS a
+        WHERE a.test_id = p_test_id
+          AND a.status = 'published'
+          AND a.student_id IS NOT NULL
+        ORDER BY a.student_id, a.created_at DESC, a.id DESC
+    ),
+    eligible_scores AS (
+        SELECT
+            cas.answer_sheet_id,
+            cas.score
+        FROM public.canonical_answer_scores AS cas
+        WHERE cas.test_id = p_test_id
+          AND cas.status = 'marked'
+    ),
+    totals AS (
+        SELECT
+            la.student_id,
+            COALESCE(SUM(es.score), 0::numeric) AS total_score
+        FROM latest_answers AS la
+        LEFT JOIN eligible_scores AS es
+            ON es.answer_sheet_id = la.answer_sheet_id
+        GROUP BY la.student_id
+    ),
+    cohort AS (
+        SELECT
+            totals.student_id,
+            totals.total_score,
+            st.municipality,
+            st.school_name
+        FROM totals
+        JOIN public.students AS st
+            ON st.id = totals.student_id
+    ),
+    mine AS (
+        SELECT *
+        FROM cohort
+        WHERE student_id = v_student_id
+    ),
+    maximum AS (
+        SELECT COALESCE(SUM(lb.points), 0::numeric) AS max_score
+        FROM public.layout_boxes AS lb
+        WHERE lb.test_id = p_test_id
+          AND lb.box_type = 'answer'
+          AND COALESCE(lb.box_role, 'answer') = 'answer'
+          AND COALESCE(BTRIM(lb.label), '') NOT IN ('QR', '氏名', '小計', '合計')
+          AND COALESCE(BTRIM(lb.label), '') !~ '^(大問|小問|問[0-9])'
+    ),
+    overall_stats AS (
+        SELECT
+            AVG(c.total_score)::numeric AS mean_score,
+            STDDEV_POP(c.total_score)::numeric AS sd_score
+        FROM cohort AS c
+    ),
+    municipality_stats AS (
+        SELECT
+            AVG(c.total_score)::numeric AS mean_score,
+            STDDEV_POP(c.total_score)::numeric AS sd_score
+        FROM cohort AS c
+        JOIN mine AS m
+            ON c.municipality = m.municipality
+        WHERE m.municipality IS NOT NULL
+          AND BTRIM(m.municipality) <> ''
+    ),
+    school_stats AS (
+        SELECT
+            AVG(c.total_score)::numeric AS mean_score,
+            STDDEV_POP(c.total_score)::numeric AS sd_score
+        FROM cohort AS c
+        JOIN mine AS m
+            ON c.school_name = m.school_name
+        WHERE m.school_name IS NOT NULL
+          AND BTRIM(m.school_name) <> ''
+    )
+    SELECT
+        m.total_score,
+        maximum.max_score,
+        overall_stats.mean_score,
+        overall_stats.sd_score,
+        CASE
+            WHEN COALESCE(overall_stats.sd_score, 0) > 0
+                THEN ROUND(
+                    50 + 10 * (m.total_score - overall_stats.mean_score)
+                    / overall_stats.sd_score,
+                    1
+                )
+            ELSE 50::numeric
+        END,
+        municipality_stats.mean_score,
+        municipality_stats.sd_score,
+        CASE
+            WHEN COALESCE(municipality_stats.sd_score, 0) > 0
+                THEN ROUND(
+                    50 + 10 * (m.total_score - municipality_stats.mean_score)
+                    / municipality_stats.sd_score,
+                    1
+                )
+            WHEN municipality_stats.mean_score IS NOT NULL
+                THEN 50::numeric
+            ELSE NULL
+        END,
+        school_stats.mean_score,
+        school_stats.sd_score,
+        CASE
+            WHEN COALESCE(school_stats.sd_score, 0) > 0
+                THEN ROUND(
+                    50 + 10 * (m.total_score - school_stats.mean_score)
+                    / school_stats.sd_score,
+                    1
+                )
+            WHEN school_stats.mean_score IS NOT NULL
+                THEN 50::numeric
+            ELSE NULL
+        END
+    FROM mine AS m
+    CROSS JOIN maximum
+    CROSS JOIN overall_stats
+    LEFT JOIN municipality_stats ON true
+    LEFT JOIN school_stats ON true;
+END;
+$function$;
+
+
+REVOKE ALL ON FUNCTION public.get_student_test_standard_scores(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.get_student_test_standard_scores(uuid) TO authenticated;
+
 COMMIT;

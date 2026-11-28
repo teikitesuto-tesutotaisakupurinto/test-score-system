@@ -298,8 +298,7 @@ async function loadStudents() {
         id,
         student_no,
         name,
-        active,
-        qr_token
+        active
         `
       )
       .order(

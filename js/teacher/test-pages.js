@@ -3813,6 +3813,42 @@
 
 
   /* =======================================================
+     CANVAS -> BLOB
+  ======================================================= */
+
+  async function canvasToBlob(canvas, type = "image/png", quality) {
+    if (!canvas || !(canvas instanceof HTMLCanvasElement)) {
+      throw new Error("画像変換対象のCanvasがありません。");
+    }
+    if (!Number.isFinite(canvas.width) || !Number.isFinite(canvas.height)
+        || canvas.width < 1 || canvas.height < 1) {
+      throw new Error("画像サイズが不正です。解答用紙を再読み込みしてください。");
+    }
+
+    // Safari等のtoBlob実装差に備え、convertToBlobも利用する。
+    if (typeof canvas.toBlob === "function") {
+      const blob = await new Promise((resolve, reject) => {
+        try {
+          canvas.toBlob(result => {
+            if (result && result.size > 0) resolve(result);
+            else reject(new Error("Canvas画像をBlobに変換できませんでした。"));
+          }, type, quality);
+        } catch (error) {
+          reject(error);
+        }
+      });
+      return blob;
+    }
+
+    if (typeof canvas.convertToBlob === "function") {
+      const blob = await canvas.convertToBlob({ type, quality });
+      if (blob && blob.size > 0) return blob;
+    }
+
+    throw new Error("このブラウザはCanvas画像の保存に対応していません。");
+  }
+
+  /* =======================================================
      UPLOAD ANSWER SHEET
   ======================================================= */
 

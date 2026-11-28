@@ -18,6 +18,7 @@
 
 
 let DB = null;
+let studentsLoaded = false;
 
 
 /* =========================================================
@@ -114,10 +115,20 @@ function setupEvents() {
     )
     ?.addEventListener(
       "click",
-      () => {
-
-        window.print();
-
+      async () => {
+        const button = document.getElementById("printButton");
+        try {
+          if (!studentsLoaded) throw new Error("生徒一覧の読み込みが完了していません。");
+          await ensureQRCode();
+          await waitForQrRender();
+          if (button) button.disabled = true;
+          window.print();
+        } catch (error) {
+          console.error("QR print:", error);
+          showError(error.message || "QRを印刷できませんでした。");
+        } finally {
+          if (button) button.disabled = false;
+        }
       }
     );
 
@@ -163,7 +174,7 @@ async function loadStudents() {
         student_no,
         name,
         active,
-        qr_token
+        active
         `
       )
       .eq(
@@ -185,9 +196,9 @@ async function loadStudents() {
   }
 
 
-  renderQr(
-    data || []
-  );
+  await ensureQRCode();
+  renderQr(data || []);
+  studentsLoaded = true;
 
 
   setStatus(
@@ -203,6 +214,40 @@ async function loadStudents() {
 /* =========================================================
    RENDER
 ========================================================= */
+
+async function ensureQRCode() {
+  if (typeof window.QRCode === "function") return window.QRCode;
+  for (const src of [
+    "https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js",
+    "https://unpkg.com/qrcodejs@1.0.0/qrcode.min.js"
+  ]) {
+    const loaded = await new Promise(resolve => {
+      const script = document.createElement("script");
+      script.src = src;
+      script.async = true;
+      script.onload = () => resolve(typeof window.QRCode === "function");
+      script.onerror = () => resolve(false);
+      document.head.appendChild(script);
+    });
+    if (loaded) return window.QRCode;
+  }
+  throw new Error("QRコード生成ライブラリを読み込めません。ネットワーク接続を確認してください。");
+}
+
+function waitForQrRender() {
+  const root = document.getElementById("qrPrintSheets");
+  if (!root) return Promise.reject(new Error("印刷用QR領域がありません。"));
+  const images = [...root.querySelectorAll("img")];
+  return Promise.all(images.map(image => {
+    if (image.complete && image.naturalWidth > 0) return Promise.resolve();
+    return new Promise((resolve, reject) => {
+      image.addEventListener("load", resolve, { once: true });
+      image.addEventListener("error", () => reject(new Error("QR画像の生成に失敗しました。")), { once: true });
+    });
+  })).then(() => {
+    if (!root.querySelector("canvas, img")) throw new Error("印刷するQRが生成されていません。");
+  });
+}
 
 function renderQr(students) {
   const grid = document.getElementById("qrGrid");
@@ -233,14 +278,14 @@ function renderQr(students) {
     const image = document.createElement("div");
     image.className = "qr-image";
     const qr = document.createElement("div");
-    const qrValue = student.qr_token || `STUDENT:${student.student_no}`;
+    const qrValue = String(student.student_no || "").trim();
 
     if (typeof QRCode === "function") {
       new QRCode(qr, {
         text: qrValue,
         width: 150,
         height: 150,
-        correctLevel: QRCode.CorrectLevel.M
+        correctLevel: QRCode.CorrectLevel.H
       });
       image.appendChild(qr);
     } else {

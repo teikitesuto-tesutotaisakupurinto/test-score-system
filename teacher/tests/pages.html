@@ -1019,15 +1019,7 @@ body {
 ></script>
 
 
-<!--
-  OpenCV.jsはGitには置かずCDNからロード。
-  枠の輪郭検出に使用。
--->
-
-<script
-  async
-  src="https://docs.opencv.org/4.x/opencv.js"
-></script>
+<!-- OpenCV.jsはtest-pages.js側で複数CDNを順番に試して初期化します。 -->
 
 
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -1056,7 +1048,7 @@ body {
 
 
 <script
-  src="/js/teacher/test-pages.js?v=20261128canvasqr1"
+  src="/js/teacher/test-pages.js?v=20261128opencvfix1"
 ></script>
 
 

@@ -838,7 +838,29 @@ async function processStudentAnswer(
    QR REGIONS
 ========================================================= */
 
+async function ensureJsQR() {
+  if (typeof window.jsQR === "function") return window.jsQR;
+  const sources = [
+    "https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js",
+    "https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js",
+    "https://unpkg.com/jsqr@1.4.0/dist/jsQR.js"
+  ];
+  for (const src of sources) {
+    const loaded = await new Promise(resolve => {
+      const script = document.createElement("script");
+      script.src = src;
+      script.async = true;
+      script.onload = () => resolve(typeof window.jsQR === "function");
+      script.onerror = () => resolve(false);
+      document.head.appendChild(script);
+    });
+    if (loaded) return window.jsQR;
+  }
+  throw new Error("QR読み取りライブラリを読み込めません。CDN接続を確認してください。");
+}
+
 async function readQrOnlyFromConfiguredRegions(pages) {
+  await ensureJsQR();
   const { data: qrBoxes, error: boxError } = await DB.from("layout_boxes")
     .select("id,page_no,box_type,x,y,width,height")
     .eq("test_id", selectedTestId)

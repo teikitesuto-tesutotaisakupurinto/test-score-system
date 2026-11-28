@@ -109,10 +109,15 @@ async function loadClasses() {
   if (studentsError) throw studentsError;
 
   const allStudents = students || [];
+  const validClassIds = new Set((classes || []).map(item => item.id));
   const rows = (classes || []).map(classItem => {
-    // class_idを正とし、旧形式(class_nameのみ)の生徒も同じクラスに含める。
+    // 有効なclass_idを最優先。削除済みクラスIDを持つ旧データは学年・クラス名で復旧表示する。
     const members = allStudents.filter(student => {
-      if (student.class_id) return student.class_id === classItem.id;
+      if (student.active === false) return false;
+      const linkedClassId = student.class_id || null;
+      if (linkedClassId && validClassIds.has(linkedClassId)) {
+        return linkedClassId === classItem.id;
+      }
       return String(student.grade || "").trim() === String(classItem.grade || "").trim()
         && String(student.class_name || "").trim() === String(classItem.name || "").trim();
     });

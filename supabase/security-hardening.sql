@@ -209,6 +209,7 @@ on public.tests for select to authenticated
 using (
   public.my_role()::text = 'student'
   and results_published = true
+  and public.student_has_published_answer(id)
 );
 
 create policy student_own_student_record

@@ -2326,6 +2326,7 @@
 
     // 既存ページ画像の再取得・再描画をせず、同じレイヤー上で即時に枠へ置換する。
     // これによりSigned URLの期限切れや一時的な通信失敗で追加枠が消えない。
+    selectedBoxId = box.id;
     if (candidateElement?.isConnected) candidateElement.remove();
     if (layer?.isConnected && page) {
       renderBox(layer, page, box);
@@ -2337,7 +2338,6 @@
       });
     }
 
-    selectedBoxId = box.id;
     selectBox(box.id);
     setStatus(`${automaticLabel(box.box_role, box)}として枠を登録しました。保存ボタンで確定してください。`);
   }

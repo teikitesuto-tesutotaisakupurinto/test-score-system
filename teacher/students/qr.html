@@ -177,6 +177,89 @@
 
 
 /* =====================================================
+   PRINT PREVIEW SHEETS (A4 / 3 students)
+===================================================== */
+
+.qr-print-sheets {
+  display:none;
+}
+
+.qr-print-page {
+  width:210mm;
+  height:297mm;
+  margin:0 auto 18px;
+  padding:0;
+  background:#fff;
+  display:grid;
+  grid-template-rows:repeat(3, 1fr);
+  break-after:page;
+  page-break-after:always;
+}
+
+.qr-print-band {
+  position:relative;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-bottom:1px dashed #aab2bb;
+}
+
+.qr-print-band:last-child {
+  border-bottom:0;
+}
+
+.qr-print-sticker {
+  width:2cm;
+  height:3cm;
+  border:0.25mm solid #222;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+  padding:0.5mm;
+  text-align:center;
+  background:#fff;
+}
+
+.qr-print-code {
+  width:17mm;
+  height:17mm;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+}
+
+.qr-print-code canvas,
+.qr-print-code img {
+  width:17mm !important;
+  height:17mm !important;
+  image-rendering:pixelated;
+}
+
+.qr-print-no {
+  font-size:6pt;
+  line-height:1.1;
+  font-weight:700;
+  max-width:100%;
+  overflow-wrap:anywhere;
+  margin-top:0.4mm;
+}
+
+.qr-print-name {
+  font-size:6pt;
+  line-height:1.1;
+  max-width:100%;
+  overflow-wrap:anywhere;
+}
+
+@page {
+  size:A4 portrait;
+  margin:0;
+}
+
+/* =====================================================
    PRINT
 ===================================================== */
 
@@ -190,26 +273,33 @@
   }
 
 
+  html,
+  body {
+    width:210mm;
+    margin:0 !important;
+    padding:0 !important;
+    background:#fff !important;
+  }
+
   .qr-main {
+    width:210mm;
     max-width:none;
+    margin:0;
     padding:0;
   }
 
-
+  .page-header,
   .qr-grid {
-    grid-template-columns:
-      repeat(
-        4,
-        1fr
-      );
-
-    gap:8px;
+    display:none !important;
   }
 
+  .qr-print-sheets {
+    display:block !important;
+  }
 
-  .qr-card {
-    min-height:0;
-    padding:8px;
+  .qr-print-page {
+    margin:0;
+    box-shadow:none;
   }
 
 }
@@ -325,6 +415,8 @@
 
 </section>
 
+<section id="qrPrintSheets" class="qr-print-sheets" aria-hidden="true"></section>
+
 
 </main>
 
@@ -350,7 +442,7 @@
 
 
 <script
-  src="/js/teacher/qr.js?v=20261116"
+  src="/js/teacher/qr.js?v=20261128a4three"
 ></script>
 
 

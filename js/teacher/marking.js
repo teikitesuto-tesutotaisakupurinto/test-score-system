@@ -1218,7 +1218,7 @@ async function loadRegions() {
    RENDER QUESTION
 ========================================================= */
 
-async async function renderQuestion() {
+async function renderQuestion() {
 
   const question =
     questions[

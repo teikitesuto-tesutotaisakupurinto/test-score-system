@@ -110,7 +110,10 @@ async function loadClassOptions() {
   const select = document.getElementById("studentClassId");
   if (!select) return;
   const { data, error } = await DB.from("classes").select("id,name,grade").order("grade").order("name");
-  if (error) throw error;
+  if (error) {
+    console.warn("登録済みクラス一覧を取得できません。手入力で登録できます。", error);
+    return;
+  }
   select.innerHTML = '<option value="">クラスを選択（任意）</option>' + (data || []).map(item =>
     `<option value="${escapeHtml(item.id)}" data-grade="${escapeHtml(item.grade || "")}" data-name="${escapeHtml(item.name || "")}">${escapeHtml(item.grade || "")} ${escapeHtml(item.name || "")}</option>`
   ).join("");

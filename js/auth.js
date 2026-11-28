@@ -23,110 +23,26 @@
 ========================================================= */
 
 function getSupabaseClient() {
-
-  if (
-    window.supabaseClient
-  ) {
-
-    return window.supabaseClient;
-
-  }
-
-
-  if (
-    window.SB
-  ) {
-
-    return window.SB;
-
-  }
-
-
-  if (
-    !window.supabase ||
-    typeof window.supabase.createClient !==
-      "function"
-  ) {
-
-    throw new Error(
-      "Supabase JS SDKが読み込まれていません。"
-    );
-
-  }
-
-
-  const url =
-    window.SUPABASE_URL ||
-    "";
-
-
-  const key =
-    window.SUPABASE_KEY ||
-    "";
-
-
-  if (!url || !key) {
-
-    throw new Error(
-      "Supabaseの設定を読み込めませんでした。"
-    );
-
-  }
-
-
+  // config.js が初期化した唯一のClientを全機能で共有する。
   const client =
-    window.supabase.createClient(
-      url,
-      key,
-      {
+    window.__APP_SUPABASE_CLIENT__ ||
+    window.supabaseClient ||
+    window.SB ||
+    null;
 
-        auth: {
-
-          persistSession:
-            true,
-
-          autoRefreshToken:
-            true,
-
-          detectSessionInUrl:
-            true,
-
-          storage:
-            window.localStorage,
-
-          flowType:
-            "pkce"
-
-        }
-
-      }
+  if (!client || !client.auth || typeof client.from !== "function") {
+    throw new Error(
+      "共通Supabase Clientがありません。Supabase SDKと /js/config.js を auth.js より先に読み込んでください。"
     );
+  }
 
-
-  window.supabaseClient =
-    client;
-
-
-  window.SB =
-    client;
-
+  // 互換名も同じインスタンスへ統一し、別Clientの生成を禁止する。
+  window.__APP_SUPABASE_CLIENT__ = client;
+  window.supabaseClient = client;
+  window.SB = client;
 
   return client;
-
 }
-
-
-const sb =
-  getSupabaseClient();
-
-
-window.SB =
-  sb;
-
-
-window.supabaseClient =
-  sb;
-
 
 /* =========================================================
    SESSION
